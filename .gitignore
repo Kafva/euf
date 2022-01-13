@@ -1,3 +1,5 @@
+*.new
+*.old
 *.sage.py
 *.nav
 *.vrb
