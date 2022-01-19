@@ -2,7 +2,7 @@
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <.diff>"
 helpStr=""
-MAIN=main.c
+MAIN=src/main.c
 DEP=strcpy
 
 while getopts ":h" opt; do
@@ -18,19 +18,19 @@ shift $(($OPTIND - 1))
 diff_file=$1
 
 
+mkdir -p ir
+make clean
+
 #----------------------------#
-
-
-
-
-clang -S -emit-llvm $DEP.c -o $DEP.ll.old
+clang -I include -S -emit-llvm src/$DEP.c -o ir/$DEP.ll.old
 
 # Patch source and recompile
 patch -p1 < $diff_file
 
-clang -S -emit-llvm $DEP.c -o $DEP.ll.new
+clang -I include -S -emit-llvm src/$DEP.c -o ir/$DEP.ll.new
 
 # Revert patch
 patch -p1 -R < $diff_file
 
-diff --color=always -y $DEP.ll.old $DEP.ll.new | less -r
+# llvm-diff --color strcpy.ll.new strcpy.ll.old
+diff --color=always -y ir/$DEP.ll.old ir/$DEP.ll.new | less -r
