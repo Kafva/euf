@@ -1,0 +1,12 @@
+diff --git a/src/strcpy.c b/src/strcpy.c
+index 1d1d2db..f4a65cc 100644
+--- a/src/strcpy.c
++++ b/src/strcpy.c
+@@ -3,7 +3,6 @@
+ void dep_strcpy(char* dst, char* src, size_t size) {
+ 	for (unsigned i = 0; i < size; i++) {
+ 		dst[i]=src[i];	
+-		if(src[i]==0)break; // Stop on NULL
+ 	}
+ }
+ 

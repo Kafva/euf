@@ -53,7 +53,6 @@ output/main.blg
 *.core
 Cargo.lock
 *.orig
-*.diff
 *.rej
 **/bin/**
 **/obj/**
