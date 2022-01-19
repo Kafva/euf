@@ -38,7 +38,3 @@ diff --color=always -y ir/$DEP.ll.old ir/$DEP.ll.new | less -r
 
 
 
-# To compile llvm2smt we need a ocaml version before or equal to 4.05 (cgum uses the `num` package which is now deprecated)
-# Setup of llvm2smt (on FreeBSD):	cd src && gmake 
-
-# llvm2smt/llvm2smt $DEP.ll.new > $DEP.new.smt
