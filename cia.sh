@@ -34,7 +34,7 @@ patch -p1 -R < $diff_file
 
 # llvm-diff --color strcpy.ll.new strcpy.ll.old
 diff --color=always -y ir/$DEP.ll.old ir/$DEP.ll.new | less -r
-
+#----------------------------#
 
 
 

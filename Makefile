@@ -13,6 +13,13 @@ run: bin/cia
 bmc:
 	cbmc -I include src/*
 
+#---- llvm2smt ----#
+# We need to manually insert (check-sat) into the emitted .smt 
+# code to check satisifiability
+smt:
+	llvm2smt ./ir/shufflevector.ll > shufflevector.smt
+	@echo -e "(check-sat)\n(get-model)" >> smt/shufflevector.smt 
+	z3 smt/shufflevector.smt
 
 clean:
-	rm -f ir/*
+	rm -f ir/*.old.* ir/*.new.*
