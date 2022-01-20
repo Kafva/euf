@@ -1,4 +1,3 @@
-ARG=5
 UNWIND=10
 DIFF_FILE=diffs/strcpy.diff
 DEP=strcpy
@@ -11,7 +10,7 @@ bin/cia: src/*
 	clang -I include $(CFLAGS) $^ -o $@
 
 run: bin/cia
-	$< $(ARG)
+	$< "ABCDEGHIJ" 
 
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true
