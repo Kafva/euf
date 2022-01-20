@@ -13,25 +13,30 @@ void dep_strcpy(char* dst, char* src, size_t size) {
 ///	We need to perform deep-copies of pointer arguments
 ///	We can only use a limited --unwind depth
 unsigned get_strsize_1(char* str){
-	unsigned length = 0;
+	unsigned size = 0;
 	while (1) {
-		if (*(str+length) == '\0') break;
-		length++;
+		if (*(str+size) == '\0') break;
+		size++;
 	}
 	
-	length++;
-	__CPROVER_assert(length == get_strsize_2(str), "get_strsize() output differs");
-	return length; 
+	size++;
+
+	return size; 
 }
 
 unsigned get_strsize_2(char* str){
-	unsigned length = 0;
+	unsigned size = 0;
+	unsigned debug = 0;
 	while (1) {
-		if (*(str+length) == '\0') break;
-		if (*(str+length) == 'F' ) length++; 
-		length++;
+		if (*(str+size) == '\0') break;
+		if (*(str+size) == 'F' ) debug++; 
+		
+		size++;
+		if (size%4 == 0) size++;
 	}
 	
-	return length; 
+	size++;
+
+	return size; 
 }
 

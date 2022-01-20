@@ -8,7 +8,6 @@ CFLAGS=-DCBMC=false
 
 bin/cia: src/*
 	@mkdir -p bin
-	./cprover.sh off
 	clang -I include $(CFLAGS) $^ -o $@
 
 run: bin/cia
@@ -20,12 +19,10 @@ run: bin/cia
 # To avoid infinite execution for inf loops,
 # we need to specify an --unwind depth
 bmc:
-	./cprover.sh on
-	cbmc --function get_strsize_1 --unwind $(UNWIND) -I include src/*
+	cbmc  --function main -DCBMC --unwind $(UNWIND) -I include src/* $(ARGS)
 
 #---- Basic IR diff -------------#
 diff:
-	./cprover.sh off
 	mkdir -p ir
 
 	clang -I include -S -emit-llvm src/$(DEP).c -o ir/$(DEP).ll.old
@@ -52,5 +49,4 @@ smt:
 
 
 clean:
-	./cprover.sh off
 	rm -f ir/*.old.* ir/*.new.*
