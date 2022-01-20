@@ -2,12 +2,14 @@ ARG=5
 UNWIND=10
 DIFF_FILE=diffs/strcpy.diff
 DEP=strcpy
+CFLAGS=-DCBMC=false
 
-.PHONY: smt clean run bmc
+.PHONY: smt clean run bmc diff
 
 bin/cia: src/*
 	@mkdir -p bin
-	clang -I include $^ -o $@
+	./cprover.sh off
+	clang -I include $(CFLAGS) $^ -o $@
 
 run: bin/cia
 	$< $(ARG)
@@ -18,10 +20,12 @@ run: bin/cia
 # To avoid infinite execution for inf loops,
 # we need to specify an --unwind depth
 bmc:
-	cbmc --unwind $(UNWIND) -I include src/*
+	./cprover.sh on
+	cbmc --function get_strsize_1 --unwind $(UNWIND) -I include src/*
 
-#--- Basic IR diff -------------#
+#---- Basic IR diff -------------#
 diff:
+	./cprover.sh off
 	mkdir -p ir
 
 	clang -I include -S -emit-llvm src/$(DEP).c -o ir/$(DEP).ll.old
@@ -46,5 +50,7 @@ smt:
 	@echo -e "(check-sat)" 		    >> smt/shufflevector.smt 
 	z3 smt/shufflevector.smt
 
+
 clean:
+	./cprover.sh off
 	rm -f ir/*.old.* ir/*.new.*

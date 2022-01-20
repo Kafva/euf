@@ -20,10 +20,21 @@ def basic():
     print( s.check(), s.model() )
     prove(lhs == rhs)
 
-
-
 def new():
-    pass
+    s = Solver()
 
-if __name__ == '__main__':
-    new()
+    # (a && b) == (a || c)
+    # There are models that satisfy this, but if we try to
+    # verify equivalance, prove(), we get a failure
+    lhs = And(  Bool('a'),  Bool('b') ) 
+    rhs = Or(  Bool('a'),  Bool('b') ) 
+
+    s.add(lhs,rhs) 
+    print( s.check(), s.model() )
+    prove(lhs == rhs)
+
+new()
+# => sat [b = True, a = True]
+# => counterexample
+# => [b = True, a = False]
+
