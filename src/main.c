@@ -12,7 +12,7 @@ int main(int argc, char* argv[]){
 	printf("a: %s\nb: %s\n", a, b);
 
 
-	// cbmc does not handle this
+	// cbmc does not handle this without a --unwind > 10
 	for (int i = 0; i < atoi(argv[1]); i++){
 		assert(i < 10);
 	}
