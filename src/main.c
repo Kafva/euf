@@ -4,8 +4,9 @@
 #include <assert.h>
 
 int main(int argc, char* argv[]){
-	char* a = argv[1];
-	char b[40];
+	//char* a = argv[1];
+	char a[] = "ABCDEFGHIJ";
+
 
 	/// To verify the equivalance of get_strsize with cbmc we need to
 	/// have an assertion that verifies that the output for the same input does not differ 
@@ -21,6 +22,7 @@ int main(int argc, char* argv[]){
 
 
 
+	char b[40];
 	dep_strcpy(b,a, get_strsize_1(a) );
 
 	printf("a: %s\nb: %s\n", a, b);

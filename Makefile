@@ -1,4 +1,4 @@
-UNWIND=10
+UNWIND=30
 DIFF_FILE=diffs/strcpy.diff
 DEP=strcpy
 CFLAGS=-DCBMC=false
@@ -18,7 +18,7 @@ run: bin/cia
 # To avoid infinite execution for inf loops,
 # we need to specify an --unwind depth
 bmc:
-	cbmc  --function main -DCBMC --unwind $(UNWIND) -I include src/* $(ARGS)
+	cbmc  --trace --function main -DCBMC --unwind $(UNWIND) -I include src/* $(ARGS)
 
 #---- Basic IR diff -------------#
 diff:

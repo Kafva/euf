@@ -9,29 +9,24 @@ void dep_strcpy(char* dst, char* src, size_t size) {
 
 unsigned get_strsize_1(char* str){
 	unsigned size = 0;
+
 	while (1) {
 		if (*(str+size) == '\0') break;
 		size++;
 	}
 	
-	size++;
-
-	return size; 
+	return size + 1; 
 }
 
 unsigned get_strsize_2(char* str){
 	unsigned size = 0;
-	unsigned debug = 0;
+
 	while (1) {
 		if (*(str+size) == '\0') break;
-		if (*(str+size) == 'F' ) debug++; 
-		
 		size++;
-		if (size%4 == 0) size++;
+		if (size%2 == 0) size++;
 	}
 	
-	size++;
-
-	return size; 
+	return size + 1; 
 }
 
