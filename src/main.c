@@ -4,7 +4,7 @@
 #include <assert.h>
 
 int main(int argc, char* argv[]){
-	//char* a = argv[1];
+	//char* a = argv[0];
 	char a[] = "ABCDEFGHIJ";
 
 
