@@ -12,6 +12,9 @@ bin/cia: src/*
 run: bin/cia
 	$< "ABCDEGHIJ" 
 
+analyze:
+	clang -I include $(CFLAGS) -analyze -analyzer-checker=core.DivideZero src/*
+
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true
 # for all possible executions of a program
@@ -48,4 +51,4 @@ smt:
 
 
 clean:
-	rm -f ir/*.old.* ir/*.new.*
+	rm -f ir/*.old.* ir/*.new.* bin/*

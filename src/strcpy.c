@@ -30,3 +30,14 @@ unsigned get_strsize_2(char* str){
 	return size + 1; 
 }
 
+char* get_heap_str(char* str){
+	unsigned size = get_strsize_1(str);
+	char* heap_str = (char*)malloc( sizeof(char)*size );	
+	dep_strcpy(heap_str, str, size);
+	return heap_str;
+}
+
+
+void free_heap_str(char* str){
+	free(str);
+}
