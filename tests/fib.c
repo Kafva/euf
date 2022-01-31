@@ -1,6 +1,12 @@
 #include <stdio.h>
+const int n = 9;
+
+int fib(int k) {
+	if ( k<=1 ) return 1;
+	else return fib(k-1) + k;
+}
+
 int main(){
-	int x=41;
-	printf("%d\n",x);
+	printf("%d\n", fib(n) );
 	return 0;
 }

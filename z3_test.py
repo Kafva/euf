@@ -18,6 +18,9 @@ def basic():
     rhs = Or(Not(Bool('a')), Bool('c'))
     s.add(lhs,rhs) 
     print( s.check(), s.model() )
+
+    # Proves the claim by showing that the negation
+    # is unsatisfiable
     prove(lhs == rhs)
 
 def new():
