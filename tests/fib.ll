@@ -65,4 +65,4 @@ define i32 @main() #0 {
 ; the call (e.g. a global variable)
 ;
 ; nounwind: The function will not raise an exception (N/A for pure C)
-attributes #0 = { nounwind }
+attributes #0 = { nounwind  }
