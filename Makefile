@@ -41,12 +41,13 @@ diff:
 	diff --color=always -y ir/$(DEP).ll.old ir/$(DEP).ll.new
 
 #---- llvm2smt ----#
-# We need to manually insert (check-sat) into the emitted .smt 
+# We need to manually insert (check-sat) and an
+# associated (assert) statement into the emitted .smt 
 # code to check satisifiability
-#@echo -e "(check-sat)\n(get-model)" >> smt/shufflevector.smt 
+# The assert statement 
 smt:
 	llvm2smt ./ir/shufflevector.ll > smt/shufflevector.smt
-	@echo -e "(check-sat)" 		    >> smt/shufflevector.smt 
+	@echo -e "(assert (and (= |%a_@lhs| |%a_@rhs|) (= |%b_@lhs| |%b_@rhs|) (not (= |_@lhs_result| |_@rhs_result|))))\n(check-sat)" 		    >> smt/shufflevector.smt 
 	z3 smt/shufflevector.smt
 
 

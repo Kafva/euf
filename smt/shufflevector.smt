@@ -233,11 +233,11 @@
 (define-fun |%2_@rhs| () (Array (_ BitVec 1) (_ BitVec 32)) (store |%1_@rhs| ((_ extract 0 0) (_ bv1 32)) |%b_@rhs|))
 ;; %3 = extractelement <2 x i32> %2, i32 0
 (define-fun |%3_@rhs| () (_ BitVec 32) (select |%2_@rhs| ((_ extract 0 0) (_ bv0 32))))
-;; ret i32 %1
+;; ret i32 %3
 ;; No backward arrows
 
 
-(define-fun |_@rhs_result| () (_ BitVec 32) |%1_@rhs|)
+(define-fun |_@rhs_result| () (_ BitVec 32) |%3_@rhs|)
 
 ;; Function: |_@main|
 ;; (i32 %argc, i8** %argv)
@@ -412,4 +412,5 @@
 ;; (i8*, ...)
 
 
+(assert (and (= |%a_@lhs| |%a_@rhs|) (= |%b_@lhs| |%b_@rhs|) (not (= |_@lhs_result| |_@rhs_result|))))
 (check-sat)
