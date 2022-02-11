@@ -6,24 +6,6 @@ CFLAGS=-DCBMC=false
 .PHONY: smt clean run bmc diff
 
 
-# The desired interface:
-# 	./euf --dep ../oniguruma --commit-current <...> --commit-new <...> ../jq
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true
 # for all possible executions of a program
@@ -57,7 +39,7 @@ analyze:
 	clang -I toy/include $(CFLAGS) -analyze -analyzer-checker=core.DivideZero toy/src/*
 
 diff:
-	mkdir -p toy/ir
+	@mkdir -p toy/ir
 
 	clang -I toy/include -S -emit-llvm toy/src/$(DEP).c -o toy/ir/$(DEP).old.ll
 
