@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import argparse, os
 import subprocess
+#----------------------------#
+# ./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n 29754fab4e3e332d9d19d68d55d760be48a44c1b -d ../jq/modules/oniguruma ../jq
+# ./euf.py -c 6c51de92d73ee1e6b54257947ca076b3945d41bd -n 5dc3be2af4e436cd5236157e89ff04b43c71f613 -d ../sck ..
+# ./euf.py -c 1fe1a3f7a52d8d86df6f59f2a09c63c849934bce -n eb780c3c7294d4ef1db1cb8dcebbfe274e624d99 -d ../DBMS ..
 
 EUF_ROOT = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == '__main__':
-    # ./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n 29754fab4e3e332d9d19d68d55d760be48a44c1b -d ../jq/modules/oniguruma ../jq
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("project", type=str, nargs=1, help='Project to analyze')
