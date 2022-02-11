@@ -19,9 +19,9 @@ func Debug(strs ... interface{}) {
 }
 
 func DetailUsage(){
-	fmt.Printf("Usage of %s:\n", os.Args[0])
+	fmt.Printf("Usage:\n%s <project>\n", os.Args[0])
 	flag.PrintDefaults()
-	if ! *DEBUG {
+	if RELEASE {
 		fmt.Println(HELP_STR + "\n(Release version)")
 	} else {
 		fmt.Println(HELP_STR + "\n(Development version)")
