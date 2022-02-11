@@ -36,7 +36,10 @@ git checkout $CURRENT_COMMIT
 # is always printed first in the context @@ of each change
 
 # We only consider modifications (M) to source files
+# 	- We ignore comments '//' 
+#	- Multi line comments haft to be parsed away later
 git diff --ignore-space-change --ignore-blank-lines --function-context \
+	--ignore-matching-lines "^\s*//" \
 	--diff-filter M $NEW_COMMIT -- "***.c" "***.h" "***.cpp" "***.hpp" \
 	> /tmp/$NEW_COMMIT.diff
 
