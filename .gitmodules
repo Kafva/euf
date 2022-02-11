@@ -1,6 +1,6 @@
 [submodule "llvm2smt"]
 	path = llvm2smt
-	url = git@github.com:SRI-CSL/llvm2smt.git
+	url = git@github.com:Kafva/llvm2smt.git
 [submodule "cbmc"]
 	path = cbmc
 	url = https://github.com/diffblue/cbmc.git
