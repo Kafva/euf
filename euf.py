@@ -50,16 +50,16 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--dependency",           help='Path to the directory with source code for the dependency to upgrade')
 
     args = parser.parse_args()
+
+    if args.commit_new == "" or args.commit_current == "" or args.dependency == "" or len(args.project) == 0:
+        print("Missing required option")
+        exit(1)
+
     PROJECT = args.project[0]
     DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
 
 	# Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
     subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, "-n", args.commit_new, "-d", args.dependency, PROJECT])
-
-
-
-
-
 
     # There is no guarantee that a change context will start with a function name but the `--function-context` option
     # will at least guarantee that the function enclosing every change is part of the diff
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     lexer = lexers.get_lexer_by_name("c")
 
     file_context_content = ""
+    
 
     with open(DIFF_FILE) as f:
         try:
@@ -97,5 +98,4 @@ if __name__ == '__main__':
                     
         except UnicodeDecodeError as error:
             print("Error reading {}: {}".format(DIFF_FILE,error))
-
 
