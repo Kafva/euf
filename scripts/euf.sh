@@ -21,21 +21,27 @@ shift $(($OPTIND - 1))
 [ -d "$DEPENDENCY_DIR" ] 	|| die "$usage"  
 
 PROJECT=$1
+LC_ALL=C
 
 # Get the diff between the current and new versions
 # 	- Extract the names of the affected functions
 cd $DEPENDENCY_DIR
 git checkout $CURRENT_COMMIT
 
-# The function-context option ensures that the enclosing function name
-# is always printed first in the context @@ of each change
+# Remove non-printable characters from the output
 
 # We only consider modifications (M) to source files
-# 	- We ignore comments '//' 
+# 	- We ignore changes to comments '//' 
+#	- We ignore non-printable characters
 #	- Multi line comments haft to be parsed away later
 git diff --ignore-space-change --ignore-blank-lines --function-context \
-	--ignore-matching-lines "^\s*//" \
-	--diff-filter M $NEW_COMMIT -- "***.c" "***.h" "***.cpp" "***.hpp" \
-	> /tmp/$NEW_COMMIT.diff
+	--diff-filter M $NEW_COMMIT -- "***.c" "***.h" | \
+		sed -E '/^[[:space:]]*[+-]+\/\//d' | \
+		tr -dc '\0-\177' | \
+		sed -E 's/^\s*-//; s/^\s*\+//;' | \
+		sed -E 's/@@\s+[-+]*[[:digit:]]+,[-+]*[[:digit:]]+\s+[-+]*[[:digit:]]+,[-+]*[[:digit:]]+\s+@@//' \
+		> /tmp/$NEW_COMMIT.diff
 
-cd -
+# For the lexing to work we need to remove the actual +/- indicators
+# and the @@ context markers
+cd - &> /dev/null
