@@ -5,6 +5,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pygments import lexers
+from clang import cindex
 
 @dataclass
 class ChangeUnit:
@@ -69,16 +70,29 @@ if __name__ == '__main__':
     
     # Determining what is a function prototype through a Regex is not trivial:
     #  https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
-    # and we instead use a lexer
+    # We can lex a source file with clang using
+    #   clang -fsyntax-only -Xclang -dump-tokens main.c
+    # However this does not give us any indication as to what it is a function decleration 
+    # To aquire the AST we use
+    #   clang -fsyntax-only -Xclang -ast-dump main.c
+    # Native python method
+    #   https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
+
     lexer = lexers.get_lexer_by_name("c")
 
     file_context_content = ""
+    
+    #with open("toy/diffs/same.h") as f:
+    #    src = ''.join(f.readlines())
+    #    print(src)
+    #    for token in lexer.get_tokens(src): 
+    #        print(token)
     
 
     with open(DIFF_FILE) as f:
         try:
             for line in f:
-                    context_match = re.search("^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*", line)
+                    context_match = re.search(r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line)
 
                     if context_match: # New file context
                         [ f.readline() for _ in range(3) ] # Skip the next three lines of context information
