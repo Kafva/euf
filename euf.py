@@ -7,10 +7,37 @@ from dataclasses import dataclass
 from pygments import lexers
 from clang import cindex
 
+cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1") # TODO: System dependent
+
+lexer = lexers.get_lexer_by_name("c") 
+
 @dataclass
 class ChangeUnit:
     filepath: str
     function: str
+
+def clang_ast():
+    '''
+     Determining what is a function prototype through a Regex is not trivial:
+      https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
+     We can lex a source file with clang using
+       clang -fsyntax-only -Xclang -dump-tokens toy/diffs/same.h
+     However this does not give us any indication as to what it is a function decleration 
+     To aquire the AST we use
+       clang -fsyntax-only -Xclang -ast-dump toy/diffs/same.h
+     Native python method
+       https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
+       https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
+    '''
+    pass
+
+
+def pygment_ast(current_filepath: str, file_context_content: str, changed_units: list[ChangeUnit]) -> None:
+    ''' Extract all function names from the current file and insert them into the changed_units list '''
+    for token in lexer.get_tokens(file_context_content): 
+        if str(token[0]) == 'Token.Name.Function':
+            changed_units.append( ChangeUnit(current_filepath,token[1]) )
+            print(changed_units[-1])
 
 #----------------------------#
 # ./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../jq/modules/oniguruma ../jq
@@ -39,9 +66,6 @@ class ChangeUnit:
 
 EUF_ROOT = os.path.dirname(os.path.realpath(__file__))
 
-
-# We can have several identical function names with different return values, arguments etc.
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="")
@@ -67,44 +91,25 @@ if __name__ == '__main__':
     # As a starting point, we consider all function names in the diff changed
     changed_units = []
     current_filepath = ""
-    
-    # Determining what is a function prototype through a Regex is not trivial:
-    #  https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
-    # We can lex a source file with clang using
-    #   clang -fsyntax-only -Xclang -dump-tokens main.c
-    # However this does not give us any indication as to what it is a function decleration 
-    # To aquire the AST we use
-    #   clang -fsyntax-only -Xclang -ast-dump main.c
-    # Native python method
-    #   https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
-
-    lexer = lexers.get_lexer_by_name("c")
-
     file_context_content = ""
-    
-    #with open("toy/diffs/same.h") as f:
-    #    src = ''.join(f.readlines())
-    #    print(src)
-    #    for token in lexer.get_tokens(src): 
-    #        print(token)
-    
 
     with open(DIFF_FILE) as f:
         try:
             for line in f:
                     context_match = re.search(r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line)
 
-                    if context_match: # New file context
+                    if context_match: # New file (TU) context
                         [ f.readline() for _ in range(3) ] # Skip the next three lines of context information
 
                         if file_context_content != "":
-                            # Extract all function names from the current file
-                            for token in lexer.get_tokens(file_context_content): 
-                                if str(token[0]) == 'Token.Name.Function':
-                                    changed_units.append( ChangeUnit(current_filepath,token[1]) )
-                                    print(changed_units[-1])
+                            pygment_ast(current_filepath,file_context_content, changed_units)
 
-                        # Move on to next file context
+                        #    # Parse the source code of the current TU into a TU object
+                        #    tu = cindex.TranslationUnit.from_source(current_filepath, file_context_content)
+                        #    tu.cursor
+                        #    pass
+
+                        ## Move on to next file context
                         current_filepath = context_match.group(1)
                         file_context_content = ""
                     else:

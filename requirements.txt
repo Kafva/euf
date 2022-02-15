@@ -1,2 +1,2 @@
-clang==14.0
+clang==13.0.1
 Pygments==2.11.2
