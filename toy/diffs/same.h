@@ -1,3 +1,16 @@
+// 'P_' is a macro, clang will expand macros automatically but we need to actually include them in the TU
+// for this to work. The same goes for custom types like 'onig_posix_regmatch_t'
+// To resolve this issue we need to have the #includes still available in each TU
+#ifndef P_
+#if defined(__STDC__) || defined(_WIN32)
+# define P_(args) args
+#else
+# define P_(args) ()
+#endif
+#endif
+
+#define ONIG_EXTERN   extern
+
 ONIG_EXTERN int    onig_posix_regcomp P_((onig_posix_regex_t* reg, const char* pat, int options));
 ONIG_EXTERN int    onig_posix_regexec P_((onig_posix_regex_t* reg, const char* str, size_t nmatch, onig_posix_regmatch_t* matches, int options
 ));

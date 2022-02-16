@@ -22,18 +22,21 @@ def clang_ast():
       https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
      We can lex a source file with clang using
        clang -fsyntax-only -Xclang -dump-tokens toy/diffs/same.h
-     However this does not give us any indication as to what it is a function decleration 
-     To aquire the AST we use
+     However this does not give us any indication as to what 
+     it is a function decleration. To aquire the AST we use
        clang -fsyntax-only -Xclang -ast-dump toy/diffs/same.h
-     Native python method
+     Native python method:
        https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
        https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
     '''
     pass
 
 
-def pygment_ast(current_filepath: str, file_context_content: str, changed_units: list[ChangeUnit]) -> None:
-    ''' Extract all function names from the current file and insert them into the changed_units list '''
+def pygment_ast(current_filepath: str, file_context_content: str, 
+    changed_units: list[ChangeUnit]) -> None:
+    ''' Extract all function names from the current file and insert them into 
+    the changed_units list 
+    '''
     for token in lexer.get_tokens(file_context_content): 
         if str(token[0]) == 'Token.Name.Function':
             changed_units.append( ChangeUnit(current_filepath,token[1]) )
@@ -76,7 +79,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.commit_new == "" or args.commit_current == "" or args.dependency == "" or len(args.project) == 0:
+    if args.commit_new == "" or args.commit_current == "" or \
+        args.dependency == "" or len(args.project) == 0:
         print("Missing required option")
         exit(1)
 
@@ -84,10 +88,13 @@ if __name__ == '__main__':
     DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
 
 	# Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
-    subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, "-n", args.commit_new, "-d", args.dependency, PROJECT])
+    subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, 
+        "-n", args.commit_new, "-d", args.dependency, PROJECT]
+    )
 
-    # There is no guarantee that a change context will start with a function name but the `--function-context` option
-    # will at least guarantee that the function enclosing every change is part of the diff
+    # There is no guarantee that a change context will start with a function 
+    # name but the `--function-context` option will at least guarantee that the 
+    # function enclosing every change is part of the diff
     # As a starting point, we consider all function names in the diff changed
     changed_units = []
     current_filepath = ""
@@ -96,24 +103,34 @@ if __name__ == '__main__':
     with open(DIFF_FILE) as f:
         try:
             for line in f:
-                    context_match = re.search(r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line)
+                    context_match = re.search(
+                        r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line
+                    )
 
                     if context_match: # New file (TU) context
-                        [ f.readline() for _ in range(3) ] # Skip the next three lines of context information
+                        # Skip the next three lines of context information
+                        [ f.readline() for _ in range(3) ] 
 
                         if file_context_content != "":
-                            pygment_ast(current_filepath,file_context_content, changed_units)
+                            # pygment_ast(current_filepath, file_context_content, changed_units)
 
-                        #    # Parse the source code of the current TU into a TU object
-                        #    tu = cindex.TranslationUnit.from_source(current_filepath, file_context_content)
-                        #    tu.cursor
-                        #    pass
+                            # Parse the source code of the current TU into a TU object
+                            print(current_filepath,  file_context_content)
+                            tu = cindex.TranslationUnit \
+                                .from_source(None, args=["-I /home/jonas/oniguruma/src"], 
+                                    unsaved_files=[ ("bug_fix.c", file_context_content) ]
+                                ) 
+                                
+
+                            print(tu.get_file().name)
+                            for include in tu.get_includes():
+                                print("\t{}".format(include))
 
                         ## Move on to next file context
                         current_filepath = context_match.group(1)
                         file_context_content = ""
                     else:
-                        file_context_content += line + "\n"
+                        file_context_content += line
                     
         except UnicodeDecodeError as error:
             print("Error reading {}: {}".format(DIFF_FILE,error))
