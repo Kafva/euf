@@ -7,16 +7,21 @@ from dataclasses import dataclass
 from pygments import lexers
 from clang import cindex
 
-cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1") # TODO: System dependent
+# TODO: System dependent
+cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1") 
 
-lexer = lexers.get_lexer_by_name("c") 
+# Set the compilation database (dependent on the chosen dependency)
+cindex.CompilationDatabase.fromDirectory("/home/jonas/Repos/oniguruma/compile_commands.json")
+
+lexer = lexers.get_lexer_by_name("c")
 
 @dataclass
 class ChangeUnit:
     filepath: str
     function: str
 
-def clang_ast():
+def clang_ast(current_filepath: str, file_context_content: str,
+    changed_units: list[ChangeUnit]) -> None:
     '''
      Determining what is a function prototype through a Regex is not trivial:
       https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
@@ -29,7 +34,17 @@ def clang_ast():
        https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
        https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
     '''
-    pass
+    # Parse the source code of the current TU into a TU object
+    print(current_filepath,  file_context_content)
+    tu = cindex.TranslationUnit \
+        .from_source(None, args=["-I /home/jonas/oniguruma/src"], 
+            unsaved_files=[ ("bug_fix.c", file_context_content) ]
+        ) 
+        
+
+    print(tu.get_file().name)
+    for include in tu.get_includes():
+        print("\t{}".format(include))
 
 
 def pygment_ast(current_filepath: str, file_context_content: str, 
@@ -50,32 +65,40 @@ def pygment_ast(current_filepath: str, file_context_content: str,
 
 # + Relying on the LLVM diff directly would eliminate the need for parsing out comments and would
 # give us a direct mapping as to where we want to point llvm2smt
-# - This would involve compiling the dependency in a custom manner where the IR of every TU is dumped
+# - This would involve compiling the dependency in a custom manner where the 
+# IR of every TU is dumped
 #   before and after the change
-# and then diffing these files. It also becomes more difficult to connect the changes in the dependency to points in the project
+# and then diffing these files. It also becomes more difficult to connect 
+# the changes in the dependency to points in the project
 
 # How are macros translated to LLVM?
 # If a change occurs in macro (function) we would like to analyze this as well
 
 # TODO: (not an immediate priority)
 #   1. Exclusion of functions were the change only concerns a comment
-#   2. Exclusion of functions were the change actually occurs after the function @@context
-# The SMT detection should exclude these changes anyway but we don't want to perform uneccessary work
+#   2. Exclusion of functions were the change actually occurs after the 
+# function @@context. The SMT detection should exclude these changes anyway but
+# we don't want to perform uneccessary work
 
 # Changes outside of function body will produce FPs where the
-# body of the function before a change is still printed. 
+# body of the function before a change is still printed.
 # To exclude these changes we will ensure that every -/+ is contained
-# inside the {...} of the function at start of each @@ context 
+# inside the {...} of the function at start of each @@ context
 
 EUF_ROOT = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("project", type=str, nargs=1,   help='Project to analyze')
-    parser.add_argument("-n", "--commit-new",           help='Git hash of the updated commit in the dependency')
-    parser.add_argument("-c", "--commit-current",       help='Git hash of the current commit in the dependency')
-    parser.add_argument("-d", "--dependency",           help='Path to the directory with source code for the dependency to upgrade')
+
+    parser.add_argument("project", type=str, nargs=1,
+        help='Project to analyze')
+    parser.add_argument("-n", "--commit-new",
+        help='Git hash of the updated commit in the dependency')
+    parser.add_argument("-c", "--commit-current",
+        help='Git hash of the current commit in the dependency')
+    parser.add_argument("-d", "--dependency", help =
+        'Path to the directory with source code for the dependency to upgrade')
 
     args = parser.parse_args()
 
@@ -89,49 +112,38 @@ if __name__ == '__main__':
 
 	# Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
     subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, 
-        "-n", args.commit_new, "-d", args.dependency, PROJECT]
+        "-n", args.commit_new, "-d", args.dependency, PROJECT], check=True
     )
 
-    # There is no guarantee that a change context will start with a function 
-    # name but the `--function-context` option will at least guarantee that the 
+    # There is no guarantee that a change context will start with a function
+    # name but the `--function-context` option will at least guarantee that the
     # function enclosing every change is part of the diff
     # As a starting point, we consider all function names in the diff changed
-    changed_units = []
-    current_filepath = ""
-    file_context_content = ""
+    CHANGED_UNITS = []
+    CURRENT_FILEPATH = ""
+    FILE_CONTEXT_CONTENT = ""
 
-    with open(DIFF_FILE) as f:
+    with open(DIFF_FILE, encoding='utf-8') as f:
         try:
             for line in f:
-                    context_match = re.search(
-                        r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line
-                    )
+                context_match = re.search(
+                    r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line
+                )
 
-                    if context_match: # New file (TU) context
-                        # Skip the next three lines of context information
-                        [ f.readline() for _ in range(3) ] 
+                if context_match: # New file (TU) context
+                    # Skip the next three lines of context information
+                    # pylint: disable=W0106
+                    [ f.readline() for _ in range(3) ]
 
-                        if file_context_content != "":
-                            # pygment_ast(current_filepath, file_context_content, changed_units)
+                    if FILE_CONTEXT_CONTENT != "":
+                        # pygment_ast(CURRENT_FILEPATH, FILE_CONTEXT_CONTENT, CHANGED_UNITS)
+                        clang_ast(CURRENT_FILEPATH, FILE_CONTEXT_CONTENT, CHANGED_UNITS)
 
-                            # Parse the source code of the current TU into a TU object
-                            print(current_filepath,  file_context_content)
-                            tu = cindex.TranslationUnit \
-                                .from_source(None, args=["-I /home/jonas/oniguruma/src"], 
-                                    unsaved_files=[ ("bug_fix.c", file_context_content) ]
-                                ) 
-                                
 
-                            print(tu.get_file().name)
-                            for include in tu.get_includes():
-                                print("\t{}".format(include))
-
-                        ## Move on to next file context
-                        current_filepath = context_match.group(1)
-                        file_context_content = ""
-                    else:
-                        file_context_content += line
-                    
+                    # Move on to next file context
+                    CURRENT_FILEPATH = context_match.group(1)
+                    FILE_CONTEXT_CONTENT = ""
+                else:
+                    FILE_CONTEXT_CONTENT += line
         except UnicodeDecodeError as error:
-            print("Error reading {}: {}".format(DIFF_FILE,error))
-
+            print(f"Error reading {DIFF_FILE}: {error}")
