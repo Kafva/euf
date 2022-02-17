@@ -1,23 +1,10 @@
 #!/usr/bin/env python3
 import argparse, os
 from logging import error
-import re
-import subprocess
 from dataclasses import dataclass
-from pygments import lexers
 from clang import cindex
-
-
-# Line based approach:
-# 1. Derive the AST of each file that has been modified
-# 2. Go through the diff and use regex (based on the known function prototypes) to detect what function we are in 
-# 3. Flag the functions which have +/- within them
-
-#----------------------------#
-# ./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../jq/modules/oniguruma ../jq
-# ./euf.py -c 6c51de92d73ee1e6b54257947ca076b3945d41bd -n 5dc3be2af4e436cd5236157e89ff04b43c71f613 -d ../sck ..
-# ./euf.py -c 1fe1a3f7a52d8d86df6f59f2a09c63c849934bce -n eb780c3c7294d4ef1db1cb8dcebbfe274e624d99 -d ../DBMS ..
-
+from git.objects.commit import Commit
+from git.repo import Repo
 
 # + Relying on the LLVM diff directly would eliminate the need for parsing out comments and would
 # give us a direct mapping as to where we want to point llvm2smt
@@ -43,61 +30,42 @@ from clang import cindex
 
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1") 
 
-lexer = lexers.get_lexer_by_name("c")
+@dataclass
+class Function:
+    displayname: str # Includes the full prototype string
+    name: str
+    return_type: cindex.TypeKind
+    arguments: list[str]
+
 
 @dataclass
 class ChangeUnit:
     filepath: str
-    function: str
+    function: Function
 
-def clang_ast(current_filepath: str, file_context_content: str,
-    changed_units: list[ChangeUnit]) -> None:
+
+def get_functions_from_tu(cursor: cindex.Cursor) -> None:
     '''
      Determining what is a function prototype through a Regex is not trivial:
       https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
      By inspecting the AST we can determine what tokens are function declerations
-       clang -fsyntax-only -Xclang -ast-dump toy/diffs/same.h
-     Native python method:
+       clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
+     Native Python method:
        https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
        https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
-     Clang's tooling makes it fairly easy to generate the AST of a file within the source tree 
-
     '''
-    # Parse the source code of the current TU into a TU object
-    print(file_context_content,current_filepath)
 
-    with open(current_filepath + ".tmp", encoding='utf-8', mode="w") as f:
-        f.write(file_context_content)
+    if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
 
-    tu = cindex.TranslationUnit.from_source( current_filepath+".tmp" )
+        print(cursor.displayname, cursor.type.get_result().spelling, cursor.type.get_result().kind )
 
-    #tu = cindex.TranslationUnit \
-    #    .from_source(None, args=["-I /home/jonas/jq/modules/oniguruma/src"], 
-    #        unsaved_files=[ (current_filepath, file_context_content) ]
-    #    ) 
-    
-    print(tu)
+        for t,n in zip(cursor.type.argument_types(), cursor.get_arguments()):
+                print(f"\t{t.spelling} {n.spelling}")
+                #print(t.kind)
 
-    #tu = cindex.TranslationUnit.from_source(current_filepath)
+    for c in cursor.get_children():
+        get_functions_from_tu(c)
 
-    #for include in tu.get_includes():
-    #    print(f"\t{include}")
-    #
-    #print(current_filepath)
-
-
-def pygment_ast(current_filepath: str, file_context_content: str, 
-    changed_units: list[ChangeUnit]) -> None:
-    ''' Extract all function names from the current file and insert them into 
-    the changed_units list 
-    '''
-    for token in lexer.get_tokens(file_context_content): 
-        if str(token[0]) == 'Token.Name.Function':
-            changed_units.append( ChangeUnit(current_filepath,token[1]) )
-            print(changed_units[-1])
-
-
-EUF_ROOT = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
@@ -119,51 +87,112 @@ if __name__ == '__main__':
         exit(1)
 
     PROJECT = args.project[0]
-    DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
     DEPENDENCY_DIR = args.dependency
 
-	# Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
-    subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, 
-        "-n", args.commit_new, "-d", args.dependency, PROJECT], check=True
-    )
+    # Approach:
+    # 1. Derive the AST of each file that has been modified
+    # 2. Compile a list of the functions in the file
+    # 3. Go through the textual diff and use regex (based on the known function prototypes) to detect what function we are in 
+    # 4. Add the functions which have (+/-) within them to the CHANGED_UNITS list
    
-    # Set the compilation database, the directory needs to contain `compile_commands.json` 
+    dep_repo = Repo(DEPENDENCY_DIR)
+
+    # Find the objects that correspond to the current and new commit
+    for commit in dep_repo.iter_commits():
+        if commit.hexsha == args.commit_new:
+            COMMIT_NEW: Commit = commit
+        elif commit.hexsha == args.commit_current:
+            COMMIT_CURRENT: Commit = commit
+
+    # Only include modifications (M) to '.c' files
     try:
-        cindex.CompilationDatabase.fromDirectory(DEPENDENCY_DIR)
-    except cindex.CompilationDatabaseError:
-        print(f"Failed to load compilation database: {DEPENDENCY_DIR}/compile_commands.json")
+        COMMIT_DIFF = filter(lambda d: 
+                    str(d.a_path).endswith(".c") and d.change_type == "M", 
+                    COMMIT_CURRENT.diff(COMMIT_NEW))
+    except NameError as error:
+        print(f"Unable to find commit: {error.name}")
+        exit(1)
+
+    
+    CHANGED_UNITS: list[ChangeUnit] = []
+
+    for diff in COMMIT_DIFF:
+        #a_diff = diff.a_blob.data_stream.read().decode('utf-8')
+        #b_diff = diff.b_blob.data_stream.read().decode('utf-8')
+        #print("===> A <====", a_diff)
+        #print("===> B <====", b_diff)
+
+        print(diff.a_path)
+        tu = cindex.TranslationUnit.from_source(f"{DEPENDENCY_DIR}/{diff.a_path}")
+        cursor: cindex.Cursor = tu.cursor
+        get_functions_from_tu(cursor)
+        break
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
+	# Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
+    #subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, 
+    #    "-n", args.commit_new, "-d", args.dependency, PROJECT], check=True
+    #)
 
     # There is no guarantee that a change context will start with a function
     # name but the `--function-context` option will at least guarantee that the
     # function enclosing every change is part of the diff
     # As a starting point, we consider all function names in the diff changed
-    CHANGED_UNITS = []
-    CURRENT_FILEPATH = ""
-    FILE_CONTEXT_CONTENT = ""
+    #CHANGED_UNITS = []
+    #CURRENT_FILEPATH = ""
+    #FILE_CONTEXT_CONTENT = ""
 
-    with open(DIFF_FILE, encoding='utf-8') as f:
-        try:
-            for line in f:
-                context_match = re.search(
-                    r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line
-                )
+    #with open(DIFF_FILE, encoding='utf-8') as f:
+    #    try:
+    #        for line in f:
+    #            context_match = re.search(
+    #                r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line
+    #            )
 
-                if context_match: # New file (TU) context
-                    
-                    # Skip the next three lines of context information
-                    # pylint: disable=W0106
-                    [ f.readline() for _ in range(3) ]
+    #            if context_match: # New file (TU) context
+    #                
+    #                # Skip the next three lines of context information
+    #                # pylint: disable=W0106
+    #                [ f.readline() for _ in range(3) ]
 
-                    # If there is content from the previous context, parse it
-                    if FILE_CONTEXT_CONTENT != "":
-                        clang_ast(CURRENT_FILEPATH,  FILE_CONTEXT_CONTENT, CHANGED_UNITS)
-                        break;
+    #                # If there is content from the previous context, parse it
+    #                if FILE_CONTEXT_CONTENT != "":
+    #                    clang_ast(CURRENT_FILEPATH,  FILE_CONTEXT_CONTENT, CHANGED_UNITS)
+    #                    break;
 
 
-                    # Clear the content and update the filepath
-                    CURRENT_FILEPATH = DEPENDENCY_DIR + "/" + context_match.group(1)
-                    FILE_CONTEXT_CONTENT = ""
-                else:
-                    FILE_CONTEXT_CONTENT += line
-        except UnicodeDecodeError as error:
-            print(f"Error reading {DIFF_FILE}: {error}")
+    #                # Clear the content and update the filepath
+    #                CURRENT_FILEPATH = DEPENDENCY_DIR + "/" + context_match.group(1)
+    #                FILE_CONTEXT_CONTENT = ""
+    #            else:
+    #                FILE_CONTEXT_CONTENT += line
+    #    except UnicodeDecodeError as error:
+    #        print(f"Error reading {DIFF_FILE}: {error}")

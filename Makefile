@@ -6,10 +6,11 @@ CFLAGS=-DCBMC=false
 .PHONY: smt clean run bmc diff oni oniv
 
 
+# Note that jq actually has a way older version of oniguruma under ./modules
 oni:
-	./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../jq/modules/oniguruma ../jq
+	./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
 oniv:
-	./scripts/euf.sh -V -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../jq/modules/oniguruma ../jq
+	./scripts/euf.sh -V -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
 
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true

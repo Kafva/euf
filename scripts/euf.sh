@@ -28,7 +28,7 @@ LC_ALL=C
 # Get the diff between the current and new versions
 # 	- Extract the names of the affected functions
 cd $DEPENDENCY_DIR
-git checkout $CURRENT_COMMIT &> /dev/null
+git checkout $CURRENT_COMMIT || die "Failed to checkout current commit"
 
 if $VIEW; then
 	git diff --ignore-space-change --ignore-blank-lines --function-context \
@@ -50,4 +50,5 @@ else
 			> /tmp/$NEW_COMMIT.diff
 fi
 
+git checkout master 2>/dev/null || git checkout main
 cd - &> /dev/null
