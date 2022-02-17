@@ -38,13 +38,16 @@ class Function:
     arguments: list[str]
 
 
-@dataclass
-class ChangeUnit:
-    filepath: str
-    function: Function
+
+def get_changed_functions(c1: cindex.Cursor, c2: cindex.Cursor) -> None:
+    '''
+    As a starting point we can walk the AST of the new and old file in parallel and
+    consider any divergence (within a function) as a potential change
+    '''
+    pass
 
 
-def get_functions_from_tu(cursor: cindex.Cursor) -> None:
+def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
     '''
      Determining what is a function prototype through a Regex is not trivial:
       https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
@@ -52,19 +55,17 @@ def get_functions_from_tu(cursor: cindex.Cursor) -> None:
        clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
      Native Python method:
        https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
-       https://gist.github.com/scturtle/a7b5349028c249f2e9eeb5688d3e0c5e
     '''
-
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
 
-        print(cursor.displayname, cursor.type.get_result().spelling, cursor.type.get_result().kind )
+        print(f"{cursor.type.get_result().spelling} {cursor.spelling} ("); # cursor.type.get_result().kind
 
         for t,n in zip(cursor.type.argument_types(), cursor.get_arguments()):
-                print(f"\t{t.spelling} {n.spelling}")
-                #print(t.kind)
+                print(f"\t{t.spelling} {n.spelling}") # t.kind
+        print(")")
 
     for c in cursor.get_children():
-        get_functions_from_tu(c)
+        dump_functions_in_tu(c)
 
 
 if __name__ == '__main__':
@@ -90,11 +91,10 @@ if __name__ == '__main__':
     DEPENDENCY_DIR = args.dependency
 
     # Approach:
-    # 1. Derive the AST of each file that has been modified
-    # 2. Compile a list of the functions in the file
-    # 3. Go through the textual diff and use regex (based on the known function prototypes) to detect what function we are in 
-    # 4. Add the functions which have (+/-) within them to the CHANGED_UNITS list
-   
+    # 0. Determine what source files have been modified
+    # 1. Walk the AST of the current and new version of each file
+    # 2. Consider any functions with a difference in the AST composition as changed
+
     dep_repo = Repo(DEPENDENCY_DIR)
 
     # Find the objects that correspond to the current and new commit
@@ -108,24 +108,30 @@ if __name__ == '__main__':
     try:
         COMMIT_DIFF = filter(lambda d: 
                     str(d.a_path).endswith(".c") and d.change_type == "M", 
-                    COMMIT_CURRENT.diff(COMMIT_NEW))
+                    COMMIT_NEW.diff(COMMIT_CURRENT))
     except NameError as error:
         print(f"Unable to find commit: {error.name}")
         exit(1)
 
     
-    CHANGED_UNITS: list[ChangeUnit] = []
-
     for diff in COMMIT_DIFF:
         #a_diff = diff.a_blob.data_stream.read().decode('utf-8')
         #b_diff = diff.b_blob.data_stream.read().decode('utf-8')
-        #print("===> A <====", a_diff)
-        #print("===> B <====", b_diff)
+        
+        print("===> Current state <====")
+        tu_curr = cindex.TranslationUnit.from_source(
+                f"{DEPENDENCY_DIR}/{diff.b_path}",
+                unsaved_files=[ (f"{DEPENDENCY_DIR}/{diff.b_path}", diff.b_blob.data_stream) ]
+        )
+        cursor_curr: cindex.Cursor = tu_curr.cursor
+        dump_functions_in_tu(cursor_curr)
 
-        print(diff.a_path)
-        tu = cindex.TranslationUnit.from_source(f"{DEPENDENCY_DIR}/{diff.a_path}")
-        cursor: cindex.Cursor = tu.cursor
-        get_functions_from_tu(cursor)
+        print("===> New state <====")
+        tu_new = cindex.TranslationUnit.from_source(f"{DEPENDENCY_DIR}/{diff.a_path}")
+        cursor_new: cindex.Cursor = tu_new.cursor
+        dump_functions_in_tu(cursor_new)
+
+
         break
 
 
@@ -156,17 +162,20 @@ if __name__ == '__main__':
 
 
 
-    # DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
-	# Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
+    #import re
+    #import subprocess
+    #EUF_ROOT = os.path.dirname(os.path.realpath(__file__))
+    #DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
+
+	## Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
     #subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, 
     #    "-n", args.commit_new, "-d", args.dependency, PROJECT], check=True
     #)
 
-    # There is no guarantee that a change context will start with a function
-    # name but the `--function-context` option will at least guarantee that the
-    # function enclosing every change is part of the diff
-    # As a starting point, we consider all function names in the diff changed
-    #CHANGED_UNITS = []
+    ## There is no guarantee that a change context will start with a function
+    ## name but the `--function-context` option will at least guarantee that the
+    ## function enclosing every change is part of the diff
+    ## As a starting point, we consider all function names in the diff changed
     #CURRENT_FILEPATH = ""
     #FILE_CONTEXT_CONTENT = ""
 
@@ -185,7 +194,6 @@ if __name__ == '__main__':
 
     #                # If there is content from the previous context, parse it
     #                if FILE_CONTEXT_CONTENT != "":
-    #                    clang_ast(CURRENT_FILEPATH,  FILE_CONTEXT_CONTENT, CHANGED_UNITS)
     #                    break;
 
 

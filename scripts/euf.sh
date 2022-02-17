@@ -25,30 +25,28 @@ shift $(($OPTIND - 1))
 PROJECT=$1
 LC_ALL=C
 
-# Get the diff between the current and new versions
-# 	- Extract the names of the affected functions
+# Note that we switch to the new commit and perform a diff agianst
+# the current state to see changes from the correct perspective
 cd $DEPENDENCY_DIR
-git checkout $CURRENT_COMMIT || die "Failed to checkout current commit"
+git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout current commit"
 
 if $VIEW; then
 	git diff --ignore-space-change --ignore-blank-lines --function-context \
-		--diff-filter M $NEW_COMMIT -- "***.c" "***.h" | \
+		--diff-filter M $CURRENT_COMMIT -- "***.c" "***.h" | \
 			tr -dc '\0-\177' | bat
 else
 	# We only consider modifications (M) to source files
 	# 	- We ignore changes to comments '//' 
 	#	- We ignore non-printable characters
 	#	- Multi line comments haft to be parsed away later
-	# For the lexing to work we need to remove the actual +/- indicators
-	# and the @@ context markers
+	# We remove the @@ context markers
 	git diff --ignore-space-change --ignore-blank-lines --function-context \
-		--diff-filter M $NEW_COMMIT -- "***.c" "***.h" | \
+		--diff-filter M $CURRENT_COMMIT -- "***.c" "***.h" | \
 			sed -E '/^[[:space:]]*[+-]+\/\//d' | \
 			tr -dc '\0-\177' | \
-			sed -E 's/^\s*-//; s/^\s*\+//;' | \
 			sed -E 's/@@\s+[-+]*[[:digit:]]+,[-+]*[[:digit:]]+\s+[-+]*[[:digit:]]+,[-+]*[[:digit:]]+\s+@@//' \
-			> /tmp/$NEW_COMMIT.diff
+			> /tmp/$CURRENT_COMMIT.diff
 fi
 
-git checkout master 2>/dev/null || git checkout main
+git checkout master &>/dev/null || git checkout main
 cd - &> /dev/null
