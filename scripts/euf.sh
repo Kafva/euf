@@ -31,7 +31,8 @@ cd $DEPENDENCY_DIR
 git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout current commit"
 
 if $VIEW; then
-	git diff --ignore-space-change --ignore-blank-lines --function-context \
+	# Show 1000 lines of context for every change
+	git diff --ignore-space-change --ignore-blank-lines -U1000 \
 		--diff-filter M $CURRENT_COMMIT -- "***.c" "***.h" | \
 			tr -dc '\0-\177' | bat
 else

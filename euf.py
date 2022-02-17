@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-import argparse, os
+import argparse
+from enum import Enum
 from logging import error
 from dataclasses import dataclass
 from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
+from pprint import pprint
 
 # + Relying on the LLVM diff directly would eliminate the need for parsing out comments and would
 # give us a direct mapping as to where we want to point llvm2smt
@@ -21,7 +23,7 @@ from git.repo import Repo
 #   1. Exclusion of functions were the change only concerns a comment
 #   2. Exclusion of functions were the change actually occurs after the 
 # function @@context. The SMT detection should exclude these changes anyway but
-# we don't want to perform uneccessary work
+# we don't want to perform unnecessary work
 
 # Changes outside of function body will produce FPs where the
 # body of the function before a change is still printed.
@@ -30,31 +32,97 @@ from git.repo import Repo
 
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1") 
 
+
 @dataclass
 class Function:
     displayname: str # Includes the full prototype string
     name: str
     return_type: cindex.TypeKind
-    arguments: list[str]
+    arguments: list[ tuple[cindex.TypeKind,str] ]
+
+class CursorContext(Enum):
+    CURRENT = "current"
+    NEW = "new"
 
 
-
-def get_changed_functions(c1: cindex.Cursor, c2: cindex.Cursor) -> None:
+def get_changed_functions(cursor_curr: cindex.Cursor, cursor_new: cindex.Cursor) -> list[Function]:
     '''
     As a starting point we can walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
+
+    1. Save the cursors for each top-level function in both versions
+    2. Walk both cursors in parallel for each funcion pair and exit as soon as any divergence occurs
+
+
+    TODO: Processing nested function definitions would infer that the entire AST needs to be
+    traveresed, this could be unnecessary if this feature is not used in the code base
     '''
-    pass
+
+    changed_functions: list[Function] = []
+    cursor_pairs = {}
+
+    def extract_pairs(cursor: cindex.Cursor, cursor_pairs: dict, key: CursorContext) -> None:
+        for c in cursor.get_children():
+            if str(c.kind).endswith("FUNCTION_DECL") and c.is_definition():
+
+                if c.displayname in cursor_pairs:
+                    cursor_pairs[c.displayname][key] = c
+                else:
+                    cursor_pairs[c.displayname]      = { key: c }
+    
+    def functions_differ(cursor_curr: cindex.Cursor, cursor_new: cindex.Cursor) -> bool:
+        ''' Type-check the arguments recursively '''
+        for t1,t2 in zip( cursor_curr.get_arguments(), cursor_new.get_arguments() ):
+            #print(t1.get_usr(), t2.get_usr())
+            if t1.kind != t2.kind:
+                return True
+
+        for c1,c2 in zip(cursor_curr.get_children(), cursor_new.get_children()):
+            if functions_differ(c1,c2):
+                return True
+
+        return False
+
+    extract_pairs(cursor_curr, cursor_pairs, CursorContext.CURRENT)
+    extract_pairs(cursor_new, cursor_pairs,  CursorContext.NEW)
+    
+    for key in cursor_pairs:
+        # If the function pairs differ based on AST traversal, add them to the list of 
+        # changed_functions. 
+        # If the function prototypes differ, we can assume that an influential change has occured
+        # and we do not need to perform a deeper SMT analysis
+
+        if not CursorContext.NEW in cursor_pairs[key]:
+            print(f"=> Deleted: {cursor_curr.displayname}")
+            continue
+        elif not CursorContext.CURRENT in cursor_pairs[key]:
+            print(f"=> New: {cursor_new.displayname}")
+            continue
+        
+        cursor_curr = cursor_pairs[key][CursorContext.CURRENT]
+        cursor_new = cursor_pairs[key][CursorContext.NEW]
+
+        if functions_differ(cursor_curr, cursor_new):
+
+            function = Function( 
+                displayname = cursor_curr.displayname,
+                name = cursor_curr.spelling,
+                return_type = cursor_curr.type.get_result().kind,
+                arguments = [ (t.kind,n.spelling) for t,n in zip(cursor_curr.type.argument_types(), cursor_curr.get_arguments()) ]
+            )
+
+            print(f"=> Differ: {function.displayname}")
+            changed_functions.append(function)
+        else:
+            print(f"=> Same: {cursor_curr.displayname}")
 
 
+    return changed_functions
+    
 def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
     '''
-     Determining what is a function prototype through a Regex is not trivial:
-      https://cs.wmich.edu/~gupta/teaching/cs4850/sumII06/The%20syntax%20of%20C%20in%20Backus-Naur%20form.htm
-     By inspecting the AST we can determine what tokens are function declerations
-       clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
-     Native Python method:
-       https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
+    By inspecting the AST we can determine what tokens are function declerations
+    https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
     '''
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
 
@@ -84,7 +152,7 @@ if __name__ == '__main__':
 
     if args.commit_new == "" or args.commit_current == "" or \
         args.dependency == "" or len(args.project) == 0:
-        print("Missing required option")
+        print("Missing required option/argument")
         exit(1)
 
     PROJECT = args.project[0]
@@ -94,6 +162,8 @@ if __name__ == '__main__':
     # 0. Determine what source files have been modified
     # 1. Walk the AST of the current and new version of each file
     # 2. Consider any functions with a difference in the AST composition as changed
+
+    CHANGED_FUNCTIONS: dict[str,list[Function]] = {}
 
     dep_repo = Repo(DEPENDENCY_DIR)
 
@@ -117,90 +187,27 @@ if __name__ == '__main__':
     for diff in COMMIT_DIFF:
         #a_diff = diff.a_blob.data_stream.read().decode('utf-8')
         #b_diff = diff.b_blob.data_stream.read().decode('utf-8')
+
+        if diff.a_path != "src/big5.c": continue
         
-        print("===> Current state <====")
         tu_curr = cindex.TranslationUnit.from_source(
                 f"{DEPENDENCY_DIR}/{diff.b_path}",
                 unsaved_files=[ (f"{DEPENDENCY_DIR}/{diff.b_path}", diff.b_blob.data_stream) ]
         )
         cursor_curr: cindex.Cursor = tu_curr.cursor
-        dump_functions_in_tu(cursor_curr)
+        #print("===> Current state <====")
+        #dump_functions_in_tu(cursor_curr)
 
-        print("===> New state <====")
         tu_new = cindex.TranslationUnit.from_source(f"{DEPENDENCY_DIR}/{diff.a_path}")
         cursor_new: cindex.Cursor = tu_new.cursor
-        dump_functions_in_tu(cursor_new)
+        #print("===> New state <====")
+        #dump_functions_in_tu(cursor_new)
 
+        if diff.a_path in CHANGED_FUNCTIONS:
+            CHANGED_FUNCTIONS[diff.a_path].extend( get_changed_functions(cursor_curr, cursor_new) )
+        else:
+            CHANGED_FUNCTIONS[diff.a_path] = get_changed_functions(cursor_curr, cursor_new)
 
+        pprint(CHANGED_FUNCTIONS)
         break
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #import re
-    #import subprocess
-    #EUF_ROOT = os.path.dirname(os.path.realpath(__file__))
-    #DIFF_FILE = "/tmp/" + args.commit_new + ".diff"
-
-	## Create a diff between the current and new commit at /tmp/<NEW_COMMIT>.diff
-    #subprocess.run(["./scripts/euf.sh", "-c", args.commit_current, 
-    #    "-n", args.commit_new, "-d", args.dependency, PROJECT], check=True
-    #)
-
-    ## There is no guarantee that a change context will start with a function
-    ## name but the `--function-context` option will at least guarantee that the
-    ## function enclosing every change is part of the diff
-    ## As a starting point, we consider all function names in the diff changed
-    #CURRENT_FILEPATH = ""
-    #FILE_CONTEXT_CONTENT = ""
-
-    #with open(DIFF_FILE, encoding='utf-8') as f:
-    #    try:
-    #        for line in f:
-    #            context_match = re.search(
-    #                r'^\s*diff --git a/([-/_0-9a-z]+\.[ch]).*', line
-    #            )
-
-    #            if context_match: # New file (TU) context
-    #                
-    #                # Skip the next three lines of context information
-    #                # pylint: disable=W0106
-    #                [ f.readline() for _ in range(3) ]
-
-    #                # If there is content from the previous context, parse it
-    #                if FILE_CONTEXT_CONTENT != "":
-    #                    break;
-
-
-    #                # Clear the content and update the filepath
-    #                CURRENT_FILEPATH = DEPENDENCY_DIR + "/" + context_match.group(1)
-    #                FILE_CONTEXT_CONTENT = ""
-    #            else:
-    #                FILE_CONTEXT_CONTENT += line
-    #    except UnicodeDecodeError as error:
-    #        print(f"Error reading {DIFF_FILE}: {error}")
