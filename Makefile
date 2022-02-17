@@ -3,8 +3,13 @@ DIFF_FILE=toy/diffs/strcpy.diff
 DEP=strcpy
 CFLAGS=-DCBMC=false
 
-.PHONY: smt clean run bmc diff
+.PHONY: smt clean run bmc diff oni oniv
 
+
+oni:
+	./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../jq/modules/oniguruma ../jq
+oniv:
+	./scripts/euf.sh -V -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../jq/modules/oniguruma ../jq
 
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true
