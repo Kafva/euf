@@ -8,9 +8,9 @@ CFLAGS=-DCBMC=false
 
 # Note that jq actually has a way older version of oniguruma under ./modules
 oni:
-	./euf.py -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
+	./euf.py -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
 oniv:
-	./scripts/euf.sh -V -c 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
+	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
 onic:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 
