@@ -11,6 +11,8 @@ from itertools import zip_longest
 
 # Next steps:
 #   1. Cross referencing with the main project
+#       - Grep for the identified function names
+#       - Parse the AST of files (in parallel) that match and display the relevant call-traces
 #   2. SMT analysis to reduce impact set
 
 
@@ -200,7 +202,7 @@ if __name__ == '__main__':
     for diff in COMMIT_DIFF:
         # TODO: Multi-threading
         # https://github.com/go-clang/gen
-        #if diff.a_path != "src/euc_jp.c": continue
+        if diff.a_path != "src/euc_kr.c": continue
         
         # The from_source() method accepts content from arbitrary text streams,
         # allowing us to analyze the old version of each file
@@ -213,10 +215,12 @@ if __name__ == '__main__':
         tu_new = cindex.TranslationUnit.from_source(f"{DEPENDENCY_DIR}/{diff.a_path}")
         cursor_new: cindex.Cursor = tu_new.cursor
 
+        changed_list = get_changed_functions(cursor_old, cursor_new, True)
+
         if diff.a_path in CHANGED_FUNCTIONS:
-            CHANGED_FUNCTIONS[diff.a_path].extend( get_changed_functions(cursor_old, cursor_new) )
+            CHANGED_FUNCTIONS[diff.a_path].extend(changed_list)
         else:
-            CHANGED_FUNCTIONS[diff.a_path] = get_changed_functions(cursor_old, cursor_new)
+            CHANGED_FUNCTIONS[diff.a_path] = changed_list 
 
         pprint(CHANGED_FUNCTIONS)
 

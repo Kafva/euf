@@ -34,7 +34,7 @@ if $VIEW; then
 	# Show 3000 lines of context for every change
 	git diff --ignore-space-change --ignore-blank-lines -U3000 \
 		--diff-filter M $OLD_COMMIT -- "***.c" "***.h" | \
-			tr -dc '\0-\177' | bat
+			tr -dc '\0-\177'
 else
 	# We only consider modifications (M) to source files
 	# 	- We ignore changes to comments '//' 

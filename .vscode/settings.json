@@ -2,5 +2,8 @@
     "python.linting.enabled": true,
     "python.autoComplete.extraPaths": [
         "venv/lib"
+    ],
+    "python.analysis.extraPaths": [
+        "venv/lib"
     ]
 }
