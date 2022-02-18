@@ -3,33 +3,33 @@ package main
 import (
 	"fmt"
 	"os"
+
 	. "github.com/Kafva/euf/lib"
 	git "github.com/libgit2/git2go/v33"
 	flag "github.com/spf13/pflag"
 )
 
 func main() {
-
 	HELP 		:= flag.BoolP("help", "h", false, 
 	"Show this help message and exit")
 	
 	DEBUG 		 =  flag.BoolP("Debug", "D", false, 
 	"Print debug information")
 
-	dependency_dir 	:= flag.StringP("dependency", "d", "", 
+	dependencyDir 	:= flag.StringP("dependency", "d", "", 
 	"Path to the directory with source code for the dependency to upgrade")
 	
-	old_commit_str 	:= flag.StringP("commit-old", "o", "", 
+	oldCommitStr 	:= flag.StringP("commit-old", "o", "", 
 	"Git hash of the old commit in the dependency used by the project")
 	
-	new_commit_str 	:= flag.StringP("commit-new", "n", "", 
+	newCommitStr 	:= flag.StringP("commit-new", "n", "", 
 	"Git hash of the updated commit in the dependency used by the project")
     
 	flag.Usage = DetailUsage
 	flag.Parse()
 	
-	if *HELP || len(os.Args) <= 1     || *dependency_dir == "" ||
-		    *old_commit_str == "" || *new_commit_str == "" {
+	if *HELP || len(os.Args) <= 1     || *dependencyDir == "" ||
+		    *oldCommitStr == "" || *newCommitStr == "" {
 		DetailUsage()
 		os.Exit(1)
 	} 
@@ -44,30 +44,30 @@ func main() {
 
 
 	// Retrieve the old and new commit objects from the dependency
-	repo, err := git.OpenRepository(*dependency_dir);	CheckError(err)
+	repo, err := git.OpenRepository(*dependencyDir);	CheckError(err)
 	
-	new_commit_oid,err := git.NewOid(*new_commit_str); 	CheckError(err)
-	old_commit_oid,err := git.NewOid(*old_commit_str);	CheckError(err)
+	newCommitOid,err := git.NewOid(*newCommitStr); 	CheckError(err)
+	oldCommitOid,err := git.NewOid(*oldCommitStr);	CheckError(err)
 
-	new_commit, err := repo.LookupCommit(new_commit_oid);   CheckError(err)  
-	old_commit, err := repo.LookupCommit(old_commit_oid);   CheckError(err)
+	newCommit, err := repo.LookupCommit(newCommitOid);   CheckError(err)  
+	oldCommit, err := repo.LookupCommit(oldCommitOid);   CheckError(err)
 
-	new_tree,err := new_commit.Tree();			CheckError(err)	
-	old_tree,err := old_commit.Tree();			CheckError(err)	
+	newTree,err := newCommit.Tree();			CheckError(err)	
+	oldTree,err := oldCommit.Tree();			CheckError(err)	
 
-	diff_opts := git.DiffOptions{ 
+	diffOpts := git.DiffOptions{ 
 		Flags: git.DiffIgnoreWhitespaceChange,
 		ContextLines:   5000,
 	}
 	diff, err := repo.DiffTreeToTree(
-		new_tree, old_tree, &diff_opts,
+		newTree, oldTree, &diffOpts,
 	); 							CheckError(err)
 
-	delta_cnt, err := diff.NumDeltas(); 			CheckError(err)
+	deltaCnt, err := diff.NumDeltas(); 			CheckError(err)
 	
 	// Go through every delta (changed, deleted or added file) and sieve
 	// out the modifications (M) to '.c' files
-	for i := 0; i < delta_cnt; i++ {
+	for i := 0; i < deltaCnt; i++ {
 
 		delta,err := diff.Delta(i); CheckError(err)	
 		
