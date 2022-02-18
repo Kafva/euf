@@ -9,6 +9,11 @@ from git.repo import Repo
 from pprint import pprint
 from itertools import zip_longest
 
+# Next steps:
+#   1. Cross referencing with the main project
+#   2. SMT analysis to reduce impact set
+
+
 # + Relying on the LLVM diff directly would eliminate the need for parsing out comments and would
 # give us a direct mapping as to where we want to point llvm2smt
 # - This would involve compiling the dependency in a custom manner where the 
@@ -43,7 +48,6 @@ class Function:
 class CursorContext(Enum):
     CURRENT = "old"
     NEW = "new"
-
 
 def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, dump: bool = False) -> list[Function]:
     '''
@@ -144,7 +148,6 @@ def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
 
     for c in cursor.get_children():
         dump_functions_in_tu(c)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
