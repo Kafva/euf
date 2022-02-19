@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/go-clang/clang-v5 v0.0.0-20211116214205-93aa37355f75 // indirect
 	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
-	golang.org/x/sys v0.0.0-20201204225414-ed752295db88 // indirect
+	golang.org/x/sys v0.0.0-20211103235746-7861aae1554b // indirect
 )

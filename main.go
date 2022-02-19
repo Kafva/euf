@@ -1,13 +1,20 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"strings"
 
 	. "github.com/Kafva/euf/lib"
 	git "github.com/libgit2/git2go/v33"
 	flag "github.com/spf13/pflag"
 )
+
+// Example of how the Go bindings can be used
+// 	https://github.com/go-clang/v3.4/blob/master/cmd/go-clang-dump/main.go
+func ParseSource(){
+
+
+}
 
 func main() {
 	HELP 		:= flag.BoolP("help", "h", false, 
@@ -64,20 +71,37 @@ func main() {
 	); 							CheckError(err)
 
 	deltaCnt, err := diff.NumDeltas(); 			CheckError(err)
+	modifiedDeltas := make([]git.DiffDelta, 0, deltaCnt)
 	
 	// Go through every delta (changed, deleted or added file) and sieve
 	// out the modifications (M) to '.c' files
 	for i := 0; i < deltaCnt; i++ {
-
 		delta,err := diff.Delta(i); CheckError(err)	
+
+		if strings.HasSuffix(delta.NewFile.Path, ".c") && delta.Status == git.DeltaModified {
+			modifiedDeltas = append(modifiedDeltas, delta)
+		}
+	}
+
+	// Fetch the source code for the old and new version of each modified path
+	for _,d := range(modifiedDeltas) {
+		Debugf("=> Modified: %s\n", d.NewFile.Path)
+		newBlob, err := repo.LookupBlob(d.NewFile.Oid); CheckError(err)
+		oldBlob, err := repo.LookupBlob(d.OldFile.Oid); CheckError(err)
+
+		newContent := string(newBlob.Contents())
+		oldContent := string(oldBlob.Contents())
+
+		print(newContent)
+		print(oldContent)
 		
-		switch delta.Status {
-		case git.DeltaModified:
-			fmt.Printf("=> Modified: %s\n", delta.NewFile.Path)
-		case git.DeltaAdded:
-			fmt.Printf("=> New: %s\n", delta.NewFile.Path)
-		case git.DeltaDeleted:
-			fmt.Printf("=> Deleted: %s\n", delta.NewFile.Path)
-		}	
+		// Extract the top level functions definitions in both versions
+		
+		// Traverse the AST of each function identified in both versions
+		// We consider functions with any divergence in the AST composition as 
+		// modified at this stage
+
+
+		break
 	}
 }

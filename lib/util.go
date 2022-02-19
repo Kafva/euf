@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+
 	flag "github.com/spf13/pflag"
 )
 
@@ -28,6 +29,12 @@ func Die(strs ... interface{}) {
 func Debug(strs ... interface{}) {
 	if *DEBUG {
 		fmt.Println(strs ...)
+	}
+}
+
+func Debugf(format string, args ... interface{}) {
+	if *DEBUG {
+		fmt.Printf(format, args ...)
 	}
 }
 
