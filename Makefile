@@ -17,6 +17,21 @@ oniv:
 onic:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 
+# The clang bindings for Go cannot be imported as a regular go-module with the 
+# way that the repository on Github is setup. To resolve this, we download the 
+# bindings and manually copy them over to our own project
+# Or nevermind...?
+eufgo:
+	CGO_LDFLAGS="-L`llvm-config --libdir`" \
+		go install github.com/go-clang/clang-v3.9/...
+	mkdir -p go-clang-bindings
+	cp -r ~/.go/pkg/mod/github.com/go-clang/clang-v3.9@v*/clang/* go-clang-bindings
+	chmod +w go-clang-bindings/**/**
+	go mod tidy
+
+
+
+
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true
 # for all possible executions of a program

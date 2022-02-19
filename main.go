@@ -5,12 +5,16 @@ import (
 	"strings"
 
 	. "github.com/Kafva/euf/lib"
+	clang "github.com/go-clang/clang-v3.9/clang"
 	git "github.com/libgit2/git2go/v33"
 	flag "github.com/spf13/pflag"
 )
 
+//clang "github.com/go-clang/clang-v3.9/clang"
+//. "github.com/Kafva/euf/go-clang-bindings"
+
 // Example of how the Go bindings can be used
-// 	https://github.com/go-clang/v3.4/blob/master/cmd/go-clang-dump/main.go
+// 	https://github.com/go-clang/v3.9/blob/master/cmd/go-clang-dump/main.go
 func ParseSource(){
 
 
@@ -101,6 +105,18 @@ func main() {
 		// We consider functions with any divergence in the AST composition as 
 		// modified at this stage
 
+		// Basic usage example
+		idx := clang.NewIndex(0, 1)
+		defer idx.Dispose()
+
+		tuArgs := []string{}
+		if len(flag.Args()) > 0 && flag.Args()[0] == "-" {
+			tuArgs = make([]string, len(flag.Args()[1:]))
+			copy(tuArgs, flag.Args()[1:])
+		}
+
+		tu := idx.ParseTranslationUnit("toy/src/main.c", tuArgs, nil, 0)
+		defer tu.Dispose()
 
 		break
 	}
