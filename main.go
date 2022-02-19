@@ -96,9 +96,10 @@ func main() {
 		newContent := string(newBlob.Contents())
 		oldContent := string(oldBlob.Contents())
 
-		print(newContent)
-		print(oldContent)
 		
+		if newContent != "" && oldContent != "" {
+			Debug("\n")
+		}
 		// Extract the top level functions definitions in both versions
 		
 		// Traverse the AST of each function identified in both versions
