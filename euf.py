@@ -202,7 +202,7 @@ if __name__ == '__main__':
     for diff in COMMIT_DIFF:
         # TODO: Multi-threading
         # https://github.com/go-clang/gen
-        if diff.a_path != "src/euc_kr.c": continue
+        if diff.a_path != "src/euc_jp.c": continue
         
         # The from_source() method accepts content from arbitrary text streams,
         # allowing us to analyze the old version of each file

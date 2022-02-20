@@ -16,83 +16,6 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-type CursorPair struct {
-	New clang.Cursor
-	Old clang.Cursor
-}
-
-func (p *CursorPair) Add(cursor clang.Cursor, IsNew bool) {
-	switch IsNew {
-	case true:
-		p.New = cursor
-	case false:
-		p.Old = cursor
-	}
-}
-
-type Function struct {
-    Displayname string // Includes the full prototype string
-    Name string
-    ReturnType clang.TypeKind
-    Arguments []clang.TypeKind 
-}
-
-
-// Dump the names of all top-level function declarations using a cursor from a TU
-func DumpFunctionsInTU(cursor clang.Cursor){
-	// The Visit() method can recursively visit child nodes if necessary
-	cursor.Visit( func(cursor, parent clang.Cursor) clang.ChildVisitResult {
-
-		if cursor.IsNull() {
-			return clang.ChildVisit_Continue
-		}
-
-		if cursor.Kind() == clang.Cursor_FunctionDecl && cursor.IsCursorDefinition() {
-			Debugf("%s %s (\n",  cursor.ResultType().Spelling(), cursor.Spelling()  )
-
-			// Iterate over all of the arguments to the function
-			for i  := 0; i < int(cursor.NumArguments()); i++ {
-				arg := cursor.Argument(uint32(i))
-				Debugf("\t%s %s,\n", arg.Type().Spelling(), arg.Spelling())
-			}
-			Debug(")")					
-		}
-		return clang.ChildVisit_Continue
-	})
-}
-
-
-// Extract cursors for each of the top level functions in both versions
-func GetFunctionCursors(cursor clang.Cursor, cursorPairs map[string]CursorPair, IsNew bool){
-	cursor.Visit( func(cursor, parent clang.Cursor) clang.ChildVisitResult {
-
-		if cursor.Kind() == clang.Cursor_FunctionDecl && cursor.IsCursorDefinition() {
-			key := cursor.Spelling()
-
-			pair,ok := cursorPairs[key];
-
-			if !ok {
-				cursorPairs[key] = CursorPair{}
-			}
-			pair.Add(cursor, IsNew)
-		}
-		return clang.ChildVisit_Continue
-	})
-}
-
-// Traverse the AST of each function identified in both versions
-// We consider functions with any divergence in the AST composition as 
-// modified at this stage
-func FindChangedFunctions(oldCursor, newCursor clang.Cursor, changedFunctions []Function){
-	cursorPairs := make(map[string]CursorPair)
-
-	GetFunctionCursors(oldCursor, cursorPairs, false)
-	GetFunctionCursors(newCursor, cursorPairs, true)
-
-	// To visit both pairs in parallel	
-
-	Dump(cursorPairs)
-}
 
 func main() {
 	HELP 		:= flag.BoolP("help", "h", false, 
@@ -168,7 +91,12 @@ func main() {
 	changedFunctions := make([]Function, 0, 1000)
 
 	// Fetch the source code for the old and new version of each modified path
-	for _,d := range(modifiedDeltas) {
+	for _,d := range modifiedDeltas {
+
+		if d.NewFile.Path != "src/euc_jp.c" {
+			continue
+		}
+		
 		Debugf("=> Modified: %s\n", d.NewFile.Path)
 		newBlob, err := repo.LookupBlob(d.NewFile.Oid); CheckError(err)
 		oldBlob, err := repo.LookupBlob(d.OldFile.Oid); CheckError(err)
@@ -200,6 +128,9 @@ func main() {
 
 		FindChangedFunctions(oldCursor, newCursor, changedFunctions)
 		
+		for _,f := range changedFunctions {
+			Debugf("\t%s\n", f.Displayname)
+		}
 		defer tuNew.Dispose()
 		defer tuOld.Dispose()
 
