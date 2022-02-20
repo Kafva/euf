@@ -10,9 +10,22 @@ from pprint import pprint
 from itertools import zip_longest
 from multiprocessing import Pool
 
+@dataclass
+class Function:
+    displayname: str # Includes the full prototype string
+    name: str
+    return_type: cindex.TypeKind
+    arguments: list[ tuple[cindex.TypeKind,str] ]
+
+class CursorContext(Enum):
+    CURRENT = "old"
+    NEW = "new"
+
 DEBUG = False
 NPROC = 5
-
+CHANGED_FUNCTIONS: dict[str,list[Function]] = {}
+CHANGED_FUNCTION_NAMES = []
+CALL_SITES: dict[str,list[str]] = {} # 'path': [ linenr/functionname ]
 
 # Next steps:
 #   1. Cross referencing with the main project
@@ -45,21 +58,44 @@ NPROC = 5
 
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
 
-@dataclass
-class Function:
-    displayname: str # Includes the full prototype string
-    name: str
-    return_type: cindex.TypeKind
-    arguments: list[ tuple[cindex.TypeKind,str] ]
-
-class CursorContext(Enum):
-    CURRENT = "old"
-    NEW = "new"
-
 def debug_print(fmt: str, hl:bool = False) -> None:
     if DEBUG:
         if hl: print("\033[34m=>\033[0m ", end='')
         print(fmt)
+
+def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
+    '''
+    By inspecting the AST we can determine what tokens are function declerations
+    https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
+    '''
+    if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
+
+        print(f"{cursor.type.get_result().spelling} {cursor.spelling} (");
+
+        for t,n in zip(cursor.type.argument_types(), cursor.get_arguments()):
+                print(f"\t{t.spelling} {n.spelling}")
+        print(")")
+
+    for c in cursor.get_children():
+        dump_functions_in_tu(c)
+
+def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor, changed_function_names: list[str],
+    call_sites: dict[str,list[str]]) -> None:
+    '''
+    Go through the complete AST of the provided file and save any sites
+    where a changed function is called
+    '''
+
+    if str(cursor.kind).endswith("CALL_EXPR") and \
+        cursor.spelling in changed_function_names:
+
+        if filepath in call_sites:
+            call_sites[filepath] = [ cursor.spelling ]
+        else:
+            call_sites[filepath].append(cursor.spelling)
+
+    for c in cursor.get_children():
+        find_call_sites_in_tu(filepath, c, changed_function_names, call_sites)
 
 def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, dump: bool = False) -> list[Function]:
     '''
@@ -143,22 +179,6 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, 
 
     return changed_functions
 
-def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
-    '''
-    By inspecting the AST we can determine what tokens are function declerations
-    https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
-    '''
-    if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
-
-        print(f"{cursor.type.get_result().spelling} {cursor.spelling} (");
-
-        for t,n in zip(cursor.type.argument_types(), cursor.get_arguments()):
-                print(f"\t{t.spelling} {n.spelling}")
-        print(")")
-
-    for c in cursor.get_children():
-        dump_functions_in_tu(c)
-
 def process_delta(diff):
     if diff.a_path != "src/euc_jp.c": return
 
@@ -180,7 +200,9 @@ def process_delta(diff):
     else:
         CHANGED_FUNCTIONS[diff.a_path] = changed_list
 
-    pprint(CHANGED_FUNCTIONS)
+    #pprint(CHANGED_FUNCTIONS)
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
@@ -214,8 +236,6 @@ if __name__ == '__main__':
     # 1. Walk the AST of the old and new version of each file
     # 2. Consider any functions with a difference in the AST composition as changed
 
-    CHANGED_FUNCTIONS: dict[str,list[Function]] = {}
-
     dep_repo = Repo(DEPENDENCY_DIR)
 
     # Find the objects that correspond to the old and new commit
@@ -239,9 +259,35 @@ if __name__ == '__main__':
     # using NPROC parallel processes and save the
     # the changed functions to `CHANGED_FUNCTIONS`
     with Pool(NPROC) as p:
+        #p.map(partial(process_delta, diff=COMMIT_DIFF), CHANGED_FUNCTIONS)
         p.map(process_delta, COMMIT_DIFF)
 
+    # TODO reduce result to global location
+    pprint(CHANGED_FUNCTIONS)
 
-    debug_print("Done", hl=True)
+    # ... TODO SMT reduction of change set ... #
+
+    # With the changed functions enumerated we can
+    # begin parsing the source code of the main project
+    # to find all call locations
+    main_repo = Repo(PROJECT)
+
+    SOURCE_FILES = filter(lambda p: p.endswith(".c"),
+        [ e.path for e in main_repo.commit().tree.traverse() ]
+    )
 
 
+    for filename in CHANGED_FUNCTIONS:
+        CHANGED_FUNCTION_NAMES.extend( list(map(lambda f:
+            f.name, CHANGED_FUNCTIONS[filename]
+        )))
+
+    for filepath in SOURCE_FILES:
+        if filepath != "src/lexer.c": continue
+
+        tu: cindex.TranslationUnit  = cindex.TranslationUnit.from_source(f"{PROJECT}/{filepath}")
+        cursor: cindex.Cursor       = tu.cursor
+
+        find_call_sites_in_tu(filepath, cursor, CHANGED_FUNCTION_NAMES, CALL_SITES)
+
+    pprint(CALL_SITES)
