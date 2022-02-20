@@ -16,10 +16,31 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+type CursorPair struct {
+	New clang.Cursor
+	Old clang.Cursor
+}
+
+func (p *CursorPair) Add(cursor clang.Cursor, IsNew bool) {
+	switch IsNew {
+	case true:
+		p.New = cursor
+	case false:
+		p.Old = cursor
+	}
+}
+
+type Function struct {
+    Displayname string // Includes the full prototype string
+    Name string
+    ReturnType clang.TypeKind
+    Arguments []clang.TypeKind 
+}
+
+
 // Dump the names of all top-level function declarations using a cursor from a TU
 func DumpFunctionsInTU(cursor clang.Cursor){
-
-	// The Visit() method can recursively visits child nodes if necessary
+	// The Visit() method can recursively visit child nodes if necessary
 	cursor.Visit( func(cursor, parent clang.Cursor) clang.ChildVisitResult {
 
 		if cursor.IsNull() {
@@ -29,30 +50,48 @@ func DumpFunctionsInTU(cursor clang.Cursor){
 		if cursor.Kind() == clang.Cursor_FunctionDecl && cursor.IsCursorDefinition() {
 			Debugf("%s %s (\n",  cursor.ResultType().Spelling(), cursor.Spelling()  )
 
-			// Iterate over all of the ct
+			// Iterate over all of the arguments to the function
 			for i  := 0; i < int(cursor.NumArguments()); i++ {
-				arg := cursor.Argument( uint32(i) )
+				arg := cursor.Argument(uint32(i))
 				Debugf("\t%s %s,\n", arg.Type().Spelling(), arg.Spelling())
 			}
 			Debug(")")					
 		}
-
-		//switch cursor.Kind() {
-		//case clang.Cursor_ClassDecl, clang.Cursor_EnumDecl, clang.Cursor_StructDecl, clang.Cursor_Namespace:
-		//	return clang.ChildVisit_Recurse
-		//}
-
 		return clang.ChildVisit_Continue
 	})
 }
 
-func GetChangedFunctions(oldCursor, newCursor clang.Cursor,  changedFunctions []string){
-	// Extract the top level functions definitions in both versions
-	
-	// Traverse the AST of each function identified in both versions
-	// We consider functions with any divergence in the AST composition as 
-	// modified at this stage
 
+// Extract cursors for each of the top level functions in both versions
+func GetFunctionCursors(cursor clang.Cursor, cursorPairs map[string]CursorPair, IsNew bool){
+	cursor.Visit( func(cursor, parent clang.Cursor) clang.ChildVisitResult {
+
+		if cursor.Kind() == clang.Cursor_FunctionDecl && cursor.IsCursorDefinition() {
+			key := cursor.Spelling()
+
+			pair,ok := cursorPairs[key];
+
+			if !ok {
+				cursorPairs[key] = CursorPair{}
+			}
+			pair.Add(cursor, IsNew)
+		}
+		return clang.ChildVisit_Continue
+	})
+}
+
+// Traverse the AST of each function identified in both versions
+// We consider functions with any divergence in the AST composition as 
+// modified at this stage
+func FindChangedFunctions(oldCursor, newCursor clang.Cursor, changedFunctions []Function){
+	cursorPairs := make(map[string]CursorPair)
+
+	GetFunctionCursors(oldCursor, cursorPairs, false)
+	GetFunctionCursors(newCursor, cursorPairs, true)
+
+	// To visit both pairs in parallel	
+
+	Dump(cursorPairs)
 }
 
 func main() {
@@ -126,6 +165,8 @@ func main() {
 	cindex := clang.NewIndex(0, 1)
 	defer cindex.Dispose()
 
+	changedFunctions := make([]Function, 0, 1000)
+
 	// Fetch the source code for the old and new version of each modified path
 	for _,d := range(modifiedDeltas) {
 		Debugf("=> Modified: %s\n", d.NewFile.Path)
@@ -152,11 +193,12 @@ func main() {
 		oldCursor := tuOld.TranslationUnitCursor()
 
 
-		Debug("===> Old <===")
-		DumpFunctionsInTU(oldCursor)
+		//Debug("===> Old <===")
+		//DumpFunctionsInTU(oldCursor)
+		//Debug("===> New <===")
+		//DumpFunctionsInTU(newCursor)
 
-		Debug("===> New <===")
-		DumpFunctionsInTU(newCursor)
+		FindChangedFunctions(oldCursor, newCursor, changedFunctions)
 		
 		defer tuNew.Dispose()
 		defer tuOld.Dispose()
