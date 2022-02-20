@@ -1,5 +1,11 @@
 package main
 
+// #include "./go-clang-bindings/clang-c/Index.h"
+// #include "./go-clang-bindings/go-clang.h"
+import "C"
+
+// Note that the comments before "C" will be converted
+// to actual import statements
 import (
 	"os"
 	"strings"
@@ -10,13 +16,42 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-//clang "github.com/go-clang/clang-v3.9/clang"
-//. "github.com/Kafva/euf/go-clang-bindings"
+// Dump the names of all top-level function declarations using a cursor from a TU
+func DumpFunctionsInTU(cursor clang.Cursor){
 
-// Example of how the Go bindings can be used
-// 	https://github.com/go-clang/v3.9/blob/master/cmd/go-clang-dump/main.go
-func ParseSource(){
+	// The Visit() method can recursively visits child nodes if necessary
+	cursor.Visit( func(cursor, parent clang.Cursor) clang.ChildVisitResult {
 
+		if cursor.IsNull() {
+			return clang.ChildVisit_Continue
+		}
+
+		if cursor.Kind() == clang.Cursor_FunctionDecl && cursor.IsCursorDefinition() {
+			Debugf("%s %s (\n",  cursor.ResultType().Spelling(), cursor.Spelling()  )
+
+			// Iterate over all of the ct
+			for i  := 0; i < int(cursor.NumArguments()); i++ {
+				arg := cursor.Argument( uint32(i) )
+				Debugf("\t%s %s,\n", arg.Type().Spelling(), arg.Spelling())
+			}
+			Debug(")")					
+		}
+
+		//switch cursor.Kind() {
+		//case clang.Cursor_ClassDecl, clang.Cursor_EnumDecl, clang.Cursor_StructDecl, clang.Cursor_Namespace:
+		//	return clang.ChildVisit_Recurse
+		//}
+
+		return clang.ChildVisit_Continue
+	})
+}
+
+func GetChangedFunctions(oldCursor, newCursor clang.Cursor,  changedFunctions []string){
+	// Extract the top level functions definitions in both versions
+	
+	// Traverse the AST of each function identified in both versions
+	// We consider functions with any divergence in the AST composition as 
+	// modified at this stage
 
 }
 
@@ -87,6 +122,10 @@ func main() {
 		}
 	}
 
+	// Create a new index (a context for translation units)
+	cindex := clang.NewIndex(0, 1)
+	defer cindex.Dispose()
+
 	// Fetch the source code for the old and new version of each modified path
 	for _,d := range(modifiedDeltas) {
 		Debugf("=> Modified: %s\n", d.NewFile.Path)
@@ -96,28 +135,31 @@ func main() {
 		newContent := string(newBlob.Contents())
 		oldContent := string(oldBlob.Contents())
 
+
+		// Parse the content of the new and old version into 
+		// TU objects with an AST that can be traversed
+		tuNew := cindex.TranslationUnitFromSourceFile(d.NewFile.Path, 
+			[]string{}, []clang.UnsavedFile{ 
+			clang.NewUnsavedFile(d.NewFile.Path, newContent),
+		})
 		
-		if newContent != "" && oldContent != "" {
-			Debug("\n")
-		}
-		// Extract the top level functions definitions in both versions
+		tuOld := cindex.TranslationUnitFromSourceFile(d.OldFile.Path, 
+			[]string{}, []clang.UnsavedFile{ 
+			clang.NewUnsavedFile(d.OldFile.Path, oldContent),
+		})
+
+		newCursor := tuNew.TranslationUnitCursor()
+		oldCursor := tuOld.TranslationUnitCursor()
+
+
+		Debug("===> Old <===")
+		DumpFunctionsInTU(oldCursor)
+
+		Debug("===> New <===")
+		DumpFunctionsInTU(newCursor)
 		
-		// Traverse the AST of each function identified in both versions
-		// We consider functions with any divergence in the AST composition as 
-		// modified at this stage
-
-		// Basic usage example
-		idx := clang.NewIndex(0, 1)
-		defer idx.Dispose()
-
-		tuArgs := []string{}
-		if len(flag.Args()) > 0 && flag.Args()[0] == "-" {
-			tuArgs = make([]string, len(flag.Args()[1:]))
-			copy(tuArgs, flag.Args()[1:])
-		}
-
-		tu := idx.ParseTranslationUnit("toy/src/main.c", tuArgs, nil, 0)
-		defer tu.Dispose()
+		defer tuNew.Dispose()
+		defer tuOld.Dispose()
 
 		break
 	}

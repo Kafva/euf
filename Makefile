@@ -8,7 +8,7 @@ CFLAGS=-DCBMC=false
 
 # Note that jq actually has a way older version of oniguruma under ./modules
 
-onig:
+onig: go-clang-bindings
 	 go run main.go -D -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
 oni:
 	./euf.py -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
@@ -16,6 +16,14 @@ oniv:
 	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
 onic:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
+
+# We need some C-headers for the bindings between Golang and C to work
+go-clang-bindings:
+	CGO_LDFLAGS="-L`llvm-config --libdir`" go install github.com/go-clang/clang-v3.9/...
+	mkdir -p $@
+	cp -r ~/.go/pkg/mod/github.com/go-clang/clang-v3.9@*/clang/* $@
+	chmod +w go-clang-bindings/**/**
+
 
 #---- Bounded Model Checker ----#
 # CBMC is meant to assess if an assertion is true
