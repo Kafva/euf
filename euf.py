@@ -1,183 +1,19 @@
 #!/usr/bin/env python3
 import argparse
-from enum import Enum
 from logging import error
-from dataclasses import dataclass
 from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 from pprint import pprint
-from itertools import zip_longest
 from multiprocessing import Pool
 
-@dataclass
-class Function:
-    displayname: str # Includes the full prototype string
-    name: str
-    return_type: cindex.TypeKind
-    arguments: list[ tuple[cindex.TypeKind,str] ]
+from base import NPROC, Function
+from preprocessing.change_set import get_changed_functions
+from preprocessing.impact_set import find_call_sites_in_tu
 
-class CursorContext(Enum):
-    CURRENT = "old"
-    NEW = "new"
-
-DEBUG = False
-NPROC = 5
 CHANGED_FUNCTIONS: dict[str,list[Function]] = {}
 CHANGED_FUNCTION_NAMES = []
 CALL_SITES: dict[str,list[str]] = {} # 'path': [ linenr/functionname ]
-
-# Next steps:
-#   1. Cross referencing with the main project
-#       - Grep for the identified function names
-#       - Parse the AST of files (in parallel) that match and display the relevant call-traces
-#   2. SMT analysis to reduce impact set
-
-
-# + Relying on the LLVM diff directly would eliminate the need for parsing out comments and would
-# give us a direct mapping as to where we want to point llvm2smt
-# - This would involve compiling the dependency in a custom manner where the 
-# IR of every TU is dumped
-#   before and after the change
-# and then diffing these files. It also becomes more difficult to connect 
-# the changes in the dependency to points in the project
-
-# How are macros translated to LLVM?
-# If a change occurs in macro (function) we would like to analyze this as well
-
-# TODO: (not an immediate priority)
-#   1. Exclusion of functions were the change only concerns a comment
-#   2. Exclusion of functions were the change actually occurs after the 
-# function @@context. The SMT detection should exclude these changes anyway but
-# we don't want to perform unnecessary work
-
-# Changes outside of function body will produce FPs where the
-# body of the function before a change is still printed.
-# To exclude these changes we will ensure that every -/+ is contained
-# inside the {...} of the function at start of each @@ context
-
-cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
-
-def debug_print(fmt: str, hl:bool = False) -> None:
-    if DEBUG:
-        if hl: print("\033[34m=>\033[0m ", end='')
-        print(fmt)
-
-def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
-    '''
-    By inspecting the AST we can determine what tokens are function declerations
-    https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
-    '''
-    if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
-
-        print(f"{cursor.type.get_result().spelling} {cursor.spelling} (");
-
-        for t,n in zip(cursor.type.argument_types(), cursor.get_arguments()):
-                print(f"\t{t.spelling} {n.spelling}")
-        print(")")
-
-    for c in cursor.get_children():
-        dump_functions_in_tu(c)
-
-def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor, changed_function_names: list[str],
-    call_sites: dict[str,list[str]]) -> None:
-    '''
-    Go through the complete AST of the provided file and save any sites
-    where a changed function is called
-    '''
-
-    if str(cursor.kind).endswith("CALL_EXPR") and \
-        cursor.spelling in changed_function_names:
-
-        if filepath in call_sites:
-            call_sites[filepath] = [ cursor.spelling ]
-        else:
-            call_sites[filepath].append(cursor.spelling)
-
-    for c in cursor.get_children():
-        find_call_sites_in_tu(filepath, c, changed_function_names, call_sites)
-
-def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, dump: bool = False) -> list[Function]:
-    '''
-    As a starting point we can walk the AST of the new and old file in parallel and
-    consider any divergence (within a function) as a potential change
-
-    1. Save the cursors for each top-level function in both versions
-    2. Walk both cursors in parallel for each funcion pair and exit as soon as any divergence occurs
-
-    TODO: Processing nested function definitions would infer that the entire AST needs to be
-    traveresed, this could be unnecessary if this feature is not used in the code base
-    '''
-
-    changed_functions: list[Function] = []
-    cursor_pairs = {}
-
-    def dump_print(fmt: str) -> None:
-        if dump: debug_print(fmt)
-
-    def extract_pairs(cursor: cindex.Cursor, cursor_pairs: dict, key: CursorContext) -> None:
-        for c in cursor.get_children():
-            if str(c.kind).endswith("FUNCTION_DECL") and c.is_definition():
-
-                if c.displayname in cursor_pairs:
-                    cursor_pairs[c.displayname][key] = c
-                else:
-                    cursor_pairs[c.displayname]      = { key: c }
-
-    def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) -> bool:
-        ''' 
-        Functions are considered different at this stage if
-        the cursors have a different number of nodes at any level or if the
-        typing of their arguments differ
-        '''
-        for t1,t2 in zip_longest(cursor_old.get_arguments(), cursor_new.get_arguments()):
-            if not t1 or not t2:
-                return True
-            elif t1.kind != t2.kind:
-                return True
-
-        for c1,c2 in zip_longest(cursor_old.get_children(), cursor_new.get_children()):
-            if not c1 or not c2:
-                return True
-            elif functions_differ(c1,c2):
-                return True
-
-        return False
-
-    extract_pairs(cursor_old, cursor_pairs, CursorContext.CURRENT)
-    extract_pairs(cursor_new, cursor_pairs,  CursorContext.NEW)
-
-    for key in cursor_pairs:
-        # If the function pairs differ based on AST traversal, add them to the list of 
-        # changed_functions. 
-        # If the function prototypes differ, we can assume that an influential change has occurred
-        # and we do not need to perform a deeper SMT analysis
-
-        if not CursorContext.NEW in cursor_pairs[key]:
-            dump_print(f"Deleted: {key}")
-            continue
-        elif not CursorContext.CURRENT in cursor_pairs[key]:
-            dump_print(f"New: {key}")
-            continue
-
-        cursor_old = cursor_pairs[key][CursorContext.CURRENT]
-        cursor_new = cursor_pairs[key][CursorContext.NEW]
-
-        function = Function(
-            displayname = cursor_old.displayname,
-            name = cursor_old.spelling,
-            return_type = cursor_old.type.get_result().kind,
-            arguments = [ (t.kind,n.spelling) for t,n in zip(cursor_old.type.argument_types(), cursor_old.get_arguments()) ]
-        )
-
-        if functions_differ(cursor_old, cursor_new):
-            dump_print(f"Differ: {key}")
-            changed_functions.append(function)
-        else:
-            dump_print(f"Same: {key}")
-
-
-    return changed_functions
 
 def process_delta(diff):
     if diff.a_path != "src/euc_jp.c": return
@@ -200,9 +36,11 @@ def process_delta(diff):
     else:
         CHANGED_FUNCTIONS[diff.a_path] = changed_list
 
-    #pprint(CHANGED_FUNCTIONS)
+    pprint(CHANGED_FUNCTIONS)
 
-
+# + Relying on the LLVM diff directly would eliminate the need for parsing out 
+# comments and would give us a direct mapping as to where we want to point 
+# llvm2smt. It also auto-expands macros from what I understand.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
