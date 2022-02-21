@@ -11,7 +11,21 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
     if str(cursor.kind).endswith("CALL_EXPR") and \
         cursor.spelling in changed_function_names:
         # TODO: We need to add the actual path of the current function
+
         call_sites.append(cursor.spelling)
+        #call_sites.append( Invocation(
+        #    function = Function(
+        #        filepath    = "TODO",
+        #        displayname = cursor.displayname,
+        #        name        = cursor.spelling,
+        #        return_type = cursor.type.get_result().kind,
+        #        arguments   = [ (t.kind,n.spelling) for t,n in \
+        #                zip(cursor.type.argument_types(), \
+        #                cursor.get_arguments()) ]
+        #    ),
+        #    filepath = filepath,
+        #    location = cursor.location
+        #))
 
     for c in cursor.get_children():
         find_call_sites_in_tu(filepath, c, changed_function_names, call_sites)

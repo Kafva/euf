@@ -20,9 +20,8 @@ class Function:
 class Invocation:
     function: Function
     filepath: str
-    trace: str # Call-trace in the main project to reach the invocation
-    row_nr: int
-    col_nr: int
+    #trace: str # Call-trace in the main project to reach the invocation
+    location: cindex.SourceLocation
 
     def __repr__(self):
         return f"{self.filepath}"
