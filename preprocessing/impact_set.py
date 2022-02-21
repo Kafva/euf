@@ -7,9 +7,6 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
     Go through the complete AST of the provided file and save any sites
     where a changed function is called
     '''
-    if str(cursor.spelling).startswith("onig"):
-        print(cursor.spelling)
-        exit(1)
 
     if str(cursor.kind).endswith("CALL_EXPR") and \
         cursor.spelling in changed_function_names:

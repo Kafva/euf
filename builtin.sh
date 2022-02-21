@@ -117,6 +117,7 @@ cd ~/Repos/jq
 -c \
 -fPIC \
 -DPIC \
+-fno-color-diagnostics \
 -Xclang -ast-dump \
 src/builtin.c > ~/Repos/euf/builtin.ast
 

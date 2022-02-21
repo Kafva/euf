@@ -32,10 +32,8 @@ euc_jp_v:
 bug_fix_c:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 regexecc:
-	cd ~/Repos/jq
+	./builtin.sh
 	#clang -fno-color-diagnostics -fsyntax-only -Xclang -I. -Xclang -I.. -Xclang -I/usr/local/include -Xclang -ast-dump ./src/builtin.c > ~/Repos/euf/builtin.ast
-	clang -fsyntax-only -Xclang -I. -Xclang -I.. -Xclang -I/usr/local/include -Xclang -ast-dump ./src/builtin.c | bat
-	cd -
 
 
 #---- Bounded Model Checker ----#
