@@ -23,14 +23,19 @@ regexec:
 		 --project-only src/builtin.c \
 		 --dependency ../oniguruma ../jq
 
-regexecv:
+regexec_v:
 	./scripts/euf.sh -V -o 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 -n 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 -d ../oniguruma ../jq | bat
-euc_jpv:
+euc_jp_v:
 	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq | bat
-onic:
+bug_fix_c:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
+regexecc:
+	cd ~/Repos/jq
+	#clang -fno-color-diagnostics -fsyntax-only -Xclang -I. -Xclang -I.. -Xclang -I/usr/local/include -Xclang -ast-dump ./src/builtin.c > ~/Repos/euf/builtin.ast
+	clang -fsyntax-only -Xclang -I. -Xclang -I.. -Xclang -I/usr/local/include -Xclang -ast-dump ./src/builtin.c | bat
+	cd -
 
 
 #---- Bounded Model Checker ----#

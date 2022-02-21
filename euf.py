@@ -11,7 +11,6 @@ from pprint import pprint
 from preprocessing.change_set import get_changed_functions_in_path
 from preprocessing.impact_set import find_call_sites_in_tu
 
-
 # Relying on the LLVM diff directly would eliminate the need for parsing out 
 # comments and would give us a direct mapping as to where we want to point 
 # llvm2smt. It also auto-expands macros from what I understand.
@@ -122,6 +121,11 @@ with Pool(NPROC) as p:
     # With the changed functions enumerated we can
     # begin parsing the source code of the main project
     # to find all call locations
+
+    # For the AST dump to contain a resolved view of the symbols
+    # we need to provide all of the correct compile commands
+    # These can be dervied from compile_commands.json
+    cindex.CompilationDatabase.fromDirectory(PROJECT)
 
     for filepath in SOURCE_FILES:
         if PROJECT_ONLY_PATH != "" and filepath != PROJECT_ONLY_PATH: continue
