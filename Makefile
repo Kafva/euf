@@ -7,24 +7,30 @@ CFLAGS=-DCBMC=false
 
 
 # Note that jq actually has a way older version of oniguruma under ./modules
-
-oni:
+euc_jp:
 	./euf.py --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
 		 --commit-new a2ac402a3549713e6c909752937b7a54f559beb8 \
+		 --dep-only src/euc_jp.c \
 		 --dependency ../oniguruma ../jq
-oniv:
+
+# Includes a change to `onig_search` in `regexec.c` which is invoked once in `src/builtin.c` of jq
+# 	git blame -L 3374,+100 src/regexec.c
+# Note that regexec.c is moved from ./ to ./src between the commits
+regexec:
+	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
+		 --dep-only src/regexec.c \
+		 --project-only src/builtin.c \
+		 --dependency ../oniguruma ../jq
+
+regexecv:
+	./scripts/euf.sh -V -o 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+		 -n 1bd71be9437db6ede501fc88102961423c1ab74c \
+		 -d ../oniguruma ../jq | bat
+euc_jpv:
 	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq | bat
 onic:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
-onig: go-clang-bindings
-	 go run main.go -D -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq
-
-# We need some C-headers for the bindings between Golang and C to work
-go-clang-bindings:
-	CGO_LDFLAGS="-L`llvm-config --libdir`" go install github.com/go-clang/clang-v3.9/...
-	mkdir -p $@
-	cp -r ~/.go/pkg/mod/github.com/go-clang/clang-v3.9@*/clang/* $@
-	chmod +w go-clang-bindings/**/**
 
 
 #---- Bounded Model Checker ----#

@@ -1,6 +1,7 @@
-from enum import Enum
 from dataclasses import dataclass
 from clang import cindex
+
+NPROC = 5
 
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
 
@@ -12,24 +13,34 @@ class Function:
     return_type: cindex.TypeKind
     arguments: list[ tuple[cindex.TypeKind,str] ]
 
+    def __repr__(self):
+        return f"{self.filepath}:{self.name}"
+
 @dataclass(init=True)
 class Invocation:
     function: Function
     filepath: str
-    # Call-trace in the main project to reach the invocation
-    trace: str
-    #row_nr: int
-    #col_nr: int
+    trace: str # Call-trace in the main project to reach the invocation
+    row_nr: int
+    col_nr: int
 
-class CursorContext(Enum):
-    CURRENT = "old"
-    NEW = "new"
+    def __repr__(self):
+        return f"{self.filepath}"
 
-def debug_print(fmt: str, hl:bool = False) -> None:
-    if DEBUG:
-        if hl: print("\033[34m=>\033[0m ", end='')
-        print(fmt)
+@dataclass(init=True)
+class CursorPair:
+    new: cindex.Cursor | None
+    old: cindex.Cursor | None
 
+    def __init__(self):
+        self.new = None
+        self.old = None
+
+    def add(self, cursor: cindex.Cursor, is_new: bool):
+        if is_new:
+            self.new = cursor
+        else:
+            self.old = cursor
 
 def flatten(list_of_list: list[list]) -> list:
     flat = []
@@ -37,6 +48,4 @@ def flatten(list_of_list: list[list]) -> list:
         flat.extend(li)
     return flat
 
-DEBUG = False
-NPROC = 5
 

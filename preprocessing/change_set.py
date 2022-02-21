@@ -1,10 +1,11 @@
 from itertools import zip_longest
 from clang import cindex
-from base import Function, debug_print, CursorContext
+from base import Function, CursorPair
+from logging import debug
 
 
-def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
-        filepath: str, dump: bool = False) -> list[Function]:
+def get_changed_functions_in_path(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
+        new_path: str) -> list[Function]:
     '''
     As a starting point we can walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -12,24 +13,26 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
     1. Save the cursors for each top-level function in both versions
     2. Walk both cursors in parallel for each funcion pair and exit as soon as any divergence occurs
 
-    TODO: Processing nested function definitions would infer that the entire AST needs to be
+    Processing nested function definitions would infer that the entire AST needs to be
     traveresed, this could be unnecessary if this feature is not used in the code base
     '''
 
-    changed_functions: list[Function] = []
-    cursor_pairs = {}
+    changed_functions: list[Function]       = []
+    cursor_pairs: dict[str,CursorPair]      = {}  # 'diff.a_path:funcname' -> (new: cursor, old: cursor)
 
-    def dump_print(fmt: str) -> None:
-        if dump: debug_print(fmt)
-
-    def extract_pairs(cursor: cindex.Cursor, cursor_pairs: dict, key: CursorContext) -> None:
+    def extract_function_decls_to_pairs(cursor: cindex.Cursor, cursor_pairs: dict[str,CursorPair], is_new: bool) -> None:
         for c in cursor.get_children():
+
             if str(c.kind).endswith("FUNCTION_DECL") and c.is_definition():
 
-                if c.displayname in cursor_pairs:
-                    cursor_pairs[c.displayname][key] = c
-                else:
-                    cursor_pairs[c.displayname]      = { key: c }
+                key = f"{new_path}:{c.spelling}"
+
+                #print(key, c.spelling, c.kind, c.is_definition(), "new" if is_new else "old")
+
+                if not key in cursor_pairs:
+                    cursor_pairs[key] = CursorPair()
+
+                cursor_pairs[key].add(c, is_new)
 
     def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) -> bool:
         ''' 
@@ -51,8 +54,8 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
 
         return False
 
-    extract_pairs(cursor_old, cursor_pairs, CursorContext.CURRENT)
-    extract_pairs(cursor_new, cursor_pairs,  CursorContext.NEW)
+    extract_function_decls_to_pairs(cursor_old, cursor_pairs,  is_new=False)
+    extract_function_decls_to_pairs(cursor_new, cursor_pairs,  is_new=True)
 
     for key in cursor_pairs:
         # If the function pairs differ based on AST traversal, 
@@ -61,18 +64,18 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
         # change has occurred and we do not need to 
         # perform a deeper SMT analysis
 
-        if not CursorContext.NEW in cursor_pairs[key]:
-            dump_print(f"Deleted: {key}")
+        if not cursor_pairs[key].new:
+            debug(f"Deleted: {key}")
             continue
-        elif not CursorContext.CURRENT in cursor_pairs[key]:
-            dump_print(f"New: {key}")
+        elif not cursor_pairs[key].old:
+            debug(f"New: {key}")
             continue
 
-        cursor_old = cursor_pairs[key][CursorContext.CURRENT]
-        cursor_new = cursor_pairs[key][CursorContext.NEW]
+        cursor_old = cursor_pairs[key].old
+        cursor_new = cursor_pairs[key].new
 
         function = Function(
-            filepath    = filepath,
+            filepath    = new_path,
             displayname = cursor_old.displayname,
             name        = cursor_old.spelling,
             return_type = cursor_old.type.get_result().kind,
@@ -82,11 +85,10 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
         )
 
         if functions_differ(cursor_old, cursor_new):
-            dump_print(f"Differ: {key}")
+            debug(f"Differ: {key}")
             changed_functions.append(function)
         else:
-            dump_print(f"Same: {key}")
-
+            debug(f"Same: {key}")
 
     return changed_functions
 

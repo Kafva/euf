@@ -19,7 +19,7 @@ shift $(($OPTIND - 1))
 
 [ -z "$1" ] 			&& die "$usage"
 [ -z "$NEW_COMMIT" ] 		&& die "$usage"  
-[ -z "$OLD_COMMIT" ] 	&& die "$usage"  
+[ -z "$OLD_COMMIT" ] 		&& die "$usage"  
 [ -d "$DEPENDENCY_DIR" ] 	|| die "$usage"  
 
 PROJECT=$1
@@ -33,16 +33,16 @@ git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout current commit"
 if $VIEW; then
 	# Show 3000 lines of context for every change
 	git diff --ignore-space-change --ignore-blank-lines -U3000 \
-		--diff-filter M $OLD_COMMIT -- "***.c" "***.h" | \
+		--diff-filter MR $OLD_COMMIT -- "***.c" "***.h" | \
 			tr -dc '\0-\177'
 else
-	# We only consider modifications (M) to source files
+	# We only consider modifications (M) and renamed (R) source files
 	# 	- We ignore changes to comments '//' 
 	#	- We ignore non-printable characters
 	#	- Multi line comments haft to be parsed away later
 	# We remove the @@ context markers
 	git diff --ignore-space-change --ignore-blank-lines --function-context \
-		--diff-filter M $OLD_COMMIT -- "***.c" "***.h" | \
+		--diff-filter MR $OLD_COMMIT -- "***.c" "***.h" | \
 			sed -E '/^[[:space:]]*[+-]+\/\//d' | \
 			tr -dc '\0-\177' | \
 			sed -E 's/@@\s+[-+]*[[:digit:]]+,[-+]*[[:digit:]]+\s+[-+]*[[:digit:]]+,[-+]*[[:digit:]]+\s+@@//' \
