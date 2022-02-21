@@ -3,7 +3,8 @@ from clang import cindex
 from base import Function, debug_print, CursorContext
 
 
-def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, dump: bool = False) -> list[Function]:
+def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
+        filepath: str, dump: bool = False) -> list[Function]:
     '''
     As a starting point we can walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -54,10 +55,11 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, 
     extract_pairs(cursor_new, cursor_pairs,  CursorContext.NEW)
 
     for key in cursor_pairs:
-        # If the function pairs differ based on AST traversal, add them to the list of 
-        # changed_functions. 
-        # If the function prototypes differ, we can assume that an influential change has occurred
-        # and we do not need to perform a deeper SMT analysis
+        # If the function pairs differ based on AST traversal, 
+        # add them to the list of changed_functions. 
+        # If the function prototypes differ, we can assume that an influential 
+        # change has occurred and we do not need to 
+        # perform a deeper SMT analysis
 
         if not CursorContext.NEW in cursor_pairs[key]:
             dump_print(f"Deleted: {key}")
@@ -70,10 +72,13 @@ def get_changed_functions(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, 
         cursor_new = cursor_pairs[key][CursorContext.NEW]
 
         function = Function(
+            filepath    = filepath,
             displayname = cursor_old.displayname,
-            name = cursor_old.spelling,
+            name        = cursor_old.spelling,
             return_type = cursor_old.type.get_result().kind,
-            arguments = [ (t.kind,n.spelling) for t,n in zip(cursor_old.type.argument_types(), cursor_old.get_arguments()) ]
+            arguments   = [ (t.kind,n.spelling) for t,n in \
+                    zip(cursor_old.type.argument_types(), \
+                    cursor_old.get_arguments()) ]
         )
 
         if functions_differ(cursor_old, cursor_new):
