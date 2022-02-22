@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from typing import TextIO
 from clang import cindex
+
 
 PROJECT_DIR         = ""
 DEPENDENCY_DIR      = ""
@@ -12,17 +14,16 @@ cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
 # Clang objects cannot be passed as single arguments through `partial` in
 # the same way as a `str` or other less complicated objects when using mp.Pool
 # We therefore need to rely on globals for the index and compilation databases
-# Unless....
-# We let the master peform all .from_source() operations
-# and only run the AST parsing in parallel
-global IDX, DEP_DB, MAIN_DB
+global IDX
 
-IDX = cindex.Index.create()
-DEP_DB = None
-MAIN_DB = None
+CLANG_INDEX = cindex.Index.create()
 
-
-def load_compile_db(path) -> cindex.CompilationDatabase:
+def load_compile_db(path: str) -> cindex.CompilationDatabase:
+    '''
+    For the AST dump to contain a resolved view of the symbols
+    we need to provide the correct compile commands
+    These can be derived from compile_commands.json
+    '''
     try:
         db = cindex.CompilationDatabase.fromDirectory(path)
     except cindex.CompilationDatabaseError:
@@ -30,6 +31,13 @@ def load_compile_db(path) -> cindex.CompilationDatabase:
         exit(1)
     return db
 
+def get_compile_args(db: cindex.CompilationDatabase, filepath: str) -> list[str]:
+    ''' Load the compilation configuration for the particular file and retrieve the compilation arguments '''
+    ccmds: cindex.CompileCommands   = db.getCompileCommands(filepath)
+    compile_args                    = [ arg for arg in ccmds[0].arguments ]
+
+    # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
+    return compile_args[1:-1]
 
 
 @dataclass(init=True)
@@ -41,17 +49,17 @@ class Function:
     arguments: list[ tuple[cindex.TypeKind,str] ]
 
     def __repr__(self):
-        return f"{self.filepath}:{self.name}"
+        return f"{self.filepath}:{self.name}()"
 
 @dataclass(init=True)
 class Invocation:
     function: Function
     filepath: str
-    #trace: str # Call-trace in the main project to reach the invocation
-    location: cindex.SourceLocation
+    line: int
+    col: int
 
     def __repr__(self):
-        return f"{self.filepath}"
+        return f"Call to {self.function} at {self.filepath}:{self.line}:{self.col}"
 
 @dataclass(init=True)
 class CursorPair:
@@ -67,6 +75,17 @@ class CursorPair:
             self.new = cursor
         else:
             self.old = cursor
+
+@dataclass(init=True)
+class SourceFile:
+    new_path: str
+    compile_args: list[str]
+
+@dataclass(init=True)
+class SourceDiff(SourceFile):
+    old_path: str
+    old_content: bytes
+
 
 def flatten(list_of_list: list[list]) -> list:
     flat = []

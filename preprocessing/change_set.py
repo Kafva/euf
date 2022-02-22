@@ -1,25 +1,24 @@
 from itertools import zip_longest
 from clang import cindex
-from base import Function, CursorPair, IDX
+from base import Function, CursorPair, CLANG_INDEX, SourceDiff
 from logging import debug
-from git import Diff
 
-
-def get_changed_functions_from_diff(diff: Diff, root_dir: str) -> list[Function]:
+def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Function]:
     '''
     The from_source() method accepts content from arbitrary text streams,
      allowing us to analyze the old version of each file
     '''
+
     tu_old = cindex.TranslationUnit.from_source(
-            f"{root_dir}/{diff.b_path}",
-            unsaved_files=[ (f"{root_dir}/{diff.b_path}", diff.b_blob.data_stream) ],
-            index=IDX
+            f"{root_dir}/{diff.old_path}",
+            unsaved_files=[ (f"{root_dir}/{diff.old_path}", diff.old_content) ],
+            args = diff.compile_args,
+            index=CLANG_INDEX
     )
     cursor_old: cindex.Cursor = tu_old.cursor
 
-    tu_new = cindex.TranslationUnit.from_source(f"{root_dir}/{diff.a_path}", index=IDX)
+    tu_new = cindex.TranslationUnit.from_source(f"{root_dir}/{diff.new_path}", args = diff.compile_args, index=CLANG_INDEX)
     cursor_new: cindex.Cursor = tu_new.cursor
-
 
     '''
     As a starting point we can walk the AST of the new and old file in parallel and
@@ -40,7 +39,7 @@ def get_changed_functions_from_diff(diff: Diff, root_dir: str) -> list[Function]
 
             if str(c.kind).endswith("FUNCTION_DECL") and c.is_definition():
 
-                key = f"{diff.a_path}:{c.spelling}"
+                key = f"{diff.new_path}:{c.spelling}"
 
                 #print(key, c.spelling, c.kind, c.is_definition(), "new" if is_new else "old")
 
@@ -89,7 +88,7 @@ def get_changed_functions_from_diff(diff: Diff, root_dir: str) -> list[Function]
         cursor_new_fn = cursor_pairs[key].new
 
         function = Function(
-            filepath    = diff.a_path,
+            filepath    = diff.new_path,
             displayname = cursor_old_fn.displayname,
             name        = cursor_old_fn.spelling,
             return_type = cursor_old_fn.type.get_result().kind,
@@ -98,7 +97,7 @@ def get_changed_functions_from_diff(diff: Diff, root_dir: str) -> list[Function]
                     cursor_old_fn.get_arguments()) ]
         )
 
-        if functions_differ(cursor_old_fn, cursor_new_fn):
+        if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
             debug(f"Differ: {key}")
             changed_functions.append(function)
         else:
