@@ -1,11 +1,26 @@
 from itertools import zip_longest
 from clang import cindex
-from base import Function, CursorPair
+from base import Function, CursorPair, IDX
 from logging import debug
+from git import Diff
 
 
-def get_changed_functions_in_path(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor,
-        new_path: str) -> list[Function]:
+def get_changed_functions_from_diff(diff: Diff, root_dir: str) -> list[Function]:
+    '''
+    The from_source() method accepts content from arbitrary text streams,
+     allowing us to analyze the old version of each file
+    '''
+    tu_old = cindex.TranslationUnit.from_source(
+            f"{root_dir}/{diff.b_path}",
+            unsaved_files=[ (f"{root_dir}/{diff.b_path}", diff.b_blob.data_stream) ],
+            index=IDX
+    )
+    cursor_old: cindex.Cursor = tu_old.cursor
+
+    tu_new = cindex.TranslationUnit.from_source(f"{root_dir}/{diff.a_path}", index=IDX)
+    cursor_new: cindex.Cursor = tu_new.cursor
+
+
     '''
     As a starting point we can walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -25,7 +40,7 @@ def get_changed_functions_in_path(cursor_old: cindex.Cursor, cursor_new: cindex.
 
             if str(c.kind).endswith("FUNCTION_DECL") and c.is_definition():
 
-                key = f"{new_path}:{c.spelling}"
+                key = f"{diff.a_path}:{c.spelling}"
 
                 #print(key, c.spelling, c.kind, c.is_definition(), "new" if is_new else "old")
 
@@ -57,13 +72,12 @@ def get_changed_functions_in_path(cursor_old: cindex.Cursor, cursor_new: cindex.
     extract_function_decls_to_pairs(cursor_old, cursor_pairs,  is_new=False)
     extract_function_decls_to_pairs(cursor_new, cursor_pairs,  is_new=True)
 
+    # If the function pairs differ based on AST traversal, 
+    # add them to the list of changed_functions. 
+    # If the function prototypes differ, we can assume that an influential 
+    # change has occurred and we do not need to 
+    # perform a deeper SMT analysis
     for key in cursor_pairs:
-        # If the function pairs differ based on AST traversal, 
-        # add them to the list of changed_functions. 
-        # If the function prototypes differ, we can assume that an influential 
-        # change has occurred and we do not need to 
-        # perform a deeper SMT analysis
-
         if not cursor_pairs[key].new:
             debug(f"Deleted: {key}")
             continue
@@ -71,20 +85,20 @@ def get_changed_functions_in_path(cursor_old: cindex.Cursor, cursor_new: cindex.
             debug(f"New: {key}")
             continue
 
-        cursor_old = cursor_pairs[key].old
-        cursor_new = cursor_pairs[key].new
+        cursor_old_fn = cursor_pairs[key].old
+        cursor_new_fn = cursor_pairs[key].new
 
         function = Function(
-            filepath    = new_path,
-            displayname = cursor_old.displayname,
-            name        = cursor_old.spelling,
-            return_type = cursor_old.type.get_result().kind,
+            filepath    = diff.a_path,
+            displayname = cursor_old_fn.displayname,
+            name        = cursor_old_fn.spelling,
+            return_type = cursor_old_fn.type.get_result().kind,
             arguments   = [ (t.kind,n.spelling) for t,n in \
-                    zip(cursor_old.type.argument_types(), \
-                    cursor_old.get_arguments()) ]
+                    zip(cursor_old_fn.type.argument_types(), \
+                    cursor_old_fn.get_arguments()) ]
         )
 
-        if functions_differ(cursor_old, cursor_new):
+        if functions_differ(cursor_old_fn, cursor_new_fn):
             debug(f"Differ: {key}")
             changed_functions.append(function)
         else:

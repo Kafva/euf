@@ -4,11 +4,10 @@ from logging import error
 from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
-from git import Diff
 from multiprocessing import Pool
-from base import NPROC, Function, Invocation, flatten
+from base import IDX, NPROC, Function, Invocation, flatten, DEPENDENCY_DIR, PROJECT_DIR, load_compile_db, MAIN_DB, DEP_DB
 from pprint import pprint
-from preprocessing.change_set import get_changed_functions_in_path
+from preprocessing.change_set import get_changed_functions_from_diff
 from preprocessing.impact_set import find_call_sites_in_tu
 from functools import partial
 
@@ -19,35 +18,6 @@ from functools import partial
 CHANGED_FUNCTIONS: list[Function] = []
 CHANGED_FUNCTION_NAMES: list[str] = []
 CALL_SITES: list[Invocation]      = []
-
-# Create a global index for clang to use
-IDX = cindex.Index.create()
-
-# cindex objects cannot be passed as single arguments through `partial` in
-# the same way as a `str` or other less complicated objects when using mp.Pool
-# We therefore need to rely on globals for the index and compilation databases
-# Unless....
-# We let the master peform all .from_source() operations
-# and only run the AST parsing in parallel
-
-
-
-def get_changed_functions_from_diff(diff: Diff, root_dir: str) -> list[Function]:
-    '''
-    The from_source() method accepts content from arbitrary text streams,
-     allowing us to analyze the old version of each file
-    '''
-    tu_old = cindex.TranslationUnit.from_source(
-            f"{root_dir}/{diff.b_path}",
-            unsaved_files=[ (f"{root_dir}/{diff.b_path}", diff.b_blob.data_stream) ],
-            index=IDX
-    )
-    cursor_old: cindex.Cursor = tu_old.cursor
-
-    tu_new = cindex.TranslationUnit.from_source(f"{root_dir}/{diff.a_path}", index=IDX)
-    cursor_new: cindex.Cursor = tu_new.cursor
-
-    return get_changed_functions_in_path(cursor_old, cursor_new, new_path=diff.a_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
@@ -121,18 +91,18 @@ if __name__ == '__main__':
         [ e.path for e in main_repo.commit().tree.traverse() ]
     )
 
-    try:
-        dep_db = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_DIR)
-        os.chdir(DEPENDENCY_DIR)
-    except cindex.CompilationDatabaseError as error:
-        print(f"Failed to parse {DEPENDENCY_DIR}/compile_commands.json")
-        exit(1)
+    # For the AST dump to contain a resolved view of the symbols
+    # we need to provide all of the correct compile commands
+    # These can be dervied from compile_commands.json
+    DEP_DB  = load_compile_db(DEPENDENCY_DIR)
+    MAIN_DB = load_compile_db(PROJECT_DIR)
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save the
     # the changed functions to `CHANGED_FUNCTIONS`
     with Pool(NPROC) as p:
         # Each diff in COMMIT_DIFF is given its own invocation of `get_changed_functions_from_diff`
+        #os.chdir(DEPENDENCY_DIR)
         CHANGED_FUNCTIONS       = flatten(p.map(
             partial(get_changed_functions_from_diff, root_dir=DEPENDENCY_DIR),
             COMMIT_DIFF
@@ -148,21 +118,13 @@ if __name__ == '__main__':
         # begin parsing the source code of the main project
         # to find all call locations
 
-        # For the AST dump to contain a resolved view of the symbols
-        # we need to provide all of the correct compile commands
-        # These can be dervied from compile_commands.json
-        try:
-            main_db = cindex.CompilationDatabase.fromDirectory(PROJECT_DIR)
-            os.chdir(PROJECT_DIR)
-        except cindex.CompilationDatabaseError as error:
-            print(f"Failed to parse {PROJECT_DIR}/compile_commands.json")
-            exit(1)
+        os.chdir(PROJECT_DIR)
 
         for filepath in SOURCE_FILES:
             if PROJECT_ONLY_PATH != "" and filepath != PROJECT_ONLY_PATH: continue
 
             # Load the compilation configuration for the perticular file
-            ccmds: cindex.CompileCommands   = main_db.getCompileCommands(filepath)
+            ccmds: cindex.CompileCommands   = MAIN_DB.getCompileCommands(filepath)
             compile_args                    = [ arg for arg in ccmds[0].arguments ]
 
             # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
