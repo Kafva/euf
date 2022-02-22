@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse, re, sys, logging, os
 from git.objects.commit import Commit
-from git.objects.tree import Tree
 from git.repo import Repo
 from multiprocessing import Pool
 from functools import partial
@@ -23,18 +22,18 @@ CALL_SITES: list[Invocation]      = []
 # 1. Walk the AST of the old and new version of each file
 # 2. Consider any functions with a difference in the AST composition as changed
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description="A 'compile_commands.json' database must be present for both the project and the dependency.")
 
-    parser.add_argument("project", type=str, nargs=1,
+    parser.add_argument("directory", type=str, nargs=1,
         help='Project to analyze')
     parser.add_argument("--commit-new", metavar="hash",
-        help='Git hash of the updated commit in the dependency')
+        help='Git hash of the new commit in the dependency')
     parser.add_argument("--commit-old", metavar="hash",
-        help='Git hash of the old commit in the dependency')
+        help='Git hash of the old (current) commit in the dependency')
     parser.add_argument("--dependency", metavar="directory", help=
-        'Path to the directory with source code for the dependency to upgrade')
+        'The dependency to upgrade')
     parser.add_argument("--info", action='store_true', default=False,
-        help='Set INFO level for logging')
+        help='Set logging level to INFO')
     parser.add_argument("--nprocs", metavar='count', help=
         f"The number of processes to spawn for parallel execution (default {NPROC})")
     parser.add_argument("--dep-only", metavar="filepath", default="", help=
@@ -123,14 +122,14 @@ if __name__ == '__main__':
     # Using a global database that each worker() reads from
     # causes conccurency issues
 
+    # For the paths in the compilation database to be correct
+    # we need to `cd` into project
+    os.chdir(DEPENDENCY_DIR)
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save
     # the changed functions to `CHANGED_FUNCTIONS`
     with Pool(NPROC) as p:
-        # For the paths in the compilation database to be correct
-        # we need to `cd` into project
-        os.chdir(DEPENDENCY_DIR)
 
         # Each diff in SOURCE_DIFFS is given its own invocation of `get_changed_functions_from_diff`
         CHANGED_FUNCTIONS       = flatten(p.map(
@@ -141,37 +140,19 @@ if __name__ == '__main__':
         print("==> Change set <==")
         if DEP_ONLY_PATH != "": pprint(CHANGED_FUNCTIONS)
 
-        # - - - TODO SMT reduction of change set - - - #
 
-        # With the changed functions enumerated we can
-        # begin parsing the source code of the main project
-        # to find all call locations
-        #os.chdir(PROJECT_DIR)
+    # - - - TODO SMT reduction of change set - - - #
 
-        #CALL_SITES = flatten(p.map(
-        #    partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
-        #    SOURCE_FILES
-        #))
-
-        #print("==> Impact set <==")
-        #if PROJECT_ONLY_PATH != "": pprint(CALL_SITES)
-
+    # With the changed functions enumerated we can
+    # begin parsing the source code of the main project
+    # to find all call locations
     os.chdir(PROJECT_DIR)
-    for source_file in SOURCE_FILES:
 
-        CALL_SITES.extend( get_call_sites_from_file(source_file, changed_functions=CHANGED_FUNCTIONS) )
-        ## Load the compilation configuration for the particular file
-        #ccmds: cindex.CompileCommands   = MAIN_DB.getCompileCommands(filepath)
-        #compile_args                    = [ arg for arg in ccmds[0].arguments ]
+    with Pool(NPROC) as p:
+        CALL_SITES = flatten(p.map(
+            partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
+            SOURCE_FILES
+        ))
 
-        ## Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-        #compile_args = compile_args[1:-1]
-
-        #tu: cindex.TranslationUnit  = cindex.TranslationUnit.from_source(filepath, args = compile_args, index=CLANG_INDEX)
-        #cursor: cindex.Cursor       = tu.cursor
-
-        #find_call_sites_in_tu(filepath, cursor, CHANGED_FUNCTIONS, CALL_SITES)
-
-    print("==> Impact set <==")
-    if PROJECT_ONLY_PATH != "": pprint(CALL_SITES)
-
+        print("==> Impact set <==")
+        if PROJECT_ONLY_PATH != "": pprint(CALL_SITES)

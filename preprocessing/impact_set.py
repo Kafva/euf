@@ -5,7 +5,7 @@ def get_call_sites_from_file(source_file: SourceFile,  changed_functions: list[F
     call_sites = []
 
     tu: cindex.TranslationUnit  = cindex.TranslationUnit.from_source(
-            source_file.new_path, args = source_file.compile_args
+            source_file.new_path, args = source_file.compile_args, index = CLANG_INDEX
     )
     cursor: cindex.Cursor       = tu.cursor
 

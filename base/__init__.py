@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import TextIO
 from clang import cindex
-
 
 PROJECT_DIR         = ""
 DEPENDENCY_DIR      = ""
@@ -14,7 +12,7 @@ cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
 # Clang objects cannot be passed as single arguments through `partial` in
 # the same way as a `str` or other less complicated objects when using mp.Pool
 # We therefore need to rely on globals for the index and compilation databases
-global IDX
+global CLANG_INDEX
 
 CLANG_INDEX = cindex.Index.create()
 
