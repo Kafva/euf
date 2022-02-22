@@ -1,27 +1,13 @@
+from logging import info
 from itertools import zip_longest
+
 from clang import cindex
-from base import Function, CursorPair, CLANG_INDEX, SourceDiff
-from logging import debug
 
-def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Function]:
+from base import DependencyFunction, CursorPair, SourceDiff
+
+def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[DependencyFunction]:
     '''
-    The from_source() method accepts content from arbitrary text streams,
-     allowing us to analyze the old version of each file
-    '''
-
-    tu_old = cindex.TranslationUnit.from_source(
-            f"{root_dir}/{diff.old_path}",
-            unsaved_files=[ (f"{root_dir}/{diff.old_path}", diff.old_content) ],
-            args = diff.compile_args,
-            index=CLANG_INDEX
-    )
-    cursor_old: cindex.Cursor = tu_old.cursor
-
-    tu_new = cindex.TranslationUnit.from_source(f"{root_dir}/{diff.new_path}", args = diff.compile_args, index=CLANG_INDEX)
-    cursor_new: cindex.Cursor = tu_new.cursor
-
-    '''
-    As a starting point we can walk the AST of the new and old file in parallel and
+    Walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
 
     1. Save the cursors for each top-level function in both versions
@@ -29,41 +15,63 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Fun
 
     Processing nested function definitions would infer that the entire AST needs to be
     traveresed, this could be unnecessary if this feature is not used in the code base
+    
+    The from_source() method accepts content from arbitrary text streams,
+    allowing us to analyze the old version of each file
     '''
 
-    changed_functions: list[Function]       = []
-    cursor_pairs: dict[str,CursorPair]      = {}  # 'diff.a_path:funcname' -> (new: cursor, old: cursor)
+    tu_old = cindex.TranslationUnit.from_source(
+            f"{root_dir}/{diff.old_path}",
+            unsaved_files=[ (f"{root_dir}/{diff.old_path}", diff.old_content) ],
+            args = diff.compile_args
+    )
+    cursor_old: cindex.Cursor = tu_old.cursor
 
-    def extract_function_decls_to_pairs(cursor: cindex.Cursor, cursor_pairs: dict[str,CursorPair], is_new: bool) -> None:
-        for c in cursor.get_children():
+    tu_new = cindex.TranslationUnit.from_source(
+        f"{root_dir}/{diff.new_path}",
+        args = diff.compile_args
+    )
+    cursor_new: cindex.Cursor = tu_new.cursor
 
-            if str(c.kind).endswith("FUNCTION_DECL") and c.is_definition():
+    changed_functions: list[DependencyFunction]       = []
+    cursor_pairs: dict[str,CursorPair]      = {}
 
-                key = f"{diff.new_path}:{c.spelling}"
+    def extract_function_decls_to_pairs(cursor: cindex.Cursor,
+        cursor_pairs: dict[str,CursorPair], is_new: bool) -> None:
+        for child in cursor.get_children():
 
-                #print(key, c.spelling, c.kind, c.is_definition(), "new" if is_new else "old")
+            if str(child.kind).endswith("FUNCTION_DECL") and child.is_definition():
+                # Note: the key in the dict _always_ uses the new filepath
+                # to ensure that functions in renamed paths still end up in the same pair
+                # TODO: Handle edge case when filenames are switched
+                #   foo.c     -> src/bar.c (already exists)
+                #   src/bar.c -> foo.c
+                key = f"{diff.new_path}:{child.spelling}"
 
+                # Add the child to an existing pair or create a new one
                 if not key in cursor_pairs:
                     cursor_pairs[key] = CursorPair()
 
-                cursor_pairs[key].add(c, is_new)
+                cursor_pairs[key].add(child, diff, is_new)
 
-    def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) -> bool:
-        ''' 
-        Functions are considered different at this stage if
+    def functions_differ(cursor_old: cindex.Cursor,
+        cursor_new: cindex.Cursor) -> bool:
+        '''
+        DependencyFunctions are considered different at this stage if
         the cursors have a different number of nodes at any level or if the
         typing of their arguments differ
         '''
-        for t1,t2 in zip_longest(cursor_old.get_arguments(), cursor_new.get_arguments()):
-            if not t1 or not t2:
+        for arg_old,arg_new in zip_longest(cursor_old.get_arguments(), cursor_new.get_arguments()):
+            if not arg_old or not arg_new:
                 return True
-            elif t1.kind != t2.kind:
+            if arg_old.kind != arg_new.kind:
                 return True
 
-        for c1,c2 in zip_longest(cursor_old.get_children(), cursor_new.get_children()):
-            if not c1 or not c2:
+        for child_old,child_new in \
+            zip_longest(cursor_old.get_children(), cursor_new.get_children()):
+            if not child_old or not child_new:
                 return True
-            elif functions_differ(c1,c2):
+            if functions_differ(child_old,child_new):
                 return True
 
         return False
@@ -71,23 +79,23 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Fun
     extract_function_decls_to_pairs(cursor_old, cursor_pairs,  is_new=False)
     extract_function_decls_to_pairs(cursor_new, cursor_pairs,  is_new=True)
 
-    # If the function pairs differ based on AST traversal, 
-    # add them to the list of changed_functions. 
-    # If the function prototypes differ, we can assume that an influential 
-    # change has occurred and we do not need to 
+    # If the function pairs differ based on AST traversal,
+    # add them to the list of changed_functions.
+    # If the function prototypes differ, we can assume that an influential
+    # change has occurred and we do not need to
     # perform a deeper SMT analysis
-    for key in cursor_pairs:
-        if not cursor_pairs[key].new:
-            debug(f"Deleted: {key}")
+    for pair in cursor_pairs.values():
+        if not pair.new:
+            info(f"Deleted: {pair.old_path} {pair.old.spelling}()")
             continue
-        elif not cursor_pairs[key].old:
-            debug(f"New: {key}")
+        elif not pair.old:
+            info(f"New: {pair.new_path} {pair.new.spelling}()")
             continue
 
-        cursor_old_fn = cursor_pairs[key].old
-        cursor_new_fn = cursor_pairs[key].new
+        cursor_old_fn = pair.old
+        cursor_new_fn = pair.new
 
-        function = Function(
+        function = DependencyFunction(
             filepath    = diff.new_path,
             displayname = cursor_old_fn.displayname,
             name        = cursor_old_fn.spelling,
@@ -98,26 +106,9 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Fun
         )
 
         if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
-            debug(f"Differ: {key}")
+            info(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
             changed_functions.append(function)
         else:
-            debug(f"Same: {key}")
+            info(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
     return changed_functions
-
-def dump_functions_in_tu(cursor: cindex.Cursor) -> None:
-    '''
-    By inspecting the AST we can determine what tokens are function declerations
-    https://libclang.readthedocs.io/en/latest/index.html#clang.cindex.TranslationUnit.from_source
-    '''
-    if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
-
-        print(f"{cursor.type.get_result().spelling} {cursor.spelling} (");
-
-        for t,n in zip(cursor.type.argument_types(), cursor.get_arguments()):
-                print(f"\t{t.spelling} {n.spelling}")
-        print(")")
-
-    for c in cursor.get_children():
-        dump_functions_in_tu(c)
-

@@ -5,15 +5,14 @@ CFLAGS=-DCBMC=false
 
 .PHONY: smt clean run bmc diff oni oniv
 
+#---- Basic tests ----#
+# The recipe names correspond to the source files in the project/dependency
+# that are being processed
+# _c: clang -ast-dump
+# _v: view diff
 
-# Note that jq actually has a way older version of oniguruma under ./modules
-euc_jp:
-	./euf.py --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
-		 --commit-new a2ac402a3549713e6c909752937b7a54f559beb8 \
-		 --dep-only src/euc_jp.c \
-		 --dependency ../oniguruma ../jq
-
-# Includes a change to `onig_search` in `regexec.c` which is invoked once in `src/builtin.c` of jq
+# Includes a change to `onig_search` in `regexec.c` which is invoked 
+# once in `src/builtin.c` of jq
 # 	git blame -L 3374,+100 src/regexec.c
 # Note that regexec.c is moved from ./ to ./src between the commits
 regexec:
@@ -21,19 +20,28 @@ regexec:
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --dep-only src/regexec.c \
 		 --project-only src/builtin.c \
+		 --info \
 		 --dependency ../oniguruma ../jq
 
 regexec_v:
 	./scripts/euf.sh -V -o 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 -n 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 -d ../oniguruma ../jq | bat
-euc_jp_v:
-	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 -n a2ac402a3549713e6c909752937b7a54f559beb8 -d ../oniguruma ../jq | bat
-bug_fix_c:
-	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 regexecc:
 	./builtin.sh
-	#clang -fno-color-diagnostics -fsyntax-only -Xclang -I. -Xclang -I.. -Xclang -I/usr/local/include -Xclang -ast-dump ./src/builtin.c > ~/Repos/euf/builtin.ast
+
+# Note that jq actually has a way older version of oniguruma under ./modules
+euc_jp:
+	./euf.py --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
+		 --commit-new a2ac402a3549713e6c909752937b7a54f559beb8 \
+		 --dep-only src/euc_jp.c \
+		 --dependency ../oniguruma ../jq
+euc_jp_v:
+	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
+		-n a2ac402a3549713e6c909752937b7a54f559beb8 \
+		-d ../oniguruma ../jq | bat
+bug_fix_c:
+	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 
 
 #---- Bounded Model Checker ----#

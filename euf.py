@@ -1,30 +1,33 @@
 #!/usr/bin/env python3
-import argparse, re, sys, logging, os
-from git.objects.commit import Commit
-from git.repo import Repo
+'''
+Approach:
+1. Determine what source files in the dependency have been 
+modified (M) or renamed (R) since the last commit based on git labeling 
+2. Walk the AST of the old and new version of each modified file
+3. Consider any functions with a difference in the AST composition as
+the base change-set
+4. Analyze each of the objects in the base change-set and 
+remove equivilent entries
+5. Walk the AST of all source files in the main project and return
+all locations were functions from the change set are called
+'''
+import argparse, re, sys, logging, os # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
-
-from base import NPROC, Function, Invocation, SourceDiff, SourceFile, flatten, DEPENDENCY_DIR, PROJECT_DIR, get_compile_args, load_compile_db
+from git.objects.commit import Commit
+from git.repo import Repo
+from base import NPROC, DEPENDENCY_DIR, PROJECT_DIR, DependencyFunction, ProjectInvocation, \
+    SourceDiff, SourceFile, flatten, get_compile_args, load_compile_db
 from preprocessing.change_set import get_changed_functions_from_diff
 from preprocessing.impact_set import get_call_sites_from_file
 
-# Relying on the LLVM diff directly would eliminate the need for parsing out 
-# comments and would give us a direct mapping as to where we want to point 
-# llvm2smt. It also auto-expands macros from what I understand.
-
-CHANGED_FUNCTIONS: list[Function] = []
-CALL_SITES: list[Invocation]      = []
-
-# Approach:
-# 0. Determine what source files have been modified
-# 1. Walk the AST of the old and new version of each file
-# 2. Consider any functions with a difference in the AST composition as changed
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="A 'compile_commands.json' database must be present for both the project and the dependency.")
+    parser = argparse.ArgumentParser(description=
+    "A 'compile_commands.json' database must be present for both the project and the dependency."
+    )
 
-    parser.add_argument("directory", type=str, nargs=1,
+    parser.add_argument("project", type=str, nargs=1,
         help='Project to analyze')
     parser.add_argument("--commit-new", metavar="hash",
         help='Git hash of the new commit in the dependency')
@@ -46,7 +49,7 @@ if __name__ == '__main__':
     if args.commit_new == "" or args.commit_old == "" or \
         args.dependency == "" or len(args.project) == 0:
         print("Missing required option/argument")
-        exit(1)
+        sys.exit(1)
 
     PROJECT_DIR         = args.project[0]
     DEPENDENCY_DIR      = args.dependency
@@ -54,8 +57,8 @@ if __name__ == '__main__':
     PROJECT_ONLY_PATH   = args.project_only
 
     # Set logging level
-    level = logging.INFO if args.info else logging.ERROR
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG,
+    LEVEL = logging.INFO if args.info else logging.ERROR
+    logging.basicConfig(stream=sys.stdout, level=LEVEL,
             format="\033[34m!\033[0m: %(message)s"
     )
 
@@ -85,7 +88,7 @@ if __name__ == '__main__':
                 ) for d in COMMIT_DIFF ]
     except NameError as error:
         print(f"Unable to find commit: {error.name}")
-        exit(1)
+        sys.exit(1)
 
     DEP_DB  = load_compile_db(DEPENDENCY_DIR)
 
@@ -116,11 +119,7 @@ if __name__ == '__main__':
 
 
     # - - - Change set - - - #
-    # Read in the compile_databases once
-    # Sequentially parse out the compile_args for each file
-    # and provide them as a list of arguments to the p.map
-    # Using a global database that each worker() reads from
-    # causes conccurency issues
+    CHANGED_FUNCTIONS: list[DependencyFunction] = []
 
     # For the paths in the compilation database to be correct
     # we need to `cd` into project
@@ -130,24 +129,26 @@ if __name__ == '__main__':
     # using NPROC parallel processes and save
     # the changed functions to `CHANGED_FUNCTIONS`
     with Pool(NPROC) as p:
-
-        # Each diff in SOURCE_DIFFS is given its own invocation of `get_changed_functions_from_diff`
         CHANGED_FUNCTIONS       = flatten(p.map(
             partial(get_changed_functions_from_diff, root_dir=DEPENDENCY_DIR),
             SOURCE_DIFFS
         ))
 
         print("==> Change set <==")
-        if DEP_ONLY_PATH != "": pprint(CHANGED_FUNCTIONS)
+        if DEP_ONLY_PATH != "":
+            pprint(CHANGED_FUNCTIONS)
 
 
     # - - - TODO SMT reduction of change set - - - #
 
+    # - - - Impact set - - - #
+    CALL_SITES: list[ProjectInvocation]      = []
+
+    os.chdir(PROJECT_DIR)
+
     # With the changed functions enumerated we can
     # begin parsing the source code of the main project
     # to find all call locations
-    os.chdir(PROJECT_DIR)
-
     with Pool(NPROC) as p:
         CALL_SITES = flatten(p.map(
             partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
@@ -155,4 +156,5 @@ if __name__ == '__main__':
         ))
 
         print("==> Impact set <==")
-        if PROJECT_ONLY_PATH != "": pprint(CALL_SITES)
+        if PROJECT_ONLY_PATH != "":
+            pprint(CALL_SITES)
