@@ -17,6 +17,7 @@ from functools import partial
 from pprint import pprint
 from git.objects.commit import Commit
 from git.repo import Repo
+
 from base import NPROC, DEPENDENCY_DIR, PROJECT_DIR, DependencyFunction, ProjectInvocation, \
     SourceDiff, SourceFile, flatten, get_compile_args, load_compile_db
 from preprocessing.change_set import get_changed_functions_from_diff
@@ -138,8 +139,39 @@ if __name__ == '__main__':
         if DEP_ONLY_PATH != "":
             pprint(CHANGED_FUNCTIONS)
 
+    # - - - LLVM-IR SMT reduction of change set - - - #
+    # 1. Generate the full IR (using compile_commands.json for full resolution) 
+    # for both the old and new version of each changed file with a changed function: 
+    #   clang --emit-llvm => 
+    #   dep.new.ll, dep.old.ll
+    # 2. Inspect the definition for both of the changed functions
+    #   Enumerate all external resources it uses:
+    #       - Global variable reads/assignments and function calls
+    # Remove all function definitions in the IR that the function we want to analyze does not need
+    # 3. Let llvm2smt parse the filtered versions of `.ll`
+    #   llvm2smt =>
+    #   dep.new.smt, dep.old.smt
+    # 4. Concatenate the contents of both SMT files and insert an (assert) for the two versions
+    # 5. Run Z3 and mark the equivilent functions (and exclude them from the impact assessment)
 
-    # - - - TODO SMT reduction of change set - - - #
+
+    # -----------------
+    # For step 2, we would essentially need to walk the AST agian
+    #
+    # (option -): Use the Python bindings to produce some form of input that we can pass to `clang -emit-llvm`
+    # This does not really work since it requires modifying the AST, which is not supported by the Python API
+    # Furthermore, the AST files that are compilable with clang seem to essentially be PCH files and not textual ASTs?
+    #
+    # (option 1): Use llvmlite instead of a full-on plugin
+    # 
+    # (option 2): Create a plugin for clang's `opt`
+    # The plugin can be given `changed_functions` set as input and then we simply run
+    # `opt` --our-plugin to produce the modified (slimmer) LLVM code for the functions
+    #
+    # (option ?): Do not do any pre-processing (maybe llvm2smt can still handle it?)
+    # -----------------
+
+
 
     # - - - Impact set - - - #
     CALL_SITES: list[ProjectInvocation]      = []
