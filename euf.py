@@ -139,7 +139,7 @@ if __name__ == '__main__':
         if DEP_ONLY_PATH != "":
             pprint(CHANGED_FUNCTIONS)
 
-    # - - - LLVM-IR SMT reduction of change set - - - #
+    # - - - Reduction of change set - - - #
     # 1. Generate the full IR (using compile_commands.json for full resolution) 
     # for both the old and new version of each changed file with a changed function: 
     #   clang --emit-llvm => 
@@ -167,8 +167,6 @@ if __name__ == '__main__':
     # (option 2): Create a plugin for clang's `opt`
     # The plugin can be given `changed_functions` set as input and then we simply run
     # `opt` --our-plugin to produce the modified (slimmer) LLVM code for the functions
-    #
-    # (option ?): Do not do any pre-processing (maybe llvm2smt can still handle it?)
     # -----------------
 
 

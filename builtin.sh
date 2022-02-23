@@ -118,8 +118,11 @@ cd ~/Repos/jq
 -fPIC \
 -DPIC \
 -fno-color-diagnostics \
--Xclang -ast-dump \
-src/builtin.c > ~/Repos/euf/builtin.ast
+-Xclang -emit-llvm \
+src/builtin.c -o ~/Repos/euf/builtin.ll
+
+#-Xclang -ast-dump \
+#src/builtin.c > ~/Repos/euf/builtin.ast
 
 
 #-DPACKAGE_VERSION=\"1.6-145-ga9f97e9-dirty\" \

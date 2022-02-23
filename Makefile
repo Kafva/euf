@@ -5,6 +5,16 @@ CFLAGS=-DCBMC=false
 
 .PHONY: smt clean run bmc diff oni oniv
 
+#---- Smack -----#
+# Should be invoked from /usr/local/bin/smack and NOT from ~/bin/smack
+smack:
+	./scripts/smack.sh -f toy/tests/fib.ll /fib.ll
+
+
+
+
+
+
 #---- Basic tests ----#
 # The recipe names correspond to the source files in the project/dependency
 # that are being processed
