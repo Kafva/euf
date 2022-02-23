@@ -28,7 +28,7 @@ LC_ALL=C
 # Note that we switch to the new commit and perform a diff agianst
 # the current state to see changes from the correct perspective
 cd $DEPENDENCY_DIR
-git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout current commit"
+git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout new commit"
 
 if $VIEW; then
 	# Show 3000 lines of context for every change

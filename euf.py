@@ -140,34 +140,26 @@ if __name__ == '__main__':
             pprint(CHANGED_FUNCTIONS)
 
     # - - - Reduction of change set - - - #
-    # 1. Generate the full IR (using compile_commands.json for full resolution) 
-    # for both the old and new version of each changed file with a changed function: 
-    #   clang --emit-llvm => 
-    #   dep.new.ll, dep.old.ll
-    # 2. Inspect the definition for both of the changed functions
-    #   Enumerate all external resources it uses:
-    #       - Global variable reads/assignments and function calls
-    # Remove all function definitions in the IR that the function we want to analyze does not need
-    # 3. Let llvm2smt parse the filtered versions of `.ll`
-    #   llvm2smt =>
-    #   dep.new.smt, dep.old.smt
-    # 4. Concatenate the contents of both SMT files and insert an (assert) for the two versions
-    # 5. Run Z3 and mark the equivilent functions (and exclude them from the impact assessment)
-
-
-    # -----------------
-    # For step 2, we would essentially need to walk the AST agian
+    # Regardless of which back-end we use to check equivalance, we will need a minimal
+    # program that invokes both versions of the changed function and then performs an assertion
+    # on all affected outputs (only the return value for now)
     #
-    # (option -): Use the Python bindings to produce some form of input that we can pass to `clang -emit-llvm`
-    # This does not really work since it requires modifying the AST, which is not supported by the Python API
-    # Furthermore, the AST files that are compilable with clang seem to essentially be PCH files and not textual ASTs?
-    #
-    # (option 1): Use llvmlite instead of a full-on plugin
-    # 
-    # (option 2): Create a plugin for clang's `opt`
-    # The plugin can be given `changed_functions` set as input and then we simply run
-    # `opt` --our-plugin to produce the modified (slimmer) LLVM code for the functions
-    # -----------------
+    # We need:
+    #   - The C-code for both versions of the changed function, in a format were both can be simultaneously resolved
+    #   - The old and new version will haft to reside in different files 
+    #       (e.g. what if a changed function calls a new function that did not exist earlier?)
+    #   Rename all globals in the old file with *_old and all globals in the new file with *_new ?
+    #   That could almost be enough... It will not be enough if other #include directives circularly
+    #   import symbols from the file.
+    #   For import resolutions to work as intended we essentially need two mirrors of the repo, import paths etc. could differ
+    #   Switching git branches won't really work since our entrypoint needs access to both....
+    #   Maybe we can compile both files through basic inlining (just expand #includes)? Then they become portable?
+    #    
+    #   - A new entrypoint that can call both of them
+    #   - Correct imports in the entrypoint to access all type specifiers etc.
+
+    # ... Later ...
+    # - How do we determine which parameters should be completely unknown and which should be assumed etc.?
 
 
 

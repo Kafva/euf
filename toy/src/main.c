@@ -16,19 +16,13 @@ int main(int argc, char* argv[]){
 	unsigned size1 = get_strsize_1(a);
 	unsigned size2 = get_strsize_2(a);
 
-	#if CBMC
 	assert( size1 == size2 );
-	#endif
 
-	char b[40];
-	dep_strcpy(b,a, get_strsize_1(a) );
-
-	// Open/close pattern
-	char* c = get_heap_str(b);
-
-	printf("a@%p: %s\nb@%p: %s\nc@%p: %s\n", a, a, b,b, c,c);
-
-	free_heap_str(c);
+	//char b[40];
+	//dep_strcpy(b,a, get_strsize_1(a) );
+	//char* c = get_heap_str(b);
+	//printf("a@%p: %s\nb@%p: %s\nc@%p: %s\n", a, a, b,b, c,c);
+	//free_heap_str(c);
 
 	return 0;
 }
