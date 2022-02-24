@@ -123,7 +123,9 @@ if __name__ == '__main__':
     CHANGED_FUNCTIONS: list[DependencyFunction] = []
 
     # For the paths in the compilation database to be correct
-    # we need to `cd` into project
+    # we need to `cd` into the project
+    # TODO: The "directory" parameter in the compile_commands actually
+    # gives this information for every TU
     os.chdir(DEPENDENCY_DIR)
 
     # Look through the old and new version of each delta

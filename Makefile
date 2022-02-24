@@ -11,18 +11,19 @@ CFLAGS=-DCBMC=false
 # correctness since it is closer to the actual output code
 # Should be invoked from /usr/local/bin/smack and NOT from ~/bin/smack
 #
-# We can derive the raw .bpl conversion using
-#	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
-# The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
 # Basic invocation
 #	./scripts/smack.sh -f ir/fib.ll /fib.ll
 #
 # Smack can accept more than one source file (both C and LLVM work, with differing results...)
 smack:
-	#clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./tests/smack_test.c -o ir/smack_test.ll
-	#./scripts/smack.sh -f ir/smack_test.ll /mnt/smack_test.ll --check assertions --entry-points main --unroll 3
 	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
 
+# We can derive the raw .bpl conversion using
+#	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./tests/smack_test.c -o ir/smack_test.ll
+#	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
+# The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
+bpl:
+	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
 
 	
 
