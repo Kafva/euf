@@ -1,9 +1,19 @@
-UNWIND=30
-DIFF_FILE=toy/diffs/strcpy.diff
-DEP=strcpy
-CFLAGS=-DCBMC=false
+.PHONY: smt clean run bmc diff oni oniv cbmc
 
-.PHONY: smt clean run bmc diff oni oniv
+#---- CBMC ----#
+# CBMC is meant to assess if an assertion is true
+# for all possible executions of a program
+# To avoid infinite execution for inf loops,
+# we need to specify an --unwind depth
+# Could be useful:
+# 	--drop-unused-functions
+cbmc:
+	cbmc  --trace -DCBMC --z3 --function main --unwind 10 -I tests/ tests/cbmc_test.c $(ARGS)
+
+# Show human readable goto program
+#	cbmc --show-goto-functions -DCBMC -I tests tests/cbmc_test.c
+goto:
+	goto-cc -DCBMC -I tests/ tests/cbmc_test.c -o ir/cbmc_test.gc
 
 #---- Smack -----#
 # A tool to convert `C -> LLVM -> BPL`
@@ -26,10 +36,6 @@ bpl:
 	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
 
 	
-
-
-
-
 
 #---- Basic tests ----#
 # The recipe names correspond to the source files in the project/dependency
@@ -70,13 +76,6 @@ bug_fix_c:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 
 
-#---- Bounded Model Checker ----#
-# CBMC is meant to assess if an assertion is true
-# for all possible executions of a program
-# To avoid infinite execution for inf loops,
-# we need to specify an --unwind depth
-bmc:
-	cbmc  --trace --function main -DCBMC=true --unwind $(UNWIND) -I toy/include toy/src/* $(ARGS)
 
 
 #---- llvm2smt ----#
@@ -84,7 +83,7 @@ bmc:
 # associated (assert) statement into the emitted .smt 
 # code to check satisifiability
 # The assert statement 
-smt:
+llvm2smt:
 	./scripts/llvm2smt.sh ./toy/ir/shufflevector.ll > toy/smt/shufflevector.smt
 	@echo -e "(assert (and (= |%a_@lhs| |%a_@rhs|) (= |%b_@lhs| |%b_@rhs|) (not (= |_@lhs_result| |_@rhs_result|))))\n(check-sat)" >> toy/smt/shufflevector.smt 
 	z3 toy/smt/shufflevector.smt
@@ -92,6 +91,11 @@ smt:
 
 
 #--- Toy examples ---#
+DIFF_FILE=toy/diffs/strcpy.diff
+DEP=strcpy
+CFLAGS=-DCBMC=false
+
+
 bin/toy: toy/src/*
 	@mkdir -p bin
 	clang -I toy/include $(CFLAGS) $^ -o $@
