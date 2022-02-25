@@ -2504,7 +2504,7 @@ onig_get_capture_tree(OnigRegion* region)
 
 
 extern void
-onig_region_clear(OnigRegion* region)
+onig_region_clear_old(OnigRegion* region)
 {
   int i;
 
@@ -2517,7 +2517,7 @@ onig_region_clear(OnigRegion* region)
 }
 
 extern int
-onig_region_resize(OnigRegion* region, int n)
+onig_region_resize_old(OnigRegion* region, int n)
 {
   region->num_regs = n;
 
@@ -2547,23 +2547,23 @@ onig_region_resize(OnigRegion* region, int n)
 }
 
 static int
-onig_region_resize_clear(OnigRegion* region, int n)
+onig_region_resize_old_clear(OnigRegion* region, int n)
 {
   int r;
 
-  r = onig_region_resize(region, n);
+  r = onig_region_resize_old(region, n);
   if (r != 0) return r;
-  onig_region_clear(region);
+  onig_region_clear_old(region);
   return 0;
 }
 
 extern int
-onig_region_set(OnigRegion* region, int at, int beg, int end)
+onig_region_set_old(OnigRegion* region, int at, int beg, int end)
 {
   if (at < 0) return -30;
 
   if (at >= region->allocated) {
-    int r = onig_region_resize(region, at + 1);
+    int r = onig_region_resize_old(region, at + 1);
     if (r < 0) return r;
   }
 
@@ -2573,7 +2573,7 @@ onig_region_set(OnigRegion* region, int at, int beg, int end)
 }
 
 extern void
-onig_region_init(OnigRegion* region)
+onig_region_init_old(OnigRegion* region)
 {
   region->num_regs = 0;
   region->allocated = 0;
@@ -2583,17 +2583,17 @@ onig_region_init(OnigRegion* region)
 }
 
 extern OnigRegion*
-onig_region_new(void)
+onig_region_new_old(void)
 {
   OnigRegion* r;
 
   r = (OnigRegion* )malloc(sizeof(OnigRegion));
-  onig_region_init(r);
+  onig_region_init_old(r);
   return r;
 }
 
 extern void
-onig_region_free(OnigRegion* r, int free_self)
+onig_region_free_old(OnigRegion* r, int free_self)
 {
   if (r) {
     if (r->allocated > 0) {
@@ -2609,7 +2609,7 @@ onig_region_free(OnigRegion* r, int free_self)
 }
 
 extern void
-onig_region_copy(OnigRegion* to, OnigRegion* from)
+onig_region_copy_old(OnigRegion* to, OnigRegion* from)
 {
 
   int i;
@@ -2644,23 +2644,23 @@ onig_region_copy(OnigRegion* to, OnigRegion* from)
 
 }
 # 412 "regexec.c"
-static unsigned int MatchStackLimitSize = 0;
+static unsigned int MatchStackLimitSize_old = 0;
 
 extern unsigned int
-onig_get_match_stack_limit_size(void)
+onig_get_match_stack_limit_size_old(void)
 {
-  return MatchStackLimitSize;
+  return MatchStackLimitSize_old;
 }
 
 extern int
-onig_set_match_stack_limit_size(unsigned int size)
+onig_set_match_stack_limit_size_old(unsigned int size)
 {
-  MatchStackLimitSize = size;
+  MatchStackLimitSize_old = size;
   return 0;
 }
 
 static int
-stack_double(OnigStackType** arg_stk_base, OnigStackType** arg_stk_end,
+stack_double_old(OnigStackType** arg_stk_base, OnigStackType** arg_stk_end,
       OnigStackType** arg_stk, OnigStackType* stk_alloc, OnigMatchArg* msa)
 {
   unsigned int n;
@@ -2682,11 +2682,11 @@ stack_double(OnigStackType** arg_stk_base, OnigStackType** arg_stk_end,
   }
   else {
     n *= 2;
-    if (MatchStackLimitSize != 0 && n > MatchStackLimitSize) {
-      if ((unsigned int )(stk_end - stk_base) == MatchStackLimitSize)
+    if (MatchStackLimitSize_old != 0 && n > MatchStackLimitSize_old) {
+      if ((unsigned int )(stk_end - stk_base) == MatchStackLimitSize_old)
         return -15;
       else
-        n = MatchStackLimitSize;
+        n = MatchStackLimitSize_old;
     }
     x = (OnigStackType* )realloc(stk_base, sizeof(OnigStackType) * n);
     if ((((void*)(x)) == (void*)0)) {
@@ -2700,7 +2700,7 @@ stack_double(OnigStackType** arg_stk_base, OnigStackType** arg_stk_end,
   return 0;
 }
 # 976 "regexec.c"
-static int string_cmp_ic(OnigEncoding enc, int case_fold_flag,
+static int string_cmp_ic_old(OnigEncoding enc, int case_fold_flag,
     OnigUChar* s1, OnigUChar** ps2, int mblen)
 {
   OnigUChar buf1[18];
@@ -2782,7 +2782,7 @@ static int mem_is_in_memp(int mem, int num, OnigUChar* memp)
   return 0;
 }
 
-static int backref_match_at_nested_level(regex_t* reg
+static int backref_match_at_old_nested_level(regex_t* reg
   , OnigStackType* top, OnigStackType* stk_base
   , int ignore_case, int case_fold_flag
   , int nest, int mem_num, OnigUChar* memp, OnigUChar** s, const OnigUChar* send)
@@ -2811,7 +2811,7 @@ static int backref_match_at_nested_level(regex_t* reg
      ss = *s;
 
      if (ignore_case != 0) {
-       if (string_cmp_ic(reg->enc, case_fold_flag,
+       if (string_cmp_ic_old(reg->enc, case_fold_flag,
     pstart, &ss, (int )(pend - pstart)) == 0)
   return 0;
      }
@@ -2838,17 +2838,17 @@ static int backref_match_at_nested_level(regex_t* reg
   return 0;
 }
 # 1228 "regexec.c"
-typedef int regoff_t;
+typedef int regoff_t_old;
 
 typedef struct {
-  regoff_t rm_so;
-  regoff_t rm_eo;
-} posix_regmatch_t;
+  regoff_t_old rm_so;
+  regoff_t_old rm_eo;
+} posix_regmatch_t_old;
 
 
 
 static int
-match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
+match_at_old(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
   const OnigUChar* right_range,
 
@@ -2935,7 +2935,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  if (region) {
 
    if (((msa->options) & (((((((((((1U << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1))) {
-     posix_regmatch_t* rmt = (posix_regmatch_t* )region;
+     posix_regmatch_t_old* rmt = (posix_regmatch_t_old* )region;
 
      rmt[0].rm_so = sstart - str;
      rmt[0].rm_eo = s - str;
@@ -3403,7 +3403,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_ANYCHAR_STAR: ;
       while ((s < right_range)) {
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  n = (encode)->mbc_enc_len(s);
         if (s + (n) > right_range) goto fail;
         if ((encode)->is_mbc_newline((s),(end))) goto fail;
@@ -3415,7 +3415,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_ANYCHAR_ML_STAR: ;
       while ((s < right_range)) {
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  n = (encode)->mbc_enc_len(s);
  if (n > 1) {
    if (s + (n) > right_range) goto fail;
@@ -3433,7 +3433,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
     case OP_ANYCHAR_STAR_PEEK_NEXT: ;
       while ((s < right_range)) {
  if (*p == *s) {
-   do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + 1); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+   do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + 1); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  }
  n = (encode)->mbc_enc_len(s);
         if (s + (n) > right_range) goto fail;
@@ -3448,7 +3448,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
     case OP_ANYCHAR_ML_STAR_PEEK_NEXT:;
       while ((s < right_range)) {
  if (*p == *s) {
-   do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + 1); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+   do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + 1); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  }
  n = (encode)->mbc_enc_len(s);
  if (n > 1) {
@@ -3625,7 +3625,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_MEMORY_START_PUSH: ;
       do{ mem = *(MemNumType* )p; (p) += sizeof(MemNumType);} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0100; stk->u.mem.num = (mem); stk->u.mem.pstr = (s); stk->u.mem.start = mem_start_stk[mem]; stk->u.mem.end = mem_end_stk[mem]; mem_start_stk[mem] = ((stk) - stk_base); mem_end_stk[mem] = -1; stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0100; stk->u.mem.num = (mem); stk->u.mem.pstr = (s); stk->u.mem.start = mem_start_stk[mem]; stk->u.mem.end = mem_end_stk[mem]; mem_start_stk[mem] = ((stk) - stk_base); mem_end_stk[mem] = -1; stk++;} while(0);
       ;
       continue;
       break;
@@ -3639,7 +3639,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_MEMORY_END_PUSH: ;
       do{ mem = *(MemNumType* )p; (p) += sizeof(MemNumType);} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x8200; stk->u.mem.num = (mem); stk->u.mem.pstr = (s); stk->u.mem.start = mem_start_stk[mem]; stk->u.mem.end = mem_end_stk[mem]; mem_end_stk[mem] = ((stk) - stk_base); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x8200; stk->u.mem.num = (mem); stk->u.mem.pstr = (s); stk->u.mem.start = mem_start_stk[mem]; stk->u.mem.end = mem_end_stk[mem]; mem_end_stk[mem] = ((stk) - stk_base); stk++;} while(0);
       ;
       continue;
       break;
@@ -3655,7 +3655,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
     case OP_MEMORY_END_PUSH_REC: ;
       do{ mem = *(MemNumType* )p; (p) += sizeof(MemNumType);} while(0);
       do { int level = 0; stkp = stk; while (stkp > stk_base) { stkp--; if ((stkp->type & 0x8000) != 0 && stkp->u.mem.num == (mem)) { level++; } else if (stkp->type == 0x0100 && stkp->u.mem.num == (mem)) { if (level == 0) break; level--; } }} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x8200; stk->u.mem.num = (mem); stk->u.mem.pstr = (s); stk->u.mem.start = mem_start_stk[mem]; stk->u.mem.end = mem_end_stk[mem]; mem_end_stk[mem] = ((stk) - stk_base); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x8200; stk->u.mem.num = (mem); stk->u.mem.pstr = (s); stk->u.mem.start = mem_start_stk[mem]; stk->u.mem.end = mem_end_stk[mem]; mem_end_stk[mem] = ((stk) - stk_base); stk++;} while(0);
       mem_start_stk[mem] = ((stkp) - stk_base);
       ;
       continue;
@@ -3671,7 +3671,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       else
  mem_start_stk[mem] = (OnigStackIndex )((void* )stkp->u.mem.pstr);
 
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x8400; stk->u.mem.num = (mem); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x8400; stk->u.mem.num = (mem); stk++;} while(0);
       ;
       continue;
       break;
@@ -3743,7 +3743,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  n = pend - pstart;
  if (s + (n) > right_range) goto fail;
  sprev = s;
- do { if (string_cmp_ic(encode, case_fold_flag, pstart, &s, n) == 0) goto fail; } while(0);
+ do { if (string_cmp_ic_old(encode, case_fold_flag, pstart, &s, n) == 0) goto fail; } while(0);
  while (sprev + (len = (encode)->mbc_enc_len(sprev)) < s)
    sprev += len;
 
@@ -3815,7 +3815,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
    if (s + (n) > right_range) goto fail;
    sprev = s;
    swork = s;
-   do { if (string_cmp_ic(encode, case_fold_flag, pstart, &swork, n) == 0) is_fail = 1; else is_fail = 0; } while(0);
+   do { if (string_cmp_ic_old(encode, case_fold_flag, pstart, &swork, n) == 0) is_fail = 1; else is_fail = 0; } while(0);
    if (is_fail) continue;
    s = swork;
    while (sprev + (len = (encode)->mbc_enc_len(sprev)) < s)
@@ -3842,7 +3842,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  do{ tlen = *(LengthType* )p; (p) += sizeof(LengthType);} while(0);
 
  sprev = s;
- if (backref_match_at_nested_level(reg, stk, stk_base, ic
+ if (backref_match_at_old_nested_level(reg, stk, stk_base, ic
     , case_fold_flag, (int )level, (int )tlen, p, &s, end)) {
    while (sprev + (len = (encode)->mbc_enc_len(sprev)) < s)
      sprev += len;
@@ -3860,7 +3860,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 # 2325 "regexec.c"
     case OP_NULL_CHECK_START: ;
       do{ mem = *(MemNumType* )p; (p) += sizeof(MemNumType);} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x3000; stk->u.null_check.num = (mem); stk->u.null_check.pstr = (s); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x3000; stk->u.null_check.num = (mem); stk->u.null_check.pstr = (s); stk++;} while(0);
       ;
       continue;
       break;
@@ -3941,7 +3941,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
    goto null_check_found;
  }
  else {
-   do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x5000; stk->u.null_check.num = (mem); stk++;} while(0);
+   do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x5000; stk->u.null_check.num = (mem); stk++;} while(0);
  }
       }
       ;
@@ -3959,7 +3959,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_PUSH: ;
       do{ addr = *(RelAddrType* )p; (p) += sizeof(RelAddrType);} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
       ;
       continue;
       break;
@@ -3974,7 +3974,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       do{ addr = *(RelAddrType* )p; (p) += sizeof(RelAddrType);} while(0);
       if (*p == *s && (s < right_range)) {
  p++;
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  ;
  continue;
       }
@@ -3987,7 +3987,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       do{ addr = *(RelAddrType* )p; (p) += sizeof(RelAddrType);} while(0);
       if (*p == *s) {
  p++;
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  ;
  continue;
       }
@@ -4001,12 +4001,12 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  do{ mem = *(MemNumType* )p; (p) += sizeof(MemNumType);} while(0);
  do{ addr = *(RelAddrType* )p; (p) += sizeof(RelAddrType);} while(0);
 
- do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0);
+ do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0);
  repeat_stk[mem] = ((stk) - stk_base);
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0700; stk->u.repeat.num = (mem); stk->u.repeat.pcode = (p); stk->u.repeat.count = 0; stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0700; stk->u.repeat.num = (mem); stk->u.repeat.pcode = (p); stk->u.repeat.count = 0; stk++;} while(0);
 
  if (reg->repeat_range[mem].lower == 0) {
-   do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+   do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  }
       }
       ;
@@ -4018,12 +4018,12 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  do{ mem = *(MemNumType* )p; (p) += sizeof(MemNumType);} while(0);
  do{ addr = *(RelAddrType* )p; (p) += sizeof(RelAddrType);} while(0);
 
- do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0);
+ do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0);
  repeat_stk[mem] = ((stk) - stk_base);
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0700; stk->u.repeat.num = (mem); stk->u.repeat.pcode = (p); stk->u.repeat.count = 0; stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0700; stk->u.repeat.num = (mem); stk->u.repeat.pcode = (p); stk->u.repeat.count = 0; stk++;} while(0);
 
  if (reg->repeat_range[mem].lower == 0) {
-   do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+   do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
    p += addr;
  }
       }
@@ -4042,13 +4042,13 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
       }
       else if (stkp->u.repeat.count >= reg->repeat_range[mem].lower) {
-        do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+        do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (p); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
         p = (stk_base + (si))->u.repeat.pcode;
       }
       else {
         p = stkp->u.repeat.pcode;
       }
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
       ;
       ;
       continue;
@@ -4072,16 +4072,16 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
         if (stkp->u.repeat.count >= reg->repeat_range[mem].lower) {
           OnigUChar* pcode = stkp->u.repeat.pcode;
 
-          do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
-          do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (pcode); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+          do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
+          do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0001); stk->u.state.pcode = (pcode); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
         }
         else {
           p = stkp->u.repeat.pcode;
-          do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
+          do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
         }
       }
       else if (stkp->u.repeat.count == reg->repeat_range[mem].upper) {
-        do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
+        do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0300; stk->u.repeat_inc.si = (si); stk++;} while(0);
       }
       ;
       ;
@@ -4096,7 +4096,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       break;
 
     case OP_PUSH_POS: ;
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0500); stk->u.state.pcode = (((OnigUChar* )0)); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0500); stk->u.state.pcode = (((OnigUChar* )0)); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
       ;
       continue;
       break;
@@ -4113,7 +4113,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_PUSH_POS_NOT: ;
       do{ addr = *(RelAddrType* )p; (p) += sizeof(RelAddrType);} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0003); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0003); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
       ;
       continue;
       break;
@@ -4124,7 +4124,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       break;
 
     case OP_PUSH_STOP_BT: ;
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0600); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0600); stk++;} while(0);
       ;
       continue;
       break;
@@ -4155,7 +4155,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
       }
       else {
- do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0002); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
+ do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = (0x0002); stk->u.state.pcode = (p + addr); stk->u.state.pstr = (s); stk->u.state.pstr_prev = (sprev); stk++;} while(0);
  s = q;
  sprev = (OnigUChar* )onigenc_get_prev_char_head(encode, str, s);
       }
@@ -4171,7 +4171,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_CALL: ;
       do{ addr = *(AbsAddrType* )p; (p) += sizeof(AbsAddrType);} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0800; stk->u.call_frame.ret_addr = (p); stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0800; stk->u.call_frame.ret_addr = (p); stk++;} while(0);
       p = reg->p + addr;
       ;
       continue;
@@ -4179,7 +4179,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
     case OP_RETURN: ;
       do { int level = 0; OnigStackType* k = stk; while (1) { k--; ; if (k->type == 0x0800) { if (level == 0) { (p) = k->u.call_frame.ret_addr; break; } else level--; } else if (k->type == 0x0900) level++; }} while(0);
-      do { do { if (stk_end - stk < (1)) { int r = stack_double(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0900; stk++;} while(0);
+      do { do { if (stk_end - stk < (1)) { int r = stack_double_old(&stk_base, &stk_end, &stk, stk_alloc, msa); if (r != 0) { do{ if (stk_base != stk_alloc) { msa->stack_p = stk_base; msa->stack_n = stk_end - stk_base; };} while(0); return r; } }} while(0); stk->type = 0x0900; stk++;} while(0);
       ;
       continue;
       break;
@@ -4230,7 +4230,7 @@ match_at(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
 
 static OnigUChar*
-slow_search(OnigEncoding enc, OnigUChar* target, OnigUChar* target_end,
+slow_search_old(OnigEncoding enc, OnigUChar* target, OnigUChar* target_end,
      const OnigUChar* text, const OnigUChar* text_end, OnigUChar* text_range)
 {
   OnigUChar *t, *p, *s, *end;
@@ -4265,7 +4265,7 @@ slow_search(OnigEncoding enc, OnigUChar* target, OnigUChar* target_end,
 }
 
 static int
-str_lower_case_match(OnigEncoding enc, int case_fold_flag,
+str_lower_case_match_old(OnigEncoding enc, int case_fold_flag,
                      const OnigUChar* t, const OnigUChar* tend,
        const OnigUChar* p, const OnigUChar* end)
 {
@@ -4285,7 +4285,7 @@ str_lower_case_match(OnigEncoding enc, int case_fold_flag,
 }
 
 static OnigUChar*
-slow_search_ic(OnigEncoding enc, int case_fold_flag,
+slow_search_old_ic(OnigEncoding enc, int case_fold_flag,
         OnigUChar* target, OnigUChar* target_end,
         const OnigUChar* text, const OnigUChar* text_end, OnigUChar* text_range)
 {
@@ -4299,7 +4299,7 @@ slow_search_ic(OnigEncoding enc, int case_fold_flag,
   s = (OnigUChar* )text;
 
   while (s < end) {
-    if (str_lower_case_match(enc, case_fold_flag, target, target_end,
+    if (str_lower_case_match_old(enc, case_fold_flag, target, target_end,
         s, text_end))
       return s;
 
@@ -4314,7 +4314,7 @@ slow_search_ic(OnigEncoding enc, int case_fold_flag,
 }
 
 static OnigUChar*
-slow_search_backward(OnigEncoding enc, OnigUChar* target, OnigUChar* target_end,
+slow_search_old_backward(OnigEncoding enc, OnigUChar* target, OnigUChar* target_end,
        const OnigUChar* text, const OnigUChar* adjust_text,
        const OnigUChar* text_end, const OnigUChar* text_start)
 {
@@ -4350,7 +4350,7 @@ slow_search_backward(OnigEncoding enc, OnigUChar* target, OnigUChar* target_end,
 }
 
 static OnigUChar*
-slow_search_backward_ic(OnigEncoding enc, int case_fold_flag,
+slow_search_old_backward_ic(OnigEncoding enc, int case_fold_flag,
    OnigUChar* target, OnigUChar* target_end,
    const OnigUChar* text, const OnigUChar* adjust_text,
    const OnigUChar* text_end, const OnigUChar* text_start)
@@ -4365,7 +4365,7 @@ slow_search_backward_ic(OnigEncoding enc, int case_fold_flag,
     s = (enc)->left_adjust_char_head(adjust_text, s);
 
   while (s >= text) {
-    if (str_lower_case_match(enc, case_fold_flag,
+    if (str_lower_case_match_old(enc, case_fold_flag,
                              target, target_end, s, text_end))
       return s;
 
@@ -4380,7 +4380,7 @@ slow_search_backward_ic(OnigEncoding enc, int case_fold_flag,
 }
 
 static OnigUChar*
-bm_search_notrev(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
+bm_search_old_notrev_old(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
    const OnigUChar* text, const OnigUChar* text_end,
    const OnigUChar* text_range)
 {
@@ -4440,7 +4440,7 @@ bm_search_notrev(regex_t* reg, const OnigUChar* target, const OnigUChar* target_
 }
 
 static OnigUChar*
-bm_search(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
+bm_search_old(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
    const OnigUChar* text, const OnigUChar* text_end, const OnigUChar* text_range)
 {
   const OnigUChar *s, *t, *p, *end;
@@ -4482,7 +4482,7 @@ bm_search(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
 }
 
 static int
-set_bm_backward_skip(OnigUChar* s, OnigUChar* end, OnigEncoding enc __attribute__ ((unused)),
+set_bm_backward_skip_old_old(OnigUChar* s, OnigUChar* end, OnigEncoding enc __attribute__ ((unused)),
        int** skip)
 
 {
@@ -4504,7 +4504,7 @@ set_bm_backward_skip(OnigUChar* s, OnigUChar* end, OnigEncoding enc __attribute_
 }
 
 static OnigUChar*
-bm_search_backward(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
+bm_search_old_backward(regex_t* reg, const OnigUChar* target, const OnigUChar* target_end,
      const OnigUChar* text, const OnigUChar* adjust_text,
      const OnigUChar* text_end, const OnigUChar* text_start)
 {
@@ -4537,7 +4537,7 @@ bm_search_backward(regex_t* reg, const OnigUChar* target, const OnigUChar* targe
 }
 
 static OnigUChar*
-map_search(OnigEncoding enc, OnigUChar map[],
+map_search_old(OnigEncoding enc, OnigUChar map[],
     const OnigUChar* text, const OnigUChar* text_range)
 {
   const OnigUChar *s = text;
@@ -4555,7 +4555,7 @@ map_search(OnigEncoding enc, OnigUChar map[],
 }
 
 static OnigUChar*
-map_search_backward(OnigEncoding enc, OnigUChar map[],
+map_search_old_backward(OnigEncoding enc, OnigUChar map[],
       const OnigUChar* text, const OnigUChar* adjust_text,
       const OnigUChar* text_start)
 {
@@ -4574,7 +4574,7 @@ map_search_backward(OnigEncoding enc, OnigUChar map[],
 }
 
 extern int
-onig_match(regex_t* reg, const OnigUChar* str, const OnigUChar* end, const OnigUChar* at, OnigRegion* region,
+onig_match_old(regex_t* reg, const OnigUChar* str, const OnigUChar* end, const OnigUChar* at, OnigRegion* region,
      OnigOptionType option)
 {
   int r;
@@ -4594,14 +4594,14 @@ onig_match(regex_t* reg, const OnigUChar* str, const OnigUChar* end, const OnigU
       && !((option) & (((((((((((1U << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1))
 
       ) {
-    r = onig_region_resize_clear(region, reg->num_mem + 1);
+    r = onig_region_resize_old_clear(region, reg->num_mem + 1);
   }
   else
     r = 0;
 
   if (r == 0) {
     prev = (OnigUChar* )onigenc_get_prev_char_head(reg->enc, str, at);
-    r = match_at(reg, str, end,
+    r = match_at_old(reg, str, end,
 
    end,
 
@@ -4614,7 +4614,7 @@ onig_match(regex_t* reg, const OnigUChar* str, const OnigUChar* end, const OnigU
 }
 
 static int
-forward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end, OnigUChar* s,
+forward_search_range_old(regex_t* reg, const OnigUChar* str, const OnigUChar* end, OnigUChar* s,
        OnigUChar* range, OnigUChar** low, OnigUChar** high, OnigUChar** low_prev)
 {
   OnigUChar *p, *pprev = (OnigUChar* )
@@ -4642,23 +4642,23 @@ forward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end, O
  retry:
   switch (reg->optimize) {
   case 1:
-    p = slow_search(reg->enc, reg->exact, reg->exact_end, p, end, range);
+    p = slow_search_old(reg->enc, reg->exact, reg->exact_end, p, end, range);
     break;
   case 4:
-    p = slow_search_ic(reg->enc, reg->case_fold_flag,
+    p = slow_search_old_ic(reg->enc, reg->case_fold_flag,
                        reg->exact, reg->exact_end, p, end, range);
     break;
 
   case 2:
-    p = bm_search(reg, reg->exact, reg->exact_end, p, end, range);
+    p = bm_search_old(reg, reg->exact, reg->exact_end, p, end, range);
     break;
 
   case 3:
-    p = bm_search_notrev(reg, reg->exact, reg->exact_end, p, end, range);
+    p = bm_search_old_notrev_old(reg, reg->exact, reg->exact_end, p, end, range);
     break;
 
   case 5:
-    p = map_search(reg->enc, reg->map, p, range);
+    p = map_search_old(reg->enc, reg->map, p, range);
     break;
   }
 
@@ -4743,13 +4743,13 @@ forward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end, O
   return 0;
 }
 
-static int set_bm_backward_skip (OnigUChar* s, OnigUChar* end, OnigEncoding enc, int** skip)
+static int set_bm_backward_skip_old_old (OnigUChar* s, OnigUChar* end, OnigEncoding enc, int** skip)
                     ;
 
 
 
 static int
-backward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
+backward_search_range_old(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
         OnigUChar* s, const OnigUChar* range, OnigUChar* adjrange,
         OnigUChar** low, OnigUChar** high)
 {
@@ -4763,12 +4763,12 @@ backward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
   switch (reg->optimize) {
   case 1:
   exact_method:
-    p = slow_search_backward(reg->enc, reg->exact, reg->exact_end,
+    p = slow_search_old_backward(reg->enc, reg->exact, reg->exact_end,
         range, adjrange, end, p);
     break;
 
   case 4:
-    p = slow_search_backward_ic(reg->enc, reg->case_fold_flag,
+    p = slow_search_old_backward_ic(reg->enc, reg->case_fold_flag,
                                 reg->exact, reg->exact_end,
                                 range, adjrange, end, p);
     break;
@@ -4779,16 +4779,16 @@ backward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       if (s - range < 100)
  goto exact_method;
 
-      r = set_bm_backward_skip(reg->exact, reg->exact_end, reg->enc,
+      r = set_bm_backward_skip_old_old(reg->exact, reg->exact_end, reg->enc,
           &(reg->int_map_backward));
       if (r) return r;
     }
-    p = bm_search_backward(reg, reg->exact, reg->exact_end, range, adjrange,
+    p = bm_search_old_backward(reg, reg->exact, reg->exact_end, range, adjrange,
       end, p);
     break;
 
   case 5:
-    p = map_search_backward(reg->enc, reg->map, range, adjrange, p);
+    p = map_search_old_backward(reg->enc, reg->map, range, adjrange, p);
     break;
   }
 
@@ -4847,7 +4847,7 @@ backward_search_range(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
 
 extern int
-onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
+onig_search_old(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
      const OnigUChar* start, const OnigUChar* range, OnigRegion* region, OnigOptionType option)
 {
   int r;
@@ -4862,7 +4862,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       && !((option) & (((((((((((1U << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1))
 
       ) {
-    r = onig_region_resize_clear(region, reg->num_mem + 1);
+    r = onig_region_resize_old_clear(region, reg->num_mem + 1);
     if (r) goto finish_no_msa;
   }
 
@@ -4968,7 +4968,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
 
 
-      r = match_at(reg, str, end, (end), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+      r = match_at_old(reg, str, end, (end), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
       goto mismatch;
     }
     goto mismatch_no_msa;
@@ -5016,14 +5016,14 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
       if (reg->dmax != ~((OnigDistance )0)) {
  do {
-   if (! forward_search_range(reg, str, end, s, sch_range,
+   if (! forward_search_range_old(reg, str, end, s, sch_range,
          &low, &high, &low_prev)) goto mismatch;
    if (s < low) {
      s = low;
      prev = low_prev;
    }
    while (s <= high) {
-     r = match_at(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+     r = match_at_old(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
      prev = s;
      s += (reg->enc)->mbc_enc_len(s);
    }
@@ -5031,7 +5031,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  goto mismatch;
       }
       else {
- if (! forward_search_range(reg, str, end, s, sch_range,
+ if (! forward_search_range_old(reg, str, end, s, sch_range,
        &low, &high, (OnigUChar** )
 # 3615 "regexec.c" 3 4
                              ((void *)0)
@@ -5040,7 +5040,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
         if ((reg->anchor & (1<<14)) != 0) {
           do {
-            r = match_at(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+            r = match_at_old(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
             prev = s;
             s += (reg->enc)->mbc_enc_len(s);
 
@@ -5055,13 +5055,13 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
     }
 
     do {
-      r = match_at(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+      r = match_at_old(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
       prev = s;
       s += (reg->enc)->mbc_enc_len(s);
     } while (s < range);
 
     if (s == range) {
-      r = match_at(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+      r = match_at_old(reg, str, end, (orig_range), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
     }
   }
   else {
@@ -5083,7 +5083,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
  do {
    sch_start = s + reg->dmax;
    if (sch_start > end) sch_start = (OnigUChar* )end;
-   if (backward_search_range(reg, str, end, sch_start, range, adjrange,
+   if (backward_search_range_old(reg, str, end, sch_start, range, adjrange,
         &low, &high) <= 0)
      goto mismatch;
 
@@ -5092,7 +5092,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 
    while (s >= low) {
      prev = onigenc_get_prev_char_head(reg->enc, str, s);
-     r = match_at(reg, str, end, (orig_start), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+     r = match_at_old(reg, str, end, (orig_start), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
      s = prev;
    }
  } while (s >= range);
@@ -5113,14 +5113,14 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
                            ;
    }
  }
- if (backward_search_range(reg, str, end, sch_start, range, adjrange,
+ if (backward_search_range_old(reg, str, end, sch_start, range, adjrange,
       &low, &high) <= 0) goto mismatch;
       }
     }
 
     do {
       prev = onigenc_get_prev_char_head(reg->enc, str, s);
-      r = match_at(reg, str, end, (orig_start), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
+      r = match_at_old(reg, str, end, (orig_start), s, prev, &msa); if (r != -1) { if (r >= 0) { if (! ((reg->options) & ((((1U << 1) << 1) << 1) << 1))) { goto match; } } else goto finish; };
       s = prev;
     } while (s >= range);
   }
@@ -5147,7 +5147,7 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
       && !((option) & (((((((((((1U << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1) << 1))
 
       ) {
-    onig_region_clear(region);
+    onig_region_clear_old(region);
   }
 
 
@@ -5173,37 +5173,37 @@ onig_search(regex_t* reg, const OnigUChar* str, const OnigUChar* end,
 }
 
 extern OnigEncoding
-onig_get_encoding(regex_t* reg)
+onig_get_encoding_old(regex_t* reg)
 {
   return reg->enc;
 }
 
 extern OnigOptionType
-onig_get_options(regex_t* reg)
+onig_get_options_old(regex_t* reg)
 {
   return reg->options;
 }
 
 extern OnigCaseFoldType
-onig_get_case_fold_flag(regex_t* reg)
+onig_get_case_fold_flag_old(regex_t* reg)
 {
   return reg->case_fold_flag;
 }
 
 extern OnigSyntaxType*
-onig_get_syntax(regex_t* reg)
+onig_get_syntax_old(regex_t* reg)
 {
   return reg->syntax;
 }
 
 extern int
-onig_number_of_captures(regex_t* reg)
+onig_number_of_captures_old(regex_t* reg)
 {
   return reg->num_mem;
 }
 
 extern int
-onig_number_of_capture_histories(regex_t* reg)
+onig_number_of_capture_histories_old(regex_t* reg)
 {
 
   int i, n;
@@ -5220,7 +5220,7 @@ onig_number_of_capture_histories(regex_t* reg)
 }
 
 extern void
-onig_copy_encoding(OnigEncoding to, OnigEncoding from)
+onig_copy_encoding_old(OnigEncoding to, OnigEncoding from)
 {
   *to = *from;
 }

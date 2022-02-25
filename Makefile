@@ -56,9 +56,10 @@ regexec:
 		 --dependency ../oniguruma ../jq
 
 regexec_v:
-	./scripts/euf.sh -V -o 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
-		 -n 1bd71be9437db6ede501fc88102961423c1ab74c \
-		 -d ../oniguruma ../jq | bat
+	./scripts/euf.sh -f regexec.c \
+		-o 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+		-n 1bd71be9437db6ede501fc88102961423c1ab74c \
+		-d ../oniguruma ../jq | bat
 regexecc:
 	./builtin.sh
 

@@ -112,3 +112,16 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
             info(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
     return changed_functions
+
+def dump_top_level_decls(diff: SourceDiff, root_dir: str) -> None:
+    tu_old = cindex.TranslationUnit.from_source(
+            f"{root_dir}/{diff.old_path}",
+            unsaved_files=[ (f"{root_dir}/{diff.old_path}", diff.old_content) ],
+            args = diff.compile_args
+    )
+    cursor: cindex.Cursor = tu_old.cursor
+
+    for child in cursor.get_children():
+        if child.spelling != "":
+            print(child.spelling)
+

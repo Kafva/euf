@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 die(){ echo -e "$1" >&2 ; exit 1; }
-usage="usage: $(basename $0) [-hV] [-n NEW_COMMIT] [-o OLD_COMMIT] [-d DEPENDENCY] <project>"
+usage="usage: $(basename $0) [-hV] [-n NEW_COMMIT] [-f dep-file] [-o OLD_COMMIT] [-d DEPENDENCY] <project>"
 helpStr=""
 VIEW=false
 
-while getopts ":hn:o:d:V" opt; do
+while getopts ":hn:o:d:Vf:" opt; do
 	case $opt in
 		h) die "$usage\n-----------\n$helpStr" ;;
 		n) NEW_COMMIT=$OPTARG ;;
 		o) OLD_COMMIT=$OPTARG ;;
 		d) DEPENDENCY_DIR=$OPTARG ;;
 		V) VIEW=true ;;
+		f) DEP_ONLY=$OPTARG ;;
 		*) die "$usage" ;;
 	esac
 done
@@ -34,6 +35,10 @@ if $VIEW; then
 	# Show 3000 lines of context for every change
 	git diff --ignore-space-change --ignore-blank-lines -U3000 \
 		--diff-filter MR $OLD_COMMIT -- "***.c" "***.h" | \
+			tr -dc '\0-\177'
+elif [ -n "$DEP_ONLY" ]; then
+	git diff --ignore-space-change --ignore-blank-lines -U3000 \
+		--diff-filter MR $OLD_COMMIT -- "**$DEP_ONLY" | \
 			tr -dc '\0-\177'
 else
 	# We only consider modifications (M) and renamed (R) source files

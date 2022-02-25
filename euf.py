@@ -20,7 +20,7 @@ from git.repo import Repo
 
 from base import NPROC, DEPENDENCY_DIR, PROJECT_DIR, DependencyFunction, ProjectInvocation, \
     SourceDiff, SourceFile, flatten, get_compile_args, load_compile_db
-from preprocessing.change_set import get_changed_functions_from_diff
+from preprocessing.change_set import get_changed_functions_from_diff, dump_top_level_decls
 from preprocessing.impact_set import get_call_sites_from_file
 
 if __name__ == '__main__':
@@ -38,6 +38,8 @@ if __name__ == '__main__':
         'The dependency to upgrade')
     parser.add_argument("--info", action='store_true', default=False,
         help='Set logging level to INFO')
+    parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
+        help='Dump the names of all top level declerations in the old version of the dependency')
     parser.add_argument("--nprocs", metavar='count', help=
         f"The number of processes to spawn for parallel execution (default {NPROC})")
     parser.add_argument("--dep-only", metavar="filepath", default="", help=
@@ -100,6 +102,19 @@ if __name__ == '__main__':
 
     if DEP_ONLY_PATH != "":
         SOURCE_DIFFS = filter(lambda d: d.new_path == DEP_ONLY_PATH, SOURCE_DIFFS)
+
+
+    # Dump a list of all top level declerations in the old version
+    # of each file with a diff (TODO mp)
+    if args.dump_top_level_decls:
+
+        os.chdir(DEPENDENCY_DIR)
+        for diff in list(SOURCE_DIFFS):
+            dump_top_level_decls(diff, DEPENDENCY_DIR)
+
+        sys.exit(0)
+
+
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
