@@ -43,13 +43,20 @@ def flatten(list_of_lists: list[list]) -> list:
         flat.extend(item)
     return flat
 
+
+@dataclass(init=True)
+class DependencyArgument:
+    ''' The type is a string conversions from cindex.TypeKind '''
+    type: str
+    spelling: str
+
 @dataclass(init=True)
 class DependencyFunction:
     filepath: str
     displayname: str # Includes the full prototype string
     name: str
-    return_type: cindex.TypeKind
-    arguments: list[tuple[cindex.TypeKind,str]]
+    return_type: str
+    arguments: list[DependencyArgument]
 
     def __repr__(self):
         return f"{self.filepath}:{self.name}()"
@@ -62,7 +69,7 @@ class ProjectInvocation:
     col: int
 
     def __repr__(self):
-        return f"Call to {self.function} at {self.filepath}:{self.line}:{self.col}"
+        return f"{self.function} at {self.filepath}:{self.line}:{self.col}"
 
 @dataclass(init=True)
 class SourceFile:

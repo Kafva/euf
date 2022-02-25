@@ -26,16 +26,41 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
     where a changed function is called as an invocation
     '''
     if str(cursor.kind).endswith("CALL_EXPR") and \
-            (func := next(filter(lambda fn: \
+            (dep_func := next(filter(lambda fn: \
             fn.name == cursor.spelling, changed_functions), None \
     )):
 
-        call_sites.append(ProjectInvocation(
-            function = func,
-            filepath = filepath,
-            line = cursor.location.line,
-            col  = cursor.location.column
-        ))
+        # We haft to verify that the called function has the expected parameters,
+        # since there could be a local function with the same name
+        # TODO: identify if our version of the function is included in the main file being analyzed
+        # otherwise the error could be a FP
+        matching_args = True
+
+        func_args_main_types = [ str(child.type.kind) for child in cursor.get_arguments() ]
+
+        if len(func_args_main_types) != len(dep_func.arguments):
+            matching_args = False
+        else:
+            for fn_arg_dep, fn_arg_main_type in zip(dep_func.arguments, func_args_main_types):
+
+                if fn_arg_dep.type != fn_arg_main_type:
+                    matching_args = False
+                    break
+
+        invocation = ProjectInvocation(
+                function = dep_func,
+                filepath = filepath,
+                line = cursor.location.line,
+                col  = cursor.location.column
+        )
+
+        if matching_args:
+            call_sites.append(invocation)
+        else:
+            print(f"\033[31m=>\033[0m Potentially inconsistent parameters for {invocation}:" +
+                    f"\n  Prototype: {dep_func.displayname}\n  Invocation: {cursor.spelling}(" +
+                    f", ".join(func_args_main_types) + ")"
+            )
     else:
         # We do not need to process children of a remote call
         for child in cursor.get_children():

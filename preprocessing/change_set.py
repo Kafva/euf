@@ -3,7 +3,7 @@ from itertools import zip_longest
 
 from clang import cindex
 
-from base import DependencyFunction, CursorPair, SourceDiff
+from base import DependencyArgument, DependencyFunction, CursorPair, SourceDiff
 
 def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[DependencyFunction]:
     '''
@@ -99,10 +99,11 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
             filepath    = diff.new_path,
             displayname = cursor_old_fn.displayname,
             name        = cursor_old_fn.spelling,
-            return_type = cursor_old_fn.type.get_result().kind,
-            arguments   = [ (t.kind,n.spelling) for t,n in \
-                    zip(cursor_old_fn.type.argument_types(), \
-                    cursor_old_fn.get_arguments()) ]
+            return_type = str(cursor_old_fn.type.get_result().kind),
+            arguments   = [ DependencyArgument( \
+                    type = str(n.type.kind), \
+                    spelling = str(n.spelling) \
+                 ) for n in cursor_old_fn.get_arguments() ]
         )
 
         if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore

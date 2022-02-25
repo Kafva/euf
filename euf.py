@@ -161,23 +161,6 @@ if __name__ == '__main__':
     # program that invokes both versions of the changed function and then performs an assertion
     # on all affected outputs (only the return value for now)
     #
-    # We need:
-    #   - The C-code for both versions of the changed function, in a format were both can be simultaneously resolved
-    #   - The old and new version will haft to reside in different files 
-    #       (e.g. what if a changed function calls a new function that did not exist earlier?)
-    #   Rename all globals in the old file with *_old and all globals in the new file with *_new ?
-    #   That could almost be enough... It will not be enough if other #include directives circularly
-    #   import symbols from the file.
-    #   For import resolutions to work as intended we essentially need two mirrors of the repo, import paths etc. could differ
-    #   Switching git branches won't really work since our entrypoint needs access to both....
-    #   Maybe we can compile both files through basic inlining (just expand #includes)? Then they become portable?
-    #    
-    #   - A new entrypoint that can call both of them
-    #   - Correct imports in the entrypoint to access all type specifiers etc.
-
-    # ... Later ...
-    # - How do we determine which parameters should be completely unknown and which should be assumed etc.?
-
 
 
     # - - - Impact set - - - #
