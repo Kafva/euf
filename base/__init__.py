@@ -1,6 +1,7 @@
 import sys
 from dataclasses import dataclass
 from clang import cindex
+import ccsyspath
 
 PROJECT_DIR         = ""
 DEPENDENCY_DIR      = ""
@@ -9,6 +10,7 @@ NPROC = 5
 
 # Set the path to the clang library (platform dependent)
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
+INC_ARGS = [ b'-I' + inc for inc in ccsyspath.system_include_paths('clang') ]
 
 # Clang objects cannot be passed as single arguments through `partial` in
 # the same way as a `str` or other less complicated objects when using mp.Pool
@@ -35,7 +37,8 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
     compile_args                    = list(ccmds[0].arguments)
 
     # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-    return compile_args[1:-1]
+    # and add the default linker paths
+    return INC_ARGS + compile_args[1:-1]
 
 def flatten(list_of_lists: list[list]) -> list:
     flat = []

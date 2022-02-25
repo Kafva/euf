@@ -3,7 +3,7 @@ from itertools import zip_longest
 
 from clang import cindex
 
-from base import DependencyArgument, DependencyFunction, CursorPair, SourceDiff
+from base import INC_ARGS, DependencyArgument, DependencyFunction, CursorPair, SourceDiff
 
 def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[DependencyFunction]:
     '''
@@ -57,24 +57,25 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
     def functions_differ(cursor_old: cindex.Cursor,
         cursor_new: cindex.Cursor) -> bool:
         '''
-        DependencyFunctions are considered different at this stage if
-        the cursors have a different number of nodes at any level or if the
-        typing of their arguments differ
+        DependencyFunctions are considered different at this stage if there is a
+        textual diff of between the functions 
+        
         '''
-        for arg_old,arg_new in zip_longest(cursor_old.get_arguments(), cursor_new.get_arguments()):
-            if not arg_old or not arg_new:
-                return True
-            if arg_old.kind != arg_new.kind:
-                return True
+        with open(str(cursor_new.location.file)) as f:
+            new_content = f.read()
+            new_content = new_content[cursor_new.extent.start.offset :
+                    cursor_new.extent.end.offset].encode('ascii')
 
-        for child_old,child_new in \
-            zip_longest(cursor_old.get_children(), cursor_new.get_children()):
-            if not child_old or not child_new:
-                return True
-            if functions_differ(child_old,child_new):
+            #if cursor_old.spelling == 'onig_region_free':
+            #    print(new_content)
+            #    print("===================")
+            #    print(diff.old_content[cursor_old.extent.start.offset : cursor_old.extent.end.offset])
+            if new_content != diff.old_content[cursor_old.extent.start.offset :
+                    cursor_old.extent.end.offset]:
                 return True
 
         return False
+
 
     extract_function_decls_to_pairs(cursor_old, cursor_pairs,  is_new=False)
     extract_function_decls_to_pairs(cursor_new, cursor_pairs,  is_new=True)
@@ -114,7 +115,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
 
     return changed_functions
 
-def dump_top_level_decls(diff: SourceDiff, root_dir: str) -> None:
+def dump_top_level_decls(diff: SourceDiff, root_dir: str, recurse: bool = False) -> None:
     tu_old = cindex.TranslationUnit.from_source(
             f"{root_dir}/{diff.old_path}",
             unsaved_files=[ (f"{root_dir}/{diff.old_path}", diff.old_content) ],
@@ -122,7 +123,21 @@ def dump_top_level_decls(diff: SourceDiff, root_dir: str) -> None:
     )
     cursor: cindex.Cursor = tu_old.cursor
 
+
+    for child in cursor.get_children():
+        if recurse:
+            print(f"\033[34m{child.spelling}\033[0m")
+            dump_children(child,0)
+        elif child.spelling != "":
+                print(child.spelling)
+
+
+def dump_children(cursor: cindex.Cursor, indent: int) -> None:
+
     for child in cursor.get_children():
         if child.spelling != "":
-            print(child.spelling)
+            print(indent * " ", end='')
+            print(f"{child.kind} {child.type.kind} {child.spelling}")
+            indent += 1
+        dump_children(child, indent)
 

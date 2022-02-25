@@ -38,6 +38,8 @@ if __name__ == '__main__':
         'The dependency to upgrade')
     parser.add_argument("--info", action='store_true', default=False,
         help='Set logging level to INFO')
+    parser.add_argument("--dump-full", action='store_true', default=False,
+        help='Dump the complete trace of the AST')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of all top level declerations in the old version of the dependency')
     parser.add_argument("--nprocs", metavar='count', help=
@@ -106,12 +108,11 @@ if __name__ == '__main__':
 
     # Dump a list of all top level declerations in the old version
     # of each file with a diff (TODO mp)
-    if args.dump_top_level_decls:
+    if args.dump_top_level_decls or args.dump_full:
 
         os.chdir(DEPENDENCY_DIR)
         for diff in list(SOURCE_DIFFS):
-            dump_top_level_decls(diff, DEPENDENCY_DIR)
-
+            dump_top_level_decls(diff, DEPENDENCY_DIR, recurse = args.dump_full)
         sys.exit(0)
 
 
@@ -160,7 +161,6 @@ if __name__ == '__main__':
     # Regardless of which back-end we use to check equivalance, we will need a minimal
     # program that invokes both versions of the changed function and then performs an assertion
     # on all affected outputs (only the return value for now)
-    #
 
 
     # - - - Impact set - - - #

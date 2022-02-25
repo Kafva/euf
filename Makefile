@@ -61,7 +61,16 @@ regexec_v:
 		-n 1bd71be9437db6ede501fc88102961423c1ab74c \
 		-d ../oniguruma ../jq | bat
 regexecc:
+	clang -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump ~/Repos/oniguruma/src/regexec.c > regexec.ast
 	./builtin.sh
+
+regexec_d:
+	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
+		 --dep-only src/regexec.c \
+		 --project-only src/builtin.c \
+		 --dump-full \
+		 --dependency ../oniguruma ../jq
 
 # Note that jq actually has a way older version of oniguruma under ./modules
 euc_jp:
