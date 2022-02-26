@@ -1,9 +1,8 @@
 from logging import info
-from itertools import zip_longest
 
 from clang import cindex
 
-from base import INC_ARGS, DependencyArgument, DependencyFunction, CursorPair, SourceDiff
+from base import DependencyArgument, DependencyFunction, CursorPair, SourceDiff, SourceFile
 
 def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[DependencyFunction]:
     '''
@@ -54,31 +53,28 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
 
                 cursor_pairs[key].add(child, diff, is_new)
 
-    def functions_differ(cursor_old: cindex.Cursor,
-        cursor_new: cindex.Cursor) -> bool:
+    def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor, new_content: str, diff: SourceDiff) -> bool:
         '''
         DependencyFunctions are considered different at this stage if there is a
         textual diff of between the functions 
-        
         '''
-        with open(str(cursor_new.location.file)) as f:
-            new_content = f.read()
-            new_content = new_content[cursor_new.extent.start.offset :
-                    cursor_new.extent.end.offset].encode('ascii')
-
-            #if cursor_old.spelling == 'onig_region_free':
-            #    print(new_content)
-            #    print("===================")
-            #    print(diff.old_content[cursor_old.extent.start.offset : cursor_old.extent.end.offset])
-            if new_content != diff.old_content[cursor_old.extent.start.offset :
-                    cursor_old.extent.end.offset]:
-                return True
+        if new_content[cursor_new.extent.start.offset : cursor_new.extent.end.offset].encode('ascii') != \
+            diff.old_content[cursor_old.extent.start.offset : cursor_old.extent.end.offset]:
+            return True
 
         return False
 
 
     extract_function_decls_to_pairs(cursor_old, cursor_pairs,  is_new=False)
     extract_function_decls_to_pairs(cursor_new, cursor_pairs,  is_new=True)
+
+    # Read in the new content of the changed file (if one exists)
+    new_file = cursor_new.location.file
+    new_content: str = ""
+
+    if new_file != None:
+        with open(str(new_file)) as f:
+            new_content = f.read()
 
     # If the function pairs differ based on AST traversal,
     # add them to the list of changed_functions.
@@ -107,7 +103,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
                  ) for n in cursor_old_fn.get_arguments() ]
         )
 
-        if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
+        if functions_differ(cursor_old_fn, cursor_new_fn, new_content, diff): # type: ignore
             info(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
             changed_functions.append(function)
         else:
@@ -115,15 +111,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, root_dir: str) -> list[Dep
 
     return changed_functions
 
-def dump_top_level_decls(diff: SourceDiff, root_dir: str, recurse: bool = False) -> None:
-    tu_old = cindex.TranslationUnit.from_source(
-            f"{root_dir}/{diff.old_path}",
-            unsaved_files=[ (f"{root_dir}/{diff.old_path}", diff.old_content) ],
-            args = diff.compile_args
-    )
-    cursor: cindex.Cursor = tu_old.cursor
-
-
+def dump_top_level_decls(cursor: cindex.Cursor, recurse: bool = False) -> None:
     for child in cursor.get_children():
         if recurse:
             print(f"\033[34m{child.spelling}\033[0m")
@@ -131,9 +119,7 @@ def dump_top_level_decls(diff: SourceDiff, root_dir: str, recurse: bool = False)
         elif child.spelling != "":
                 print(child.spelling)
 
-
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
-
     for child in cursor.get_children():
         if child.spelling != "":
             print(indent * " ", end='')

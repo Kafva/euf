@@ -18,7 +18,6 @@ def get_call_sites_from_file(source_file: SourceFile,
 
     return call_sites
 
-
 def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
     changed_functions: list[DependencyFunction], call_sites: list[ProjectInvocation]) -> None:
     '''

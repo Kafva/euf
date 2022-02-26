@@ -15,6 +15,7 @@ import argparse, re, sys, logging, os # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
+from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
@@ -103,19 +104,7 @@ if __name__ == '__main__':
         diff.compile_args = get_compile_args(DEP_DB, diff.new_path)
 
     if DEP_ONLY_PATH != "":
-        SOURCE_DIFFS = filter(lambda d: d.new_path == DEP_ONLY_PATH, SOURCE_DIFFS)
-
-
-    # Dump a list of all top level declerations in the old version
-    # of each file with a diff (TODO mp)
-    if args.dump_top_level_decls or args.dump_full:
-
-        os.chdir(DEPENDENCY_DIR)
-        for diff in list(SOURCE_DIFFS):
-            dump_top_level_decls(diff, DEPENDENCY_DIR, recurse = args.dump_full)
-        sys.exit(0)
-
-
+        SOURCE_DIFFS = list(filter(lambda d: d.new_path == DEP_ONLY_PATH, SOURCE_DIFFS))
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -132,7 +121,7 @@ if __name__ == '__main__':
     ) for filepath in SOURCE_FILES ]
 
     if PROJECT_ONLY_PATH != "":
-        SOURCE_FILES = filter(lambda f: f.new_path == PROJECT_ONLY_PATH, SOURCE_FILES)
+        SOURCE_FILES = list(filter(lambda f: f.new_path == PROJECT_ONLY_PATH, SOURCE_FILES))
 
 
     # - - - Change set - - - #
@@ -157,10 +146,57 @@ if __name__ == '__main__':
         if DEP_ONLY_PATH != "":
             pprint(CHANGED_FUNCTIONS)
 
+
+    # - - - Transative change set propogation - - - #
+    # To include functions that have not had a textual change but call a function
+    # that has changed, we perform a configurable number of additional passes were we look for
+    # invocations of changed functions in the dependency
+
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, we will need a minimal
     # program that invokes both versions of the changed function and then performs an assertion
     # on all affected outputs (only the return value for now)
+
+
+
+    # - - - Dump parse tree - - - #
+    # Dump a list of all top level declerations in the old version
+    # of each file with a diff (TODO multiprocessing)
+    if args.dump_top_level_decls or args.dump_full:
+        print("==> Dump dependency (old) <===")
+        os.chdir(DEPENDENCY_DIR)
+        for diff in SOURCE_DIFFS:
+            # Reads from in-memory content of each diff
+            tu_old = cindex.TranslationUnit.from_source(
+                    f"{DEPENDENCY_DIR}/{diff.old_path}",
+                    unsaved_files=[ (f"{DEPENDENCY_DIR}/{diff.old_path}", diff.old_content) ],
+                    args = diff.compile_args
+            )
+            cursor: cindex.Cursor = tu_old.cursor
+            dump_top_level_decls(cursor, recurse = args.dump_full)
+
+        print("==> Dump dependency (new) <===")
+        for diff in SOURCE_DIFFS:
+            # Reads content from files on disk
+            tu_new = cindex.TranslationUnit.from_source(
+                    f"{DEPENDENCY_DIR}/{diff.new_path}",
+                    args = diff.compile_args
+            )
+            cursor: cindex.Cursor = tu_new.cursor
+            dump_top_level_decls(cursor, recurse = args.dump_full)
+
+        print("==> Dump project <===")
+        os.chdir(PROJECT_DIR)
+
+        for source_file in SOURCE_FILES:
+            # Reads content from files on disk
+            tu = cindex.TranslationUnit.from_source(
+                    f"{PROJECT_DIR}/{source_file.new_path}",
+                    args = source_file.compile_args
+            )
+            cursor: cindex.Cursor = tu.cursor
+            dump_top_level_decls(cursor, recurse = args.dump_full)
+        sys.exit(0)
 
 
     # - - - Impact set - - - #
