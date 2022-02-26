@@ -1,31 +1,17 @@
-import sys
 from dataclasses import dataclass
+from typing import Set
 from clang import cindex
 
 PROJECT_DIR         = ""
-DEPENDENCY_DIR      = ""
+DEPENDENCY_OLD      = ""
 
 NPROC = 5
 
 # Set the path to the clang library (platform dependent)
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
 
-# Clang objects cannot be passed as single arguments through `partial` in
-# the same way as a `str` or other less complicated objects when using mp.Pool
-# We therefore need to rely on globals for the index and compilation databases
-
-def load_compile_db(path: str) -> cindex.CompilationDatabase:
-    '''
-    For the AST dump to contain a resolved view of the symbols
-    we need to provide the correct compile commands
-    These can be derived from compile_commands.json
-    '''
-    try:
-        compile_db = cindex.CompilationDatabase.fromDirectory(path)
-    except cindex.CompilationDatabaseError:
-        print(f"Failed to parse {path}/compile_commands.json")
-        sys.exit(1)
-    return compile_db
+def print_err(msg: str):
+    print("\033[31m!>\033[0m " +  msg)
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
@@ -38,10 +24,11 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
     # and add the default linker paths
     return compile_args[1:-1]
 
-def flatten(list_of_lists: list[list]) -> list:
-    flat = []
-    for item in list_of_lists:
-        flat.extend(item)
+def flatten(list_of_sets: list[Set]) -> Set:
+    flat = set()
+    for li in list_of_sets:
+        for item in li:
+            flat.add(item)
     return flat
 
 
@@ -53,14 +40,30 @@ class DependencyArgument:
 
 @dataclass(init=True)
 class DependencyFunction:
+    ''' 
+    A function which is transativly changed due to invoking either
+    a direclty changed function or another transativly changed function
+    will have the `invokes_changed_function` attribute set to a non-empty list 
+    '''
     filepath: str
     displayname: str # Includes the full prototype string
     name: str
     return_type: str
     arguments: list[DependencyArgument]
+    line: int
+    col: int
+
+    direct_change: bool = True
+
+    # The list contains `filepath:displayname:line:col` entries
+    # we can look them up in the change_set manually if needed
+    invokes_changed_functions = list[str]
 
     def __repr__(self):
-        return f"{self.filepath}:{self.name}()"
+        return f"{self.filepath}:{self.line}:{self.col}:{self.name}()"
+
+    def __hash__(self):
+        return hash(self.filepath + self.displayname + str(self.line) + str(self.col))
 
 @dataclass(init=True)
 class ProjectInvocation:
@@ -70,17 +73,17 @@ class ProjectInvocation:
     col: int
 
     def __repr__(self):
-        return f"{self.function} at {self.filepath}:{self.line}:{self.col}"
+        return f"call to {self.function} at {self.filepath}:{self.line}:{self.col}"
 
 @dataclass(init=True)
 class SourceFile:
     new_path: str
-    compile_args: list[str]
+    new_compile_args: list[str]
 
 @dataclass(init=True)
 class SourceDiff(SourceFile):
     old_path: str
-    old_content: bytes
+    old_compile_args: list[str]
 
 @dataclass(init=True)
 class CursorPair:

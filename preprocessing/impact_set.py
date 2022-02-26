@@ -1,8 +1,9 @@
+from typing import Set
 from clang import cindex
-from base import DependencyFunction, ProjectInvocation, SourceFile
+from base import DependencyFunction, ProjectInvocation, SourceFile, print_err
 
 def get_call_sites_from_file(source_file: SourceFile,
-    changed_functions: list[DependencyFunction]) -> list[ProjectInvocation]:
+    changed_functions: Set[DependencyFunction]) -> list[ProjectInvocation]:
     '''
     Return a list of call sites in the provided source
     file for the functions in `changed_functions`
@@ -10,7 +11,7 @@ def get_call_sites_from_file(source_file: SourceFile,
     call_sites = []
 
     translation_unit: cindex.TranslationUnit  = cindex.TranslationUnit.from_source(
-            source_file.new_path, args = source_file.compile_args
+            source_file.new_path, args = source_file.new_compile_args
     )
     cursor: cindex.Cursor       = translation_unit.cursor
 
@@ -19,14 +20,14 @@ def get_call_sites_from_file(source_file: SourceFile,
     return call_sites
 
 def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
-    changed_functions: list[DependencyFunction], call_sites: list[ProjectInvocation]) -> None:
+    changed_functions: Set[DependencyFunction], call_sites: list[ProjectInvocation]) -> None:
     '''
     Go through the complete AST of the provided file and save any sites
     where a changed function is called as an invocation
     '''
     if str(cursor.kind).endswith("CALL_EXPR") and \
-            (dep_func := next(filter(lambda fn: \
-            fn.name == cursor.spelling, changed_functions), None \
+        (dep_func := next(filter(lambda fn: \
+        fn.name == cursor.spelling, changed_functions), None \
     )):
 
         # We haft to verify that the called function has the expected parameters,
@@ -56,9 +57,9 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
         if matching_args:
             call_sites.append(invocation)
         else:
-            print(f"\033[31m=>\033[0m Potentially inconsistent parameters for {invocation}:" +
-                    f"\n  Prototype: {dep_func.displayname}\n  Invocation: {cursor.spelling}(" +
-                    f", ".join(func_args_main_types) + ")"
+            print_err(f"Potentially inconsistent parameters for {invocation}:" +
+            f"\n  Prototype: {dep_func.displayname}\n  Invocation: {cursor.spelling}(" +
+            ", ".join(func_args_main_types) + ")"
             )
     else:
         # We do not need to process children of a remote call

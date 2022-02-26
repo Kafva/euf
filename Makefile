@@ -52,7 +52,6 @@ regexec:
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --dep-only src/regexec.c \
 		 --project-only src/builtin.c \
-		 --info \
 		 --dependency ../oniguruma ../jq
 
 regexec_v:
