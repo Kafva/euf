@@ -20,7 +20,7 @@ from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
-from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunctionChange, \
+from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
 from cparser.util import flatten, flatten_dict, flatten_set, print_err
 from cparser.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
@@ -29,6 +29,7 @@ from cparser.impact_set import get_call_sites_from_file
 
 # The location to store the new version of the dependency
 NEW_VERSION_ROOT = "/tmp"
+TRANSATIVE_PASSES = 1
 
 def compile_db_fail_msg(path: str):
     print_err(f"Failed to parse {path}/compile_commands.json\n" +
@@ -178,14 +179,14 @@ if __name__ == '__main__':
 
     # - - - Change set - - - #
     print("==> Change set <==")
-    CHANGED_FUNCTIONS: Set[DependencyFunctionChange] = set()
+    CHANGED_FUNCTIONS: list[DependencyFunctionChange] = []
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save
     # the changed functions to `CHANGED_FUNCTIONS`
     try:
         with Pool(NPROC) as p:
-            CHANGED_FUNCTIONS       = flatten_set(p.map(
+            CHANGED_FUNCTIONS       = flatten(p.map(
                 partial(get_changed_functions_from_diff,
                     old_root_dir=DEPENDENCY_OLD,
                     new_root_dir=DEPENDENCY_NEW
@@ -220,31 +221,46 @@ if __name__ == '__main__':
         DEP_SOURCE_FILES = list(filter(lambda f: f.new_path == DEP_ONLY_PATH, DEP_SOURCE_FILES))
 
     print("==> Transitive change set <==")
-    TRANSATIVE_CHANGED_FUNCTIONS = set()
+    TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(DEPENDENCY_NEW)
 
-    try:
-        with Pool(NPROC) as p:
-            TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
-                partial(get_transative_changes_from_file,
-                    changed_functions = CHANGED_FUNCTIONS
-                ),
-                DEP_SOURCE_FILES
-            ))
+    for _ in range(TRANSATIVE_PASSES):
+        try:
+            with Pool(NPROC) as p:
+                TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
+                    partial(get_transative_changes_from_file,
+                        changed_functions = CHANGED_FUNCTIONS
+                    ),
+                    DEP_SOURCE_FILES
+                ))
 
             #if DEP_ONLY_PATH != "":
             pprint(TRANSATIVE_CHANGED_FUNCTIONS)
-    except Exception as e:
-        logging.error(traceback.format_exc())
-        done(1)
+
+            for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
+                try:
+                    # Add calls to a function that already has been identified as changed
+                    if (idx := list(map(lambda cfn: cfn.new,  CHANGED_FUNCTIONS)).index(key)):
+                        CHANGED_FUNCTIONS[idx].invokes_changed_functions.extend( calls )
+                except ValueError:
+                    # Add a new function (with an indirect change) to the changed set
+                    changed_function = DependencyFunctionChange(
+                            old = DependencyFunction.empty(),
+                            new = key,
+                            invokes_changed_functions = calls,
+                            direct_change = False
+                    )
+                    CHANGED_FUNCTIONS.append(changed_function)
 
 
+        except Exception as e:
+            logging.error(traceback.format_exc())
+
+
+
+    print("==> Complete set <===")
+    pprint(CHANGED_FUNCTIONS)
     done(0)
-    # Join the sets
-    # TODO: intersect properly
-    #CHANGED_FUNCTIONS |= TRANSATIVE_CHANGED_FUNCTIONS
-    #print("==> Complete set <===")
-    #pprint(CHANGED_FUNCTIONS)
 
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, we will need a minimal
@@ -252,8 +268,7 @@ if __name__ == '__main__':
     # on all affected outputs (only the return value for now)
 
 
-
-    # - - - (Optional) Dump parse trees - - - #
+    # - - - (Debugging) Dump parse trees - - - #
     # Dump a list of all top level declarations in the old version
     # of each file with a diff
     if args.dump_top_level_decls or args.dump_full:

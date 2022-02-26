@@ -1,5 +1,6 @@
 import sys
 from dataclasses import dataclass
+from typing import Set
 from clang import cindex
 
 # Enable importing from the root directory inside the module
@@ -78,7 +79,6 @@ class DependencyFunction:
             col = 0
         )
 
-
     def __repr__(self):
         return f"{self.filepath}:{self.line}:{self.col}:{self.name}()"
 
@@ -98,7 +98,7 @@ class DependencyFunctionChange:
 
     # The list contains `filepath:displayname:line:col` entries
     # The line and col references the new version of the dependency
-    invokes_changed_functions = list[str]()
+    invokes_changed_functions: list[str]
     direct_change: bool = True
 
     @classmethod
@@ -106,13 +106,17 @@ class DependencyFunctionChange:
             old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):
         return cls(
             old = DependencyFunction.new_from_cursor(old_filepath, old_cursor),
-            new = DependencyFunction.new_from_cursor(new_filepath, new_cursor)
+            new = DependencyFunction.new_from_cursor(new_filepath, new_cursor),
+            invokes_changed_functions = []
         )
 
     def __repr__(self):
         out =   "Direct change: " if self.direct_change else \
                 "Indirect change: "
-        out += f"{self.old} -> {self.new}"
+        if self.old.name == "":
+            out += f"{self.new}"
+        else:
+            out += f"{self.old} -> {self.new}"
         for trans_call in self.invokes_changed_functions:
             out += f"\n\t{trans_call}"
         return out

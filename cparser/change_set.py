@@ -1,13 +1,12 @@
 import logging
 from itertools import zip_longest
-from typing import Set
 
 from clang import cindex
 
 from cparser import DependencyFunction, CursorPair, DependencyFunctionChange, SourceDiff, SourceFile
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
-    old_root_dir: str) -> Set[DependencyFunctionChange]:
+    old_root_dir: str) -> list[DependencyFunctionChange]:
     '''
     Walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -35,7 +34,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     )
     cursor_new: cindex.Cursor = tu_new.cursor
 
-    changed_functions: Set[DependencyFunctionChange]       = set()
+    changed_functions: list[DependencyFunctionChange]       = list()
     cursor_pairs: dict[str,CursorPair]      = {}
 
     def extract_function_decls_to_pairs(cursor: cindex.Cursor,
@@ -101,7 +100,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
 
         if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
             logging.info(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
-            changed_functions.add(function_change)
+            changed_functions.append(function_change)
         else:
             logging.info(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
@@ -124,17 +123,15 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
         dump_children(child, indent)
 
 def get_transative_changes_from_file(source_file: SourceFile,
-    changed_functions: Set[DependencyFunctionChange]) -> dict[str,list[str]]:
+    changed_functions: list[DependencyFunctionChange]) -> dict[DependencyFunction,list[str]]:
     '''
     Go through the complete AST of the provided (new) file and save 
     any transative calls
     
-    key: 'filepath:enclosing_function_name'
-    value: [ called_function_names ]
+    key: 'enclosing_function'
+    value: [ called_functions ]
     '''
-
-
-    transative_function_calls: dict[str,list[str]] = {}
+    transative_function_calls: dict[DependencyFunction,list[str]] = {}
 
     translation_unit: cindex.TranslationUnit  = \
             cindex.TranslationUnit.from_source(
@@ -142,15 +139,14 @@ def get_transative_changes_from_file(source_file: SourceFile,
     )
     cursor: cindex.Cursor       = translation_unit.cursor
 
-
     find_transative_changes_in_tu(source_file.new_path, cursor,
         changed_functions, transative_function_calls, DependencyFunction.empty()
     )
     return transative_function_calls
 
 def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
-    changed_functions: Set[DependencyFunctionChange],
-    transative_function_calls: dict[str,list[str]],
+    changed_functions: list[DependencyFunctionChange],
+    transative_function_calls: dict[DependencyFunction,list[str]],
     current_function: DependencyFunction) -> None:
     '''
     Look for calls to functions in the changed set and record which
@@ -165,25 +161,25 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
         (dep_func := next(filter(lambda fn: \
         fn.new.name == cursor.spelling, changed_functions), None \
     )):
-        # Ensure that arguments also match the changed entity
-        # TODO: This omits transative changes were function prototypes
+        # Ensure that arguments and return value also match the changed entity
+        # NOTE: This omits transative changes were function prototypes
         # have been changed.
-        matching_args = True
+        matching = True
 
         func_args_main_types = [ str(child.type.kind) \
                 for child in cursor.get_arguments() ]
 
         if len(func_args_main_types) != len(dep_func.new.arguments):
-            matching_args = False
+            matching = False
         else:
             for fn_arg_dep, fn_arg_main_type in \
                     zip(dep_func.new.arguments, func_args_main_types):
                 if fn_arg_dep.type != fn_arg_main_type:
-                    matching_args = False
+                    matching = False
                     break
 
-        if matching_args:
-            key = f"{filepath}:{current_function.name}"
+        if matching:
+            key = current_function
             if not key in transative_function_calls:
                 transative_function_calls[key] = []
 

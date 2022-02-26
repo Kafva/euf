@@ -4,7 +4,7 @@ from typing import Set
 def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg)
 
-def flatten_dict(list_of_dicts: list[dict[str,list[str]]] ) -> dict:
+def flatten_dict(list_of_dicts: list[dict] ) -> dict:
     flat = {}
     for di in list_of_dicts:
         for key,val in di.items():
