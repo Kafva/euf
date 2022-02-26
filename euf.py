@@ -20,8 +20,9 @@ from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
-from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, \
-    ProjectInvocation, SourceDiff, SourceFile, flatten, flatten_set, get_compile_args, print_err
+from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunctionChange, \
+    ProjectInvocation, SourceDiff, SourceFile, get_compile_args
+from cparser.util import flatten, flatten_dict, flatten_set, print_err
 from cparser.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file
 
@@ -177,7 +178,7 @@ if __name__ == '__main__':
 
     # - - - Change set - - - #
     print("==> Change set <==")
-    CHANGED_FUNCTIONS: Set[DependencyFunction] = set()
+    CHANGED_FUNCTIONS: Set[DependencyFunctionChange] = set()
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save
@@ -202,8 +203,9 @@ if __name__ == '__main__':
     # - - - Transitive change set propagation - - - #
     # To include functions that have not had a textual change but call a function
     # that has changed, we perform a configurable number of additional passes were we look for
-    # invocations of changed functions in the dependency (and add any functions that call a changed function)
-    # to the changed set.
+    # invocations of changed functions in the dependency 
+    #
+    # We only need to look through the files in the new version of the dependency
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
     DEP_SOURCE_FILES = filter(lambda p: p.endswith(".c"),
         [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
@@ -223,7 +225,7 @@ if __name__ == '__main__':
 
     try:
         with Pool(NPROC) as p:
-            TRANSATIVE_CHANGED_FUNCTIONS       = flatten_set(p.map(
+            TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                 partial(get_transative_changes_from_file,
                     changed_functions = CHANGED_FUNCTIONS
                 ),
@@ -237,11 +239,12 @@ if __name__ == '__main__':
         done(1)
 
 
+    done(0)
     # Join the sets
     # TODO: intersect properly
-    CHANGED_FUNCTIONS |= TRANSATIVE_CHANGED_FUNCTIONS
-    print("==> Complete set <===")
-    pprint(CHANGED_FUNCTIONS)
+    #CHANGED_FUNCTIONS |= TRANSATIVE_CHANGED_FUNCTIONS
+    #print("==> Complete set <===")
+    #pprint(CHANGED_FUNCTIONS)
 
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, we will need a minimal

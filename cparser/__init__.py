@@ -1,6 +1,5 @@
 import sys
 from dataclasses import dataclass
-from typing import Set
 from clang import cindex
 
 # Enable importing from the root directory inside the module
@@ -14,9 +13,6 @@ NPROC = 5
 # Set the path to the clang library (platform dependent)
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
 
-def print_err(msg: str):
-    print("\033[31m!>\033[0m " +  msg)
-
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
     ''' Load the compilation configuration for the particular file
@@ -27,19 +23,6 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
     # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
     # and add the default linker paths
     return compile_args[1:-1]
-
-def flatten_set(list_of_sets: list[Set]) -> Set:
-    flat = set()
-    for li in list_of_sets:
-        for item in li:
-            flat.add(item)
-    return flat
-
-def flatten(list_of_lists: list[list]) -> list:
-    flat = []
-    for li in list_of_lists:
-        flat.extend(li)
-    return flat
 
 @dataclass(init=True)
 class DependencyArgument:
@@ -53,19 +36,20 @@ class DependencyFunction:
     A function which is transativly changed due to invoking either
     a direclty changed function or another transativly changed function
     will have the `invokes_changed_function` attribute set to a non-empty list 
+
+    We pair functions based on the key:
+    {diff.new_path}:{diff.old_path}:{child.spelling}
+    All other attributes could thus differ between the new and old version.
+
     '''
-    filepath: str
     displayname: str # Includes the full prototype string
-    name: str
+    name: str # Same between changes but used for __repr__
+    filepath: str
     return_type: str
     arguments: list[DependencyArgument]
     line: int
     col: int
 
-    # The list contains `filepath:displayname:line:col` entries
-    # we can look them up in the change_set manually if needed
-    invokes_changed_functions = list[str]()
-    direct_change: bool = True
 
     @classmethod
     def new_from_cursor(cls, filepath: str, cursor: cindex.Cursor):
@@ -99,7 +83,46 @@ class DependencyFunction:
         return f"{self.filepath}:{self.line}:{self.col}:{self.name}()"
 
     def __hash__(self):
-        return hash(self.filepath + self.displayname + str(self.line) + str(self.col))
+        return hash(self.filepath + self.return_type + self.displayname +
+                str(self.line) + str(self.col))
+
+@dataclass(init=True)
+class DependencyFunctionChange:
+    '''
+    We pair functions based on the key:
+        {diff.new_path}:{diff.old_path}:{child.spelling}
+    All other attributes could thus differ between the new and old version.
+    '''
+    old: DependencyFunction
+    new: DependencyFunction
+
+    # The list contains `filepath:displayname:line:col` entries
+    # The line and col references the new version of the dependency
+    invokes_changed_functions = list[str]()
+    direct_change: bool = True
+
+    @classmethod
+    def new_from_cursors(cls, old_filepath: str, new_filepath: str,
+            old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):
+        return cls(
+            old = DependencyFunction.new_from_cursor(old_filepath, old_cursor),
+            new = DependencyFunction.new_from_cursor(new_filepath, new_cursor)
+        )
+
+    def __repr__(self):
+        out =   "Direct change: " if self.direct_change else \
+                "Indirect change: "
+        out += f"{self.old} -> {self.new}"
+        for trans_call in self.invokes_changed_functions:
+            out += f"\n\t{trans_call}"
+        return out
+
+    def __hash__(self):
+        ''' 
+        Note that the hash does not consider the `invokes_changed_functions` 
+        list. A set will thus only include one copy of each function
+        '''
+        return hash(hash(self.old) + hash(self.new))
 
 @dataclass(init=True)
 class ProjectInvocation:
