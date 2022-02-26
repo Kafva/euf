@@ -4,7 +4,7 @@ from typing import Set
 
 from clang import cindex
 
-from preprocessing import DependencyFunction, CursorPair, SourceDiff, SourceFile
+from cparser import DependencyFunction, CursorPair, SourceDiff, SourceFile
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> Set[DependencyFunction]:

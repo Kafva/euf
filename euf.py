@@ -11,20 +11,19 @@ remove equivilent entries
 5. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, logging, os # pylint: disable=multiple-imports
+import argparse, re, sys, logging, os, traceback # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
-import traceback
 from typing import Set
 from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
-from preprocessing import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, \
+from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, \
     ProjectInvocation, SourceDiff, SourceFile, flatten, flatten_set, get_compile_args, print_err
-from preprocessing.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
-from preprocessing.impact_set import get_call_sites_from_file
+from cparser.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
+from cparser.impact_set import get_call_sites_from_file
 
 
 # The location to store the new version of the dependency
