@@ -1,12 +1,13 @@
+import logging
 from itertools import zip_longest
-from logging import info
 from typing import Set
 
 from clang import cindex
 
-from base import DependencyArgument, DependencyFunction, CursorPair, SourceDiff
+from preprocessing import DependencyFunction, CursorPair, SourceDiff, SourceFile
 
-def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str, old_root_dir: str) -> Set[DependencyFunction]:
+def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
+    old_root_dir: str) -> Set[DependencyFunction]:
     '''
     Walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -42,12 +43,9 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str, old_roo
         for child in cursor.get_children():
 
             if str(child.kind).endswith("FUNCTION_DECL") and child.is_definition():
-                # Note: the key in the dict _always_ uses the new filepath
+                # Note: the key in the dict uses the new and old filepath
                 # to ensure that functions in renamed paths still end up in the same pair
-                # TODO: Handle edge case when filenames are switched
-                #   foo.c     -> src/bar.c (already exists)
-                #   src/bar.c -> foo.c
-                key = f"{diff.new_path}:{child.spelling}"
+                key = f"{diff.new_path}:{diff.old_path}:{child.spelling}"
 
                 # Add the child to an existing pair or create a new one
                 if not key in cursor_pairs:
@@ -87,33 +85,22 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str, old_roo
     # perform a deeper SMT analysis
     for pair in cursor_pairs.values():
         if not pair.new:
-            info(f"Deleted: {pair.old_path} {pair.old.spelling}()")
+            logging.info(f"Deleted: {pair.old_path} {pair.old.spelling}()")
             continue
         elif not pair.old:
-            info(f"New: {pair.new_path} {pair.new.spelling}()")
+            logging.info(f"New: {pair.new_path} {pair.new.spelling}()")
             continue
 
         cursor_old_fn = pair.old
         cursor_new_fn = pair.new
 
-        function = DependencyFunction(
-            filepath    = diff.old_path,
-            displayname = cursor_old_fn.displayname,
-            name        = cursor_old_fn.spelling,
-            return_type = str(cursor_old_fn.type.get_result().kind),
-            arguments   = [ DependencyArgument( \
-                    type = str(n.type.kind), \
-                    spelling = str(n.spelling) \
-                 ) for n in cursor_old_fn.get_arguments() ],
-            line = cursor_old_fn.location.line,
-            col = cursor_old_fn.location.column
-        )
+        function = DependencyFunction.new_from_cursor(diff.old_path, cursor_old_fn)
 
         if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
-            info(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
+            logging.info(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
             changed_functions.add(function)
         else:
-            info(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
+            logging.info(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
     return changed_functions
 
@@ -133,64 +120,68 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             indent += 1
         dump_children(child, indent)
 
-#def find_transative_calls_from_cursor(filepath: str, cursor: cindex.Cursor,
-#        changed_functions: Set[DependencyFunction] ) -> None:
-#    '''
-#    Go through the complete AST of the provided cursor and save any sites
-#    where a changed function is called
-#
-#    Directly changed      [dep.a() dep.b()]
-#     1. dep.c() calls:    dep.a()
-#     2. dep.e() calls:    dep.c()
-#     3. dep.d() calls:    dep.e(), dep.b()
-#      ...
-#    Every changed function (directly or transativly) will be added to the changed_functions set
-#    we can identify the direct changes from the fact that they lack a value for the
-#    'invokes_changed_function' attribute
-#
-#    dep.d() -> dep.e() -> dep.c() -> dep.a()
-#
-#    '''
-#
-#    #if str(cursor.kind).endswith("CALL_EXPR") and \
-#    #    (dep_func := next(filter(lambda fn: \
-#    #    fn.name == cursor.spelling, changed_functions), None \
-#    #)):
-#
-#    #    # We haft to verify that the called function has the expected parameters,
-#    #    # since there could be a local function with the same name
-#    #    # TODO: identify if our version of the function is included in the main file being analyzed
-#    #    # otherwise the error could be a FP
-#    #    matching_args = True
-#
-#    #    func_args_main_types = [ str(child.type.kind) for child in cursor.get_arguments() ]
-#
-#    #    if len(func_args_main_types) != len(dep_func.arguments):
-#    #        matching_args = False
-#    #    else:
-#    #        for fn_arg_dep, fn_arg_main_type in zip(dep_func.arguments, func_args_main_types):
-#
-#    #            if fn_arg_dep.type != fn_arg_main_type:
-#    #                matching_args = False
-#    #                break
-#
-#    #    invocation = ProjectInvocation(
-#    #            function = dep_func,
-#    #            filepath = filepath,
-#    #            line = cursor.location.line,
-#    #            col  = cursor.location.column
-#    #    )
-#
-#    #    if matching_args:
-#    #        call_sites.append(invocation)
-#    #    else:
-#    #        print_err(f"Potentially inconsistent parameters for {invocation}:" +
-#    #        f"\n  Prototype: {dep_func.displayname}\n  Invocation: {cursor.spelling}(" +
-#    #        ", ".join(func_args_main_types) + ")"
-#    #        )
-#    #else:
-#    #    # We do not need to process children of a remote call
-#    #    for child in cursor.get_children():
-#    #        find_call_sites_in_tu(filepath, child, changed_functions, call_sites)
-#
-#
+def get_transative_changes_from_file(source_file: SourceFile,
+    changed_functions: Set[DependencyFunction]) -> Set[DependencyFunction]:
+    '''
+    Go through the complete AST of the provided file and add any functions
+    which invoke a function from the changed set to the transative change set
+    '''
+    transative_functions = set()
+
+    translation_unit: cindex.TranslationUnit  = \
+            cindex.TranslationUnit.from_source(
+            source_file.new_path, args = source_file.new_compile_args
+    )
+    cursor: cindex.Cursor       = translation_unit.cursor
+
+    find_transative_changes_in_tu(source_file.new_path, cursor,
+        changed_functions, transative_functions, DependencyFunction.empty()
+    )
+    return transative_functions
+
+def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
+    changed_functions: Set[DependencyFunction],
+    transative_functions: Set[DependencyFunction],
+    current_function: DependencyFunction) -> None:
+
+    if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
+
+        current_function = DependencyFunction.new_from_cursor(filepath, cursor)
+
+    elif str(cursor.kind).endswith("CALL_EXPR") and \
+        (dep_func := next(filter(lambda fn: \
+        fn.name == cursor.spelling, changed_functions), None \
+    )):
+        # Ensure that arguments also match the changed entity
+        # TODO: This omits transative changes were function prototypes
+        # have been changed.
+        matching_args = True
+
+        func_args_main_types = [ str(child.type.kind) \
+                for child in cursor.get_arguments() ]
+
+        if len(func_args_main_types) != len(dep_func.arguments):
+            matching_args = False
+        else:
+            for fn_arg_dep, fn_arg_main_type in \
+                    zip(dep_func.arguments, func_args_main_types):
+                if fn_arg_dep.type != fn_arg_main_type:
+                    matching_args = False
+                    break
+
+        if matching_args:
+            current_function.invokes_changed_functions.append(
+            f"{filepath}:{cursor.displayname}:{cursor.location.line}:{cursor.location.column}"
+            )
+
+            # If there already exists an entry for the current function in
+            # the set, remove it, and add the new entry
+            # TODO: Very ugly hack
+            if current_function in transative_functions:
+                transative_functions.remove(current_function)
+
+            transative_functions.add(current_function)
+
+    for child in cursor.get_children():
+        find_transative_changes_in_tu(filepath, child, changed_functions,
+            transative_functions, current_function)

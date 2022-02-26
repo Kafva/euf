@@ -21,9 +21,9 @@ from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
-from base import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, \
-    ProjectInvocation, SourceDiff, SourceFile, flatten, get_compile_args, print_err
-from preprocessing.change_set import get_changed_functions_from_diff, dump_top_level_decls
+from preprocessing import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, \
+    ProjectInvocation, SourceDiff, SourceFile, flatten, flatten_set, get_compile_args, print_err
+from preprocessing.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
 from preprocessing.impact_set import get_call_sites_from_file
 
 
@@ -37,7 +37,7 @@ def compile_db_fail_msg(path: str):
     done(1)
 
 def done(code: int = 0):
-    DEP_REPO.git.checkout(HEAD_BRANCH) # type: ignore
+    OLD_DEP_REPO.git.checkout(HEAD_BRANCH) # type: ignore
     sys.exit(code)
 
 if __name__ == '__main__':
@@ -68,20 +68,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    #wow: Set[DependencyFunction] = set()
-    #wow.add(
-    #    DependencyFunction(
-    #        filepath    ="wow", 
-    #        displayname ="wow", 
-    #        name        ="wow", 
-    #        return_type ="wow", 
-    #        arguments   = [ ],
-    #        line = 1,
-    #        col = 1
-    #    ))
-    #print( [ x for x in wow ] )
-    #exit()
-
     if args.commit_new == "" or args.commit_old == "" or \
         args.dependency == "" or len(args.project) == 0:
         print("Missing required option/argument")
@@ -99,9 +85,9 @@ if __name__ == '__main__':
     )
 
     # - - - Dependency - - - #
-    DEP_REPO = Repo(DEPENDENCY_OLD)
+    OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
     try:
-        HEAD_BRANCH = DEP_REPO.active_branch
+        HEAD_BRANCH = OLD_DEP_REPO.active_branch
     except TypeError as e:
         print_err(f"Unable to read current branch name for {DEPENDENCY_OLD}\n{e}")
         sys.exit(1)
@@ -110,7 +96,7 @@ if __name__ == '__main__':
     COMMIT_OLD: Commit = None # type: ignore
     COMMIT_NEW: Commit = None # type: ignore
 
-    for commit in DEP_REPO.iter_commits():
+    for commit in OLD_DEP_REPO.iter_commits():
         if commit.hexsha == args.commit_new:
             COMMIT_NEW: Commit = commit
         elif commit.hexsha == args.commit_old:
@@ -131,7 +117,7 @@ if __name__ == '__main__':
                 str(d.a_path).endswith(".c") and \
                 re.match("M|R", d.change_type),
                 COMMIT_NEW.diff(COMMIT_OLD))
-    SOURCE_DIFFS = [ SourceDiff(
+    DEP_SOURCE_DIFFS = [ SourceDiff(
                 new_path = d.a_path,
                 old_path = d.b_path,
                 new_compile_args = [],
@@ -148,7 +134,7 @@ if __name__ == '__main__':
         os.system(f"git worktree add -b euf {DEPENDENCY_NEW} {COMMIT_NEW}")
 
     # Ensure that the old repo has the correct commit checked out
-    DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
+    OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
@@ -163,17 +149,17 @@ if __name__ == '__main__':
         compile_db_fail_msg(DEPENDENCY_OLD)
 
     # Extract compile flags for each file that was changed
-    for diff in SOURCE_DIFFS:
+    for diff in DEP_SOURCE_DIFFS:
         diff.old_compile_args = get_compile_args(DEP_DB_OLD, diff.old_path)
         diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path)
 
     if DEP_ONLY_PATH != "":
-        SOURCE_DIFFS = list(filter(lambda d: d.new_path == DEP_ONLY_PATH, SOURCE_DIFFS))
+        DEP_SOURCE_DIFFS = list(filter(lambda d: d.new_path == DEP_ONLY_PATH, DEP_SOURCE_DIFFS))
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
     main_repo = Repo(PROJECT_DIR)
-    SOURCE_FILES = filter(lambda p: p.endswith(".c"),
+    PROJECT_SOURCE_FILES = filter(lambda p: p.endswith(".c"),
         [ e.path for e in main_repo.tree().traverse() ] # type: ignore
     )
 
@@ -182,33 +168,33 @@ if __name__ == '__main__':
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(PROJECT_DIR)
 
-    SOURCE_FILES = [ SourceFile(
+    PROJECT_SOURCE_FILES = [ SourceFile(
         new_path = filepath,
         new_compile_args = get_compile_args(MAIN_DB, filepath)
-    ) for filepath in SOURCE_FILES ]
+    ) for filepath in PROJECT_SOURCE_FILES ]
 
     if PROJECT_ONLY_PATH != "":
-        SOURCE_FILES = list(filter(lambda f: f.new_path == PROJECT_ONLY_PATH, SOURCE_FILES))
+        PROJECT_SOURCE_FILES = list(filter(lambda f: f.new_path == PROJECT_ONLY_PATH, PROJECT_SOURCE_FILES))
 
     # - - - Change set - - - #
-    CHANGED_FUNCTIONS: Set[DependencyFunction] = []
+    print("==> Change set <==")
+    CHANGED_FUNCTIONS: Set[DependencyFunction] = set()
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save
     # the changed functions to `CHANGED_FUNCTIONS`
     try:
         with Pool(NPROC) as p:
-            CHANGED_FUNCTIONS       = flatten(p.map(
+            CHANGED_FUNCTIONS       = flatten_set(p.map(
                 partial(get_changed_functions_from_diff,
                     old_root_dir=DEPENDENCY_OLD,
                     new_root_dir=DEPENDENCY_NEW
                 ),
-                SOURCE_DIFFS
+                DEP_SOURCE_DIFFS
             ))
 
-            print("==> Change set <==")
-            if DEP_ONLY_PATH != "":
-                pprint(CHANGED_FUNCTIONS)
+            #if DEP_ONLY_PATH != "":
+            pprint(CHANGED_FUNCTIONS)
     except Exception as e:
         logging.error(traceback.format_exc())
         done(1)
@@ -219,7 +205,44 @@ if __name__ == '__main__':
     # that has changed, we perform a configurable number of additional passes were we look for
     # invocations of changed functions in the dependency (and add any functions that call a changed function)
     # to the changed set.
-    #
+    NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
+    DEP_SOURCE_FILES = filter(lambda p: p.endswith(".c"),
+        [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
+    )
+
+    DEP_SOURCE_FILES = [ SourceFile(
+        new_path = filepath,
+        new_compile_args = get_compile_args(DEP_DB_NEW, filepath)
+    ) for filepath in DEP_SOURCE_FILES ]
+
+    if DEP_ONLY_PATH != "":
+        DEP_SOURCE_FILES = list(filter(lambda f: f.new_path == DEP_ONLY_PATH, DEP_SOURCE_FILES))
+
+    print("==> Transitive change set <==")
+    TRANSATIVE_CHANGED_FUNCTIONS = set()
+    os.chdir(DEPENDENCY_NEW)
+
+    try:
+        with Pool(NPROC) as p:
+            TRANSATIVE_CHANGED_FUNCTIONS       = flatten_set(p.map(
+                partial(get_transative_changes_from_file,
+                    changed_functions = CHANGED_FUNCTIONS
+                ),
+                DEP_SOURCE_FILES
+            ))
+
+            #if DEP_ONLY_PATH != "":
+            pprint(TRANSATIVE_CHANGED_FUNCTIONS)
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        done(1)
+
+
+    # Join the sets
+    # TODO: intersect properly
+    CHANGED_FUNCTIONS |= TRANSATIVE_CHANGED_FUNCTIONS
+    print("==> Complete set <===")
+    pprint(CHANGED_FUNCTIONS)
 
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, we will need a minimal
@@ -234,7 +257,7 @@ if __name__ == '__main__':
     if args.dump_top_level_decls or args.dump_full:
         print("==> Dump dependency (old) <===")
         os.chdir(DEPENDENCY_OLD)
-        for diff in SOURCE_DIFFS:
+        for diff in DEP_SOURCE_DIFFS:
             # Reads from in-memory content of each diff
             tu_old = cindex.TranslationUnit.from_source(
                     f"{DEPENDENCY_OLD}/{diff.old_path}",
@@ -245,7 +268,7 @@ if __name__ == '__main__':
 
         print("==> Dump dependency (new) <===")
         os.chdir(DEPENDENCY_NEW)
-        for diff in SOURCE_DIFFS:
+        for diff in DEP_SOURCE_DIFFS:
             # Reads content from files on disk
             tu_new = cindex.TranslationUnit.from_source(
                     f"{DEPENDENCY_NEW}/{diff.new_path}",
@@ -257,7 +280,7 @@ if __name__ == '__main__':
         print("==> Dump project <===")
         os.chdir(PROJECT_DIR)
 
-        for source_file in SOURCE_FILES:
+        for source_file in PROJECT_SOURCE_FILES:
             # Reads content from files on disk
             tu = cindex.TranslationUnit.from_source(
                     f"{PROJECT_DIR}/{source_file.new_path}",
@@ -269,6 +292,7 @@ if __name__ == '__main__':
 
 
     # - - - Impact set - - - #
+    print("==> Impact set <==")
     CALL_SITES: list[ProjectInvocation]      = []
 
     os.chdir(PROJECT_DIR)
@@ -280,12 +304,11 @@ if __name__ == '__main__':
         with Pool(NPROC) as p:
             CALL_SITES = flatten(p.map(
                 partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
-                SOURCE_FILES
+                PROJECT_SOURCE_FILES
             ))
 
-            print("==> Impact set <==")
-            if PROJECT_ONLY_PATH != "":
-                pprint(CALL_SITES)
+            #if PROJECT_ONLY_PATH != "":
+            pprint(CALL_SITES)
     except Exception as e:
         logging.error(traceback.format_exc())
         done(1)
