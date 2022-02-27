@@ -114,7 +114,7 @@ def dump_top_level_decls(cursor: cindex.Cursor, recurse: bool = False) -> None:
         if recurse:
             print(f"\033[34m{child.spelling}\033[0m")
             dump_children(child,0)
-        elif child.spelling != "":
+        elif str(child.kind).endswith("FUNCTION_DECL") and child.is_definition():
             print(child.spelling)
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:

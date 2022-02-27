@@ -272,27 +272,30 @@ if __name__ == '__main__':
         pprint(CHANGED_FUNCTIONS)
 
     # - - - Reduction of change set - - - #
-    # Regardless of which back-end we use to check equivalance, we will need a minimal
-    # program that invokes both versions of the changed function and then performs an assertion
-    # on all affected outputs
+    # Regardless of which back-end we use to check equivalance, 
+    # we will need a minimal program that invokes both versions of the changed 
+    # function and then performs an assertion on all affected outputs
 
 
     # - - - (Debugging) Dump parse trees - - - #
     # Dump a list of all top level declarations in the old version
     # of each file with a diff
     if args.dump_top_level_decls or args.dump_full:
-        print("==> Dump dependency (old) <===")
-        os.chdir(DEPENDENCY_OLD)
-        for diff in DEP_SOURCE_DIFFS:
-            # Reads from in-memory content of each diff
-            tu_old = cindex.TranslationUnit.from_source(
-                    f"{DEPENDENCY_OLD}/{diff.old_path}",
-                    args = diff.old_compile_args
-            )
-            cursor: cindex.Cursor = tu_old.cursor
-            dump_top_level_decls(cursor, recurse = args.dump_full)
+        if CONFIG.VERBOSITY >= 3:
+            print("==> Dump dependency (old) <===")
+            os.chdir(DEPENDENCY_OLD)
+            for diff in DEP_SOURCE_DIFFS:
+                # Reads from in-memory content of each diff
+                tu_old = cindex.TranslationUnit.from_source(
+                        f"{DEPENDENCY_OLD}/{diff.old_path}",
+                        args = diff.old_compile_args
+                )
+                cursor: cindex.Cursor = tu_old.cursor
+                dump_top_level_decls(cursor, recurse = args.dump_full)
 
-        print("==> Dump dependency (new) <===")
+        if CONFIG.VERBOSITY >= 3:
+            print("==> Dump dependency (new) <===")
+
         os.chdir(DEPENDENCY_NEW)
         for diff in DEP_SOURCE_DIFFS:
             # Reads content from files on disk
@@ -303,17 +306,18 @@ if __name__ == '__main__':
             cursor: cindex.Cursor = tu_new.cursor
             dump_top_level_decls(cursor, recurse = args.dump_full)
 
-        print("==> Dump project <===")
-        os.chdir(PROJECT_DIR)
+        if CONFIG.VERBOSITY >= 3:
+            print("==> Dump project <===")
+            os.chdir(PROJECT_DIR)
 
-        for source_file in PROJECT_SOURCE_FILES:
-            # Reads content from files on disk
-            tu = cindex.TranslationUnit.from_source(
-                    f"{PROJECT_DIR}/{source_file.new_path}",
-                    args = source_file.new_compile_args
-            )
-            cursor: cindex.Cursor = tu.cursor
-            dump_top_level_decls(cursor, recurse = args.dump_full)
+            for source_file in PROJECT_SOURCE_FILES:
+                # Reads content from files on disk
+                tu = cindex.TranslationUnit.from_source(
+                        f"{PROJECT_DIR}/{source_file.new_path}",
+                        args = source_file.new_compile_args
+                )
+                cursor: cindex.Cursor = tu.cursor
+                dump_top_level_decls(cursor, recurse = args.dump_full)
         done(0)
 
 

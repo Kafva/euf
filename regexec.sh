@@ -21,8 +21,10 @@ echo "$BRANCH" | grep -iqE "^[a-z]+$" || die "Failed to determine current branch
 
 git checkout 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 &> /dev/null
 
+cat /tmp/top_decls.list
+
 while read -r line; do
-	sed -i'' "s/$line/${line}_old/g" regexec.c	
+	sed -i'' "s/${line}/${line}_old/g" regexec.c	
 done < /tmp/top_decls.list
 
 
