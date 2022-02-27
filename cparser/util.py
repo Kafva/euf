@@ -14,7 +14,6 @@ def flatten_dict(list_of_dicts: list[dict] ) -> dict:
 
     return flat
 
-
 def flatten_set(list_of_sets: list[Set]) -> Set:
     flat = set()
     for li in list_of_sets:

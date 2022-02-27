@@ -15,14 +15,13 @@ import argparse, re, sys, logging, os, traceback # pylint: disable=multiple-impo
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
-from typing import Set
 from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
 from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
-from cparser.util import flatten, flatten_dict, flatten_set, print_err
+from cparser.util import flatten, flatten_dict, print_err
 from cparser.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file
 
@@ -256,16 +255,13 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(traceback.format_exc())
 
-
-
     print("==> Complete set <===")
     pprint(CHANGED_FUNCTIONS)
-    done(0)
 
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, we will need a minimal
     # program that invokes both versions of the changed function and then performs an assertion
-    # on all affected outputs (only the return value for now)
+    # on all affected outputs
 
 
     # - - - (Debugging) Dump parse trees - - - #
@@ -316,7 +312,7 @@ if __name__ == '__main__':
 
     # With the changed functions enumerated we can
     # begin parsing the source code of the main project
-    # to find all call locations
+    # to find all call locations (the impact set)
     try:
         with Pool(NPROC) as p:
             CALL_SITES = flatten(p.map(

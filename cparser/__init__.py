@@ -1,6 +1,5 @@
 import sys
 from dataclasses import dataclass
-from typing import Set
 from clang import cindex
 
 # Enable importing from the root directory inside the module
@@ -97,7 +96,7 @@ class DependencyFunctionChange:
     new: DependencyFunction
 
     # The list contains `filepath:displayname:line:col` entries
-    # The line and col references the new version of the dependency
+    # The line and col references the _new version_ of the dependency
     invokes_changed_functions: list[str]
     direct_change: bool = True
 
@@ -114,9 +113,11 @@ class DependencyFunctionChange:
         out =   "Direct change: " if self.direct_change else \
                 "Indirect change: "
         if self.old.name == "":
-            out += f"{self.new}"
+            out += f"b/{self.new}"
         else:
-            out += f"{self.old} -> {self.new}"
+            out += f"a/{self.old} -> b/{self.new}"
+        if len(self.invokes_changed_functions) > 0:
+            out += "\n Calls to changed functions:"
         for trans_call in self.invokes_changed_functions:
             out += f"\n\t{trans_call}"
         return out
@@ -130,13 +131,13 @@ class DependencyFunctionChange:
 
 @dataclass(init=True)
 class ProjectInvocation:
-    function: DependencyFunction
+    function: DependencyFunctionChange
     filepath: str
     line: int
     col: int
 
     def __repr__(self):
-        return f"call to {self.function} at {self.filepath}:{self.line}:{self.col}"
+        return f"call to {self.function.new} at {self.filepath}:{self.line}:{self.col}"
 
 @dataclass(init=True)
 class SourceFile:

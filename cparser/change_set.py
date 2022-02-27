@@ -149,8 +149,8 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
     transative_function_calls: dict[DependencyFunction,list[str]],
     current_function: DependencyFunction) -> None:
     '''
-    Look for calls to functions in the changed set and record which
-    encolsing functions perform these calls
+    Look for calls to functions in the change-set and record which
+    encolsing functions perform these calls in the transative_function_calls dict
     '''
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
