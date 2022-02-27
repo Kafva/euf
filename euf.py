@@ -6,12 +6,14 @@ modified (M) or renamed (R) since the last commit based on git labeling
 2. Walk the AST of the old and new version of each modified file
 3. Consider any functions with a difference in the AST composition as
 the base change-set
-4. Analyze each of the objects in the base change-set and 
+4. Perform a configurable number of passes where we add functions that
+are transativly changed, i.e. functions that call a function that has been changed
+5. Analyze each of the objects in the base change-set and 
 remove equivilent entries
-5. Walk the AST of all source files in the main project and return
+6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, logging, os, traceback # pylint: disable=multiple-imports
+import argparse, re, sys, os, traceback # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
@@ -19,16 +21,12 @@ from clang import cindex
 from git.objects.commit import Commit
 from git.repo import Repo
 
-from cparser import NPROC, DEPENDENCY_OLD, PROJECT_DIR, DependencyFunction, DependencyFunctionChange, \
+from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
 from cparser.util import flatten, flatten_dict, print_err
 from cparser.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file
 
-
-# The location to store the new version of the dependency
-NEW_VERSION_ROOT = "/tmp"
-TRANSATIVE_PASSES = 1
 
 def compile_db_fail_msg(path: str):
     print_err(f"Failed to parse {path}/compile_commands.json\n" +
@@ -53,14 +51,14 @@ if __name__ == '__main__':
         help='Git hash of the old (current) commit in the dependency')
     parser.add_argument("--dependency", metavar="directory", help=
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
-    parser.add_argument("--info", action='store_true', default=False,
-        help='Set logging level to INFO')
     parser.add_argument("--dump-full", action='store_true', default=False,
         help='Dump the complete trace of the AST')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of all top level declarations in the old version of the dependency')
+    parser.add_argument("--verbose", metavar='level', type=int, default=0, help=
+        f"Verbosity level in output, 0-3, (default 0)")
     parser.add_argument("--nprocs", metavar='count', help=
-        f"The number of processes to spawn for parallel execution (default {NPROC})")
+        f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
     parser.add_argument("--dep-only", metavar="filepath", default="", help=
         'Only process a specific path of the dependency (uses the path in the new commit)')
     parser.add_argument("--project-only", metavar="filepath", default="", help=
@@ -73,16 +71,11 @@ if __name__ == '__main__':
         print("Missing required option/argument")
         sys.exit(1)
 
+    CONFIG.VERBOSITY    = args.verbose
     PROJECT_DIR         = os.path.abspath(args.project[0])
     DEPENDENCY_OLD      = os.path.abspath(args.dependency)
     DEP_ONLY_PATH       = args.dep_only
     PROJECT_ONLY_PATH   = args.project_only
-
-    # Set logging level
-    LEVEL = logging.INFO if args.info else logging.ERROR
-    logging.basicConfig(stream=sys.stdout, level=LEVEL,
-            format="\033[34m!\033[0m: %(message)s"
-    )
 
     # - - - Dependency - - - #
     OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
@@ -127,10 +120,10 @@ if __name__ == '__main__':
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    DEPENDENCY_NEW = f"{NEW_VERSION_ROOT}/{os.path.basename(DEPENDENCY_OLD)}"
+    DEPENDENCY_NEW = f"{CONFIG.NEW_VERSION_ROOT}/{os.path.basename(DEPENDENCY_OLD)}"
 
     if not os.path.exists(DEPENDENCY_NEW):
-        logging.info(f"Creating worktree at {DEPENDENCY_NEW}")
+        print(f"Creating worktree at {DEPENDENCY_NEW}")
         os.system(f"git worktree add -b euf {DEPENDENCY_NEW} {COMMIT_NEW}")
 
     # Ensure that the old repo has the correct commit checked out
@@ -177,14 +170,16 @@ if __name__ == '__main__':
         PROJECT_SOURCE_FILES = list(filter(lambda f: f.new_path == PROJECT_ONLY_PATH, PROJECT_SOURCE_FILES))
 
     # - - - Change set - - - #
-    print("==> Change set <==")
+    if CONFIG.VERBOSITY >= 2:
+        print("==> Change set <==")
+
     CHANGED_FUNCTIONS: list[DependencyFunctionChange] = []
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save
     # the changed functions to `CHANGED_FUNCTIONS`
     try:
-        with Pool(NPROC) as p:
+        with Pool(CONFIG.NPROC) as p:
             CHANGED_FUNCTIONS       = flatten(p.map(
                 partial(get_changed_functions_from_diff,
                     old_root_dir=DEPENDENCY_OLD,
@@ -193,10 +188,10 @@ if __name__ == '__main__':
                 DEP_SOURCE_DIFFS
             ))
 
-            #if DEP_ONLY_PATH != "":
-            pprint(CHANGED_FUNCTIONS)
+            if CONFIG.VERBOSITY >= 1:
+                pprint(CHANGED_FUNCTIONS)
     except Exception as e:
-        logging.error(traceback.format_exc())
+        print(traceback.format_exc())
         done(1)
 
 
@@ -219,13 +214,14 @@ if __name__ == '__main__':
     if DEP_ONLY_PATH != "":
         DEP_SOURCE_FILES = list(filter(lambda f: f.new_path == DEP_ONLY_PATH, DEP_SOURCE_FILES))
 
-    print("==> Transitive change set <==")
+    if CONFIG.VERBOSITY >= 2:
+        print("==> Transitive change set <==")
     TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(DEPENDENCY_NEW)
 
-    for _ in range(TRANSATIVE_PASSES):
+    for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
-            with Pool(NPROC) as p:
+            with Pool(CONFIG.NPROC) as p:
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
                         changed_functions = CHANGED_FUNCTIONS
@@ -233,14 +229,14 @@ if __name__ == '__main__':
                     DEP_SOURCE_FILES
                 ))
 
-            #if DEP_ONLY_PATH != "":
-            pprint(TRANSATIVE_CHANGED_FUNCTIONS)
+            if CONFIG.VERBOSITY >= 1:
+                pprint(TRANSATIVE_CHANGED_FUNCTIONS)
 
             for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
                 try:
                     # Add calls to a function that already has been identified as changed
                     if (idx := list(map(lambda cfn: cfn.new,  CHANGED_FUNCTIONS)).index(key)):
-                        CHANGED_FUNCTIONS[idx].invokes_changed_functions.extend( calls )
+                        CHANGED_FUNCTIONS[idx].invokes_changed_functions.extend(calls)
                 except ValueError:
                     # Add a new function (with an indirect change) to the changed set
                     changed_function = DependencyFunctionChange(
@@ -251,12 +247,13 @@ if __name__ == '__main__':
                     )
                     CHANGED_FUNCTIONS.append(changed_function)
 
-
         except Exception as e:
-            logging.error(traceback.format_exc())
+            print(traceback.format_exc())
+            done(1)
 
-    print("==> Complete set <===")
-    pprint(CHANGED_FUNCTIONS)
+    if CONFIG.VERBOSITY >= 2:
+        print("==> Complete set <===")
+        pprint(CHANGED_FUNCTIONS)
 
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, we will need a minimal
@@ -314,16 +311,14 @@ if __name__ == '__main__':
     # begin parsing the source code of the main project
     # to find all call locations (the impact set)
     try:
-        with Pool(NPROC) as p:
+        with Pool(CONFIG.NPROC) as p:
             CALL_SITES = flatten(p.map(
                 partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
                 PROJECT_SOURCE_FILES
             ))
-
-            #if PROJECT_ONLY_PATH != "":
             pprint(CALL_SITES)
     except Exception as e:
-        logging.error(traceback.format_exc())
+        print(traceback.format_exc())
         done(1)
 
 

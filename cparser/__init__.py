@@ -5,10 +5,15 @@ from clang import cindex
 # Enable importing from the root directory inside the module
 sys.path.append('../')
 
-PROJECT_DIR         = ""
-DEPENDENCY_OLD      = ""
+class Config:
+    VERBOSITY: int = 0
+    TRANSATIVE_PASSES: int = 1
+    NPROC: int = 5
 
-NPROC = 5
+    # The location to store the new version of the dependency
+    NEW_VERSION_ROOT: str = "/tmp"
+
+CONFIG = Config()
 
 # Set the path to the clang library (platform dependent)
 cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
@@ -110,14 +115,14 @@ class DependencyFunctionChange:
         )
 
     def __repr__(self):
-        out =   "Direct change: " if self.direct_change else \
-                "Indirect change: "
+        out =   "direct change: " if self.direct_change else \
+                "indirect change: "
         if self.old.name == "":
             out += f"b/{self.new}"
         else:
             out += f"a/{self.old} -> b/{self.new}"
         if len(self.invokes_changed_functions) > 0:
-            out += "\n Calls to changed functions:"
+            out += "\n affected by changes to:"
         for trans_call in self.invokes_changed_functions:
             out += f"\n\t{trans_call}"
         return out
@@ -136,8 +141,14 @@ class ProjectInvocation:
     line: int
     col: int
 
-    def __repr__(self):
+    def brief(self):
         return f"call to {self.function.new} at {self.filepath}:{self.line}:{self.col}"
+
+    def detail(self):
+        return f"call to {self.function}\nat {self.filepath}:{self.line}:{self.col}"
+
+    def __repr__(self):
+        return self.detail()
 
 @dataclass(init=True)
 class SourceFile:

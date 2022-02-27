@@ -51,6 +51,7 @@ regexec:
 	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --project-only src/builtin.c \
+		 --verbose 2 \
 		 --dep-only src/regexec.c \
 		 --dependency ../oniguruma ../jq
 

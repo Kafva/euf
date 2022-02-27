@@ -1,9 +1,8 @@
-import logging
 from itertools import zip_longest
 
 from clang import cindex
 
-from cparser import DependencyFunction, CursorPair, DependencyFunctionChange, SourceDiff, SourceFile
+from cparser import CONFIG, DependencyFunction, CursorPair, DependencyFunctionChange, SourceDiff, SourceFile
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
@@ -84,10 +83,12 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     # perform a deeper SMT analysis
     for pair in cursor_pairs.values():
         if not pair.new:
-            logging.info(f"Deleted: {pair.old_path} {pair.old.spelling}()")
+            if CONFIG.VERBOSITY >= 3:
+                print(f"Deleted: {pair.old_path} {pair.old.spelling}()")
             continue
         elif not pair.old:
-            logging.info(f"New: {pair.new_path} {pair.new.spelling}()")
+            if CONFIG.VERBOSITY >= 3:
+                print(f"New: {pair.new_path} {pair.new.spelling}()")
             continue
 
         cursor_old_fn = pair.old
@@ -99,10 +100,11 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
         )
 
         if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
-            logging.info(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
+            if CONFIG.VERBOSITY >= 3:
+                print(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
             changed_functions.append(function_change)
-        else:
-            logging.info(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
+        elif CONFIG.VERBOSITY >= 3:
+            print(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
     return changed_functions
 
