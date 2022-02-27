@@ -114,18 +114,28 @@ class DependencyFunctionChange:
             invokes_changed_functions = []
         )
 
-    def __repr__(self):
-        out =   "direct change: " if self.direct_change else \
-                "indirect change: "
+    def detail(self, pretty: bool = False):
+        if pretty:
+            out =   "\033[31mDirect\033[0m change: " if self.direct_change else \
+                    "\033[34mIndirect\033[0m change: "
+        else:
+            out =   "direct change: " if self.direct_change else \
+                    "indirect change: "
         if self.old.name == "":
             out += f"b/{self.new}"
         else:
             out += f"a/{self.old} -> b/{self.new}"
         if len(self.invokes_changed_functions) > 0:
-            out += "\n affected by changes to:"
+            if pretty:
+                out += "\nAffected by changes to:"
+            else:
+                out += "\n affected by changes to:"
         for trans_call in self.invokes_changed_functions:
             out += f"\n\t{trans_call}"
         return out
+
+    def __repr__(self):
+        return self.detail()
 
     def __hash__(self):
         ''' 
@@ -137,6 +147,7 @@ class DependencyFunctionChange:
 @dataclass(init=True)
 class ProjectInvocation:
     function: DependencyFunctionChange
+    enclosing_name: str
     filepath: str
     line: int
     col: int
@@ -145,7 +156,8 @@ class ProjectInvocation:
         return f"call to {self.function.new} at {self.filepath}:{self.line}:{self.col}"
 
     def detail(self):
-        return f"call to {self.function}\nat {self.filepath}:{self.line}:{self.col}"
+        return f"call to {self.function}\nat {self.filepath}:{self.line}:{self.col}:{self.enclosing_name}()"
+
 
     def __repr__(self):
         return self.detail()

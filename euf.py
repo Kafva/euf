@@ -7,13 +7,15 @@ modified (M) or renamed (R) since the last commit based on git labeling
 3. Consider any functions with a difference in the AST composition as
 the base change-set
 4. Perform a configurable number of passes where we add functions that
-are transativly changed, i.e. functions that call a function that has been changed
+are transativly changed, i.e. functions that call a function that 
+has been changed
 5. Analyze each of the objects in the base change-set and 
 remove equivilent entries
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback # pylint: disable=multiple-imports
+import argparse, re, sys, os, traceback
+import subprocess # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
@@ -23,15 +25,16 @@ from git.repo import Repo
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
-from cparser.util import flatten, flatten_dict, print_err
-from cparser.change_set import get_changed_functions_from_diff, dump_top_level_decls, get_transative_changes_from_file
-from cparser.impact_set import get_call_sites_from_file
+from cparser.util import flatten, flatten_dict, print_err, print_info
+from cparser.change_set import get_changed_functions_from_diff, \
+        dump_top_level_decls, get_transative_changes_from_file
+from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
 
 
 def compile_db_fail_msg(path: str):
     print_err(f"Failed to parse {path}/compile_commands.json\n" +
     "The compilation database can be created using `bear -- <build command>` e.g. `bear -- make`\n" +
-    "Consult the documentation for the particular dependency for additional build instructions")
+    "Consult the documentation for the particular dependency for additional build instructions.")
     done(1)
 
 def done(code: int = 0):
@@ -123,23 +126,36 @@ if __name__ == '__main__':
     DEPENDENCY_NEW = f"{CONFIG.NEW_VERSION_ROOT}/{os.path.basename(DEPENDENCY_OLD)}"
 
     if not os.path.exists(DEPENDENCY_NEW):
-        print(f"Creating worktree at {DEPENDENCY_NEW}")
-        os.system(f"git worktree add -b euf {DEPENDENCY_NEW} {COMMIT_NEW}")
+        print_info(f"Creating worktree at {DEPENDENCY_NEW}")
+        try:
+           # git checkout COMMIT_NEW.hexsha
+           # git checkout -b euf
+           # git worktree add -b euf /tmp/openssl euf
+            (subprocess.run([
+                    "git", "worktree", "add", "-b", "euf",
+                    DEPENDENCY_NEW, COMMIT_NEW.hexsha
+                ],
+                cwd = DEPENDENCY_OLD
+            )).check_returncode()
 
-    # Ensure that the old repo has the correct commit checked out
+        except subprocess.CalledProcessError as e:
+            print(traceback.format_exc())
+            done(1)
+
+    # Ensure that the repos have the correct commits checked out
     OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
-    # These can be derived from compile_commands.json
-    try:
-        DEP_DB_NEW  = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_NEW)
-    except cindex.CompilationDatabaseError as e:
-        compile_db_fail_msg(DEPENDENCY_NEW)
+    # TODO: A user will always error out here the first time
     try:
         DEP_DB_OLD  = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_OLD)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEPENDENCY_OLD)
+    try:
+        DEP_DB_NEW  = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_NEW)
+    except cindex.CompilationDatabaseError as e:
+        compile_db_fail_msg(DEPENDENCY_NEW)
 
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:
@@ -302,7 +318,8 @@ if __name__ == '__main__':
 
 
     # - - - Impact set - - - #
-    print("==> Impact set <==")
+    if CONFIG.VERBOSITY >= 1:
+        print("==> Impact set <==")
     CALL_SITES: list[ProjectInvocation]      = []
 
     os.chdir(PROJECT_DIR)
@@ -316,7 +333,10 @@ if __name__ == '__main__':
                 partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
                 PROJECT_SOURCE_FILES
             ))
-            pprint(CALL_SITES)
+            if CONFIG.VERBOSITY >= 2:
+                pprint(CALL_SITES)
+            else:
+                pretty_print_impact(CALL_SITES)
     except Exception as e:
         print(traceback.format_exc())
         done(1)

@@ -1,5 +1,8 @@
 from typing import Set
 
+def print_info(msg: str):
+    print("\033[34m!>\033[0m " +  msg)
+
 def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg)
 

@@ -2,7 +2,8 @@ from itertools import zip_longest
 
 from clang import cindex
 
-from cparser import CONFIG, DependencyFunction, CursorPair, DependencyFunctionChange, SourceDiff, SourceFile
+from cparser import CONFIG, DependencyFunction, CursorPair, \
+        DependencyFunctionChange, SourceDiff, SourceFile
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
@@ -152,7 +153,8 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
     current_function: DependencyFunction) -> None:
     '''
     Look for calls to functions in the change-set and record which
-    encolsing functions perform these calls in the transative_function_calls dict
+    encolsing functions perform these calls in the 
+    transative_function_calls dict
     '''
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
@@ -186,7 +188,8 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
                 transative_function_calls[key] = []
 
             transative_function_calls[key].append(
-            f"{cursor.spelling}():{cursor.location.line}:{cursor.location.column}"
+                f"{cursor.location.file}:{cursor.location.line}:" +
+                f"{cursor.location.column}:{cursor.spelling}()"
             )
 
     for child in cursor.get_children():

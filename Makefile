@@ -35,9 +35,30 @@ smack:
 bpl:
 	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
 
-	
+#---- curl => openssl tests ----#
+# 9542 crypto/ec/ecp_nistz256_table.c
+# 5647 crypto/ec/curve25519.c      (Almost all functions are renamed...)
+# 4162 crypto/evp/e_aes.c
+# 3454 crypto/x509/x509_vfy.c
+# 3440 crypto/ec/ec_curve.c
+# 2769 crypto/evp/ctrl_params_translate.c
+# 2437 crypto/evp/p_lib.c
+# 2378 crypto/ec/ecp_nistp256.c
+ctrlp_v:
+	./scripts/euf.sh -f crypto/evp/ctrl_params_translate.c \
+		-o  9a1c4e41e8d \
+		-n  d5f9166bacf \
+		-d ../openssl ../curl | bat
+ctrlp:
+	./euf.py --commit-old 9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f \
+		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
+		 --verbose 0 \
+		 --nproc 10 \
+		 --dep-only crypto/evp/ctrl_params_translate.c \
+		 --dependency ../openssl ../curl
 
-#---- Basic tests ----#
+
+#---- jq => oniguruma tests ----#
 # The recipe names correspond to the source files in the project/dependency
 # that are being processed
 # _c: clang -ast-dump
