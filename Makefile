@@ -1,4 +1,4 @@
-.PHONY: smt clean run bmc diff oni oniv cbmc
+.PHONY: smt clean run bmc diff oni oniv cbmc matrix
 
 #---- CBMC ----#
 # CBMC is meant to assess if an assertion is true
@@ -57,6 +57,18 @@ ctrlp:
 		 --dep-only crypto/evp/ctrl_params_translate.c \
 		 --dependency ../openssl ../curl
 
+
+#---- main => matrix tests  ----#
+matrix_v:
+	./scripts/euf.sh -V \
+		-o  4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
+		-n  8133ef044a40ce9257b18fdf9e874427fef2dc44 \
+		-d ./matrix ./main | bat
+matrix:
+	./euf.py --commit-old 4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
+		 --commit-new 8133ef044a40ce9257b18fdf9e874427fef2dc44 \
+		 --verbose 3 \
+		 --dependency ./matrix ./main
 
 #---- jq => oniguruma tests ----#
 # The recipe names correspond to the source files in the project/dependency
