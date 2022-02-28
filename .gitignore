@@ -1,5 +1,5 @@
-main
 mnt
+tests/runner
 .ccls-cache
 fib
 result

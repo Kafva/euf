@@ -4,6 +4,9 @@
 [submodule "cbmc"]
 	path = cbmc
 	url = https://github.com/diffblue/cbmc.git
-[submodule "commiter"]
-	path = commiter
-	url = ssh://git@kafva.one:44590/srv/git/commiter.git
+[submodule "matrix"]
+	path = matrix
+	url = ssh://git@kafva.one:44590/srv/git/matrix.git
+[submodule "main"]
+	path = main
+	url = ssh://git@kafva.one:44590/srv/git/main.git

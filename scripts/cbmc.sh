@@ -13,7 +13,7 @@ PROJECT=~/Repos/jq
 TOP_LEVEL_DECLS=/tmp/top_decls.list
 OUTDIR=~/Repos/euf/tests
 DRIVER=~/Repos/euf/tests/regexec_driver.c
-OUTFILE=main
+OUTFILE=runner
 
 # We need to re-name all global symbols in the old version with a new suffix
 # to avoid duplicates
