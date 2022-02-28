@@ -1,3 +1,5 @@
+SHELL=/bin/bash
+
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
 #---- curl => openssl tests ----#
 # 9542 crypto/ec/ecp_nistz256_table.c
@@ -22,45 +24,59 @@ ctrlp:
 		 --dependency ../openssl ../curl
 
 
-#---- main => matrix tests  ----#
+#---- ./main => ./matrix tests  ----#
+# 	get_nearest_even():
+# OLD_COMMIT=9b16f18f239ab389d870627c8a222c6704cb3177
+# NEW_COMMIT_EQUIV=dcd58d079a9498b45618aee439b4b6254bf5ad0f
+# NEW_COMMIT_INF=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb
+# DRIVER=~/Repos/euf/tests/nearest_even_driver.c
+
+# 	matrix_sum():
+#OLD_COMMIT=ff8adb665190b218d9f2ded2b2a28220439ee97f
+#NEW_COMMIT_EQUIV=888269ce3f6591d41204a5987a808a84e296a888
+#NEW_COMMIT_INF=c94c6bbbc83328a10cd1a676d437a21c058feedc
+#DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
+
+#	matrix_init()
+OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
+NEW_COMMIT_EQUIV=e108e9942ceac8da97c8a0cb63b5b2e046c1f722
+NEW_COMMIT_INF=91973fec69bab407a1d2ce3b7ca7b84a6388cbd3
+DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+
 matrix_v:
 	./scripts/euf.sh -V \
-		-o  4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
-		-n  8133ef044a40ce9257b18fdf9e874427fef2dc44 \
+		-o $(OLD_COMMIT)  \
+		-n $(NEW_COMMIT_INF)  \
 		-d ./matrix ./main | bat
 matrix:
-	./euf.py --commit-old 4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
-		 --commit-new 8133ef044a40ce9257b18fdf9e874427fef2dc44 \
+	./euf.py --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose 3 \
 		 --dependency ./matrix ./main
 
-# Influential update
 matrix_ci:
-	COMMIT_OLD=4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
-	COMMIT_NEW=8133ef044a40ce9257b18fdf9e874427fef2dc44 \
+	COMMIT_OLD=$(OLD_COMMIT) \
+	COMMIT_NEW=$(NEW_COMMIT_INF) \
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
 	DEP_OLD=~/Repos/euf/matrix \
-	DEP_NEW=/tmp/matrix \
 	PROJECT=~/Repos/euf/main \
 	OUTDIR=~/Repos/euf/tests \
-	DRIVER=$$OUTDIR/nearest_even_driver.c \
+	DRIVER=$(DRIVER) \
 	./scripts/cbmc.sh
 
 matrix_ce:
-	COMMIT_OLD=4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
-	COMMIT_NEW=d402a972b58deb71a09afe23daf24ba536795b3a \
+	COMMIT_OLD=$(OLD_COMMIT) \
+	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
 	DEP_OLD=~/Repos/euf/matrix \
-	DEP_NEW=/tmp/matrix \
 	PROJECT=~/Repos/euf/main \
 	OUTDIR=~/Repos/euf/tests \
-	DRIVER=$$OUTDIR/nearest_even_driver.c \
+	DRIVER=$(DRIVER) \
 	./scripts/cbmc.sh
-
 
 #---- jq => oniguruma tests ----#
 # The recipe names correspond to the source files in the project/dependency
@@ -76,7 +92,7 @@ regexec:
 	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --project-only src/builtin.c \
-		 --verbose 2 \
+		 --verbose 0 \
 		 --dep-only src/regexec.c \
 		 --dependency ../oniguruma ../jq
 
@@ -97,7 +113,6 @@ regexec_c:
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$$OUTDIR/regexec_driver.c \
 	./scripts/cbmc.sh
-
 
 regexec_d:
 	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \

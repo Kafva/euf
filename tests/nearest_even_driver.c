@@ -5,6 +5,10 @@
 
 extern int nondet_int();
 
+int get_nearest_even_old(int k);
+int get_nearest_even(int k);
+
+
 int main(int argc, char* argv[]){
 
 	int k1 = nondet_int();

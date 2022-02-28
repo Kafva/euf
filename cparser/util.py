@@ -1,10 +1,11 @@
+import sys
 from typing import Set
 
 def print_info(msg: str):
-    print("\033[34m!>\033[0m " +  msg)
+    print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
 
 def print_err(msg: str):
-    print("\033[31m!>\033[0m " +  msg)
+    print("\033[31m!>\033[0m " +  msg, file=sys.stderr)
 
 def flatten_dict(list_of_dicts: list[dict] ) -> dict:
     flat = {}

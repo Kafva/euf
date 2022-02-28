@@ -30,11 +30,21 @@ from cparser.change_set import get_changed_functions_from_diff, \
         dump_top_level_decls, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
 
+def autogen_compile_db(path: str):
+    if os.path.exists(f"{path}/Makefile") and \
+       not os.path.exists(f"{path}/compile_commands.json"):
+        try:
+            print_info(f"Generating {path}/compile_commands.json...")
+            (subprocess.run([ "bear", "--", "make" ], cwd = path, stdout = sys.stderr
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            print(traceback.format_exc())
+            compile_db_fail_msg(path)
 
 def compile_db_fail_msg(path: str):
     print_err(f"Failed to parse {path}/compile_commands.json\n" +
     "The compilation database can be created using `bear -- <build command>` e.g. `bear -- make`\n" +
-    "Consult the documentation for the particular dependency for additional build instructions.")
+    "Consult the documentation for your particular dependency for additional build instructions.")
     done(1)
 
 def done(code: int = 0):
@@ -123,7 +133,7 @@ if __name__ == '__main__':
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    DEPENDENCY_NEW = f"{CONFIG.NEW_VERSION_ROOT}/{os.path.basename(DEPENDENCY_OLD)}"
+    DEPENDENCY_NEW = f"{CONFIG.NEW_VERSION_ROOT}/{os.path.basename(DEPENDENCY_OLD)}-{COMMIT_NEW.hexsha[:8]}"
 
     if not os.path.exists(DEPENDENCY_NEW):
         print_info(f"Creating worktree at {DEPENDENCY_NEW}")
@@ -132,22 +142,26 @@ if __name__ == '__main__':
            # git checkout -b euf
            # git worktree add -b euf /tmp/openssl euf
             (subprocess.run([
-                    "git", "worktree", "add", "-b", "euf",
+                    "git", "worktree", "add", "-b",
+                    f"euf-{COMMIT_NEW.hexsha[:8]}",
                     DEPENDENCY_NEW, COMMIT_NEW.hexsha
                 ],
-                cwd = DEPENDENCY_OLD
+                cwd = DEPENDENCY_OLD, stdout = sys.stderr
             )).check_returncode()
-
         except subprocess.CalledProcessError as e:
             print(traceback.format_exc())
             done(1)
+
+    # Attempt to create the compiliation database automatically
+    # if they do not already exist
+    autogen_compile_db(DEPENDENCY_OLD)
+    autogen_compile_db(DEPENDENCY_NEW)
 
     # Ensure that the repos have the correct commits checked out
     OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
-    # TODO: A user will always error out here the first time
     try:
         DEP_DB_OLD  = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_OLD)
     except cindex.CompilationDatabaseError as e:

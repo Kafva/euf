@@ -16,8 +16,7 @@ int main(int argc, char* argv[]){
 	int res1 = onig_number_of_captures_old(ptr1);
 	int res2 = onig_number_of_captures(ptr2);
 	
-	__CPROVER_assert( res1 == res2, "Same result");
-
+	__CPROVER_assert(res1 == res2, "Equivalent behaviour");
 	return 0;
 }
 
