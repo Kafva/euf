@@ -1,40 +1,4 @@
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
-
-#---- CBMC ----#
-# CBMC is meant to assess if an assertion is true
-# for all possible executions of a program
-# To avoid infinite execution for inf loops,
-# we need to specify an --unwind depth
-# Could be useful:
-# 	--drop-unused-functions
-cbmc:
-	cbmc  --trace -DCBMC --z3 --function main --unwind 10 -I tests/ tests/cbmc_test.c $(ARGS)
-
-# Show human readable goto program
-#	cbmc --show-goto-functions -DCBMC -I tests tests/cbmc_test.c
-goto:
-	goto-cc -DCBMC -I tests/ tests/cbmc_test.c -o ir/cbmc_test.gc
-
-#---- Smack -----#
-# A tool to convert `C -> LLVM -> BPL`
-# The intermediate step of LLVM should be beneficial in regards to
-# correctness since it is closer to the actual output code
-# Should be invoked from /usr/local/bin/smack and NOT from ~/bin/smack
-#
-# Basic invocation
-#	./scripts/smack.sh -f ir/fib.ll /fib.ll
-#
-# Smack can accept more than one source file (both C and LLVM work, with differing results...)
-smack:
-	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
-
-# We can derive the raw .bpl conversion using
-#	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./tests/smack_test.c -o ir/smack_test.ll
-#	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
-# The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
-bpl:
-	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
-
 #---- curl => openssl tests ----#
 # 9542 crypto/ec/ecp_nistz256_table.c
 # 5647 crypto/ec/curve25519.c      (Almost all functions are renamed...)
@@ -70,6 +34,34 @@ matrix:
 		 --verbose 3 \
 		 --dependency ./matrix ./main
 
+# Influential update
+matrix_ci:
+	COMMIT_OLD=4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
+	COMMIT_NEW=8133ef044a40ce9257b18fdf9e874427fef2dc44 \
+	DEP_FILE_NEW=src/matrix.c \
+	DEP_FILE_OLD=src/matrix.c \
+	PROJECT_FILE=src/calc.c \
+	DEP_OLD=~/Repos/euf/matrix \
+	DEP_NEW=/tmp/matrix \
+	PROJECT=~/Repos/euf/main \
+	OUTDIR=~/Repos/euf/tests \
+	DRIVER=$$OUTDIR/nearest_even_driver.c \
+	./scripts/cbmc.sh
+
+matrix_ce:
+	COMMIT_OLD=4c9d0424375a8511adecaa3fa820a47ea0b71e98 \
+	COMMIT_NEW=d402a972b58deb71a09afe23daf24ba536795b3a \
+	DEP_FILE_NEW=src/matrix.c \
+	DEP_FILE_OLD=src/matrix.c \
+	PROJECT_FILE=src/calc.c \
+	DEP_OLD=~/Repos/euf/matrix \
+	DEP_NEW=/tmp/matrix \
+	PROJECT=~/Repos/euf/main \
+	OUTDIR=~/Repos/euf/tests \
+	DRIVER=$$OUTDIR/nearest_even_driver.c \
+	./scripts/cbmc.sh
+
+
 #---- jq => oniguruma tests ----#
 # The recipe names correspond to the source files in the project/dependency
 # that are being processed
@@ -93,9 +85,19 @@ regexec_v:
 		-o 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		-n 1bd71be9437db6ede501fc88102961423c1ab74c \
 		-d ../oniguruma ../jq | bat
-regexecc:
-	clang -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump ~/Repos/oniguruma/src/regexec.c > regexec.ast
-	./builtin.sh
+regexec_c:
+	COMMIT_OLD=65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+	COMMIT_NEW=1bd71be9437db6ede501fc88102961423c1ab74c \
+	DEP_FILE_NEW=src/regexec.c \
+	DEP_FILE_OLD=regexec.c \
+	PROJECT_FILE=src/builtin.c \
+	DEP_OLD=~/Repos/oniguruma \
+	DEP_NEW=/tmp/oniguruma \
+	PROJECT=~/Repos/jq \
+	OUTDIR=~/Repos/euf/tests \
+	DRIVER=$$OUTDIR/regexec_driver.c \
+	./scripts/cbmc.sh
+
 
 regexec_d:
 	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
@@ -104,6 +106,9 @@ regexec_d:
 		 --project-only src/builtin.c \
 		 --dump-full \
 		 --dependency ../oniguruma ../jq
+
+regexec_ast:
+	clang -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump ~/Repos/oniguruma/src/regexec.c > regexec.ast
 
 # Note that jq actually has a way older version of oniguruma under ./modules
 euc_jp:
@@ -120,6 +125,40 @@ bug_fix_c:
 
 
 
+#---- CBMC ----#
+# CBMC is meant to assess if an assertion is true
+# for all possible executions of a program
+# To avoid infinite execution for inf loops,
+# we need to specify an --unwind depth
+# Could be useful:
+# 	--drop-unused-functions
+cbmc:
+	cbmc  --trace -DCBMC --z3 --function main --unwind 10 -I tests/ tests/cbmc_test.c $(ARGS)
+
+# Show human readable goto program
+#	cbmc --show-goto-functions -DCBMC -I tests tests/cbmc_test.c
+goto:
+	goto-cc -DCBMC -I tests/ tests/cbmc_test.c -o ir/cbmc_test.gc
+
+#---- Smack -----#
+# A tool to convert `C -> LLVM -> BPL`
+# The intermediate step of LLVM should be beneficial in regards to
+# correctness since it is closer to the actual output code
+# Should be invoked from /usr/local/bin/smack and NOT from ~/bin/smack
+#
+# Basic invocation
+#	./scripts/smack.sh -f ir/fib.ll /fib.ll
+#
+# Smack can accept more than one source file (both C and LLVM work, with differing results...)
+smack:
+	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
+
+# We can derive the raw .bpl conversion using
+#	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./tests/smack_test.c -o ir/smack_test.ll
+#	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
+# The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
+bpl:
+	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
 
 #---- llvm2smt ----#
 # We need to manually insert (check-sat) and an

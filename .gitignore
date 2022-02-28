@@ -1,3 +1,4 @@
+tests/*.bc
 mnt
 tests/runner
 .ccls-cache
