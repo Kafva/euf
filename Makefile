@@ -1,7 +1,8 @@
 SHELL=/bin/bash
 LIBCLANG=/usr/lib/libclang.so.13.0.1
-#LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
+LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
 NEW_DIR=~/.cache/euf
+SMACK_DEPS=~/Repos/smack-deps
 
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
 #---- curl => openssl tests ----#
@@ -33,12 +34,14 @@ ctrlp:
 #NEW_COMMIT_EQUIV=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb  
 #NEW_COMMIT_INF=dcd58d079a9498b45618aee439b4b6254bf5ad0f
 #DRIVER=~/Repos/euf/tests/nearest_even_driver.c
+#SMACK_DRIVER=~/Repos/euf/tests/smack_nearest_even_driver.c
 
 # 	matrix_sum():
 OLD_COMMIT=ff8adb665190b218d9f2ded2b2a28220439ee97f
 NEW_COMMIT_EQUIV=888269ce3f6591d41204a5987a808a84e296a888
 NEW_COMMIT_INF=c94c6bbbc83328a10cd1a676d437a21c058feedc
 DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
+SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
 #OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
@@ -84,6 +87,34 @@ matrix_ce:
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \
 	./scripts/cbmc.sh
+
+matrix_sce:
+	LIBCLANG=$(LIBCLANG) \
+	NEW_DIR=$(NEW_DIR) \
+	COMMIT_OLD=$(OLD_COMMIT) \
+	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
+	DEP_FILE_NEW=src/matrix.c \
+	DEP_FILE_OLD=src/matrix.c \
+	PROJECT_FILE=src/calc.c \
+	DEP_OLD=~/Repos/matrix \
+	PROJECT=~/Repos/main \
+	OUTDIR=~/Repos/euf/tests \
+	DRIVER=$(SMACK_DRIVER) \
+	./scripts/smack.sh
+
+matrix_sci:
+	LIBCLANG=$(LIBCLANG) \
+	NEW_DIR=$(NEW_DIR) \
+	COMMIT_OLD=$(OLD_COMMIT) \
+	COMMIT_NEW=$(NEW_COMMIT_INF) \
+	DEP_FILE_NEW=src/matrix.c \
+	DEP_FILE_OLD=src/matrix.c \
+	PROJECT_FILE=src/calc.c \
+	DEP_OLD=~/Repos/matrix \
+	PROJECT=~/Repos/main \
+	OUTDIR=~/Repos/euf/tests \
+	DRIVER=$(SMACK_DRIVER) \
+	./scripts/smack.sh
 
 #---- jq => oniguruma tests ----#
 # The recipe names correspond to the source files in the project/dependency
@@ -172,15 +203,21 @@ goto:
 #	./scripts/smack.sh -f ir/fib.ll /fib.ll
 #
 # Smack can accept more than one source file (both C and LLVM work, with differing results...)
-smack:
+smack_docker:
 	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
 
 # We can derive the raw .bpl conversion using
 #	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./tests/smack_test.c -o ir/smack_test.ll
 #	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
 # The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
-bpl:
+bpl_docker:
 	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
+
+smack:
+	PATH="$(SMACK_DEPS)/z3/bin:$$PATH"
+	PATH="$(SMACK_DEPS)/boogie:$$PATH"
+	export PATH="$(SMACK_DEPS)/corral:$$PATH"
+	smack tests/smack_test.c --check assertions --entry-points main --unroll 3 --solver z3
 
 #---- llvm2smt ----#
 # We need to manually insert (check-sat) and an

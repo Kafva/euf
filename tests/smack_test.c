@@ -31,13 +31,6 @@ void smack_assume(Person* p) {
   __SMACK_code("assume @ != 0;", p);
 }
 
-//void set_age_1(Person* p){
-//	p->age = 12;
-//}
-//
-//void set_age_2(Person* p){
-//	p->age = 12;
-//}
 
 unsigned get_age_1(Person* p){
 	return p->age; 
@@ -100,6 +93,16 @@ int main(int argc, char* argv[]){
 	return 0;
 }
 
+
+
+//---------------------------------------------//
+//void set_age_1(Person* p){
+//	p->age = 12;
+//}
+//
+//void set_age_2(Person* p){
+//	p->age = 12;
+//}
 //unsigned get_strsize_1(char* str){
 //	unsigned size = 0;
 //
