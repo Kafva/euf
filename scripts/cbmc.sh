@@ -41,7 +41,7 @@ rm -f $OUTDIR/$OUTFILE
 # to avoid duplicates
 #
 # We can extract all top level symbols with clang.cindex and pass these names to sed for a full resolution 
-./euf.py --commit-old $COMMIT_OLD \
+./euf.py --libclang $LIBCLANG --commit-old $COMMIT_OLD \
  --commit-new $COMMIT_NEW \
  --dep-only $DEP_FILE_NEW \
  --project-only $PROJECT_FILE \
@@ -52,7 +52,7 @@ rm -f $OUTDIR/$OUTFILE
 # TODO: We need to have a copy of both versions of compile_commands.json
 cd $DEP_OLD
 ORIG_OLD_BRANCH=$(git branch | grep "^\*" | awk '{print $2}')
-check_branch $ORIG_OLD_BRANCH
+check_branch "$ORIG_OLD_BRANCH"
 
 git checkout $COMMIT_OLD &> /dev/null
 
