@@ -14,13 +14,14 @@ remove equivilent entries
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback
+import argparse, re, sys, os, traceback, shutil
 import subprocess # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
 from pprint import pprint
 from clang import cindex
 from git.objects.commit import Commit
+from git.exc import GitCommandError
 from git.repo import Repo
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
@@ -30,18 +31,30 @@ from cparser.change_set import get_changed_functions_from_diff, \
         dump_top_level_decls, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
 
+def get_bear_version(path: str) -> int:
+    if shutil.which("bear") is None:
+        print_err("Missing 'bear' executable")
+        compile_db_fail_msg(path)
+    out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
+    prefix_len = len("bear ")
+    return int(out.stdout[prefix_len])
+
+
 def autogen_compile_db(path: str):
     if os.path.exists(f"{path}/Makefile") and \
        not os.path.exists(f"{path}/compile_commands.json"):
         try:
             print_info(f"Generating {path}/compile_commands.json...")
-            (subprocess.run([ "bear", "--", "make" ], cwd = path, stdout = sys.stderr
+            cmd = [ "bear", "--", "make" ]
+            if get_bear_version(path) <= 2:
+                cmd = [ "bear", "make" ]
+            (subprocess.run(cmd, cwd = path, stdout = sys.stderr
             )).check_returncode()
         except subprocess.CalledProcessError:
-            print(traceback.format_exc())
             compile_db_fail_msg(path)
 
 def compile_db_fail_msg(path: str):
+    print(traceback.format_exc())
     print_err(f"Failed to parse {path}/compile_commands.json\n" +
     "The compilation database can be created using `bear -- <build command>` e.g. `bear -- make`\n" +
     "Consult the documentation for your particular dependency for additional build instructions.")
@@ -68,14 +81,16 @@ if __name__ == '__main__':
         help='Dump the complete trace of the AST')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of all top level declarations in the old version of the dependency')
-    parser.add_argument("--verbose", metavar='level', type=int, default=0, help=
+    parser.add_argument("--verbose", metavar='level', type=int, default=CONFIG.VERBOSITY, help=
         f"Verbosity level in output, 0-3, (default 0)")
-    parser.add_argument("--nprocs", metavar='count', help=
+    parser.add_argument("--nprocs", metavar='count', default=CONFIG.NPROC, help=
         f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
     parser.add_argument("--dep-only", metavar="filepath", default="", help=
         'Only process a specific path of the dependency (uses the path in the new commit)')
     parser.add_argument("--project-only", metavar="filepath", default="", help=
         'Only process a specific path of the main project')
+    parser.add_argument("--libclang", metavar="filepath",
+        default=CONFIG.LIBCLANG, help=f"Path to libclang")
 
     args = parser.parse_args()
 
@@ -84,11 +99,20 @@ if __name__ == '__main__':
         print("Missing required option/argument")
         sys.exit(1)
 
+
     CONFIG.VERBOSITY    = args.verbose
     PROJECT_DIR         = os.path.abspath(args.project[0])
     DEPENDENCY_OLD      = os.path.abspath(args.dependency)
     DEP_ONLY_PATH       = args.dep_only
     PROJECT_ONLY_PATH   = args.project_only
+    CONFIG.LIBCLANG     = args.libclang
+
+    # Set the path to the clang library (platform dependent)
+    if not os.path.exists(CONFIG.LIBCLANG):
+        print_err(f"Missing path to libclang: {CONFIG.LIBCLANG}")
+        sys.exit(1)
+    else:
+        cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
     # - - - Dependency - - - #
     OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
@@ -156,9 +180,15 @@ if __name__ == '__main__':
     # if they do not already exist
     autogen_compile_db(DEPENDENCY_OLD)
     autogen_compile_db(DEPENDENCY_NEW)
+    autogen_compile_db(PROJECT_DIR)
 
     # Ensure that the repos have the correct commits checked out
-    OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
+    try:
+        OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
+    except GitCommandError as e:
+        print_err(f"{DEPENDENCY_OLD}: Failed to checkout old commit")
+        print(traceback.format_exc())
+        sys.exit(1)
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
@@ -182,7 +212,7 @@ if __name__ == '__main__':
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
     main_repo = Repo(PROJECT_DIR)
-    PROJECT_SOURCE_FILES = filter(lambda p: p.endswith(".c"),
+    PROJECT_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
         [ e.path for e in main_repo.tree().traverse() ] # type: ignore
     )
 
@@ -192,8 +222,8 @@ if __name__ == '__main__':
         compile_db_fail_msg(PROJECT_DIR)
 
     PROJECT_SOURCE_FILES = [ SourceFile(
-        new_path = filepath,
-        new_compile_args = get_compile_args(MAIN_DB, filepath)
+        new_path = filepath, # type: ignore
+        new_compile_args = get_compile_args(MAIN_DB, filepath) # type: ignore
     ) for filepath in PROJECT_SOURCE_FILES ]
 
     if PROJECT_ONLY_PATH != "":
@@ -232,13 +262,13 @@ if __name__ == '__main__':
     #
     # We only need to look through the files in the new version of the dependency
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
-    DEP_SOURCE_FILES = filter(lambda p: p.endswith(".c"),
+    DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
         [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
     )
 
     DEP_SOURCE_FILES = [ SourceFile(
-        new_path = filepath,
-        new_compile_args = get_compile_args(DEP_DB_NEW, filepath)
+        new_path = filepath, # type: ignore
+        new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
     ) for filepath in DEP_SOURCE_FILES ]
 
     if DEP_ONLY_PATH != "":

@@ -9,25 +9,25 @@ class Config:
     VERBOSITY: int = 0
     TRANSATIVE_PASSES: int = 1
     NPROC: int = 5
+    LIBCLANG = "/usr/lib/libclang.so.13.0.1"
 
     # The location to store the new version of the dependency
     NEW_VERSION_ROOT: str = "/tmp"
 
 CONFIG = Config()
 
-# Set the path to the clang library (platform dependent)
-cindex.Config.set_library_file("/usr/lib/libclang.so.13.0.1")
-
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
     ''' Load the compilation configuration for the particular file
     and retrieve the compilation arguments '''
     ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
-    compile_args                    = list(ccmds[0].arguments)
-
-    # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-    # and add the default linker paths
-    return compile_args[1:-1]
+    if ccmds:
+        compile_args                    = list(ccmds[0].arguments)
+        # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
+        # and add the default linker paths
+        return compile_args[1:-1]
+    else:
+        raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
 @dataclass(init=True)
 class DependencyArgument:

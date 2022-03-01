@@ -1,4 +1,6 @@
 SHELL=/bin/bash
+#LIBCLANG=/usr/lib/libclang.so.13.0.1
+LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
 
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
 #---- curl => openssl tests ----#
@@ -16,7 +18,7 @@ ctrlp_v:
 		-n  d5f9166bacf \
 		-d ../openssl ../curl | bat
 ctrlp:
-	./euf.py --commit-old 9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f \
+	./euf.py --libclang $(LIBCLANG) --commit-old 9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f \
 		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
 		 --verbose 0 \
 		 --nproc 10 \
@@ -24,12 +26,12 @@ ctrlp:
 		 --dependency ../openssl ../curl
 
 
-#---- ./main => ./matrix tests  ----#
+#---- ../main => ../matrix tests  ----#
 # 	get_nearest_even():
-# OLD_COMMIT=9b16f18f239ab389d870627c8a222c6704cb3177
-# NEW_COMMIT_EQUIV=dcd58d079a9498b45618aee439b4b6254bf5ad0f
-# NEW_COMMIT_INF=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb
-# DRIVER=~/Repos/euf/tests/nearest_even_driver.c
+OLD_COMMIT=9b16f18f239ab389d870627c8a222c6704cb3177
+NEW_COMMIT_EQUIV=dcd58d079a9498b45618aee439b4b6254bf5ad0f
+NEW_COMMIT_INF=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb
+DRIVER=~/Repos/euf/tests/nearest_even_driver.c
 
 # 	matrix_sum():
 #OLD_COMMIT=ff8adb665190b218d9f2ded2b2a28220439ee97f
@@ -38,21 +40,21 @@ ctrlp:
 #DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
 
 #	matrix_init()
-OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
-NEW_COMMIT_EQUIV=e108e9942ceac8da97c8a0cb63b5b2e046c1f722
-NEW_COMMIT_INF=91973fec69bab407a1d2ce3b7ca7b84a6388cbd3
-DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+# OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
+# NEW_COMMIT_EQUIV=e108e9942ceac8da97c8a0cb63b5b2e046c1f722
+# NEW_COMMIT_INF=91973fec69bab407a1d2ce3b7ca7b84a6388cbd3
+# DRIVER=~/Repos/euf/tests/matrix_init_driver.c
 
 matrix_v:
 	./scripts/euf.sh -V \
 		-o $(OLD_COMMIT)  \
 		-n $(NEW_COMMIT_INF)  \
-		-d ./matrix ./main | bat
+		-d ../matrix ../main | bat
 matrix:
-	./euf.py --commit-old $(OLD_COMMIT) \
+	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose 3 \
-		 --dependency ./matrix ./main
+		 --dependency ../matrix ../main
 
 matrix_ci:
 	COMMIT_OLD=$(OLD_COMMIT) \
@@ -60,8 +62,8 @@ matrix_ci:
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
-	DEP_OLD=~/Repos/euf/matrix \
-	PROJECT=~/Repos/euf/main \
+	DEP_OLD=~/Repos/matrix \
+	PROJECT=~/Repos/main \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \
 	./scripts/cbmc.sh
@@ -72,8 +74,8 @@ matrix_ce:
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
-	DEP_OLD=~/Repos/euf/matrix \
-	PROJECT=~/Repos/euf/main \
+	DEP_OLD=~/Repos/matrix \
+	PROJECT=~/Repos/main \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \
 	./scripts/cbmc.sh
@@ -89,7 +91,7 @@ matrix_ce:
 # 	git blame -L 3374,+100 src/regexec.c
 # Note that regexec.c is moved from ./ to ./src between the commits
 regexec:
-	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+	./euf.py --libclang $(LIBCLANG) --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --project-only src/builtin.c \
 		 --verbose 0 \
@@ -115,7 +117,7 @@ regexec_c:
 	./scripts/cbmc.sh
 
 regexec_d:
-	./euf.py --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
+	./euf.py --libclang $(LIBCLANG) --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --dep-only src/regexec.c \
 		 --project-only src/builtin.c \
@@ -127,7 +129,7 @@ regexec_ast:
 
 # Note that jq actually has a way older version of oniguruma under ./modules
 euc_jp:
-	./euf.py --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
+	./euf.py --libclang $(LIBCLANG) --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
 		 --commit-new a2ac402a3549713e6c909752937b7a54f559beb8 \
 		 --dep-only src/euc_jp.c \
 		 --dependency ../oniguruma ../jq
