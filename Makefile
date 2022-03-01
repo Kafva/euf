@@ -57,6 +57,7 @@ matrix:
 		 --dependency ../matrix ../main
 
 matrix_ci:
+	LIBCLANG=$(LIBCLANG) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_INF) \
 	DEP_FILE_NEW=src/matrix.c \
@@ -69,6 +70,7 @@ matrix_ci:
 	./scripts/cbmc.sh
 
 matrix_ce:
+	LIBCLANG=$(LIBCLANG) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
 	DEP_FILE_NEW=src/matrix.c \
