@@ -1,8 +1,12 @@
 SHELL=/bin/bash
-LIBCLANG=/usr/lib/libclang.so.13.0.1
-LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
 NEW_DIR=~/.cache/euf
 SMACK_DEPS=~/Repos/smack-deps
+
+ifneq (,$(findstring Ubuntu,$(shell uname -a))) # if on Ubuntu
+LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
+else
+LIBCLANG=/usr/lib/libclang.so.13.0.1
+endif
 
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
 #---- curl => openssl tests ----#
