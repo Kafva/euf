@@ -1,5 +1,5 @@
 # euf
-* Requires Python >=3.9, prior versions do not support enough type hints
+* Requires Python >=3.9, prior versions do not support enough of the type hint feature
 * The clang version on the system must match the version in `requirements.txt`
 
 ## Ubuntu installation

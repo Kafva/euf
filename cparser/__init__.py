@@ -1,4 +1,4 @@
-import sys
+import sys, os
 from dataclasses import dataclass
 from clang import cindex
 
@@ -12,9 +12,12 @@ class Config:
     LIBCLANG = "/usr/lib/libclang.so.13.0.1"
 
     # The location to store the new version of the dependency
-    NEW_VERSION_ROOT: str = "/tmp"
+    NEW_VERSION_ROOT: str = f"{os.path.expanduser('~')}/.cache/euf"
 
 CONFIG = Config()
+
+if not os.path.exists(CONFIG.NEW_VERSION_ROOT):
+    os.mkdir(CONFIG.NEW_VERSION_ROOT)
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
