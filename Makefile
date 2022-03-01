@@ -1,6 +1,7 @@
 SHELL=/bin/bash
-#LIBCLANG=/usr/lib/libclang.so.13.0.1
-LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
+LIBCLANG=/usr/lib/libclang.so.13.0.1
+#LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
+NEW_DIR=~/.cache/euf
 
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
 #---- curl => openssl tests ----#
@@ -28,22 +29,22 @@ ctrlp:
 
 #---- ../main => ../matrix tests  ----#
 # 	get_nearest_even():
-OLD_COMMIT=9b16f18f239ab389d870627c8a222c6704cb3177
-NEW_COMMIT_EQUIV=dcd58d079a9498b45618aee439b4b6254bf5ad0f
-NEW_COMMIT_INF=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb
-DRIVER=~/Repos/euf/tests/nearest_even_driver.c
+#OLD_COMMIT=9b16f18f239ab389d870627c8a222c6704cb3177
+#NEW_COMMIT_EQUIV=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb  
+#NEW_COMMIT_INF=dcd58d079a9498b45618aee439b4b6254bf5ad0f
+#DRIVER=~/Repos/euf/tests/nearest_even_driver.c
 
 # 	matrix_sum():
-#OLD_COMMIT=ff8adb665190b218d9f2ded2b2a28220439ee97f
-#NEW_COMMIT_EQUIV=888269ce3f6591d41204a5987a808a84e296a888
-#NEW_COMMIT_INF=c94c6bbbc83328a10cd1a676d437a21c058feedc
-#DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
+OLD_COMMIT=ff8adb665190b218d9f2ded2b2a28220439ee97f
+NEW_COMMIT_EQUIV=888269ce3f6591d41204a5987a808a84e296a888
+NEW_COMMIT_INF=c94c6bbbc83328a10cd1a676d437a21c058feedc
+DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
 
 #	matrix_init()
-# OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
-# NEW_COMMIT_EQUIV=e108e9942ceac8da97c8a0cb63b5b2e046c1f722
-# NEW_COMMIT_INF=91973fec69bab407a1d2ce3b7ca7b84a6388cbd3
-# DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+#OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
+#NEW_COMMIT_EQUIV=e108e9942ceac8da97c8a0cb63b5b2e046c1f722
+#NEW_COMMIT_INF=91973fec69bab407a1d2ce3b7ca7b84a6388cbd3
+#DRIVER=~/Repos/euf/tests/matrix_init_driver.c
 
 matrix_v:
 	./scripts/euf.sh -V \
@@ -58,6 +59,7 @@ matrix:
 
 matrix_ci:
 	LIBCLANG=$(LIBCLANG) \
+	NEW_DIR=$(NEW_DIR) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_INF) \
 	DEP_FILE_NEW=src/matrix.c \
@@ -71,6 +73,7 @@ matrix_ci:
 
 matrix_ce:
 	LIBCLANG=$(LIBCLANG) \
+	NEW_DIR=$(NEW_DIR) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
 	DEP_FILE_NEW=src/matrix.c \

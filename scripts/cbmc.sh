@@ -8,34 +8,16 @@ finish(){
 }
 
 check_branch(){
-	echo "$1" | grep -iqE "^[-_.A-Za-z0-9]+$" || 
-		die "$PWD: Failed to determine current branch"
+	echo "$1" | grep -iqE "^[-_.A-Za-z0-9]+$"	
 }
 
-DEP_NEW=/tmp/$(basename $DEP_OLD)-${COMMIT_NEW:0:8}
+DEP_NEW=$NEW_DIR/$(basename $DEP_OLD)-${COMMIT_NEW:0:8}
 TOP_LEVEL_DECLS=/tmp/top_decls.list
 OUTFILE=runner
 UNWIND=50
 
 [ -z "$COMMIT_OLD" ] && die "Missing enviroment variables"
-
 rm -f $OUTDIR/$OUTFILE
-
-# --- Config ----
-# Passed through env
-#	COMMIT_OLD=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-#	COMMIT_NEW=1bd71be9437db6ede501fc88102961423c1ab74c
-#	DEP_FILE_NEW=src/regexec.c
-#	DEP_FILE_OLD=regexec.c
-#	PROJECT_FILE=src/builtin.c
-#	
-#	DEP_OLD=~/Repos/oniguruma
-#	DEP_NEW=/tmp/oniguruma
-#	PROJECT=~/Repos/jq
-#	OUTDIR=~/Repos/euf/tests
-#	DRIVER=$OUTDIR/regexec_driver.c
-# ---------------
-
 
 # We need to re-name all global symbols in the old version with a new suffix
 # to avoid duplicates
@@ -52,7 +34,7 @@ rm -f $OUTDIR/$OUTFILE
 # TODO: We need to have a copy of both versions of compile_commands.json
 cd $DEP_OLD
 ORIG_OLD_BRANCH=$(git branch | grep "^\*" | awk '{print $2}')
-check_branch "$ORIG_OLD_BRANCH"
+check_branch "$ORIG_OLD_BRANCH" || die "$PWD: Failed to determine current branch"
 
 git checkout $COMMIT_OLD &> /dev/null
 
@@ -77,7 +59,7 @@ git checkout $DEP_FILE_OLD
 
 cd $DEP_NEW
 ORIG_NEW_BRANCH=$(git branch | grep "^\*" | awk '{print $2}')
-check_branch "$ORIG_NEW_BRANCH"
+check_branch "$ORIG_NEW_BRANCH" || die "$PWD: Failed to determine current branch"
 
 # Check that we have the expected commit checked out
 # TODO: More robust impl in Python later

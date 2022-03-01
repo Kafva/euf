@@ -39,7 +39,6 @@ def get_bear_version(path: str) -> int:
     prefix_len = len("bear ")
     return int(out.stdout[prefix_len])
 
-
 def autogen_compile_db(path: str):
     if os.path.exists(f"{path}/Makefile") and \
        not os.path.exists(f"{path}/compile_commands.json"):
