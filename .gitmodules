@@ -3,4 +3,4 @@
 	url = git@github.com:Kafva/llvm2smt.git
 [submodule "cbmc"]
 	path = cbmc
-	url = https://github.com/diffblue/cbmc.git
+	url = git@github.com:Kafva/cbmc.git
