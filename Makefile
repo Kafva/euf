@@ -34,31 +34,31 @@ ctrlp:
 
 #---- ../main => ../matrix tests  ----#
 # 	get_nearest_even():
-#OLD_COMMIT=9b16f18f239ab389d870627c8a222c6704cb3177
-#NEW_COMMIT_EQUIV=dcd6e0dcea084231fe4e1c29f2340f48f9fb73fb  
-#NEW_COMMIT_INF=dcd58d079a9498b45618aee439b4b6254bf5ad0f
+#OLD_COMMIT=ddd3658debc3f0452fefbfe6ebe6bff12168752b
+#NEW_COMMIT_EQUIV=10ebe64c17a74c01ee010dcbeb7f005a918dd6ce
+#NEW_COMMIT_INF=0ef44ff525516f63d3104122261000526db7ab14
 #DRIVER=~/Repos/euf/tests/nearest_even_driver.c
 #SMACK_DRIVER=~/Repos/euf/tests/smack_nearest_even_driver.c
 
 # 	matrix_sum():
-OLD_COMMIT=ff8adb665190b218d9f2ded2b2a28220439ee97f
-NEW_COMMIT_EQUIV=888269ce3f6591d41204a5987a808a84e296a888
-NEW_COMMIT_INF=c94c6bbbc83328a10cd1a676d437a21c058feedc
-DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
-SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
+#OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
+#NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
+#NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
+#DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
+#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
-#OLD_COMMIT=b58cb8318771de398e954af8365a1bb613405e6b
-#NEW_COMMIT_EQUIV=e108e9942ceac8da97c8a0cb63b5b2e046c1f722
-#NEW_COMMIT_INF=91973fec69bab407a1d2ce3b7ca7b84a6388cbd3
-#DRIVER=~/Repos/euf/tests/matrix_init_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
+OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
+NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
+NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
 
 #	regexec.c
-OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-DRIVER=~/Repos/euf/tests/regexec_driver.c
+#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+#DRIVER=~/Repos/euf/tests/regexec_driver.c
 
 matrix_v:
 	./scripts/euf.sh -V \

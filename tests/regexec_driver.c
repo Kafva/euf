@@ -27,6 +27,8 @@ int main(int argc, char* argv[]){
 	onig_new(&reg2, pattern2, pattern2 + strlen((char* )pattern2),
         ONIG_OPTION_DEFAULT, ONIG_ENCODING_ASCII, ONIG_SYNTAX_DEFAULT, &einfo1);
 
+
+	__CPROVER_assume( reg1 != NULL );
 	__CPROVER_assume( reg1 == reg2 );
 
 	int res1 = onig_number_of_captures(reg1);
