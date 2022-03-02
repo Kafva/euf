@@ -61,9 +61,11 @@ printf "=> Compiling $OUTFILE\n"
 # http://cprover.diffblue.com/md__home_travis_build_diffblue_cbmc_doc_architectural_restrict-function-pointer.html
 # --function-pointer-restrictions-file tests/regexec_restrict.txt
 # --trace
+set -x
 cbmc ./$OUTFILE --function main \
 	--z3 --drop-unused-functions \
-	--unwind $UNWIND --trace
+	--unwind $UNWIND --unwinding-assertions
+set +x
 
 # For cbmc-viewer:
 #--xml-ui > result.xml

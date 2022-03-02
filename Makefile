@@ -54,6 +54,12 @@ SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 #DRIVER=~/Repos/euf/tests/matrix_init_driver.c
 #SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
 
+#	regexec.c
+OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+DRIVER=~/Repos/euf/tests/regexec_driver.c
+
 matrix_v:
 	./scripts/euf.sh -V \
 		-o $(OLD_COMMIT)  \
@@ -164,6 +170,22 @@ regexec_d:
 		 --project-only src/builtin.c \
 		 --dump-full \
 		 --dependency ../oniguruma ../jq
+
+
+regexec_ce:
+	LIBCLANG=$(LIBCLANG) \
+	NEW_DIR=$(NEW_DIR) \
+	COMMIT_OLD=$(OLD_COMMIT) \
+	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
+	DEP_FILE_NEW=src/regexec.c \
+	DEP_FILE_OLD=regexec.c \
+	PROJECT_FILE=src/builtin.c \
+	DEP_OLD=~/Repos/oniguruma \
+	PROJECT=~/Repos/jq \
+	OUTDIR=~/Repos/euf/tests \
+	DRIVER=$(DRIVER) \
+	./scripts/cbmc.sh
+
 
 regexec_ast:
 	clang -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump ~/Repos/oniguruma/src/regexec.c > regexec.ast
