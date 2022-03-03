@@ -1,3 +1,4 @@
+runner
 tests/*E.c
 tests/*.bc
 mnt

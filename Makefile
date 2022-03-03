@@ -1,6 +1,7 @@
 SHELL=/bin/bash
 NEW_DIR=~/.cache/euf
 SMACK_DEPS=~/Repos/smack-deps
+VERBOSE=0
 
 ifneq (,$(findstring Ubuntu,$(shell uname -a))) # if on Ubuntu
 LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
@@ -26,7 +27,7 @@ ctrlp_v:
 ctrlp:
 	./euf.py --libclang $(LIBCLANG) --commit-old 9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f \
 		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
-		 --verbose 0 \
+		 --verbose $(VERBOSE) \
 		 --nproc 10 \
 		 --dep-only crypto/evp/ctrl_params_translate.c \
 		 --dependency ../openssl ../curl
@@ -68,7 +69,7 @@ matrix_v:
 matrix:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
-		 --verbose 3 \
+		 --verbose $(VERBOSE) \
 		 --dependency ../matrix ../main
 
 matrix_ci:
@@ -141,7 +142,7 @@ regexec:
 	./euf.py --libclang $(LIBCLANG) --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --project-only src/builtin.c \
-		 --verbose 0 \
+		 --verbose $(VERBOSE) \
 		 --dep-only src/regexec.c \
 		 --dependency ../oniguruma ../jq
 

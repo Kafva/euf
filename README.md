@@ -15,6 +15,7 @@ Invoke as
 ./euf.py --libclang $LIBCLANG \
 	--commit-old $OLD_COMMIT \
 	--commit-new $NEW_COMMIT \
-	--dependency $DEP $PROJECT
+	--dependency $DEP \
+	$PROJECT
 ```
 

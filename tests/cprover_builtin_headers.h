@@ -1,8 +1,9 @@
 #ifndef CBMC
-#include <stdbool.h>
-#include <stdlib.h>
 	// Typedefs to make linting less unhappy
-	// (Not included when running)
+	// (this has no actual functionality and 
+	// should NOT be included when compiling)
+	#include <stdbool.h>
+	#include <stdlib.h>
 	typedef bool __CPROVER_bool;
 	typedef size_t __CPROVER_size_t;
 	typedef ssize_t __CPROVER_ssize_t; // signed

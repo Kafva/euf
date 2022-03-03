@@ -11,7 +11,8 @@ rm -f $OUTDIR/$OUTFILE
 # We need to re-name all global symbols in the old version with a new suffix
 # to avoid duplicates
 #
-# We can extract all top level symbols with clang.cindex and pass these names to sed for a full resolution 
+# We extract all top level symbols with clang.cindex and pass these names 
+# to `sed` to solve this
 ./euf.py --libclang $LIBCLANG --commit-old $COMMIT_OLD \
  --commit-new $COMMIT_NEW \
  --dep-only $DEP_FILE_NEW \
@@ -26,7 +27,8 @@ NEW_OUT=$(basename ${DEP_FILE_NEW%%.c})_new.bc
 # - - - Old version  - - - #
 cd $DEP_OLD
 ORIG_OLD_BRANCH=$(git branch | grep "^\*" | awk '{print $2}')
-check_branch "$ORIG_OLD_BRANCH" || die "$PWD: Failed to determine current branch"
+check_branch "$ORIG_OLD_BRANCH" || 
+	die "$PWD: Failed to determine current branch"
 
 git checkout $COMMIT_OLD &> /dev/null
 
@@ -43,7 +45,8 @@ git checkout $DEP_FILE_OLD
 # - - - New version  - - - #
 cd $DEP_NEW
 ORIG_NEW_BRANCH=$(git branch | grep "^\*" | awk '{print $2}')
-check_branch "$ORIG_NEW_BRANCH" || die "$PWD: Failed to determine current branch"
+check_branch "$ORIG_NEW_BRANCH" || 
+	die "$PWD: Failed to determine current branch"
 
 # Check that we have the expected commit checked out
 if [ $(git rev-parse HEAD) != $COMMIT_NEW ]; then
@@ -58,7 +61,6 @@ printf "=> Compiling $OUTFILE\n"
 /usr/bin/goto-cc -I. -DCBMC $OLD_OUT $NEW_OUT $DRIVER -o $OUTFILE || finish
 
 # Run verification
-# http://cprover.diffblue.com/md__home_travis_build_diffblue_cbmc_doc_architectural_restrict-function-pointer.html
 # --function-pointer-restrictions-file tests/regexec_restrict.txt
 # --trace
 set -x
