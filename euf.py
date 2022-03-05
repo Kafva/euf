@@ -53,7 +53,9 @@ def autogen_compile_db(path: str):
             compile_db_fail_msg(path)
 
 def compile_db_fail_msg(path: str):
-    print(traceback.format_exc())
+    backtrace = traceback.format_exc()
+    if not re.match("^NoneType: None$", backtrace):
+        print(backtrace)
     print_err(f"Failed to parse {path}/compile_commands.json\n" +
     "The compilation database can be created using `bear -- <build command>` e.g. `bear -- make`\n" +
     "Consult the documentation for your particular dependency for additional build instructions.")
