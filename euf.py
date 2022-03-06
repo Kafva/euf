@@ -15,6 +15,7 @@ remove equivilent entries
 all locations were functions from the change set are called
 '''
 import argparse, re, sys, os, traceback, shutil
+import json
 import subprocess # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial
@@ -80,6 +81,8 @@ if __name__ == '__main__':
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
     parser.add_argument("--dump-full", action='store_true', default=False,
         help='Dump the complete trace of the AST')
+    parser.add_argument("--json", action='store_true', default=False,
+        help='Print results as JSON')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of all top level declarations in the old version of the dependency')
     parser.add_argument("--verbose", metavar='level', type=int, default=CONFIG.VERBOSITY, help=
@@ -382,7 +385,10 @@ if __name__ == '__main__':
                 partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
                 PROJECT_SOURCE_FILES
             ))
-            if CONFIG.VERBOSITY >= 2:
+
+            if args.json:
+                pass
+            elif CONFIG.VERBOSITY >= 2:
                 pprint(CALL_SITES)
             else:
                 pretty_print_impact(CALL_SITES)

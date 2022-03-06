@@ -70,7 +70,7 @@ matrix:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose $(VERBOSE) \
-		 --dependency ../matrix ../main
+		 --dependency ../matrix --json ../main
 
 matrix_ci:
 	LIBCLANG=$(LIBCLANG) \
