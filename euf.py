@@ -387,7 +387,7 @@ if __name__ == '__main__':
             ))
 
             if args.json:
-                pass
+                print("TODO")
             elif CONFIG.VERBOSITY >= 2:
                 pprint(CALL_SITES)
             else:
