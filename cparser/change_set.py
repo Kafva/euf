@@ -109,12 +109,20 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
 
     return changed_functions
 
-def dump_top_level_decls(cursor: cindex.Cursor, recurse: bool = False) -> None:
+def dump_top_level_decls(cursor: cindex.Cursor, basepath: str, recurse: bool = False) -> None:
+    ''' 
+    Dump the names of all top level declerations (variables and functions) 
+    within the given basepath. Without filtering on the basepath 
+    externally defined symbols can appear
+    '''
     for child in cursor.get_children():
         if recurse:
             print(f"\033[34m{child.spelling}\033[0m")
             dump_children(child,0)
-        elif str(child.kind).endswith("FUNCTION_DECL") and child.is_definition():
+        elif (str(child.kind).endswith("FUNCTION_DECL") or \
+              str(child.kind).endswith("VAR_DECL") ) and \
+                child.is_definition() and \
+                str(child.location.file).startswith(basepath):
             print(child.spelling)
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:

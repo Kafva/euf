@@ -14,9 +14,8 @@ remove equivilent entries
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback, shutil
-import subprocess # pylint: disable=multiple-imports
-from multiprocessing import Pool
+import argparse, re, sys, os, traceback, shutil, multiprocessing, \
+        subprocess # pylint: disable=multiple-imports 
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -40,13 +39,38 @@ def get_bear_version(path: str) -> int:
     return int(out.stdout[prefix_len])
 
 def autogen_compile_db(path: str):
-    if os.path.exists(f"{path}/Makefile") and \
-       not os.path.exists(f"{path}/compile_commands.json"):
+    if os.path.exists(f"{path}/compile_commands.json"):
+        return
+
+    # 1. Configure the project according to ./configure.ac if applicable
+    if os.path.exists(f"{path}/configure.ac"):
+        try:
+            print_info(f"{path}: Running autoreconf...")
+            (subprocess.run([ "autoreconf", "-vfi" ],
+                cwd = path, stdout = sys.stderr
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            compile_db_fail_msg(path)
+
+
+    # 2. Configure the project according to ./configure if applicable
+    if os.path.exists(f"{path}/configure"):
+        try:
+            print_info(f"{path}: Running ./configure...")
+            (subprocess.run([ "./configure" ], cwd = path, stdout = sys.stderr
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            compile_db_fail_msg(path)
+
+    # 3. Run 'make' with 'bear'
+    if os.path.exists(f"{path}/Makefile"):
         try:
             print_info(f"Generating {path}/compile_commands.json...")
-            cmd = [ "bear", "--", "make" ]
+            cmd = [ "bear", "--", "make", "-j",
+                    str(multiprocessing.cpu_count() - 1)
+            ]
             if get_bear_version(path) <= 2:
-                cmd = [ "bear", "make" ]
+                del cmd[1]
             (subprocess.run(cmd, cwd = path, stdout = sys.stderr
             )).check_returncode()
         except subprocess.CalledProcessError:
@@ -65,6 +89,28 @@ def done(code: int = 0):
     OLD_DEP_REPO.git.checkout(HEAD_BRANCH) # type: ignore
     sys.exit(code)
 
+def dump_all_top_level_objects(path: str):
+    '''
+    Go through every TU in the compilation database
+    and dump the top level declerations of each
+    '''
+    os.chdir(path)
+
+    for ccmds in DEP_DB_OLD.getAllCompileCommands():
+        try:
+            # Exclude 'cc' [0] and source file [-1] from compile command
+            tu = cindex.TranslationUnit.from_source(
+                    ccmds.filename,
+                    args = list(ccmds.arguments)[1:-1]
+            )
+            cursor: cindex.Cursor = tu.cursor
+        except cindex.TranslationUnitLoadError:
+            traceback.format_exc()
+            print_err(f"Failed to parse: {ccmds.filename}")
+            done(1)
+
+        dump_top_level_decls(cursor, path)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
     "A 'compile_commands.json' database must be present for both the project and the dependency."
@@ -78,14 +124,13 @@ if __name__ == '__main__':
         help='Git hash of the old (current) commit in the dependency')
     parser.add_argument("--dependency", metavar="directory", help=
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
-    parser.add_argument("--dump-full", action='store_true', default=False,
-        help='Dump the complete trace of the AST')
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
-    parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
-        help='Dump the names of all top level declarations in the old version of the dependency')
-    parser.add_argument("--verbose", metavar='level', type=int, default=CONFIG.VERBOSITY, help=
-        f"Verbosity level in output, 0-3, (default 0)")
+    parser.add_argument("--dump-top-level-decls-all", action='store_true', default=False,
+        help='Dump the names of ALL top level declarations in the old version of the dependency')
+    parser.add_argument("--verbose", metavar='level', type=int,
+        default=CONFIG.VERBOSITY,
+        help=f"Verbosity level in output, 0-3, (default 0)")
     parser.add_argument("--nprocs", metavar='count', default=CONFIG.NPROC, help=
         f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
     parser.add_argument("--dep-only", metavar="filepath", default="", help=
@@ -179,13 +224,8 @@ if __name__ == '__main__':
             print(traceback.format_exc())
             done(1)
 
-    # Attempt to create the compiliation database automatically
-    # if they do not already exist
-    autogen_compile_db(DEPENDENCY_OLD)
-    autogen_compile_db(DEPENDENCY_NEW)
-    autogen_compile_db(PROJECT_DIR)
 
-    # Ensure that the repos have the correct commits checked out
+    # Ensure that the old repo has the correct commit checked out
     try:
         OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
     except GitCommandError as e:
@@ -193,14 +233,22 @@ if __name__ == '__main__':
         print(traceback.format_exc())
         sys.exit(1)
 
+    # Attempt to create the compiliation database automatically
+    # if they do not already exist
+    autogen_compile_db(DEPENDENCY_OLD)
+    autogen_compile_db(DEPENDENCY_NEW)
+    autogen_compile_db(PROJECT_DIR)
+
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
     try:
-        DEP_DB_OLD  = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_OLD)
+        DEP_DB_OLD: cindex.CompilationDatabase  = \
+            cindex.CompilationDatabase.fromDirectory(DEPENDENCY_OLD)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEPENDENCY_OLD)
     try:
-        DEP_DB_NEW  = cindex.CompilationDatabase.fromDirectory(DEPENDENCY_NEW)
+        DEP_DB_NEW: cindex.CompilationDatabase  = \
+                cindex.CompilationDatabase.fromDirectory(DEPENDENCY_NEW)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEPENDENCY_NEW)
 
@@ -211,6 +259,13 @@ if __name__ == '__main__':
 
     if DEP_ONLY_PATH != "":
         DEP_SOURCE_DIFFS = list(filter(lambda d: d.new_path == DEP_ONLY_PATH, DEP_SOURCE_DIFFS))
+
+
+    # - - - (Optional) Dump all top level symbols - - - #
+    if args.dump_top_level_decls_all:
+        dump_all_top_level_objects(DEPENDENCY_OLD)
+        done(0)
+
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -242,7 +297,7 @@ if __name__ == '__main__':
     # using NPROC parallel processes and save
     # the changed functions to `CHANGED_FUNCTIONS`
     try:
-        with Pool(CONFIG.NPROC) as p:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
             CHANGED_FUNCTIONS       = flatten(p.map(
                 partial(get_changed_functions_from_diff,
                     old_root_dir=DEPENDENCY_OLD,
@@ -284,7 +339,7 @@ if __name__ == '__main__':
 
     for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
-            with Pool(CONFIG.NPROC) as p:
+            with multiprocessing.Pool(CONFIG.NPROC) as p:
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
                         changed_functions = CHANGED_FUNCTIONS
@@ -322,50 +377,9 @@ if __name__ == '__main__':
     # Regardless of which back-end we use to check equivalance, 
     # we will need a minimal program that invokes both versions of the changed 
     # function and then performs an assertion on all affected outputs
-
-
-    # - - - (Debugging) Dump parse trees - - - #
-    # Dump a list of all top level declarations in the old version
-    # of each file with a diff
-    if args.dump_top_level_decls or args.dump_full:
-        if CONFIG.VERBOSITY >= 3:
-            print("==> Dump dependency (old) <===")
-            os.chdir(DEPENDENCY_OLD)
-            for diff in DEP_SOURCE_DIFFS:
-                # Reads from in-memory content of each diff
-                tu_old = cindex.TranslationUnit.from_source(
-                        f"{DEPENDENCY_OLD}/{diff.old_path}",
-                        args = diff.old_compile_args
-                )
-                cursor: cindex.Cursor = tu_old.cursor
-                dump_top_level_decls(cursor, recurse = args.dump_full)
-
-        if CONFIG.VERBOSITY >= 3:
-            print("==> Dump dependency (new) <===")
-
-        os.chdir(DEPENDENCY_NEW)
-        for diff in DEP_SOURCE_DIFFS:
-            # Reads content from files on disk
-            tu_new = cindex.TranslationUnit.from_source(
-                    f"{DEPENDENCY_NEW}/{diff.new_path}",
-                    args = diff.new_compile_args
-            )
-            cursor: cindex.Cursor = tu_new.cursor
-            dump_top_level_decls(cursor, recurse = args.dump_full)
-
-        if CONFIG.VERBOSITY >= 3:
-            print("==> Dump project <===")
-            os.chdir(PROJECT_DIR)
-
-            for source_file in PROJECT_SOURCE_FILES:
-                # Reads content from files on disk
-                tu = cindex.TranslationUnit.from_source(
-                        f"{PROJECT_DIR}/{source_file.new_path}",
-                        args = source_file.new_compile_args
-                )
-                cursor: cindex.Cursor = tu.cursor
-                dump_top_level_decls(cursor, recurse = args.dump_full)
-        done(0)
+    #
+    #               . . . . . .
+    #
 
 
     # - - - Impact set - - - #
@@ -379,7 +393,7 @@ if __name__ == '__main__':
     # begin parsing the source code of the main project
     # to find all call locations (the impact set)
     try:
-        with Pool(CONFIG.NPROC) as p:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
             CALL_SITES = flatten(p.map(
                 partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
                 PROJECT_SOURCE_FILES

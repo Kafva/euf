@@ -49,11 +49,11 @@ ctrlp:
 #SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
-OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
-NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
-NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
-DRIVER=~/Repos/euf/tests/matrix_init_driver.c
-SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
+#OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
+#NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
+#NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+#DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
 
 
 matrix_v:
@@ -168,10 +168,10 @@ regexec_d:
 		 --dependency ../oniguruma ../jq
 
 #	regexec.c
-#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-#DRIVER=~/Repos/euf/tests/regexec_driver.c
+OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+DRIVER=~/Repos/euf/tests/regexec_lib_driver.c
 
 regexec_ce:
 	LIBCLANG=$(LIBCLANG) \
@@ -185,7 +185,7 @@ regexec_ce:
 	PROJECT=~/Repos/jq \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \
-	./scripts/cbmc.sh
+	./scripts/cbmc_lib.sh
 
 
 regexec_ast:
