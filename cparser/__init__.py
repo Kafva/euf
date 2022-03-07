@@ -13,12 +13,13 @@ class Config:
     RENAME_YML = "/tmp/rename.yml"
 
     # The location to store the new version of the dependency
-    NEW_VERSION_ROOT: str = f"{os.path.expanduser('~')}/.cache/euf"
+    EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
 
+global CONFIG
 CONFIG = Config()
 
-if not os.path.exists(CONFIG.NEW_VERSION_ROOT):
-    os.mkdir(CONFIG.NEW_VERSION_ROOT)
+if not os.path.exists(CONFIG.EUF_CACHE):
+    os.mkdir(CONFIG.EUF_CACHE)
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:

@@ -1,6 +1,7 @@
 . "$(dirname $0)/helper.sh"
 
-DEP_NEW=$NEW_DIR/$(basename $DEP_OLD)-${COMMIT_NEW:0:8}
+DEP_OLD=$EUF_CACHE/$(basename $DEP)-${COMMIT_OLD:0:8}
+DEP_NEW=$EUF_CACHE/$(basename $DEP)-${COMMIT_NEW:0:8}
 TOP_LEVEL_DECLS=/tmp/top_decls.list
 OUTFILE=runner
 UNWIND=50
@@ -18,7 +19,7 @@ rm -f $OUTDIR/$OUTFILE
  --dep-only $DEP_FILE_NEW \
  --project-only $PROJECT_FILE \
  --dump-top-level-decls \
- --dependency $DEP_OLD $PROJECT > $TOP_LEVEL_DECLS || 
+ --dependency $DEP $PROJECT > $TOP_LEVEL_DECLS || 
 	 { cat $TOP_LEVEL_DECLS ; die "Failed to generate $TOP_LEVEL_DECLS" ; }
 
 OLD_OUT=$(basename ${DEP_FILE_OLD%%.c})_old.bc

@@ -15,7 +15,7 @@ rm -f $OUTDIR/$OUTFILE
 	--commit-old $COMMIT_OLD \
  	--commit-new $COMMIT_NEW \
  	--dump-top-level-decls-all \
- 	--dependency $DEP_OLD $PROJECT || 
+ 	--dependency $DEP $PROJECT || 
 	die "Failed to add '_old' suffixes in $DEP_OLD"
 
 

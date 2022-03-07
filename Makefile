@@ -1,5 +1,5 @@
 SHELL=/bin/bash
-NEW_DIR=~/.cache/euf
+EUF_CACHE=~/.cache/euf
 SMACK_DEPS=~/Repos/smack-deps
 VERBOSE=0
 
@@ -42,11 +42,11 @@ ctrlp:
 #SMACK_DRIVER=~/Repos/euf/tests/smack_nearest_even_driver.c
 
 # 	matrix_sum():
-#OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
-#NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
-#NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
-#DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
+OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
+NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
+NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
+DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
+SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
 #OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
@@ -69,13 +69,13 @@ matrix:
 
 matrix_ci:
 	LIBCLANG=$(LIBCLANG) \
-	NEW_DIR=$(NEW_DIR) \
+	EUF_CACHE=$(EUF_CACHE) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_INF) \
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
-	DEP_OLD=~/Repos/matrix \
+	DEP=~/Repos/matrix \
 	PROJECT=~/Repos/main \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \
@@ -83,13 +83,13 @@ matrix_ci:
 
 matrix_ce:
 	LIBCLANG=$(LIBCLANG) \
-	NEW_DIR=$(NEW_DIR) \
+	EUF_CACHE=$(EUF_CACHE) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
-	DEP_OLD=~/Repos/matrix \
+	DEP=~/Repos/matrix \
 	PROJECT=~/Repos/main \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \
@@ -97,13 +97,13 @@ matrix_ce:
 
 matrix_sce:
 	LIBCLANG=$(LIBCLANG) \
-	NEW_DIR=$(NEW_DIR) \
+	EUF_CACHE=$(EUF_CACHE) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
-	DEP_OLD=~/Repos/matrix \
+	DEP=~/Repos/matrix \
 	PROJECT=~/Repos/main \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(SMACK_DRIVER) \
@@ -111,13 +111,13 @@ matrix_sce:
 
 matrix_sci:
 	LIBCLANG=$(LIBCLANG) \
-	NEW_DIR=$(NEW_DIR) \
+	EUF_CACHE=$(EUF_CACHE) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_INF) \
 	DEP_FILE_NEW=src/matrix.c \
 	DEP_FILE_OLD=src/matrix.c \
 	PROJECT_FILE=src/calc.c \
-	DEP_OLD=~/Repos/matrix \
+	DEP=~/Repos/matrix \
 	PROJECT=~/Repos/main \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(SMACK_DRIVER) \
@@ -152,7 +152,7 @@ regexec_c:
 	DEP_FILE_NEW=src/regexec.c \
 	DEP_FILE_OLD=regexec.c \
 	PROJECT_FILE=src/builtin.c \
-	DEP_OLD=~/Repos/oniguruma \
+	DEP=~/Repos/oniguruma \
 	DEP_NEW=/tmp/oniguruma \
 	PROJECT=~/Repos/jq \
 	OUTDIR=~/Repos/euf/tests \
@@ -168,20 +168,20 @@ regexec_d:
 		 --dependency ../oniguruma ../jq
 
 #	regexec.c
-OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-DRIVER=~/Repos/euf/tests/regexec_lib_driver.c
+#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+#DRIVER=~/Repos/euf/tests/regexec_lib_driver.c
 
 regexec_ce:
 	LIBCLANG=$(LIBCLANG) \
-	NEW_DIR=$(NEW_DIR) \
+	EUF_CACHE=$(EUF_CACHE) \
 	COMMIT_OLD=$(OLD_COMMIT) \
 	COMMIT_NEW=$(NEW_COMMIT_EQUIV) \
 	DEP_FILE_NEW=src/regexec.c \
 	DEP_FILE_OLD=regexec.c \
 	PROJECT_FILE=src/builtin.c \
-	DEP_OLD=~/Repos/oniguruma \
+	DEP=~/Repos/oniguruma \
 	PROJECT=~/Repos/jq \
 	OUTDIR=~/Repos/euf/tests \
 	DRIVER=$(DRIVER) \

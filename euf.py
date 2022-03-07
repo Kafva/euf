@@ -14,148 +14,21 @@ remove equivilent entries
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback, shutil, multiprocessing, \
-        subprocess # pylint: disable=multiple-imports 
+import argparse, re, sys, os, traceback, multiprocessing # pylint: disable=multiple-imports 
 from functools import partial
 from pprint import pprint
-from typing import Set
 from clang import cindex
-from git.objects.commit import Commit
-from git.exc import GitCommandError
 from git.repo import Repo
+from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
-from cparser.util import flatten, flatten_dict, print_err, print_info
+from cparser.util import flatten, flatten_dict, print_err, done
 from cparser.change_set import get_changed_functions_from_diff, \
-        get_top_level_decls, get_transative_changes_from_file
+        get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
+from cparser.manip import autogen_compile_db, create_worktree, add_suffix_to_globals, compile_db_fail_msg
 
-def get_bear_version(path: str) -> int:
-    if shutil.which("bear") is None:
-        print_err("Missing 'bear' executable")
-        compile_db_fail_msg(path)
-    out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
-    prefix_len = len("bear ")
-    return int(out.stdout[prefix_len])
-
-def autogen_compile_db(path: str):
-    if os.path.exists(f"{path}/compile_commands.json"):
-        return
-
-    # 1. Configure the project according to ./configure.ac if applicable
-    if os.path.exists(f"{path}/configure.ac"):
-        try:
-            print_info(f"{path}: Running autoreconf...")
-            (subprocess.run([ "autoreconf", "-vfi" ],
-                cwd = path, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
-
-
-    # 2. Configure the project according to ./configure if applicable
-    if os.path.exists(f"{path}/configure"):
-        try:
-            print_info(f"{path}: Running ./configure...")
-            (subprocess.run([ "./configure" ], cwd = path, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
-
-    # 3. Run 'make' with 'bear'
-    if os.path.exists(f"{path}/Makefile"):
-        try:
-            print_info(f"Generating {path}/compile_commands.json...")
-            cmd = [ "bear", "--", "make", "-j",
-                    str(multiprocessing.cpu_count() - 1)
-            ]
-            if get_bear_version(path) <= 2:
-                del cmd[1]
-            (subprocess.run(cmd, cwd = path, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
-
-def compile_db_fail_msg(path: str):
-    backtrace = traceback.format_exc()
-    if not re.match("^NoneType: None$", backtrace):
-        print(backtrace)
-    print_err(f"Failed to parse {path}/compile_commands.json\n" +
-    "The compilation database can be created using `bear -- <build command>` e.g. `bear -- make`\n" +
-    "Consult the documentation for your particular dependency for additional build instructions.")
-    done(1)
-
-def done(code: int = 0):
-    OLD_DEP_REPO.git.checkout(HEAD_BRANCH) # type: ignore
-    sys.exit(code)
-
-def add_suffix_to_globals(path: str, suffix: str = "_old"):
-    '''
-    Go through every TU in the compilation database
-    and save the top level declerations. 
-
-    Then go through every source file and add a suffix
-    to every occurence of the global symbols using
-    'clang-rename'
-    '''
-    DEP_OLD = os.path.basename(DEPENDENCY_OLD)
-    lock_file = f"{CONFIG.NEW_VERSION_ROOT}/{DEP_OLD}_old.lock"
-
-    if os.path.exists(lock_file):
-        return
-
-    print_info(f"Adding '{suffix}' suffixes to {DEP_OLD}...")
-
-    os.chdir(path)
-
-    global_names: Set[str] = set()
-
-    for ccmds in DEP_DB_OLD.getAllCompileCommands():
-        try:
-            # Exclude 'cc' [0] and source file [-1] from compile command
-            tu = cindex.TranslationUnit.from_source(
-                    ccmds.filename,
-                    args = list(ccmds.arguments)[1:-1]
-            )
-            cursor: cindex.Cursor = tu.cursor
-        except cindex.TranslationUnitLoadError:
-            traceback.format_exc()
-            print_err(f"Failed to parse: {ccmds.filename}")
-            done(1)
-
-        global_names |= get_top_level_decls(cursor, path)
-
-
-    # Generate a Qualified -> NewName YAML file with translations for all of the
-    # identified symbols
-    with open(CONFIG.RENAME_YML, "w") as f:
-        f.write("---\n")
-        for name in global_names:
-            f.write(f"- QualifiedName: {name}\n  NewName: {name}_old\n")
-
-
-    # Replace all files with new versions that have the global symbols renamed
-    for ccmds in DEP_DB_OLD.getAllCompileCommands():
-        print_err(ccmds.filename)
-        if ccmds.filename != "/home/jonas/Repos/oniguruma/regexec.c":
-            continue
-        try:
-            (subprocess.run([
-                "clang-rename", "--input", CONFIG.RENAME_YML,
-                ccmds.filename, "--force", "-i", "--" ] +
-                list(ccmds.arguments)[1:-1],
-            cwd = path, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            traceback.format_exc()
-            print_err(f"Failed to add suffixes to: {ccmds.filename}")
-            done(1)
-
-
-    # Add a '.lockfile' to indicate that the path has been manipulated
-    # by `clang-rename`
-    open(lock_file, 'w')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
@@ -193,10 +66,9 @@ if __name__ == '__main__':
         print("Missing required option/argument")
         sys.exit(1)
 
-
     CONFIG.VERBOSITY    = args.verbose
     PROJECT_DIR         = os.path.abspath(args.project[0])
-    DEPENDENCY_OLD      = os.path.abspath(args.dependency)
+    DEPENDENCY_DIR      = os.path.abspath(args.dependency)
     DEP_ONLY_PATH       = args.dep_only
     PROJECT_ONLY_PATH   = args.project_only
     CONFIG.LIBCLANG     = args.libclang
@@ -209,28 +81,28 @@ if __name__ == '__main__':
         cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
     # - - - Dependency - - - #
-    OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
+    DEP_REPO = Repo(DEPENDENCY_DIR)
     try:
-        HEAD_BRANCH = OLD_DEP_REPO.active_branch
+        HEAD_BRANCH = DEP_REPO.active_branch
     except TypeError as e:
-        print_err(f"Unable to read current branch name for {DEPENDENCY_OLD}\n{e}")
+        print_err(f"Unable to read current branch name for {DEPENDENCY_DIR}\n{e}")
         sys.exit(1)
 
     # Find the objects that correspond to the old and new commit
     COMMIT_OLD: Commit = None # type: ignore
     COMMIT_NEW: Commit = None # type: ignore
 
-    for commit in OLD_DEP_REPO.iter_commits():
+    for commit in DEP_REPO.iter_commits():
         if commit.hexsha == args.commit_new:
             COMMIT_NEW: Commit = commit
         elif commit.hexsha == args.commit_old:
             COMMIT_OLD: Commit = commit
 
     if not COMMIT_OLD:
-        print(f"Unable to find commit: {args.commit_old}")
+        print(f"Unable to find old commit: {args.commit_old}")
         sys.exit(1)
     if not COMMIT_NEW:
-        print(f"Unable to find commit: {args.commit_new}")
+        print(f"Unable to find new commit: {args.commit_new}")
         sys.exit(1)
 
     # Only include modified (M) and renamed (R) '.c' files
@@ -251,33 +123,12 @@ if __name__ == '__main__':
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    DEPENDENCY_NEW = f"{CONFIG.NEW_VERSION_ROOT}/{os.path.basename(DEPENDENCY_OLD)}-{COMMIT_NEW.hexsha[:8]}"
+    DEP_NAME = os.path.basename(DEPENDENCY_DIR)
+    DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_NEW.hexsha[:8]}"
+    DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_OLD.hexsha[:8]}"
 
-    if not os.path.exists(DEPENDENCY_NEW):
-        print_info(f"Creating worktree at {DEPENDENCY_NEW}")
-        try:
-           # git checkout COMMIT_NEW.hexsha
-           # git checkout -b euf
-           # git worktree add -b euf /tmp/openssl euf
-            (subprocess.run([
-                    "git", "worktree", "add", "-b",
-                    f"euf-{COMMIT_NEW.hexsha[:8]}",
-                    DEPENDENCY_NEW, COMMIT_NEW.hexsha
-                ],
-                cwd = DEPENDENCY_OLD, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError as e:
-            print(traceback.format_exc())
-            done(1)
-
-
-    # Ensure that the old repo has the correct commit checked out
-    try:
-        OLD_DEP_REPO.git.checkout(COMMIT_OLD.hexsha) # type: ignore
-    except GitCommandError as e:
-        print_err(f"{DEPENDENCY_OLD}: Failed to checkout old commit")
-        print(traceback.format_exc())
-        sys.exit(1)
+    create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW)
+    create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD)
 
     # Attempt to create the compiliation database automatically
     # if they do not already exist
@@ -309,7 +160,7 @@ if __name__ == '__main__':
 
     # - - - (Optional) Dump all top level symbols - - - #
     if args.dump_top_level_decls_all:
-        add_suffix_to_globals(DEPENDENCY_OLD, "_old")
+        add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old")
         done(0)
 
 
@@ -355,7 +206,7 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 pprint(CHANGED_FUNCTIONS)
     except Exception as e:
-        print(traceback.format_exc())
+        traceback.print_exc()
         done(1)
 
 
@@ -412,7 +263,7 @@ if __name__ == '__main__':
                     CHANGED_FUNCTIONS.append(changed_function)
 
         except Exception as e:
-            print(traceback.format_exc())
+            traceback.print_exc()
             done(1)
 
     if CONFIG.VERBOSITY >= 2:
@@ -452,7 +303,7 @@ if __name__ == '__main__':
             else:
                 pretty_print_impact(CALL_SITES)
     except Exception as e:
-        print(traceback.format_exc())
+        traceback.print_exc()
         done(1)
 
 
