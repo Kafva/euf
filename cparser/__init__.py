@@ -10,6 +10,7 @@ class Config:
     TRANSATIVE_PASSES: int = 1
     NPROC: int = 5
     LIBCLANG = "/usr/lib/libclang.so.13.0.1"
+    RENAME_YML = "/tmp/rename.yml"
 
     # The location to store the new version of the dependency
     NEW_VERSION_ROOT: str = f"{os.path.expanduser('~')}/.cache/euf"

@@ -11,18 +11,27 @@ rm -f $OUTDIR/$OUTFILE
 # We need to re-name all global symbols in the old version with a new suffix
 # to avoid duplicates. 
 #
-# 1. Extract all top level objects (functions and variables) with bindings from libclang
 ./euf.py --libclang $LIBCLANG \
 	--commit-old $COMMIT_OLD \
  	--commit-new $COMMIT_NEW \
  	--dump-top-level-decls-all \
- 	--dependency $DEP_OLD $PROJECT | sort -u > $TOP_LEVEL_DECLS || { 
-		cat $TOP_LEVEL_DECLS ; die "Failed to generate $TOP_LEVEL_DECLS"
-	}
+ 	--dependency $DEP_OLD $PROJECT || 
+	die "Failed to add '_old' suffixes in $DEP_OLD"
 
-cat $TOP_LEVEL_DECLS
 
-# Generate a 
+
+
+# 1. Extract all top level objects (functions and variables) with bindings from libclang
+#./euf.py --libclang $LIBCLANG \
+#	--commit-old $COMMIT_OLD \
+# 	--commit-new $COMMIT_NEW \
+# 	--dump-top-level-decls-all \
+# 	--dependency $DEP_OLD $PROJECT | sort -u > $TOP_LEVEL_DECLS || { 
+#		cat $TOP_LEVEL_DECLS ; die "Failed to generate $TOP_LEVEL_DECLS"
+#	}
+#
+#cat $TOP_LEVEL_DECLS
+
 
 
 #OLD_OUT=$(basename ${DEP_FILE_OLD%%.c})_old.bc

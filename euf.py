@@ -18,6 +18,7 @@ import argparse, re, sys, os, traceback, shutil, multiprocessing, \
         subprocess # pylint: disable=multiple-imports 
 from functools import partial
 from pprint import pprint
+from typing import Set
 from clang import cindex
 from git.objects.commit import Commit
 from git.exc import GitCommandError
@@ -27,7 +28,7 @@ from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
 from cparser.util import flatten, flatten_dict, print_err, print_info
 from cparser.change_set import get_changed_functions_from_diff, \
-        dump_top_level_decls, get_transative_changes_from_file
+        get_top_level_decls, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
 
 def get_bear_version(path: str) -> int:
@@ -89,12 +90,26 @@ def done(code: int = 0):
     OLD_DEP_REPO.git.checkout(HEAD_BRANCH) # type: ignore
     sys.exit(code)
 
-def dump_all_top_level_objects(path: str):
+def add_suffix_to_globals(path: str, suffix: str = "_old"):
     '''
     Go through every TU in the compilation database
-    and dump the top level declerations of each
+    and save the top level declerations. 
+
+    Then go through every source file and add a suffix
+    to every occurence of the global symbols using
+    'clang-rename'
     '''
+    DEP_OLD = os.path.basename(DEPENDENCY_OLD)
+    lock_file = f"{CONFIG.NEW_VERSION_ROOT}/{DEP_OLD}_old.lock"
+
+    if os.path.exists(lock_file):
+        return
+
+    print_info(f"Adding '{suffix}' suffixes to {DEP_OLD}...")
+
     os.chdir(path)
+
+    global_names: Set[str] = set()
 
     for ccmds in DEP_DB_OLD.getAllCompileCommands():
         try:
@@ -109,7 +124,38 @@ def dump_all_top_level_objects(path: str):
             print_err(f"Failed to parse: {ccmds.filename}")
             done(1)
 
-        dump_top_level_decls(cursor, path)
+        global_names |= get_top_level_decls(cursor, path)
+
+
+    # Generate a Qualified -> NewName YAML file with translations for all of the
+    # identified symbols
+    with open(CONFIG.RENAME_YML, "w") as f:
+        f.write("---\n")
+        for name in global_names:
+            f.write(f"- QualifiedName: {name}\n  NewName: {name}_old\n")
+
+
+    # Replace all files with new versions that have the global symbols renamed
+    for ccmds in DEP_DB_OLD.getAllCompileCommands():
+        print_err(ccmds.filename)
+        if ccmds.filename != "/home/jonas/Repos/oniguruma/regexec.c":
+            continue
+        try:
+            (subprocess.run([
+                "clang-rename", "--input", CONFIG.RENAME_YML,
+                ccmds.filename, "--force", "-i", "--" ] +
+                list(ccmds.arguments)[1:-1],
+            cwd = path, stdout = sys.stderr
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            traceback.format_exc()
+            print_err(f"Failed to add suffixes to: {ccmds.filename}")
+            done(1)
+
+
+    # Add a '.lockfile' to indicate that the path has been manipulated
+    # by `clang-rename`
+    open(lock_file, 'w')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
@@ -263,7 +309,7 @@ if __name__ == '__main__':
 
     # - - - (Optional) Dump all top level symbols - - - #
     if args.dump_top_level_decls_all:
-        dump_all_top_level_objects(DEPENDENCY_OLD)
+        add_suffix_to_globals(DEPENDENCY_OLD, "_old")
         done(0)
 
 

@@ -29,4 +29,3 @@ def flatten(list_of_lists: list[list]) -> list:
     for li in list_of_lists:
         flat.extend(li)
     return flat
-
