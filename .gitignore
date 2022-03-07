@@ -1,3 +1,4 @@
+runner.so
 runner
 tests/*E.c
 tests/*.bc

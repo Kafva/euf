@@ -15,7 +15,6 @@ remove equivilent entries
 all locations were functions from the change set are called
 '''
 import argparse, re, sys, os, traceback, shutil
-import json
 import subprocess # pylint: disable=multiple-imports
 from multiprocessing import Pool
 from functools import partial

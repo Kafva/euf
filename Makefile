@@ -49,11 +49,11 @@ ctrlp:
 #SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
-#OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
-#NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
-#NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
-#DRIVER=~/Repos/euf/tests/matrix_init_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
+OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
+NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
+NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
 
 
 matrix_v:
@@ -65,7 +65,7 @@ matrix:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose $(VERBOSE) \
-		 --dependency ../matrix --json ../main
+		 --dependency ../matrix ../main
 
 matrix_ci:
 	LIBCLANG=$(LIBCLANG) \

@@ -1,0 +1,3 @@
+OLD {
+	global: init_matrix;
+} OLD;
