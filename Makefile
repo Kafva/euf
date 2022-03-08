@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 EUF_CACHE=~/.cache/euf
 SMACK_DEPS=~/Repos/smack-deps
-VERBOSE=0
+VERBOSE=1
 
 ifneq (,$(findstring Ubuntu,$(shell uname -a))) # if on Ubuntu
 LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
@@ -29,7 +29,7 @@ ctrlp:
 		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
 		 --verbose $(VERBOSE) \
 		 --nproc 10 \
-		 --dep-only crypto/evp/ctrl_params_translate.c \
+		 --dep-only-new crypto/evp/ctrl_params_translate.c \
 		 --dependency ../openssl ../curl
 
 
@@ -49,11 +49,11 @@ ctrlp:
 #SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
-#OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
-#NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
-#NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
-#DRIVER=~/Repos/euf/tests/matrix_init_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
+OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
+NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
+NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
 
 
 matrix_v:
@@ -69,14 +69,14 @@ matrix:
 matrix_ci:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
-		 --verbose 0 \
+		 --verbose $(VERBOSE) \
 		 --full --driver $(DRIVER) \
 		 --dependency ../matrix ../main
 
 matrix_ce:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_EQUIV) \
-		 --verbose 0 \
+		 --verbose $(VERBOSE) \
 		 --full --driver $(DRIVER) \
 		 --dependency ../matrix ../main
 
@@ -123,7 +123,7 @@ regexec:
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
 		 --project-only src/builtin.c \
 		 --verbose $(VERBOSE) \
-		 --dep-only src/regexec.c \
+		 --dep-only-new src/regexec.c \
 		 --dependency ../oniguruma ../jq
 
 regexec_v:
@@ -147,21 +147,23 @@ regexec_c:
 regexec_d:
 	./euf.py --libclang $(LIBCLANG) --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
-		 --dep-only src/regexec.c \
+		 --dep-only-new src/regexec.c \
 		 --project-only src/builtin.c \
 		 --dump-full \
 		 --dependency ../oniguruma ../jq
 
 #	regexec.c
-OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-DRIVER=~/Repos/euf/tests/regexec_driver.c
+#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+#DRIVER=~/Repos/euf/tests/regexec_driver.c
 
 regexec_ce:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_EQUIV) \
-		 --verbose 0 \
+		 --verbose $(VERBOSE) \
+		 --dep-only-new src/regexec.c \
+		 --dep-only-old regexec.c \
 		 --full --driver $(DRIVER) \
 		 --dependency ../oniguruma ../jq
 
@@ -172,7 +174,7 @@ regexec_ast:
 euc_jp:
 	./euf.py --libclang $(LIBCLANG) --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
 		 --commit-new a2ac402a3549713e6c909752937b7a54f559beb8 \
-		 --dep-only src/euc_jp.c \
+		 --dep-only-new src/euc_jp.c \
 		 --dependency ../oniguruma ../jq
 euc_jp_v:
 	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \

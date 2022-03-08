@@ -1,3 +1,5 @@
+from functools import partial
+import multiprocessing
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
@@ -52,7 +54,19 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
 
     return global_names
 
-def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_old") -> bool:
+
+def clang_rename(filepath: str, commands: list[str], cwd: str) -> None:
+    cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML,
+        filepath, "--force", "-i",  "--" ] + commands
+
+    if CONFIG.VERBOSITY >= 2:
+        print_info(f"Patching {filepath}\n" + ' '.join(commands))
+
+    (subprocess.run(cmd, cwd = cwd, stdout = sys.stderr
+    )).check_returncode()
+
+def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
+        dep_only_path: str, suffix: str = "_old") -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
@@ -61,7 +75,7 @@ def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: s
     to every occurence of the global symbols using
     'clang-rename'
     '''
-    dep_name = os.path.basename(path)
+    dep_name = os.path.basename(dep_path)
     lock_file = f"{CONFIG.EUF_CACHE}/{dep_name}.lock"
 
     if os.path.exists(lock_file):
@@ -69,7 +83,7 @@ def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: s
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
-    global_names = get_all_top_level_decls(path, ccdb) # type: ignore
+    global_names = get_all_top_level_decls(dep_path, ccdb) # type: ignore
     if not global_names: return False
 
     # Generate a Qualified -> NewName YAML file with translations for all of the
@@ -81,23 +95,38 @@ def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: s
 
 
     # Replace all files with new versions that have the global symbols renamed
-    for ccmds in ccdb.getAllCompileCommands():
-        try:
-            cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML,
-                ccmds.filename, "--force", "-i",  "--" ] + \
-                list(ccmds.arguments)[1:-1]
-            print_info(f"Patching {ccmds.filename}\n" + ' '.join(cmd))
+    # We extract the first 'cc' and last three arguments from the ccmds
+    #   '-c' '-o' 'outfile.o' <source>
+    ccmds = list(ccdb.getAllCompileCommands())
+    filepaths: list[str] = list(map(lambda ccmd: ccmd.filename, ccmds))
+    commands: list[list[str]] =  list(map(lambda ccmd:
+        list(ccmd.arguments)[1:-4], ccmds))
 
-            (subprocess.run(cmd, cwd = path, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            traceback.format_exc()
-            print_err(f"Failed to add suffixes to: {ccmds.filename}")
+    # Only process a specific file
+    if dep_only_path != "":
+        try:
+            idx = filepaths.index( f"{dep_path}/{dep_only_path}")
+        except ValueError:
+            print_err(f"Could not find {dep_path}/{dep_only_path}")
+            return False
+        filepaths = [ filepaths[idx] ]
+        commands =  [ commands[idx]  ]
+
+    # TODO: This might haft to be sequential since each process could
+    # be manipulating the same files...
+    with multiprocessing.Pool(CONFIG.NPROC) as p:
+        try:
+            p.starmap(partial(clang_rename, cwd = dep_path),
+                zip(filepaths, commands)
+            )
+        except Exception:
+            traceback.print_exc()
             return False
 
 
     # Add a '.lockfile' to indicate that the path has been manipulated
     # by `clang-rename`
     open(lock_file, 'w', encoding="utf8").close()
+
     return True
 

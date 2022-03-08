@@ -1,4 +1,5 @@
 import sys, os
+from pathlib import Path
 from dataclasses import dataclass
 from clang import cindex
 
@@ -22,6 +23,8 @@ CONFIG = Config()
 
 if not os.path.exists(CONFIG.EUF_CACHE):
     os.mkdir(CONFIG.EUF_CACHE)
+
+BASE_DIR = Path(__file__).parent.parent.absolute()
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:

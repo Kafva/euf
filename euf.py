@@ -16,7 +16,6 @@ all locations were functions from the change set are called
 '''
 import argparse, re, sys, os, traceback, multiprocessing
 import subprocess
-from pathlib import Path
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -24,7 +23,7 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
-    ProjectInvocation, SourceDiff, SourceFile, get_compile_args
+    ProjectInvocation, SourceDiff, SourceFile, get_compile_args, BASE_DIR
 from cparser.util import flatten, flatten_dict, print_err, print_info
 from cparser.change_set import get_changed_functions_from_diff, \
         get_transative_changes_from_file
@@ -33,7 +32,6 @@ from cparser.build import autogen_compile_db, create_worktree, \
         compile_db_fail_msg
 from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
 
-BASE_DIR = Path(__file__).parent.absolute()
 
 def done(code: int = 0):
     '''
@@ -83,8 +81,10 @@ if __name__ == '__main__':
         help=f"Verbosity level in output, 0-3, (default 0)")
     parser.add_argument("--nprocs", metavar='count', default=CONFIG.NPROC, help=
         f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
-    parser.add_argument("--dep-only", metavar="filepath", default="", help=
+    parser.add_argument("--dep-only-new", metavar="filepath", default="", help=
         'Only process a specific path of the dependency (uses the path in the new commit)')
+    parser.add_argument("--dep-only-old", metavar="filepath", default="", help=
+        'Only process a specific path of the dependency (uses the path in the old commit)')
     parser.add_argument("--driver", metavar="filepath", default="", help=
         'The entrypoint to use for CBMC tests')
     parser.add_argument("--project-only", metavar="filepath", default="", help=
@@ -102,7 +102,8 @@ if __name__ == '__main__':
     CONFIG.VERBOSITY    = args.verbose
     PROJECT_DIR         = os.path.abspath(args.project[0])
     DEPENDENCY_DIR      = os.path.abspath(args.dependency)
-    DEP_ONLY_PATH       = args.dep_only
+    DEP_ONLY_PATH_OLD   = args.dep_only_old
+    DEP_ONLY_PATH_NEW   = args.dep_only_new
     PROJECT_ONLY_PATH   = args.project_only
     CONFIG.LIBCLANG     = args.libclang
 
@@ -189,9 +190,9 @@ if __name__ == '__main__':
         diff.old_compile_args = get_compile_args(DEP_DB_OLD, diff.old_path)
         diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path)
 
-    if DEP_ONLY_PATH != "":
+    if DEP_ONLY_PATH_NEW != "":
         DEP_SOURCE_DIFFS = list(filter(lambda d:
-            d.new_path == DEP_ONLY_PATH, DEP_SOURCE_DIFFS))
+            d.new_path == DEP_ONLY_PATH_NEW, DEP_SOURCE_DIFFS))
 
     # - - - (Debugging) Dump all top level symbols - - - #
     if args.dump_top_level_decls:
@@ -245,9 +246,9 @@ if __name__ == '__main__':
 
             if CONFIG.VERBOSITY >= 1:
                 pprint(CHANGED_FUNCTIONS)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
-        done(1)
+        done(-1)
 
 
     # - - - Transitive change set propagation - - - #
@@ -266,11 +267,11 @@ if __name__ == '__main__':
         new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
     ) for filepath in DEP_SOURCE_FILES ]
 
-    if DEP_ONLY_PATH != "":
+    if DEP_ONLY_PATH_NEW != "":
         DEP_SOURCE_FILES = list(filter(lambda f:
-            f.new_path == DEP_ONLY_PATH, DEP_SOURCE_FILES))
+            f.new_path == DEP_ONLY_PATH_NEW, DEP_SOURCE_FILES))
 
-    if CONFIG.VERBOSITY >= 2:
+    if CONFIG.VERBOSITY >= 1:
         print("==> Transitive change set <==")
     TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(DEPENDENCY_NEW)
@@ -305,7 +306,7 @@ if __name__ == '__main__':
 
         except Exception as e:
             traceback.print_exc()
-            done(1)
+            done(-1)
 
     if CONFIG.VERBOSITY >= 2:
         print("==> Complete set <===")
@@ -320,7 +321,10 @@ if __name__ == '__main__':
         if CONFIG.VERBOSITY >= 1:
             print("==> Reduction <===")
 
-        if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"): done(-1)
+        # TODO: Save results in secondary cache
+        if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD,
+                DEP_ONLY_PATH_OLD, "_old"):
+            done(-1)
 
         os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
@@ -335,7 +339,9 @@ if __name__ == '__main__':
 
         for change in CHANGED_FUNCTIONS:
             # TODO: pair each change with its own dedicated driver
-            if DEP_ONLY_PATH != "" and DEP_ONLY_PATH != change.old.filepath:
+            # based on the function being tested
+            if DEP_ONLY_PATH_OLD != "" and \
+               DEP_ONLY_PATH_OLD != change.old.filepath:
                 continue
 
             script_env.update({
@@ -344,13 +350,13 @@ if __name__ == '__main__':
                 'DRIVER': args.driver,
             })
             try:
-                print_info(f"Starting CBMC analysis for {change.old.filepath}")
+                print_info(f"Starting CBMC analysis for {change.old}")
                 (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
                 env = script_env, stdout = sys.stderr
                 )).check_returncode()
             except subprocess.CalledProcessError:
                 traceback.print_exc()
-                done(1)
+                done(-1)
         done(0)
 
 
@@ -379,7 +385,7 @@ if __name__ == '__main__':
                 pretty_print_impact(CALL_SITES)
     except Exception as e:
         traceback.print_exc()
-        done(1)
+        done(-1)
 
 
     done(0)
