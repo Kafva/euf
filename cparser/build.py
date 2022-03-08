@@ -2,6 +2,7 @@ import shutil, subprocess, os, sys, multiprocessing, traceback, re
 from git.objects.commit import Commit
 
 from cparser.util import print_err, print_info
+from cparser import CONFIG, BASE_DIR
 
 def get_bear_version(path: str) -> int:
     if shutil.which("bear") is None:
@@ -11,6 +12,7 @@ def get_bear_version(path: str) -> int:
     out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
     prefix_len = len("bear ")
     return int(out.stdout[prefix_len])
+
 
 def run_if_present(path:str, filename: str) -> bool:
     if os.path.exists(f"{path}/{filename}"):
@@ -28,7 +30,8 @@ def autogen_compile_db(path: str) -> bool:
         return True
 
     # 1. Configure the project according to ./configure.ac if applicable
-    if os.path.exists(f"{path}/configure.ac"):
+    if os.path.exists(f"{path}/configure.ac") or \
+       os.path.exists(f"{path}/configure.in"):
         try:
             print_info(f"{path}: Running autoreconf...")
             (subprocess.run([ "autoreconf", "-vfi" ],
@@ -91,3 +94,31 @@ def create_worktree(target: str, cwd: str, commit: Commit) -> bool:
             return False
 
     return True
+
+def build_goto_lib(dep_dir: str) -> str:
+    '''
+    Returns the path to the built library or an empty string on failure
+    '''
+    script_env = os.environ.copy()
+    script_env.update({
+        'DEPENDENCY_DIR': dep_dir,
+        'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+    })
+
+    lib_path = ""
+
+    try:
+        proc = subprocess.run([ f"{BASE_DIR}/scripts/mk_goto.sh" ],
+            env = script_env, stdout = subprocess.PIPE, cwd = dep_dir
+        )
+        proc.check_returncode()
+        lines = proc.stdout.splitlines()
+
+        if lines:
+            lib_path = str(lines[0])
+
+    except subprocess.CalledProcessError:
+        traceback.print_exc()
+
+    return lib_path
+

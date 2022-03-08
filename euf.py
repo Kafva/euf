@@ -29,7 +29,7 @@ from cparser.util import flatten, flatten_dict, print_err, print_info, top_stash
 from cparser.change_set import get_changed_functions_from_diff, \
         get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
-from cparser.build import autogen_compile_db, create_worktree, \
+from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
 from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
 
@@ -314,56 +314,61 @@ if __name__ == '__main__':
         pprint(CHANGED_FUNCTIONS)
 
     # - - - Harness generation - - - #
+    # Regardless of which back-end we use to check equivalance, 
+    # we will need a minimal program that invokes both versions of the changed 
+    # function and then performs an assertion on all affected outputs
     # TODO
 
 
 
     # - - - Reduction of change set - - - #
-    # Regardless of which back-end we use to check equivalance, 
-    # we will need a minimal program that invokes both versions of the changed 
-    # function and then performs an assertion on all affected outputs
     #
     if args.full and os.path.exists(args.driver):
         try:
             if CONFIG.VERBOSITY >= 1:
-                print("==> Reduction <===")
+                print("==> Reduction <==")
 
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
                 done(-1)
-            done(0)
 
+            # Compile the old and new version of the dependency as a goto-bin
+            #if (new_lib := build_goto_lib(DEPENDENCY_NEW)) == "": done(-1)
+            if (old_lib := build_goto_lib(DEPENDENCY_OLD)) == "": done(-1)
+
+
+            print("AAAAAAAAAAA", old_lib)
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
-            script_env = os.environ.copy()
-            script_env.update({
-                'DEPENDENCY_NEW': DEPENDENCY_NEW,
-                'DEPENDENCY_OLD': DEPENDENCY_OLD,
-                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
-                'UNWIND': str(args.unwind),
-                'SETX': str(CONFIG.VERBOSITY >= 2).lower()
-            })
+            #script_env = os.environ.copy()
+            #script_env.update({
+            #    'DEPENDENCY_NEW': DEPENDENCY_NEW,
+            #    'DEPENDENCY_OLD': DEPENDENCY_OLD,
+            #    'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+            #    'UNWIND': str(args.unwind),
+            #    'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+            #})
 
-            for change in CHANGED_FUNCTIONS:
-                # TODO: pair each change with its own dedicated driver
-                # based on the function being tested
-                if DEP_ONLY_PATH_OLD != "" and \
-                   DEP_ONLY_PATH_OLD != change.old.filepath:
-                    continue
+            #for change in CHANGED_FUNCTIONS:
+            #    # TODO: pair each change with its own dedicated driver
+            #    # based on the function being tested
+            #    if DEP_ONLY_PATH_OLD != "" and \
+            #       DEP_ONLY_PATH_OLD != change.old.filepath:
+            #        continue
 
-                script_env.update({
-                    'DEP_FILE_OLD': change.old.filepath,
-                    'DEP_FILE_NEW': change.new.filepath,
-                    'DRIVER': args.driver,
-                })
-                try:
-                    print_info(f"Starting CBMC analysis for {change.old}")
-                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
-                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
-                    )).check_returncode()
-                except subprocess.CalledProcessError:
-                    traceback.print_exc()
-                    done(-1)
-                break
+            #    script_env.update({
+            #        'DEP_FILE_OLD': change.old.filepath,
+            #        'DEP_FILE_NEW': change.new.filepath,
+            #        'DRIVER': args.driver,
+            #    })
+            #    try:
+            #        print_info(f"Starting CBMC analysis for {change.old}")
+            #        (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
+            #        env = script_env, stdout = sys.stderr, cwd = BASE_DIR
+            #        )).check_returncode()
+            #    except subprocess.CalledProcessError:
+            #        traceback.print_exc()
+            #        done(-1)
+            #    break
 
             done(0) # tmp
         except KeyboardInterrupt:
