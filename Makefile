@@ -42,18 +42,18 @@ ctrlp:
 #SMACK_DRIVER=~/Repos/euf/tests/smack_nearest_even_driver.c
 
 # 	matrix_sum():
-OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
-NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
-NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
-DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
-SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
+#OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
+#NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
+#NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
+#DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
+#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
 
 #	matrix_init()
-#OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
-#NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
-#NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
-#DRIVER=~/Repos/euf/tests/matrix_init_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
+OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
+NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
+NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+DRIVER=~/Repos/euf/tests/matrix_init_driver.c
+SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
 
 
 matrix_v:

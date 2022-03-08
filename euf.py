@@ -27,7 +27,9 @@ from cparser.util import flatten, flatten_dict, print_err, done
 from cparser.change_set import get_changed_functions_from_diff, \
         get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
-from cparser.manip import autogen_compile_db, create_worktree, add_suffix_to_globals, compile_db_fail_msg
+from cparser.build import autogen_compile_db, create_worktree, \
+        compile_db_fail_msg
+from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
 
 
 if __name__ == '__main__':
@@ -45,7 +47,9 @@ if __name__ == '__main__':
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
-    parser.add_argument("--dump-top-level-decls-all", action='store_true', default=False,
+    parser.add_argument("--test", action='store_true', default=False,
+        help='Testing')
+    parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of ALL top level declarations in the old version of the dependency')
     parser.add_argument("--verbose", metavar='level', type=int,
         default=CONFIG.VERBOSITY,
@@ -159,7 +163,10 @@ if __name__ == '__main__':
 
 
     # - - - (Optional) Dump all top level symbols - - - #
-    if args.dump_top_level_decls_all:
+    if args.dump_top_level_decls:
+        print('\n'.join( get_all_top_level_decls(DEPENDENCY_OLD, DEP_DB_OLD) ))
+        done(0)
+    elif args.test:
         add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old")
         done(0)
 

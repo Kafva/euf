@@ -1,5 +1,4 @@
 from itertools import zip_longest
-from typing import Set
 
 from clang import cindex
 
@@ -109,32 +108,6 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
             print(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
     return changed_functions
-
-def get_top_level_decls(cursor: cindex.Cursor, basepath: str) -> Set[str]:
-    ''' 
-    Extract the names of all top level declerations (variables and functions) 
-    within the given basepath. Without filtering on the basepath 
-    externally defined symbols can appear
-    '''
-
-    global_decls: Set[str] = set()
-
-    for child in cursor.get_children():
-        if (str(child.kind).endswith("FUNCTION_DECL") or \
-            str(child.kind).endswith("VAR_DECL") ) and \
-            child.is_definition() and \
-            str(child.location.file).startswith(basepath):
-                global_decls.add(child.spelling)
-
-    return global_decls
-
-def dump_children(cursor: cindex.Cursor, indent: int) -> None:
-    for child in cursor.get_children():
-        if child.spelling != "":
-            print(indent * " ", end='')
-            print(f"{child.kind} {child.type.kind} {child.spelling}")
-            indent += 1
-        dump_children(child, indent)
 
 def get_transative_changes_from_file(source_file: SourceFile,
     changed_functions: list[DependencyFunctionChange]) -> dict[DependencyFunction,list[str]]:
