@@ -2,7 +2,7 @@ import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
 
-from cparser.util import print_err, print_info, done
+from cparser.util import print_err, print_info
 from cparser import CONFIG
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
@@ -30,7 +30,7 @@ def get_top_level_decls(cursor: cindex.Cursor, basepath: str) -> Set[str]:
 
     return global_decls
 
-def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[str]:
+def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[str] | None:
     os.chdir(path)
 
     global_names: Set[str] = set()
@@ -46,13 +46,13 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
         except cindex.TranslationUnitLoadError:
             traceback.format_exc()
             print_err(f"Failed to parse: {ccmds.filename}")
-            done(1)
+            return
 
         global_names |= get_top_level_decls(cursor, path)
 
     return global_names
 
-def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_old"):
+def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_old") -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
@@ -65,11 +65,12 @@ def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: s
     lock_file = f"{CONFIG.EUF_CACHE}/{dep_name}.lock"
 
     if os.path.exists(lock_file):
-        return
+        return False
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
-    global_names = get_all_top_level_decls(path, ccdb)
+    global_names = get_all_top_level_decls(path, ccdb) # type: ignore
+    if not global_names: return False
 
     # Generate a Qualified -> NewName YAML file with translations for all of the
     # identified symbols
@@ -81,24 +82,22 @@ def add_suffix_to_globals(path: str, ccdb: cindex.CompilationDatabase, suffix: s
 
     # Replace all files with new versions that have the global symbols renamed
     for ccmds in ccdb.getAllCompileCommands():
-        if ccmds.filename != "/home/jonas/Repos/oniguruma/regexec.c":
-            continue
-        print_err(ccmds.filename)
         try:
             cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML,
                 ccmds.filename, "--force", "-i",  "--" ] + \
                 list(ccmds.arguments)[1:-1]
-            print(' '.join(cmd))
+            print_info(f"Patching {ccmds.filename}\n" + ' '.join(cmd))
 
             (subprocess.run(cmd, cwd = path, stdout = sys.stderr
             )).check_returncode()
         except subprocess.CalledProcessError:
             traceback.format_exc()
             print_err(f"Failed to add suffixes to: {ccmds.filename}")
-            done(1)
+            return False
 
 
     # Add a '.lockfile' to indicate that the path has been manipulated
     # by `clang-rename`
     open(lock_file, 'w', encoding="utf8").close()
+    return True
 

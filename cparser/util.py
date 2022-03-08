@@ -1,9 +1,6 @@
 import sys
 from typing import Set
 
-def done(code: int = 0):
-    sys.exit(code)
-
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
 

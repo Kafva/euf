@@ -14,7 +14,9 @@ remove equivilent entries
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback, multiprocessing # pylint: disable=multiple-imports 
+import argparse, re, sys, os, traceback, multiprocessing
+import subprocess
+from pathlib import Path
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -23,7 +25,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args
-from cparser.util import flatten, flatten_dict, print_err, done
+from cparser.util import flatten, flatten_dict, print_err, print_info
 from cparser.change_set import get_changed_functions_from_diff, \
         get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
@@ -31,6 +33,31 @@ from cparser.build import autogen_compile_db, create_worktree, \
         compile_db_fail_msg
 from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
 
+BASE_DIR = Path(__file__).parent.absolute()
+
+def done(code: int = 0):
+    '''
+    We always need to reset the cache since keeping the '_old' replacements
+    will prevent the inital change set generation from working
+    '''
+    script_env = os.environ.copy()
+
+    if CONFIG.VERBOSITY >= 2:
+        script_env['SETX'] = "true"
+        out = sys.stderr
+    else:
+        out = subprocess.DEVNULL
+
+    try:
+        (subprocess.run([
+            f"{BASE_DIR}/scripts/reset_cache.sh" ],
+        env = script_env, stdout = out, stderr = out
+        )).check_returncode()
+    except subprocess.CalledProcessError:
+        traceback.print_exc()
+        sys.exit(-1)
+
+    sys.exit(code)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
@@ -47,8 +74,8 @@ if __name__ == '__main__':
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
-    parser.add_argument("--test", action='store_true', default=False,
-        help='Testing')
+    parser.add_argument("--full", action='store_true', default=False,
+        help='Run the full analysis with CBMC')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of ALL top level declarations in the old version of the dependency')
     parser.add_argument("--verbose", metavar='level', type=int,
@@ -58,6 +85,8 @@ if __name__ == '__main__':
         f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
     parser.add_argument("--dep-only", metavar="filepath", default="", help=
         'Only process a specific path of the dependency (uses the path in the new commit)')
+    parser.add_argument("--driver", metavar="filepath", default="", help=
+        'The entrypoint to use for CBMC tests')
     parser.add_argument("--project-only", metavar="filepath", default="", help=
         'Only process a specific path of the main project')
     parser.add_argument("--libclang", metavar="filepath",
@@ -131,14 +160,14 @@ if __name__ == '__main__':
     DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_NEW.hexsha[:8]}"
     DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_OLD.hexsha[:8]}"
 
-    create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW)
-    create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD)
+    if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW): done(-1)
+    if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD): done(-1)
 
     # Attempt to create the compiliation database automatically
     # if they do not already exist
-    autogen_compile_db(DEPENDENCY_OLD)
-    autogen_compile_db(DEPENDENCY_NEW)
-    autogen_compile_db(PROJECT_DIR)
+    if not autogen_compile_db(DEPENDENCY_OLD): done(-1)
+    if not autogen_compile_db(DEPENDENCY_NEW): done(-1)
+    if not autogen_compile_db(PROJECT_DIR): done(-1)
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
@@ -147,11 +176,13 @@ if __name__ == '__main__':
             cindex.CompilationDatabase.fromDirectory(DEPENDENCY_OLD)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEPENDENCY_OLD)
+        done(-1)
     try:
         DEP_DB_NEW: cindex.CompilationDatabase  = \
                 cindex.CompilationDatabase.fromDirectory(DEPENDENCY_NEW)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEPENDENCY_NEW)
+        done(-1)
 
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:
@@ -159,17 +190,17 @@ if __name__ == '__main__':
         diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path)
 
     if DEP_ONLY_PATH != "":
-        DEP_SOURCE_DIFFS = list(filter(lambda d: d.new_path == DEP_ONLY_PATH, DEP_SOURCE_DIFFS))
+        DEP_SOURCE_DIFFS = list(filter(lambda d:
+            d.new_path == DEP_ONLY_PATH, DEP_SOURCE_DIFFS))
 
-
-    # - - - (Optional) Dump all top level symbols - - - #
+    # - - - (Debugging) Dump all top level symbols - - - #
     if args.dump_top_level_decls:
-        print('\n'.join( get_all_top_level_decls(DEPENDENCY_OLD, DEP_DB_OLD) ))
-        done(0)
-    elif args.test:
-        add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old")
-        done(0)
-
+        decls =  get_all_top_level_decls(DEPENDENCY_OLD, DEP_DB_OLD)
+        if not decls:
+            done(-1)
+        else:
+            print('\n'.join(decls))
+            done(0)
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -182,6 +213,7 @@ if __name__ == '__main__':
         MAIN_DB = cindex.CompilationDatabase.fromDirectory(PROJECT_DIR)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(PROJECT_DIR)
+        done(-1)
 
     PROJECT_SOURCE_FILES = [ SourceFile(
         new_path = filepath, # type: ignore
@@ -189,7 +221,8 @@ if __name__ == '__main__':
     ) for filepath in PROJECT_SOURCE_FILES ]
 
     if PROJECT_ONLY_PATH != "":
-        PROJECT_SOURCE_FILES = list(filter(lambda f: f.new_path == PROJECT_ONLY_PATH, PROJECT_SOURCE_FILES))
+        PROJECT_SOURCE_FILES = list(filter(lambda f:
+            f.new_path == PROJECT_ONLY_PATH, PROJECT_SOURCE_FILES))
 
     # - - - Change set - - - #
     if CONFIG.VERBOSITY >= 2:
@@ -218,11 +251,11 @@ if __name__ == '__main__':
 
 
     # - - - Transitive change set propagation - - - #
-    # To include functions that have not had a textual change but call a function
-    # that has changed, we perform a configurable number of additional passes were we look for
-    # invocations of changed functions in the dependency 
-    #
-    # We only need to look through the files in the new version of the dependency
+    # To include functions that have not had a textual change but call a 
+    # function that has changed, we perform a configurable number of 
+    # additional passes were we look for invocations of changed functions 
+    # in the dependency 
+    # We only need to look through the files in the new version
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
     DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
         [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
@@ -234,7 +267,8 @@ if __name__ == '__main__':
     ) for filepath in DEP_SOURCE_FILES ]
 
     if DEP_ONLY_PATH != "":
-        DEP_SOURCE_FILES = list(filter(lambda f: f.new_path == DEP_ONLY_PATH, DEP_SOURCE_FILES))
+        DEP_SOURCE_FILES = list(filter(lambda f:
+            f.new_path == DEP_ONLY_PATH, DEP_SOURCE_FILES))
 
     if CONFIG.VERBOSITY >= 2:
         print("==> Transitive change set <==")
@@ -282,8 +316,42 @@ if __name__ == '__main__':
     # we will need a minimal program that invokes both versions of the changed 
     # function and then performs an assertion on all affected outputs
     #
-    #               . . . . . .
-    #
+    if args.full and os.path.exists(args.driver):
+        if CONFIG.VERBOSITY >= 1:
+            print("==> Reduction <===")
+
+        if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"): done(-1)
+
+        os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
+
+        script_env = os.environ.copy()
+        script_env.update({
+            'DEPENDENCY_NEW': DEPENDENCY_NEW,
+            'DEPENDENCY_OLD': DEPENDENCY_OLD,
+            'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+            'UNWIND': str(CONFIG.UNWIND),
+            'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+        })
+
+        for change in CHANGED_FUNCTIONS:
+            # TODO: pair each change with its own dedicated driver
+            if DEP_ONLY_PATH != "" and DEP_ONLY_PATH != change.old.filepath:
+                continue
+
+            script_env.update({
+                'DEP_FILE_OLD': change.old.filepath,
+                'DEP_FILE_NEW': change.new.filepath,
+                'DRIVER': args.driver,
+            })
+            try:
+                print_info(f"Starting CBMC analysis for {change.old.filepath}")
+                (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
+                env = script_env, stdout = sys.stderr
+                )).check_returncode()
+            except subprocess.CalledProcessError:
+                traceback.print_exc()
+                done(1)
+        done(0)
 
 
     # - - - Impact set - - - #
