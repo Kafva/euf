@@ -20,6 +20,10 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     The from_source() method also accepts content from arbitrary text streams,
     but this causes inconsitencies that produce an incomplete AST, we therefore need
     to read both versions directly from disk
+
+    To automate harness generation we need to record argument types and return values for
+    the functions that have changed. TODO: Determining which pointer arguments change
+    would be very useful, we might be able to do this through analyzing the function body
     '''
 
     tu_old = cindex.TranslationUnit.from_source(

@@ -1,5 +1,9 @@
-import sys
+import sys, re
 from typing import Set
+
+from git.repo.base import Repo
+
+from cparser import CONFIG
 
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
@@ -29,3 +33,13 @@ def flatten(list_of_lists: list[list]) -> list:
     for li in list_of_lists:
         flat.extend(li)
     return flat
+
+def top_stash_is_euf_internal(repo: Repo) -> bool:
+    top_stash: str = repo.git.stash("list").split('\n', 1)[0] # type: ignore
+    return top_stash.endswith(CONFIG.CACHE_INTERNAL_STASH)
+
+def remove_prefix(target: str, prefix: str) -> str:
+    if target.startswith(prefix):
+        return target[len(prefix):]
+    else:
+        return target

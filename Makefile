@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 EUF_CACHE=~/.cache/euf
 SMACK_DEPS=~/Repos/smack-deps
-VERBOSE=1
+VERBOSE=2
 
 ifneq (,$(findstring Ubuntu,$(shell uname -a))) # if on Ubuntu
 LIBCLANG=/usr/lib/llvm-12/lib/libclang.so.1
@@ -10,27 +10,6 @@ LIBCLANG=/usr/lib/libclang.so.13.0.1
 endif
 
 .PHONY: smt clean run bmc diff oni oniv cbmc matrix
-#---- curl => openssl tests ----#
-# 9542 crypto/ec/ecp_nistz256_table.c
-# 5647 crypto/ec/curve25519.c      (Almost all functions are renamed...)
-# 4162 crypto/evp/e_aes.c
-# 3454 crypto/x509/x509_vfy.c
-# 3440 crypto/ec/ec_curve.c
-# 2769 crypto/evp/ctrl_params_translate.c
-# 2437 crypto/evp/p_lib.c
-# 2378 crypto/ec/ecp_nistp256.c
-ctrlp_v:
-	./scripts/euf.sh -f crypto/evp/ctrl_params_translate.c \
-		-o  9a1c4e41e8d \
-		-n  d5f9166bacf \
-		-d ../openssl ../curl | bat
-ctrlp:
-	./euf.py --libclang $(LIBCLANG) --commit-old 9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f \
-		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
-		 --verbose $(VERBOSE) \
-		 --nproc 10 \
-		 --dep-only-new crypto/evp/ctrl_params_translate.c \
-		 --dependency ../openssl ../curl
 
 
 #---- ../main => ../matrix tests  ----#
@@ -49,18 +28,18 @@ ctrlp:
 #SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_sum_driver.c
 
 #	matrix_init()
-OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
-NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
-NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
-DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
-SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_init_driver.c
-UNWIND=10
+#OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
+#NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
+#NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+#DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
+#SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_init_driver.c
+#UNWIND=10
 
 #	regexec.c
-#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-#DRIVER=~/Repos/euf/drivers/regexec2_driver.c
+OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+DRIVER=~/Repos/euf/drivers/regexec_driver.c
 
 matrix_v:
 	./scripts/euf.sh -V \
@@ -160,18 +139,41 @@ regexec_d:
 		 --dump-full \
 		 --dependency ../oniguruma ../jq
 
-
+#		 --dep-only-new src/regexec.c 
+#		 --dep-only-old regexec.c 
 regexec_ce:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_EQUIV) \
 		 --verbose $(VERBOSE) \
-		 --dep-only-new src/regexec.c \
-		 --dep-only-old regexec.c \
 		 --full --driver $(DRIVER) \
 		 --dependency ../oniguruma ../jq
 
 regexec_ast:
 	clang -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump ~/Repos/oniguruma/src/regexec.c > regexec.ast
+
+
+
+#---- curl => openssl tests ----#
+# 9542 crypto/ec/ecp_nistz256_table.c
+# 5647 crypto/ec/curve25519.c      (Almost all functions are renamed...)
+# 4162 crypto/evp/e_aes.c
+# 3454 crypto/x509/x509_vfy.c
+# 3440 crypto/ec/ec_curve.c
+# 2769 crypto/evp/ctrl_params_translate.c
+# 2437 crypto/evp/p_lib.c
+# 2378 crypto/ec/ecp_nistp256.c
+ctrlp_v:
+	./scripts/euf.sh -f crypto/evp/ctrl_params_translate.c \
+		-o  9a1c4e41e8d \
+		-n  d5f9166bacf \
+		-d ../openssl ../curl | bat
+ctrlp:
+	./euf.py --libclang $(LIBCLANG) --commit-old 9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f \
+		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
+		 --verbose $(VERBOSE) \
+		 --nproc 10 \
+		 --dep-only-new crypto/evp/ctrl_params_translate.c \
+		 --dependency ../openssl ../curl
 
 # Note that jq actually has a way older version of oniguruma under ./modules
 euc_jp:
@@ -187,6 +189,10 @@ bug_fix_c:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
 
 
+
+
+
+#--------------------------------------------------------------------------------------#
 
 #---- CBMC ----#
 # CBMC is meant to assess if an assertion is true
@@ -239,39 +245,3 @@ llvm2smt:
 	@echo -e "(assert (and (= |%a_@lhs| |%a_@rhs|) (= |%b_@lhs| |%b_@rhs|) (not (= |_@lhs_result| |_@rhs_result|))))\n(check-sat)" >> toy/smt/shufflevector.smt 
 	z3 toy/smt/shufflevector.smt
 
-
-
-#--- Toy examples ---#
-DIFF_FILE=toy/diffs/strcpy.diff
-DEP=strcpy
-CFLAGS=-DCBMC=false
-
-
-bin/toy: toy/src/*
-	@mkdir -p bin
-	clang -I toy/include $(CFLAGS) $^ -o $@
-
-run: bin/toy
-	$< "ABCDEGHIJ" 
-
-analyze:
-	clang -I toy/include $(CFLAGS) -analyze -analyzer-checker=core.DivideZero toy/src/*
-
-diff:
-	@mkdir -p toy/ir
-
-	clang -I toy/include -S -emit-llvm toy/src/$(DEP).c -o toy/ir/$(DEP).old.ll
-
-	# Patch source and recompile
-	patch -p1 < $(DIFF_FILE)
-
-	clang -I toy/include -S -emit-llvm toy/src/$(DEP).c -o toy/ir/$(DEP).new.ll
-
-	# Revert patch
-	patch -p1 -R < $(DIFF_FILE)
-
-	# llvm-diff --color strcpy.new.ll strcpy.old.ll
-	diff --color=always -y toy/ir/$(DEP).old.ll toy/ir/$(DEP).new.ll; true
-
-clean:
-	rm -f toy/ir/*.old.* toy/ir/*.new.* bin/*

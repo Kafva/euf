@@ -19,6 +19,10 @@ cp ./drivers/cprover_builtin_headers.h $OUTDIR
 #cp ~/.cache/euf/oniguruma-1bd71be9/src/oniguruma.h 	$OUTDIR/oniguruma_new.h
 #cp ~/.cache/euf/oniguruma-65a9b1aa/oniguruma.h 		$OUTDIR/oniguruma_old.h
 
+
+# TODO: Switch to compile of entire lib to goto-bin once and reuse it with all
+# harnesses.
+
 $SETX && set -x
 # Compile the old and new version to goto-bin
 cd $DEPENDENCY_OLD

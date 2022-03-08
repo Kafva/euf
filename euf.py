@@ -19,12 +19,13 @@ import subprocess
 from functools import partial
 from pprint import pprint
 from clang import cindex
+from git.exc import GitCommandError
 from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args, BASE_DIR
-from cparser.util import flatten, flatten_dict, print_err, print_info
+from cparser.util import flatten, flatten_dict, print_err, print_info, top_stash_is_euf_internal
 from cparser.change_set import get_changed_functions_from_diff, \
         get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
@@ -35,27 +36,25 @@ from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
 
 def done(code: int = 0):
     '''
-    We always need to reset the cache since keeping the '_old' replacements
-    will prevent the inital change set generation from working
+    Stash the changes in any repository that does not already have an 
+    internal stash and has uncommited modifications
+    Keeping the '_old' suffixes around would require
+    a manual reset to use EUF agian
     '''
-    script_env = os.environ.copy()
+    repo_paths = next(os.walk(CONFIG.EUF_CACHE))[1]
 
-    if CONFIG.VERBOSITY >= 2:
-        script_env['SETX'] = "true"
-        out = sys.stderr
-    else:
-        out = subprocess.DEVNULL
-
-    try:
-        (subprocess.run([
-            f"{BASE_DIR}/scripts/reset_cache.sh" ],
-        env = script_env, stdout = out, stderr = out
-        )).check_returncode()
-    except subprocess.CalledProcessError:
-        traceback.print_exc()
-        sys.exit(-1)
+    for repo_path in repo_paths:
+        repo = Repo(f"{CONFIG.EUF_CACHE}/{repo_path}")
+        try:
+            if not top_stash_is_euf_internal(repo) and repo.git.diff() != "": # type: ignore
+                print_info(f"Stashing changes in {repo_path}")
+                repo.git.stash(message = CONFIG.CACHE_INTERNAL_STASH) # type: ignore
+        except GitCommandError:
+            traceback.print_exc()
+            sys.exit(-1)
 
     sys.exit(code)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
@@ -314,6 +313,11 @@ if __name__ == '__main__':
         print("==> Complete set <===")
         pprint(CHANGED_FUNCTIONS)
 
+    # - - - Harness generation - - - #
+    # TODO
+
+
+
     # - - - Reduction of change set - - - #
     # Regardless of which back-end we use to check equivalance, 
     # we will need a minimal program that invokes both versions of the changed 
@@ -324,10 +328,9 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 print("==> Reduction <===")
 
-            # TODO: Save results in secondary cache
-            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD,
-                    DEP_ONLY_PATH_OLD, "_old"):
+            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
                 done(-1)
+            done(0)
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
@@ -360,6 +363,7 @@ if __name__ == '__main__':
                 except subprocess.CalledProcessError:
                     traceback.print_exc()
                     done(-1)
+                break
 
             done(0) # tmp
         except KeyboardInterrupt:

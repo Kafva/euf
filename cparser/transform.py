@@ -1,8 +1,8 @@
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
-
-from cparser.util import print_err, print_info
+from git import Repo
+from cparser.util import flatten, print_err, print_info, remove_prefix, top_stash_is_euf_internal
 from cparser import CONFIG
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
@@ -53,11 +53,13 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
     return global_names
 
 
-def clang_rename(filepath: str, commands: list[str], cwd: str) -> bool:
+def clang_rename(filepath: list[str], commands: list[str], cwd: str) -> bool:
     '''
     Replace all files with new versions that have their global symbols renamed
-    clang-rename --input /tmp/rename.yml /home/jonas/.cache/euf/oniguruma-65a9b1aa/regcomp.c -pn --force -i -- -DHAVE_CONFIG_H -I. -I. -I/usr/local/include -g -O2 -c -fPIC
     '''
+
+    # For clang-rename to consistently rename symbols we need to run it agianst
+    # all source files at once and not one by one
     cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML,
         filepath, "--force", "-i",  "--" ] + commands
 
@@ -65,7 +67,8 @@ def clang_rename(filepath: str, commands: list[str], cwd: str) -> bool:
         print_info(f"Patching {filepath}\n" + ' '.join(commands))
 
     try:
-        (subprocess.run(cmd, cwd = cwd, stdout = sys.stderr
+        (subprocess.run(cmd, cwd = cwd,
+        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL
         )).check_returncode()
     except subprocess.CalledProcessError:
         traceback.print_exc()
@@ -76,7 +79,7 @@ def clang_rename(filepath: str, commands: list[str], cwd: str) -> bool:
 
 
 def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
-        dep_only_path: str, suffix: str = "_old") -> bool:
+    suffix: str = "_old") -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
@@ -85,11 +88,14 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     to every occurence of the global symbols using
     'clang-rename'
     '''
-    dep_name = os.path.basename(dep_path)
-    lock_file = f"{CONFIG.EUF_CACHE}/{dep_name}.lock"
 
-    if os.path.exists(lock_file):
-        return False
+    dep_name = os.path.basename(dep_path)
+    dep_repo = Repo(dep_path)
+
+    if top_stash_is_euf_internal(dep_repo):
+        print_info(f"Using existing stash to add '{suffix}' to {dep_name}")
+        dep_repo.git.stash("pop") # type: ignore
+        return True
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
@@ -105,23 +111,33 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     success = True
 
-    # The renaming process has to be sequential since each invocation
-    # of `clang-rename` can affect several files
-    #
-    # Running `clang-rename` with the same words repeatedly seems to cause issues...
-    for ccmd in ccdb.getAllCompileCommands():
-        if dep_only_path != "" and dep_only_path != ccmd.filename:
-            continue
-        # The first 'cc' and last three arguments '-c' '-o' 'outfile.o' <source>
-        # should be removed when running clang-rename
-        if not clang_rename(ccmd.filename, list(ccmd.arguments)[1:-4], dep_path):
-            success = False
-            break
+    # For `clang-rename` to consistently rename symbols we need to run it 
+    # against all source files at once 
+    # This means that we cannot supply compiler directives for specific files
+    # FIXME: We currently supply a set of all flags from ccdb applied to
+    # all files
+    ccmds = list(ccdb.getAllCompileCommands())
+    filepaths: list[str]        = list(map(lambda ccmd:
+        "." + remove_prefix(ccmd.filename,dep_path), ccmds
+    ))
+    commands: list[list[str]]   = list(map(lambda ccmd:
+        list(ccmd.arguments)[1:-4], ccmds
+    ))
 
-    # Add a '.lockfile' to indicate that the path has been manipulated
-    # by `clang-rename`
-    if success:
-        open(lock_file, 'w', encoding="utf8").close()
+    all_cc_commands = set(flatten(commands))
 
+    cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i" ] + \
+            filepaths + [ "--" ] + list(all_cc_commands)
+
+    if CONFIG.VERBOSITY >= 2:
+        print(' '.join(cmd))
+
+    try:
+        (subprocess.run(cmd, cwd = dep_path,
+        stdout = sys.stderr, stderr = sys.stderr
+        )).check_returncode()
+    except subprocess.CalledProcessError:
+        traceback.print_exc()
+        print_err(f"Failed to add '{suffix}' suffix")
+        return False
     return success
-
