@@ -38,23 +38,29 @@ ctrlp:
 #OLD_COMMIT=ddd3658debc3f0452fefbfe6ebe6bff12168752b
 #NEW_COMMIT_EQUIV=10ebe64c17a74c01ee010dcbeb7f005a918dd6ce
 #NEW_COMMIT_INF=0ef44ff525516f63d3104122261000526db7ab14
-#DRIVER=~/Repos/euf/tests/nearest_even_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_nearest_even_driver.c
+#DRIVER=~/Repos/euf/drivers/nearest_even_driver.c
+#SMACK_DRIVER=~/Repos/euf/drivers/smack_nearest_even_driver.c
 
 # 	matrix_sum():
 #OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
 #NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
 #NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
-#DRIVER=~/Repos/euf/tests/matrix_sum_driver.c
-#SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_sum_driver.c
+#DRIVER=~/Repos/euf/drivers/matrix_sum_driver.c
+#SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_sum_driver.c
 
 #	matrix_init()
 OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
 NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
 NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
-DRIVER=~/Repos/euf/tests/matrix_init_driver.c
-SMACK_DRIVER=~/Repos/euf/tests/smack_matrix_init_driver.c
+DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
+SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_init_driver.c
+UNWIND=10
 
+#	regexec.c
+#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+#DRIVER=~/Repos/euf/drivers/regexec2_driver.c
 
 matrix_v:
 	./scripts/euf.sh -V \
@@ -71,6 +77,7 @@ matrix_ci:
 		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose $(VERBOSE) \
 		 --full --driver $(DRIVER) \
+		 --unwind $(UNWIND) \
 		 --dependency ../matrix ../main
 
 matrix_ce:
@@ -78,6 +85,7 @@ matrix_ce:
 		 --commit-new $(NEW_COMMIT_EQUIV) \
 		 --verbose $(VERBOSE) \
 		 --full --driver $(DRIVER) \
+		 --unwind $(UNWIND) \
 		 --dependency ../matrix ../main
 
 matrix_sce:
@@ -152,11 +160,6 @@ regexec_d:
 		 --dump-full \
 		 --dependency ../oniguruma ../jq
 
-#	regexec.c
-#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-#DRIVER=~/Repos/euf/tests/regexec_driver.c
 
 regexec_ce:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
@@ -193,12 +196,12 @@ bug_fix_c:
 # Could be useful:
 # 	--drop-unused-functions
 cbmc:
-	cbmc  --trace -DCBMC --z3 --function main --unwind 10 -I tests/ tests/cbmc_test.c $(ARGS)
+	cbmc  --trace -DCBMC --z3 --function main --unwind 10 -I drivers/ drivers/cbmc_test.c $(ARGS)
 
 # Show human readable goto program
-#	cbmc --show-goto-functions -DCBMC -I tests tests/cbmc_test.c
+#	cbmc --show-goto-functions -DCBMC -I tests drivers/cbmc_test.c
 goto:
-	goto-cc -DCBMC -I tests/ tests/cbmc_test.c -o ir/cbmc_test.gc
+	goto-cc -DCBMC -I drivers/ drivers/cbmc_test.c -o ir/cbmc_test.gc
 
 #---- Smack -----#
 # A tool to convert `C -> LLVM -> BPL`
@@ -211,20 +214,20 @@ goto:
 #
 # Smack can accept more than one source file (both C and LLVM work, with differing results...)
 smack_docker:
-	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
+	./scripts/smack.sh -f drivers/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
 
 # We can derive the raw .bpl conversion using
-#	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./tests/smack_test.c -o ir/smack_test.ll
+#	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./drivers/smack_test.c -o ir/smack_test.ll
 #	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
 # The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
 bpl_docker:
-	./scripts/smack.sh -f tests/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
+	./scripts/smack.sh -f drivers/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
 
 smack:
 	PATH="$(SMACK_DEPS)/z3/bin:$$PATH"
 	PATH="$(SMACK_DEPS)/boogie:$$PATH"
 	export PATH="$(SMACK_DEPS)/corral:$$PATH"
-	smack tests/smack_test.c --check assertions --entry-points main --unroll 3 --solver z3
+	smack drivers/smack_test.c --check assertions --entry-points main --unroll 3 --solver z3
 
 #---- llvm2smt ----#
 # We need to manually insert (check-sat) and an

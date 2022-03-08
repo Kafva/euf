@@ -14,6 +14,10 @@ NEW_OUT=$(basename ${DEP_FILE_NEW%%.c})_new.bc
 OUTFILE=runner
 
 rm -f $OUTDIR/$OUTFILE
+cp ./drivers/cprover_builtin_headers.h $OUTDIR
+
+#cp ~/.cache/euf/oniguruma-1bd71be9/src/oniguruma.h 	$OUTDIR/oniguruma_new.h
+#cp ~/.cache/euf/oniguruma-65a9b1aa/oniguruma.h 		$OUTDIR/oniguruma_old.h
 
 $SETX && set -x
 # Compile the old and new version to goto-bin

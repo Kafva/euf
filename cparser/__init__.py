@@ -15,7 +15,7 @@ class Config:
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
-    UNWIND: int = 10
+    UNWIND: int = 2
     OUTDIR = ".out"
 
 global CONFIG

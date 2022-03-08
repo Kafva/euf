@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 OUTFILE=runner
-UNWIND=1
+UNWIND=2
+
+BASE=~/.cache/euf/oniguruma-1bd71be9/
 
 # When we actually integrate the entire library properly we end up in 
 # situtations were CBMC fails to terminate
@@ -10,20 +12,23 @@ UNWIND=1
 
 
 #clang -L~/Repos/oniguruma/src/.libs -lonig -I ~/Repos/oniguruma/src \
-#	tests/regexec_driver.c -o $OUTFILE &&
+#	drivers/regexec_driver.c -o $OUTFILE &&
 #./$OUTFILE
 
 
 #goto-cc -DCBMC -L~/Repos/oniguruma/src/.libs -lonig -I ~/Repos/oniguruma/src \
-#	tests/regexec_driver.c -o $OUTFILE
+#	drivers/regexec_driver.c -o $OUTFILE
 
-goto-cc -DCBMC -I ~/Repos/oniguruma/src \
-	tests/regexec_driver.c \
-	~/Repos/oniguruma/src/.libs/libonig.a -o $OUTFILE
+set -x
+
+goto-cc -DCBMC -I $BASE/src \
+	drivers/regexec_driver.c \
+	$BASE/src/.libs/libonig.a \
+ 	-o $OUTFILE
+
 
 #cbmc --list-goto-functions $OUTFILE
 
-set -x
 time cbmc ./$OUTFILE --function main \
 	--z3 --drop-unused-functions \
 	--unwind $UNWIND --trace

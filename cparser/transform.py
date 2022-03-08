@@ -1,5 +1,3 @@
-from functools import partial
-import multiprocessing
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
@@ -55,15 +53,27 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
     return global_names
 
 
-def clang_rename(filepath: str, commands: list[str], cwd: str) -> None:
+def clang_rename(filepath: str, commands: list[str], cwd: str) -> bool:
+    '''
+    Replace all files with new versions that have their global symbols renamed
+    clang-rename --input /tmp/rename.yml /home/jonas/.cache/euf/oniguruma-65a9b1aa/regcomp.c -pn --force -i -- -DHAVE_CONFIG_H -I. -I. -I/usr/local/include -g -O2 -c -fPIC
+    '''
     cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML,
         filepath, "--force", "-i",  "--" ] + commands
 
     if CONFIG.VERBOSITY >= 2:
         print_info(f"Patching {filepath}\n" + ' '.join(commands))
 
-    (subprocess.run(cmd, cwd = cwd, stdout = sys.stderr
-    )).check_returncode()
+    try:
+        (subprocess.run(cmd, cwd = cwd, stdout = sys.stderr
+        )).check_returncode()
+    except subprocess.CalledProcessError:
+        traceback.print_exc()
+        print_err(f"Failed to patch {filepath}")
+        return False
+
+    return True
+
 
 def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         dep_only_path: str, suffix: str = "_old") -> bool:
@@ -93,40 +103,25 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         for name in global_names:
             f.write(f"- QualifiedName: {name}\n  NewName: {name}{suffix}\n")
 
+    success = True
 
-    # Replace all files with new versions that have the global symbols renamed
-    # We extract the first 'cc' and last three arguments from the ccmds
-    #   '-c' '-o' 'outfile.o' <source>
-    ccmds = list(ccdb.getAllCompileCommands())
-    filepaths: list[str] = list(map(lambda ccmd: ccmd.filename, ccmds))
-    commands: list[list[str]] =  list(map(lambda ccmd:
-        list(ccmd.arguments)[1:-4], ccmds))
-
-    # Only process a specific file
-    if dep_only_path != "":
-        try:
-            idx = filepaths.index( f"{dep_path}/{dep_only_path}")
-        except ValueError:
-            print_err(f"Could not find {dep_path}/{dep_only_path}")
-            return False
-        filepaths = [ filepaths[idx] ]
-        commands =  [ commands[idx]  ]
-
-    # TODO: This might haft to be sequential since each process could
-    # be manipulating the same files...
-    with multiprocessing.Pool(CONFIG.NPROC) as p:
-        try:
-            p.starmap(partial(clang_rename, cwd = dep_path),
-                zip(filepaths, commands)
-            )
-        except Exception:
-            traceback.print_exc()
-            return False
-
+    # The renaming process has to be sequential since each invocation
+    # of `clang-rename` can affect several files
+    #
+    # Running `clang-rename` with the same words repeatedly seems to cause issues...
+    for ccmd in ccdb.getAllCompileCommands():
+        if dep_only_path != "" and dep_only_path != ccmd.filename:
+            continue
+        # The first 'cc' and last three arguments '-c' '-o' 'outfile.o' <source>
+        # should be removed when running clang-rename
+        if not clang_rename(ccmd.filename, list(ccmd.arguments)[1:-4], dep_path):
+            success = False
+            break
 
     # Add a '.lockfile' to indicate that the path has been manipulated
     # by `clang-rename`
-    open(lock_file, 'w', encoding="utf8").close()
+    if success:
+        open(lock_file, 'w', encoding="utf8").close()
 
-    return True
+    return success
 

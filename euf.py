@@ -79,6 +79,8 @@ if __name__ == '__main__':
     parser.add_argument("--verbose", metavar='level', type=int,
         default=CONFIG.VERBOSITY,
         help=f"Verbosity level in output, 0-3, (default 0)")
+    parser.add_argument("--unwind", metavar='count', default=CONFIG.UNWIND, help=
+        f"TODO")
     parser.add_argument("--nprocs", metavar='count', default=CONFIG.NPROC, help=
         f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
     parser.add_argument("--dep-only-new", metavar="filepath", default="", help=
@@ -318,47 +320,50 @@ if __name__ == '__main__':
     # function and then performs an assertion on all affected outputs
     #
     if args.full and os.path.exists(args.driver):
-        if CONFIG.VERBOSITY >= 1:
-            print("==> Reduction <===")
+        try:
+            if CONFIG.VERBOSITY >= 1:
+                print("==> Reduction <===")
 
-        # TODO: Save results in secondary cache
-        if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD,
-                DEP_ONLY_PATH_OLD, "_old"):
-            done(-1)
-
-        os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
-
-        script_env = os.environ.copy()
-        script_env.update({
-            'DEPENDENCY_NEW': DEPENDENCY_NEW,
-            'DEPENDENCY_OLD': DEPENDENCY_OLD,
-            'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
-            'UNWIND': str(CONFIG.UNWIND),
-            'SETX': str(CONFIG.VERBOSITY >= 2).lower()
-        })
-
-        for change in CHANGED_FUNCTIONS:
-            # TODO: pair each change with its own dedicated driver
-            # based on the function being tested
-            if DEP_ONLY_PATH_OLD != "" and \
-               DEP_ONLY_PATH_OLD != change.old.filepath:
-                continue
-
-            script_env.update({
-                'DEP_FILE_OLD': change.old.filepath,
-                'DEP_FILE_NEW': change.new.filepath,
-                'DRIVER': args.driver,
-            })
-            try:
-                print_info(f"Starting CBMC analysis for {change.old}")
-                (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
-                env = script_env, stdout = sys.stderr
-                )).check_returncode()
-            except subprocess.CalledProcessError:
-                traceback.print_exc()
+            # TODO: Save results in secondary cache
+            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD,
+                    DEP_ONLY_PATH_OLD, "_old"):
                 done(-1)
-        done(0)
 
+            os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
+
+            script_env = os.environ.copy()
+            script_env.update({
+                'DEPENDENCY_NEW': DEPENDENCY_NEW,
+                'DEPENDENCY_OLD': DEPENDENCY_OLD,
+                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+                'UNWIND': str(args.unwind),
+                'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+            })
+
+            for change in CHANGED_FUNCTIONS:
+                # TODO: pair each change with its own dedicated driver
+                # based on the function being tested
+                if DEP_ONLY_PATH_OLD != "" and \
+                   DEP_ONLY_PATH_OLD != change.old.filepath:
+                    continue
+
+                script_env.update({
+                    'DEP_FILE_OLD': change.old.filepath,
+                    'DEP_FILE_NEW': change.new.filepath,
+                    'DRIVER': args.driver,
+                })
+                try:
+                    print_info(f"Starting CBMC analysis for {change.old}")
+                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
+                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
+                    )).check_returncode()
+                except subprocess.CalledProcessError:
+                    traceback.print_exc()
+                    done(-1)
+
+            done(0) # tmp
+        except KeyboardInterrupt:
+            done(-1)
 
     # - - - Impact set - - - #
     if CONFIG.VERBOSITY >= 1:
@@ -373,7 +378,8 @@ if __name__ == '__main__':
     try:
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             CALL_SITES = flatten(p.map(
-                partial(get_call_sites_from_file, changed_functions=CHANGED_FUNCTIONS),
+                partial(get_call_sites_from_file,
+                changed_functions=CHANGED_FUNCTIONS),
                 PROJECT_SOURCE_FILES
             ))
 
