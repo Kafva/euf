@@ -4,10 +4,19 @@
 
 ## Ubuntu installation
 ```bash
-apt-get install python3.9 python3.9-venv bear clang llvm-12 jq cbmc
+apt-get install python3.9 python3.9-venv bear clang llvm-12 jq -y
 python3.9 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
+
+# Build latest CBMC
+git submodule update --init --recursive
+cd cbmc
+apt-get install flex bison make curl patch cmake -y
+mkdir -p build
+cmake -S . -B build -DCMAKE_C_COMPILER=/usr/bin/clang -DWITH_JBMC=OFF &&
+cmake --build build &&
+sudo make -C build install
 ```
 
 Invoke as

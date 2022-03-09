@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args, BASE_DIR
-from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, \
+from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix, \
     top_stash_is_euf_internal
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -91,6 +91,8 @@ if __name__ == '__main__':
         'The entrypoint to use for CBMC tests')
     parser.add_argument("--project-only", metavar="filepath", default="", help=
         'Only process a specific path of the main project')
+    parser.add_argument("--dep-source-root", metavar="filepath",
+        default="", help=f"Path to source root with ./configure script (same as git root by default)")
     parser.add_argument("--libclang", metavar="filepath",
         default=CONFIG.LIBCLANG, help=f"Path to libclang")
 
@@ -164,6 +166,12 @@ if __name__ == '__main__':
     DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_NEW.hexsha[:8]}"
     DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_OLD.hexsha[:8]}"
 
+    # To get the full context when parsing source files we need the
+    # full source tree (and a compilation database) for both the
+    # new and old version of the dependency
+    if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW): done(-1)
+    if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD): done(-1)
+
     OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
 
@@ -176,31 +184,37 @@ if __name__ == '__main__':
 
     add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
 
-    # To get the full context when parsing source files we need the
-    # full source tree (and a compilation database) for both the
-    # new and old version of the dependency
-    if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW): done(-1)
-    if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD): done(-1)
+
+    # Update the project root in case the source code and .git
+    # folder are not both at the root of the project
+    DEP_SOURCE_ROOT = os.path.abspath(args.dep_source_root)
+
+    dep_source_root = remove_prefix(DEP_SOURCE_ROOT, DEPENDENCY_DIR) \
+        if args.dep_source_root != "" \
+        else ""
+
+    DEP_SOURCE_ROOT_OLD = DEPENDENCY_OLD + dep_source_root
+    DEP_SOURCE_ROOT_NEW = DEPENDENCY_NEW + dep_source_root
 
     # Attempt to create the compiliation database automatically
     # if they do not already exist
-    if not autogen_compile_db(DEPENDENCY_OLD): done(-1)
-    if not autogen_compile_db(DEPENDENCY_NEW): done(-1)
+    if not autogen_compile_db(DEP_SOURCE_ROOT_OLD): done(-1)
+    if not autogen_compile_db(DEP_SOURCE_ROOT_NEW): done(-1)
     if not autogen_compile_db(PROJECT_DIR): done(-1)
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
     try:
         DEP_DB_OLD: cindex.CompilationDatabase  = \
-            cindex.CompilationDatabase.fromDirectory(DEPENDENCY_OLD)
+            cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_OLD)
     except cindex.CompilationDatabaseError as e:
-        compile_db_fail_msg(DEPENDENCY_OLD)
+        compile_db_fail_msg(DEP_SOURCE_ROOT_OLD)
         done(-1)
     try:
         DEP_DB_NEW: cindex.CompilationDatabase  = \
-                cindex.CompilationDatabase.fromDirectory(DEPENDENCY_NEW)
+                cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_NEW)
     except cindex.CompilationDatabaseError as e:
-        compile_db_fail_msg(DEPENDENCY_NEW)
+        compile_db_fail_msg(DEP_SOURCE_ROOT_NEW)
         done(-1)
 
     # Extract compile flags for each file that was changed

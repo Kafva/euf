@@ -24,44 +24,44 @@ def run_if_present(path:str, filename: str) -> bool:
             return False
     return True
 
-def autogen_compile_db(path: str) -> bool:
-    if os.path.exists(f"{path}/compile_commands.json"):
+def autogen_compile_db(source_path: str) -> bool:
+    if os.path.exists(f"{source_path}/compile_commands.json"):
         return True
 
     # 1. Configure the project according to ./configure.ac if applicable
-    if os.path.exists(f"{path}/configure.ac") or \
-       os.path.exists(f"{path}/configure.in"):
+    if os.path.exists(f"{source_path}/configure.ac") or \
+       os.path.exists(f"{source_path}/configure.in"):
         try:
-            print_info(f"{path}: Running autoreconf...")
+            print_info(f"{source_path}: Running autoreconf...")
             (subprocess.run([ "autoreconf", "-vfi" ],
-                cwd = path, stdout = sys.stderr
+                cwd = source_path, stdout = sys.stderr
             )).check_returncode()
         except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
+            compile_db_fail_msg(source_path)
             return False
 
     # 2. Configure the project according to ./configure if applicable
-    run_if_present(path, "configure")
-    run_if_present(path, "Configure")
+    run_if_present(source_path, "configure")
+    run_if_present(source_path, "Configure")
 
     # 3. Run 'make' with 'bear'
-    if os.path.exists(f"{path}/Makefile"):
+    if os.path.exists(f"{source_path}/Makefile"):
         try:
-            print_info(f"Generating {path}/compile_commands.json...")
+            print_info(f"Generating {source_path}/compile_commands.json...")
             cmd = [ "bear", "--", "make", "-j",
                     str(multiprocessing.cpu_count() - 1)
             ]
-            version = get_bear_version(path)
+            version = get_bear_version(source_path)
 
             if version <= 0:
-                compile_db_fail_msg(path)
+                compile_db_fail_msg(source_path)
                 return False
             elif version <= 2:
                 del cmd[1]
-            (subprocess.run(cmd, cwd = path, stdout = sys.stderr
+            (subprocess.run(cmd, cwd = source_path, stdout = sys.stderr
             )).check_returncode()
         except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
+            compile_db_fail_msg(source_path)
             return False
 
     return True

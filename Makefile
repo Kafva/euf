@@ -9,10 +9,18 @@ else
 LIBCLANG=/usr/lib/libclang.so.13.0.1
 endif
 
-.PHONY: smt clean run bmc diff oni oniv cbmc matrix
+.PHONY: clean 
+# The recipe names correspond to the source files in the project/dependency
+# that are being processed
+# _c: clang -ast-dump
+# _v: view diff
 
+#	oniguruma st.c
+#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+#NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
+#DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
+#UNWIND=2
 
-#---- ../main => ../matrix tests  ----#
 # 	get_nearest_even():
 #OLD_COMMIT=ddd3658debc3f0452fefbfe6ebe6bff12168752b
 #NEW_COMMIT_EQUIV=10ebe64c17a74c01ee010dcbeb7f005a918dd6ce
@@ -35,12 +43,20 @@ endif
 #SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_init_driver.c
 #UNWIND=10
 
-#	st.c
-OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
-DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
-UNWIND=2
+#	libexpat
+OLD_COMMIT=e2d43320ce28949dcb91841c3e16f2b6fb4a2271
+NEW_COMMIT_INF=e07e39477157723af276abc3a3d04941abd589bb
 
+#---- ? => ../libeXpat examples ----#
+expat:
+	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_INF) \
+		 --verbose $(VERBOSE) \
+		 --dep-source-root ../libexpat/expat \
+		 --dependency ../libexpat ../main
+
+
+#---- ../main => ../matrix examples  ----#
 matrix_v:
 	./scripts/euf.sh -V \
 		-o $(OLD_COMMIT)  \
@@ -66,22 +82,6 @@ matrix_ce:
 		 --full --driver $(DRIVER) \
 		 --unwind $(UNWIND) \
 		 --dependency ../matrix ../main
-
-st_ce:
-	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
-		 --commit-new $(NEW_COMMIT_EQUIV) \
-		 --verbose $(VERBOSE) \
-		 --dep-only-new src/st.c \
-		 --dep-only-old st.c \
-		 --full --driver $(DRIVER) \
-		 --unwind $(UNWIND) \
-		 --dependency ../oniguruma ../jq
-st_v:
-	./scripts/euf.sh -N \
-		-o $(OLD_COMMIT) \
-		-n $(NEW_COMMIT_EQUIV) \
-		-f st.c \
-		-d ../oniguruma ../jq
 
 matrix_sce:
 	LIBCLANG=$(LIBCLANG) \
@@ -111,16 +111,29 @@ matrix_sci:
 	DRIVER=$(SMACK_DRIVER) \
 	./scripts/smack.sh
 
-#---- jq => oniguruma tests ----#
-# The recipe names correspond to the source files in the project/dependency
-# that are being processed
-# _c: clang -ast-dump
-# _v: view diff
+#---- jq => oniguruma examples ----#
+st:
+	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_EQUIV) \
+		 --verbose $(VERBOSE) \
+		 --dependency ../oniguruma ../jq
 
-# Includes a change to `onig_search` in `regexec.c` which is invoked 
-# once in `src/builtin.c` of jq
-# 	git blame -L 3374,+100 src/regexec.c
-# Note that regexec.c is moved from ./ to ./src between the commits
+st_ce:
+	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_EQUIV) \
+		 --verbose $(VERBOSE) \
+		 --dep-only-new src/st.c \
+		 --dep-only-old st.c \
+		 --full --driver $(DRIVER) \
+		 --unwind $(UNWIND) \
+		 --dependency ../oniguruma ../jq
+st_v:
+	./scripts/euf.sh -N \
+		-o $(OLD_COMMIT) \
+		-n $(NEW_COMMIT_EQUIV) \
+		-f st.c \
+		-d ../oniguruma ../jq
+
 regexec:
 	./euf.py --libclang $(LIBCLANG) --commit-old 65a9b1aa03c9bc2dc01b074295b9603232cb3b78 \
 		 --commit-new 1bd71be9437db6ede501fc88102961423c1ab74c \
@@ -158,17 +171,7 @@ regexec_d:
 regexec_ast:
 	clang -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump ~/Repos/oniguruma/src/regexec.c > regexec.ast
 
-
-
-#---- curl => openssl tests ----#
-# 9542 crypto/ec/ecp_nistz256_table.c
-# 5647 crypto/ec/curve25519.c      (Almost all functions are renamed...)
-# 4162 crypto/evp/e_aes.c
-# 3454 crypto/x509/x509_vfy.c
-# 3440 crypto/ec/ec_curve.c
-# 2769 crypto/evp/ctrl_params_translate.c
-# 2437 crypto/evp/p_lib.c
-# 2378 crypto/ec/ecp_nistp256.c
+#---- curl => openssl examples ----#
 ctrlp_v:
 	./scripts/euf.sh -f crypto/evp/ctrl_params_translate.c \
 		-o  9a1c4e41e8d \
@@ -187,6 +190,7 @@ euc_jp:
 	./euf.py --libclang $(LIBCLANG) --commit-old 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
 		 --commit-new a2ac402a3549713e6c909752937b7a54f559beb8 \
 		 --dep-only-new src/euc_jp.c \
+		 --dep-only-old euc_jp.c \
 		 --dependency ../oniguruma ../jq
 euc_jp_v:
 	./scripts/euf.sh -V -o 69545dabdbc1f7a9fb5ebc329c0b7987052b2a44 \
@@ -194,61 +198,3 @@ euc_jp_v:
 		-d ../oniguruma ../jq | bat
 bug_fix_c:
 	clang -fsyntax-only -Xclang -ast-dump ~/Repos/oniguruma/sample/bug_fix.c
-
-
-
-
-
-#--------------------------------------------------------------------------------------#
-
-#---- CBMC ----#
-# CBMC is meant to assess if an assertion is true
-# for all possible executions of a program
-# To avoid infinite execution for inf loops,
-# we need to specify an --unwind depth
-# Could be useful:
-# 	--drop-unused-functions
-cbmc:
-	cbmc  --trace -DCBMC --z3 --function main --unwind 10 -I drivers/ drivers/cbmc_test.c $(ARGS)
-
-# Show human readable goto program
-#	cbmc --show-goto-functions -DCBMC -I tests drivers/cbmc_test.c
-goto:
-	goto-cc -DCBMC -I drivers/ drivers/cbmc_test.c -o ir/cbmc_test.gc
-
-#---- Smack -----#
-# A tool to convert `C -> LLVM -> BPL`
-# The intermediate step of LLVM should be beneficial in regards to
-# correctness since it is closer to the actual output code
-# Should be invoked from /usr/local/bin/smack and NOT from ~/bin/smack
-#
-# Basic invocation
-#	./scripts/smack.sh -f ir/fib.ll /fib.ll
-#
-# Smack can accept more than one source file (both C and LLVM work, with differing results...)
-smack_docker:
-	./scripts/smack.sh -f drivers/smack_test.c /mnt/smack_test.c --check assertions --entry-points main --unroll 3
-
-# We can derive the raw .bpl conversion using
-#	clang -I/home/jonas/Repos/smack/share/smack/include -S -emit-llvm ./drivers/smack_test.c -o ir/smack_test.ll
-#	./scripts/smack.sh -f ir/fib.ll /mnt/fib.ll --no-verify -bpl /mnt/fib.bpl
-# The output file contains a lot of auxiliary info but at its core the representation is very straight-forward
-bpl_docker:
-	./scripts/smack.sh -f drivers/smack_test.c /mnt/smack_test.c --no-verify -bpl /mnt/smack_test.bpl
-
-smack:
-	PATH="$(SMACK_DEPS)/z3/bin:$$PATH"
-	PATH="$(SMACK_DEPS)/boogie:$$PATH"
-	export PATH="$(SMACK_DEPS)/corral:$$PATH"
-	smack drivers/smack_test.c --check assertions --entry-points main --unroll 3 --solver z3
-
-#---- llvm2smt ----#
-# We need to manually insert (check-sat) and an
-# associated (assert) statement into the emitted .smt 
-# code to check satisifiability
-# The assert statement 
-llvm2smt:
-	./scripts/llvm2smt.sh ./toy/ir/shufflevector.ll > toy/smt/shufflevector.smt
-	@echo -e "(assert (and (= |%a_@lhs| |%a_@rhs|) (= |%b_@lhs| |%b_@rhs|) (not (= |_@lhs_result| |_@rhs_result|))))\n(check-sat)" >> toy/smt/shufflevector.smt 
-	z3 toy/smt/shufflevector.smt
-
