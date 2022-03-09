@@ -94,14 +94,15 @@ def create_worktree(target: str, cwd: str, commit: Commit) -> bool:
 
     return True
 
-def build_goto_lib(dep_dir: str) -> str:
+def build_goto_lib(dep_dir: str, force_recompile: bool) -> str:
     '''
     Returns the path to the built library or an empty string on failure
     '''
     script_env = os.environ.copy()
     script_env.update({
         'DEPENDENCY_DIR': dep_dir,
-        'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+        'SETX': str(CONFIG.VERBOSITY >= 2).lower(),
+        'FORCE_RECOMPILE': str(force_recompile).lower()
     })
 
     lib_path = ""

@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args, BASE_DIR
-from cparser.util import flatten, flatten_dict, print_err, print_info, \
+from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, \
     top_stash_is_euf_internal
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -70,6 +70,8 @@ if __name__ == '__main__':
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
+    parser.add_argument("--force-recompile", action='store_true', default=False,
+        help='Always recompile dependencies')
     parser.add_argument("--full", action='store_true', default=False,
         help='Run the full analysis with CBMC')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
@@ -243,7 +245,7 @@ if __name__ == '__main__':
 
     # - - - Change set - - - #
     if CONFIG.VERBOSITY >= 2:
-        print("==> Change set <==")
+        print_stage("Change set")
 
     CHANGED_FUNCTIONS: list[DependencyFunctionChange] = []
 
@@ -287,7 +289,7 @@ if __name__ == '__main__':
             f.new_path == DEP_ONLY_PATH_NEW, DEP_SOURCE_FILES))
 
     if CONFIG.VERBOSITY >= 1:
-        print("==> Transitive change set <==")
+        print_stage("Transitive change set")
     TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(DEPENDENCY_NEW)
 
@@ -324,7 +326,7 @@ if __name__ == '__main__':
             done(-1)
 
     if CONFIG.VERBOSITY >= 2:
-        print("==> Complete set <===")
+        print_stage("Complete set")
         pprint(CHANGED_FUNCTIONS)
 
     # - - - Harness generation - - - #
@@ -339,27 +341,27 @@ if __name__ == '__main__':
     if len(CHANGED_FUNCTIONS) > 0 and args.full and os.path.exists(args.driver):
         try:
             if CONFIG.VERBOSITY >= 1:
-                print("==> Reduction <==")
+                print_stage("Reduction")
 
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
                 done(-1)
 
             # Compile the old and new version of the dependency as a goto-bin
-            #if (new_lib := build_goto_lib(DEPENDENCY_NEW)) == "": done(-1)
-            if (old_lib := build_goto_lib(DEPENDENCY_OLD)) == "": done(-1)
+            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.force_recompile)) == "": done(-1)
+            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.force_recompile)) == "": done(-1)
 
-            print("Library", old_lib)
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
             script_env = os.environ.copy()
             script_env.update({
                 'DEPENDENCY_NEW': DEPENDENCY_NEW,
                 'DEPENDENCY_OLD': DEPENDENCY_OLD,
+                'NEW_LIB': new_lib,
+                'OLD_LIB': old_lib,
                 'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
                 'UNWIND': str(args.unwind),
                 'SETX': str(CONFIG.VERBOSITY >= 2).lower()
             })
-
 
             for change in CHANGED_FUNCTIONS:
                 # TODO: pair each change with its own dedicated driver
@@ -369,9 +371,7 @@ if __name__ == '__main__':
                     continue
 
                 script_env.update({
-                    'DEP_FILE_OLD': change.old.filepath,
-                    'DEP_FILE_NEW': change.new.filepath,
-                    'DRIVER': args.driver,
+                    'DRIVER': args.driver
                 })
                 try:
                     print_info(f"Starting CBMC analysis for {change.old}")
@@ -389,7 +389,7 @@ if __name__ == '__main__':
 
     # - - - Impact set - - - #
     if CONFIG.VERBOSITY >= 1:
-        print("==> Impact set <==")
+        print_stage("Impact set")
     CALL_SITES: list[ProjectInvocation]      = []
 
     os.chdir(PROJECT_DIR)

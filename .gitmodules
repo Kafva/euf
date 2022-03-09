@@ -1,6 +1,3 @@
-[submodule "llvm2smt"]
-	path = llvm2smt
-	url = git@github.com:Kafva/llvm2smt.git
 [submodule "cbmc"]
 	path = cbmc
 	url = git@github.com:Kafva/cbmc.git

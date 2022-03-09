@@ -39,6 +39,7 @@ endif
 OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
 NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
 DRIVER=~/Repos/euf/drivers/regexec_newsize_driver.c
+UNWIND=1
 
 matrix_v:
 	./scripts/euf.sh -V \
@@ -73,12 +74,14 @@ st_ce:
 		 --dep-only-new src/st.c \
 		 --dep-only-old st.c \
 		 --full --driver $(DRIVER) \
+		 --unwind $(UNWIND) \
 		 --dependency ../oniguruma ../jq
 st_v:
 	./scripts/euf.sh -N \
 		-o $(OLD_COMMIT) \
 		-n $(NEW_COMMIT_EQUIV) \
-		-d ../oniguruma ../jq | bat
+		-f st.c \
+		-d ../oniguruma ../jq
 
 matrix_sce:
 	LIBCLANG=$(LIBCLANG) \

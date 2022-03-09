@@ -10,15 +10,19 @@ class Config:
     VERBOSITY: int = 0
     TRANSATIVE_PASSES: int = 1
     NPROC: int = 5
+    UNWIND: int = 1
+
     LIBCLANG = "/usr/lib/libclang.so.13.0.1"
-    RENAME_YML = "/tmp/rename.yml"
+
+    # Percentage limit needed to consider a file renamed based on git blame
+    RENAME_RATIO: float = .3
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
-    UNWIND: int = 2
-    OUTDIR: str = ".out"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
-    RENAME_RATIO: float = .3
+    RENAME_YML = "/tmp/rename.yml"
+    OUTDIR: str = ".out"
+
 
 global CONFIG
 CONFIG = Config()

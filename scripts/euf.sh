@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 die(){ echo -e "$1" >&2 ; exit 1; }
-usage="usage: $(basename $0) [-hV] [-n NEW_COMMIT] [-f dep-file] [-o OLD_COMMIT] [-d DEPENDENCY] <project>"
+usage="usage: $(basename $0) [-hVN] [-n NEW_COMMIT] [-f dep-file] [-o OLD_COMMIT] [-d DEPENDENCY] <project>"
 helpStr=""
 VIEW=false
-NEW_MODE=false
+SPECIFIC=false
 
 while getopts ":hn:o:d:Vf:N" opt; do
 	case $opt in
@@ -13,7 +13,7 @@ while getopts ":hn:o:d:Vf:N" opt; do
 		d) DEPENDENCY_DIR=$OPTARG ;;
 		V) VIEW=true ;;
 		f) DEP_ONLY=$OPTARG ;;
-		N) NEW_MODE=true ;;
+		N) SPECIFIC=true ;;
 		*) die "$usage" ;;
 	esac
 done
@@ -33,10 +33,11 @@ LC_ALL=C
 cd $DEPENDENCY_DIR
 git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout new commit"
 
-if $NEW_MODE; then
-	git diff --ignore-space-change --ignore-blank-lines \
-		~/.cache/euf/$(basename $DEPENDENCY_DIR)-${NEW_COMMIT:0:8}/src/$DEP_ONLY \
-		~/.cache/euf/$(basename $DEPENDENCY_DIR)-${OLD_COMMIT:0:8}/$DEP_ONLY
+if $SPECIFIC; then
+	# Diff two specific files
+	git diff --ignore-space-change --ignore-blank-lines -U3000 \
+		${OLD_COMMIT}:$DEP_ONLY \
+		src/$DEP_ONLY
 fi
 
 if $VIEW; then
