@@ -30,7 +30,7 @@ def get_top_level_decls(cursor: cindex.Cursor, basepath: str) -> Set[str]:
 
     return global_decls
 
-def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[str] | None:
+def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[str]:
     os.chdir(path)
 
     global_names: Set[str] = set()
@@ -46,7 +46,7 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
         except cindex.TranslationUnitLoadError:
             traceback.format_exc()
             print_err(f"Failed to parse: {ccmds.filename}")
-            return
+            return set()
 
         global_names |= get_top_level_decls(cursor, path)
 
