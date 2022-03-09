@@ -13,7 +13,6 @@ def get_bear_version(path: str) -> int:
     prefix_len = len("bear ")
     return int(out.stdout[prefix_len])
 
-
 def run_if_present(path:str, filename: str) -> bool:
     if os.path.exists(f"{path}/{filename}"):
         try:
@@ -115,7 +114,7 @@ def build_goto_lib(dep_dir: str) -> str:
         lines = proc.stdout.splitlines()
 
         if lines:
-            lib_path = str(lines[0])
+            lib_path = lines[-1].decode('ascii')
 
     except subprocess.CalledProcessError:
         traceback.print_exc()

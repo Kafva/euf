@@ -3,8 +3,9 @@ die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) [-hV] [-n NEW_COMMIT] [-f dep-file] [-o OLD_COMMIT] [-d DEPENDENCY] <project>"
 helpStr=""
 VIEW=false
+NEW_MODE=false
 
-while getopts ":hn:o:d:Vf:" opt; do
+while getopts ":hn:o:d:Vf:N" opt; do
 	case $opt in
 		h) die "$usage\n-----------\n$helpStr" ;;
 		n) NEW_COMMIT=$OPTARG ;;
@@ -12,6 +13,7 @@ while getopts ":hn:o:d:Vf:" opt; do
 		d) DEPENDENCY_DIR=$OPTARG ;;
 		V) VIEW=true ;;
 		f) DEP_ONLY=$OPTARG ;;
+		N) NEW_MODE=true ;;
 		*) die "$usage" ;;
 	esac
 done
@@ -30,6 +32,12 @@ LC_ALL=C
 # the current state to see changes from the correct perspective
 cd $DEPENDENCY_DIR
 git checkout $NEW_COMMIT &>/dev/null || die "Failed to checkout new commit"
+
+if $NEW_MODE; then
+	git diff --ignore-space-change --ignore-blank-lines \
+		~/.cache/euf/$(basename $DEPENDENCY_DIR)-${NEW_COMMIT:0:8}/src/$DEP_ONLY \
+		~/.cache/euf/$(basename $DEPENDENCY_DIR)-${OLD_COMMIT:0:8}/$DEP_ONLY
+fi
 
 if $VIEW; then
 	# Show 3000 lines of context for every change

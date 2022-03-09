@@ -35,11 +35,10 @@ endif
 #SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_init_driver.c
 #UNWIND=10
 
-#	regexec.c
+#	st.c
 OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-DRIVER=~/Repos/euf/drivers/regexec_driver.c
+NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
+DRIVER=~/Repos/euf/drivers/regexec_newsize_driver.c
 
 matrix_v:
 	./scripts/euf.sh -V \
@@ -66,6 +65,20 @@ matrix_ce:
 		 --full --driver $(DRIVER) \
 		 --unwind $(UNWIND) \
 		 --dependency ../matrix ../main
+
+st_ce:
+	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_EQUIV) \
+		 --verbose $(VERBOSE) \
+		 --dep-only-new src/st.c \
+		 --dep-only-old st.c \
+		 --full --driver $(DRIVER) \
+		 --dependency ../oniguruma ../jq
+st_v:
+	./scripts/euf.sh -N \
+		-o $(OLD_COMMIT) \
+		-n $(NEW_COMMIT_EQUIV) \
+		-d ../oniguruma ../jq | bat
 
 matrix_sce:
 	LIBCLANG=$(LIBCLANG) \
@@ -137,15 +150,6 @@ regexec_d:
 		 --dep-only-new src/regexec.c \
 		 --project-only src/builtin.c \
 		 --dump-full \
-		 --dependency ../oniguruma ../jq
-
-#		 --dep-only-new src/regexec.c 
-#		 --dep-only-old regexec.c 
-regexec_ce:
-	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
-		 --commit-new $(NEW_COMMIT_EQUIV) \
-		 --verbose $(VERBOSE) \
-		 --full --driver $(DRIVER) \
 		 --dependency ../oniguruma ../jq
 
 regexec_ast:

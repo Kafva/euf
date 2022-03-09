@@ -14,8 +14,7 @@ remove equivilent entries
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback, multiprocessing
-import subprocess
+import argparse, re, sys, os, traceback, multiprocessing, subprocess
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -25,9 +24,10 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args, BASE_DIR
-from cparser.util import flatten, flatten_dict, print_err, print_info, top_stash_is_euf_internal
-from cparser.change_set import get_changed_functions_from_diff, \
-        get_transative_changes_from_file
+from cparser.util import flatten, flatten_dict, print_err, print_info, \
+    top_stash_is_euf_internal
+from cparser.change_set import add_rename_changes_based_on_blame, \
+        get_changed_functions_from_diff, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
@@ -54,7 +54,6 @@ def done(code: int = 0):
             sys.exit(-1)
 
     sys.exit(code)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
@@ -140,6 +139,7 @@ if __name__ == '__main__':
         print(f"Unable to find new commit: {args.commit_new}")
         sys.exit(1)
 
+
     # Only include modified (M) and renamed (R) '.c' files
     # Renamed files still provide us with context information when a
     # change has occurred at the same time as a move operation:
@@ -147,21 +147,36 @@ if __name__ == '__main__':
     COMMIT_DIFF = filter(lambda d: \
                 str(d.a_path).endswith(".c") and \
                 re.match("M|R", d.change_type),
-                COMMIT_NEW.diff(COMMIT_OLD))
+        COMMIT_OLD.diff(COMMIT_NEW)
+    )
+
     DEP_SOURCE_DIFFS = [ SourceDiff(
-                new_path = d.a_path,
-                old_path = d.b_path,
+                new_path = d.b_path,
+                old_path = d.a_path,
                 new_compile_args = [],
                 old_compile_args = []
     ) for d in COMMIT_DIFF ]
 
-    # To get the full context when parsing source files we need the
-    # full source tree (and a compilation database) for both the
-    # new and old version of the dependency
+
     DEP_NAME = os.path.basename(DEPENDENCY_DIR)
     DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_NEW.hexsha[:8]}"
     DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_OLD.hexsha[:8]}"
 
+    OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
+    NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
+
+    # Add additional diffs based on git-blame that were not recorded
+    ADDED_DIFF = list(filter(lambda d: \
+                str(d.a_path).endswith(".c") and \
+                'A' == d.change_type,
+        COMMIT_OLD.diff(COMMIT_NEW)
+    ))
+
+    add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
+
+    # To get the full context when parsing source files we need the
+    # full source tree (and a compilation database) for both the
+    # new and old version of the dependency
     if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW): done(-1)
     if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD): done(-1)
 
@@ -258,7 +273,6 @@ if __name__ == '__main__':
     # additional passes were we look for invocations of changed functions 
     # in the dependency 
     # We only need to look through the files in the new version
-    NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
     DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
         [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
     )
@@ -320,10 +334,9 @@ if __name__ == '__main__':
     # TODO
 
 
-
     # - - - Reduction of change set - - - #
     #
-    if args.full and os.path.exists(args.driver):
+    if len(CHANGED_FUNCTIONS) > 0 and args.full and os.path.exists(args.driver):
         try:
             if CONFIG.VERBOSITY >= 1:
                 print("==> Reduction <==")
@@ -335,40 +348,40 @@ if __name__ == '__main__':
             #if (new_lib := build_goto_lib(DEPENDENCY_NEW)) == "": done(-1)
             if (old_lib := build_goto_lib(DEPENDENCY_OLD)) == "": done(-1)
 
-
-            print("AAAAAAAAAAA", old_lib)
+            print("Library", old_lib)
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
-            #script_env = os.environ.copy()
-            #script_env.update({
-            #    'DEPENDENCY_NEW': DEPENDENCY_NEW,
-            #    'DEPENDENCY_OLD': DEPENDENCY_OLD,
-            #    'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
-            #    'UNWIND': str(args.unwind),
-            #    'SETX': str(CONFIG.VERBOSITY >= 2).lower()
-            #})
+            script_env = os.environ.copy()
+            script_env.update({
+                'DEPENDENCY_NEW': DEPENDENCY_NEW,
+                'DEPENDENCY_OLD': DEPENDENCY_OLD,
+                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+                'UNWIND': str(args.unwind),
+                'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+            })
 
-            #for change in CHANGED_FUNCTIONS:
-            #    # TODO: pair each change with its own dedicated driver
-            #    # based on the function being tested
-            #    if DEP_ONLY_PATH_OLD != "" and \
-            #       DEP_ONLY_PATH_OLD != change.old.filepath:
-            #        continue
 
-            #    script_env.update({
-            #        'DEP_FILE_OLD': change.old.filepath,
-            #        'DEP_FILE_NEW': change.new.filepath,
-            #        'DRIVER': args.driver,
-            #    })
-            #    try:
-            #        print_info(f"Starting CBMC analysis for {change.old}")
-            #        (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_reduce.sh" ],
-            #        env = script_env, stdout = sys.stderr, cwd = BASE_DIR
-            #        )).check_returncode()
-            #    except subprocess.CalledProcessError:
-            #        traceback.print_exc()
-            #        done(-1)
-            #    break
+            for change in CHANGED_FUNCTIONS:
+                # TODO: pair each change with its own dedicated driver
+                # based on the function being tested
+                if DEP_ONLY_PATH_OLD != "" and \
+                   DEP_ONLY_PATH_OLD != change.old.filepath:
+                    continue
+
+                script_env.update({
+                    'DEP_FILE_OLD': change.old.filepath,
+                    'DEP_FILE_NEW': change.new.filepath,
+                    'DRIVER': args.driver,
+                })
+                try:
+                    print_info(f"Starting CBMC analysis for {change.old}")
+                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_driver.sh" ],
+                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
+                    )).check_returncode()
+                except subprocess.CalledProcessError:
+                    traceback.print_exc()
+                    done(-1)
+                break
 
             done(0) # tmp
         except KeyboardInterrupt:

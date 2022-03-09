@@ -1,4 +1,4 @@
-import sys, re
+import sys
 from typing import Set
 
 from git.repo.base import Repo
@@ -43,3 +43,25 @@ def remove_prefix(target: str, prefix: str) -> str:
         return target[len(prefix):]
     else:
         return target
+
+def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[str,int]]:
+    ''' 
+    Return the number of occurences of each string in a newline seperated file
+    for a given seperator and column index (zero based). Empty on failure
+    '''
+    column_stats = {}
+
+    for line in blob.splitlines():
+        try:
+            if sep != "":
+                column_value = line.split(sep)[column_index]
+            else:
+                column_value = line.split()[column_index]
+        except (ValueError,IndexError):
+            return []
+        if column_value in column_stats.keys():
+            column_stats[column_value] += 1
+        else:
+            column_stats[column_value] = 1
+
+    return list(column_stats.items())

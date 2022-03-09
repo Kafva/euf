@@ -18,6 +18,7 @@ class Config:
     UNWIND: int = 2
     OUTDIR: str = ".out"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
+    RENAME_RATIO: float = .3
 
 global CONFIG
 CONFIG = Config()

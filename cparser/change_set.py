@@ -1,9 +1,12 @@
 from itertools import zip_longest
 
 from clang import cindex
+from git.diff import Diff
+from git.repo.base import Repo
 
 from cparser import CONFIG, DependencyFunction, CursorPair, \
         DependencyFunctionChange, SourceDiff, SourceFile
+from cparser.util import get_column_counts
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
@@ -183,3 +186,47 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
     for child in cursor.get_children():
         find_transative_changes_in_tu(filepath, child, changed_functions,
             transative_function_calls, current_function)
+
+def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff],
+        dep_source_diffs: list[SourceDiff]) -> None:
+    '''
+    In some situations Git is not able to detect a rename across
+    different commits, however the `git blame` output of added
+    files can still show that certain "new" files are actually
+    closer to rename operations.
+    '''
+    for added_file in added_diff:
+        blame_output = new_dep_repo.git.blame("-f", added_file.a_path) # type: ignore
+
+        # Create a list '[ (file_origin, count) ... ]' that describes how many 
+        # lines originates from each file in the blame output
+        file_origins = get_column_counts(blame_output, 1) # type: ignore
+
+        # If the file origin dict only contains two entries and the distrubtion
+        # is at least 30/70 we assume that the file has been renamed
+        if len(file_origins) == 2:
+
+            ratio = file_origins[0][1] / \
+                    (file_origins[0][1] + file_origins[1][1])
+
+            if ratio > CONFIG.RENAME_RATIO:
+                # Create a new source diff object for the two files in question
+                # provided that an entry does not already exist
+                if file_origins[0][0] == added_file.a_path:
+                    new_path = file_origins[0][0]
+                    old_path = file_origins[1][0]
+                else:
+                    new_path = file_origins[1][0]
+                    old_path = file_origins[0][0]
+
+                assert( not any( d.new_path == new_path \
+                        for d in dep_source_diffs)
+                )
+
+                dep_source_diffs.append( SourceDiff(
+                            new_path = new_path,
+                            old_path = old_path,
+                            new_compile_args = [],
+                            old_compile_args = []
+                ))
+
