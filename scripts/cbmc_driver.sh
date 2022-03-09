@@ -2,8 +2,8 @@
 OUTFILE=runner
 
 [[ -z "$OUTDIR" || -z "$DEPENDENCY_OLD" || -z "$DEPENDENCY_NEW" || 
-   -z "$DRIVER" || -z "$UNWIND" || -z "$SETX" || -z "$NEW_LIB"  || -z "$OLD_LIB" ]] && 
-   die "Missing enviroment variable(s)"
+   -z "$DRIVER" || -z "$UNWIND" || -z "$SETX" || -z "$NEW_LIB"  || -z "$OLD_LIB" 
+]] && die "Missing enviroment variable(s)"
 
 OUTFILE=runner
 
@@ -29,12 +29,14 @@ cbmc --drop-unused-functions --list-goto-functions $OUTFILE
 
 
 
-# Using Z3 tends to take longer compared to the default (MinSAT)
+# Using Z3 tends to take longer compared to the default (MathSAT)
 # This works for _1_ unwinding since that drops all conditions
 time cbmc ./$OUTFILE --function main \
 	--drop-unused-functions \
 	--unwind $UNWIND \
 	--object-bits 12 --property main.assertion.1
+
+# We can extract the SMT file with conditions using --outfile
 
 
 #time cbmc -DLITERAL_DEF -DCBMC $DRIVER --function main \
@@ -42,6 +44,10 @@ time cbmc ./$OUTFILE --function main \
 #	--unwind 1 \
 #	--object-bits 12 --property main.assertion.1
 
+#time cbmc ./runner --function main \
+#	--drop-unused-functions \
+#	--unwind 1 --z3 \
+#	--object-bits 12 --property main.assertion.1
 
 $SETX && set +x
 

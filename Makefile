@@ -38,8 +38,8 @@ endif
 #	st.c
 OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
 NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
-DRIVER=~/Repos/euf/drivers/regexec_newsize_driver.c
-UNWIND=1
+DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
+UNWIND=2
 
 matrix_v:
 	./scripts/euf.sh -V \
