@@ -78,6 +78,8 @@ if __name__ == '__main__':
         help='Always recompile dependencies')
     parser.add_argument("--full", action='store_true', default=False,
         help='Run the full analysis with CBMC')
+    parser.add_argument("--skip-impact", action='store_true', default=False,
+        help='Skip the final impact assessment step')
     parser.add_argument("--reverse-mapping", action='store_true', default=False,
         help='Print the impact set as a mapping from dependency changes to project invocations')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
@@ -429,6 +431,8 @@ if __name__ == '__main__':
         pprint(CHANGED_FUNCTIONS)
 
     # - - - Impact set - - - #
+    if args.skip_impact: done(0)
+
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
     CALL_SITES: list[ProjectInvocation]      = []

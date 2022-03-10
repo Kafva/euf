@@ -17,32 +17,33 @@ endif
 # _c: clang -ast-dump
 # _v: view diff
 NPROC=5
-VERBOSE=2
+VERBOSE=1
 UNWIND=1
 DEP_ONLY_OLD=""
 DEP_ONLY_NEW=""
 PROJ_ONLY=""
 EXCLUDE_DIRS=""
 DEP_SOURCE_ROOT=""
+SKIP_IMPACT=""
 
 ifdef ONI
 	DEP_PROJECT=../oniguruma
 	MAIN_PROJECT=../jq
 	#	regexec.c
-	#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-	#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-	#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-	#DEP_ONLY_OLD=regexec.c
-	#DEP_ONLY_NEW=src/regexec.c
-	#PROJ_ONLY=src/builtin.c
+	OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+	NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+	NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+	DEP_ONLY_OLD=regexec.c
+	DEP_ONLY_NEW=src/regexec.c
+	PROJ_ONLY=src/builtin.c
 	
 	#	st.c
-	OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-	NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
-	DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
-	UNWIND=2
-	DEP_ONLY_OLD=st.c
-	DEP_ONLY_NEW=src/st.c
+	#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+	#NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
+	#DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
+	#UNWIND=2
+	#DEP_ONLY_OLD=st.c
+	#DEP_ONLY_NEW=src/st.c
 else ifdef MA
 	VERBOSE=2
 	DEP_PROJECT=../matrix
@@ -73,11 +74,13 @@ else ifdef EX
 	DEP_PROJECT=../libexpat
 	DEP_SOURCE_ROOT=../libexpat/expat
 	EXCLUDE_DIRS=./expat/tests
-	MAIN_PROJECT=../main
+	MAIN_PROJECT=../jabberd-2.7.0
+	NPROC=12
 
 	OLD_COMMIT=bbdfcfef4747d2d66e81c19f4a55e29e291aa171
+	NEW_COMMIT_EQUIV=c16300f0bc4318f31f9e27eb2702ddbffe086fea
+	#NEW_COMMIT_EQUIV=e07e39477157723af276abc3a3d04941abd589bb
 	NEW_COMMIT_INF=e07e39477157723af276abc3a3d04941abd589bb
-	NEW_COMMIT_EQUIV=e07e39477157723af276abc3a3d04941abd589bb
 else ifdef SSL
 	DEP_PROJECT=../openssl
 	MAIN_PROJECT=../curl
@@ -98,6 +101,19 @@ run:
 		 --dep-only-old $(DEP_ONLY_OLD) \
 		 --project-only $(PROJ_ONLY) \
 		 --nproc $(NPROC) \
+		 --exclude-dirs $(EXCLUDE_DIRS) \
+		 --dep-source-root $(DEP_SOURCE_ROOT) \
+		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
+run_skip:
+	./euf.py --libclang $(LIBCLANG) \
+		 --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_EQUIV) \
+		 --verbose $(VERBOSE) \
+		 --dep-only-new $(DEP_ONLY_NEW) \
+		 --dep-only-old $(DEP_ONLY_OLD) \
+		 --project-only $(PROJ_ONLY) \
+		 --nproc $(NPROC) \
+		 --skip-impact \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)

@@ -1,3 +1,4 @@
+import traceback
 from typing import Set
 from clang import cindex
 from cparser import CONFIG, DependencyFunctionChange, \
@@ -13,16 +14,20 @@ def get_call_sites_from_file(source_file: SourceFile,
     '''
     call_sites = []
 
-    translation_unit: cindex.TranslationUnit  = \
-        cindex.TranslationUnit.from_source(
-            source_file.new_path, args = source_file.new_compile_args
-    )
-    cursor: cindex.Cursor       = translation_unit.cursor
-    current_enclosing = ""
+    try:
+        translation_unit: cindex.TranslationUnit  = \
+            cindex.TranslationUnit.from_source(
+                source_file.new_path, args = source_file.new_compile_args
+        )
+        cursor: cindex.Cursor       = translation_unit.cursor
+        current_enclosing = ""
 
-    find_call_sites_in_tu(source_file.new_path, cursor,
-        changed_functions, call_sites, current_enclosing
-    )
+        find_call_sites_in_tu(source_file.new_path, cursor,
+            changed_functions, call_sites, current_enclosing
+        )
+    except cindex.TranslationUnitLoadError:
+        traceback.print_exc()
+        print_err(f"Failed to create TU for {source_file.new_path}")
 
     return call_sites
 
