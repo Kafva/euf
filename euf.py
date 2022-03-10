@@ -28,7 +28,8 @@ from cparser.util import flatten, flatten_dict, print_err, print_info, print_sta
     top_stash_is_euf_internal
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
-from cparser.impact_set import get_call_sites_from_file, pretty_print_impact
+from cparser.impact_set import get_call_sites_from_file, \
+        pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
 from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
@@ -62,25 +63,30 @@ if __name__ == '__main__':
 
     parser.add_argument("project", type=str, nargs=1,
         help='Project to analyze')
-    parser.add_argument("--commit-new", metavar="hash",
+    parser.add_argument("--commit-new", metavar="hash", required=True,
         help='Git hash of the new commit in the dependency')
-    parser.add_argument("--commit-old", metavar="hash",
+    parser.add_argument("--commit-old", metavar="hash", required=True,
         help='Git hash of the old (current) commit in the dependency')
-    parser.add_argument("--dependency", metavar="directory", help=
+    parser.add_argument("--dependency", metavar="directory", required=True, help=
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
+    parser.add_argument("--libclang", metavar="filepath",
+        default=CONFIG.LIBCLANG, help=f"Path to libclang (default {CONFIG.LIBCLANG})")
+
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
     parser.add_argument("--force-recompile", action='store_true', default=False,
         help='Always recompile dependencies')
     parser.add_argument("--full", action='store_true', default=False,
         help='Run the full analysis with CBMC')
+    parser.add_argument("--reverse-mapping", action='store_true', default=False,
+        help='Print the impact set as a mapping from dependency changes to project invocations')
     parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
         help='Dump the names of ALL top level declarations in the old version of the dependency')
     parser.add_argument("--verbose", metavar='level', type=int,
         default=CONFIG.VERBOSITY,
         help=f"Verbosity level in output, 0-3, (default 0)")
     parser.add_argument("--unwind", metavar='count', default=CONFIG.UNWIND, help=
-        f"TODO")
+        f"Unwindings to perform for loops during CBMC analysis")
     parser.add_argument("--nprocs", metavar='count', default=CONFIG.NPROC, help=
         f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
     parser.add_argument("--dep-only-new", metavar="filepath", default="", help=
@@ -93,8 +99,8 @@ if __name__ == '__main__':
         'Only process a specific path of the main project')
     parser.add_argument("--dep-source-root", metavar="filepath",
         default="", help=f"Path to source root with ./configure script (same as git root by default)")
-    parser.add_argument("--libclang", metavar="filepath",
-        default=CONFIG.LIBCLANG, help=f"Path to libclang")
+    parser.add_argument("--exclude-dirs", metavar="directories", type=str,
+        default="", help=f"Comma separated string of directory paths relative to the old root of the dependency that should be excluded from analysis")
 
     args = parser.parse_args()
 
@@ -183,6 +189,17 @@ if __name__ == '__main__':
     ))
 
     add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
+
+    # Filter out any files that are under excluded directories
+    if args.exclude_dirs != "":
+        for exclude_dir in args.exclude_dirs.split(","):
+
+            DEP_SOURCE_DIFFS = list(filter(lambda d:
+                    not os.path.dirname(d.old_path).endswith(
+                        remove_prefix(exclude_dir, "./")
+                    ),
+                    DEP_SOURCE_DIFFS
+            ))
 
 
     # Update the project root in case the source code and .git
@@ -283,11 +300,75 @@ if __name__ == '__main__':
         done(-1)
 
 
+    # - - - Harness generation - - - #
+    # Regardless of which back-end we use to check equivalance, 
+    # we will need a minimal program that invokes both versions of the changed 
+    # function and then performs an assertion on all affected outputs
+    #
+    # TODO
+    #
+
+
+    # - - - Reduction of change set - - - #
+    if len(CHANGED_FUNCTIONS) > 0 and args.full and os.path.exists(args.driver):
+        try:
+            if CONFIG.VERBOSITY >= 1:
+                print_stage("Reduction")
+
+            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
+                done(-1)
+
+            # Compile the old and new version of the dependency as a goto-bin
+            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.force_recompile)) == "": done(-1)
+            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.force_recompile)) == "": done(-1)
+
+            os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
+
+            script_env = os.environ.copy()
+            script_env.update({
+                'DEPENDENCY_NEW': DEPENDENCY_NEW,
+                'DEPENDENCY_OLD': DEPENDENCY_OLD,
+                'NEW_LIB': new_lib,
+                'OLD_LIB': old_lib,
+                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+                'UNWIND': str(args.unwind),
+                'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+            })
+
+            for change in CHANGED_FUNCTIONS:
+                # TODO: pair each change with its own dedicated driver
+                # based on the function being tested
+                if DEP_ONLY_PATH_OLD != "" and \
+                   DEP_ONLY_PATH_OLD != change.old.filepath:
+                    continue
+
+                script_env.update({
+                    'DRIVER': args.driver
+                })
+                try:
+                    print_info(f"Starting CBMC analysis for {change.old}")
+                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_driver.sh" ],
+                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
+                    )).check_returncode()
+                except subprocess.CalledProcessError:
+                    traceback.print_exc()
+                    done(-1)
+                break
+
+            done(0) # tmp
+        except KeyboardInterrupt:
+            done(-1)
+
+
     # - - - Transitive change set propagation - - - #
     # To include functions that have not had a textual change but call a 
     # function that has changed, we perform a configurable number of 
     # additional passes were we look for invocations of changed functions 
     # in the dependency 
+    #
+    # Note that we perform propogation after the reduction step
+    # We do not want to use CBMC analysis for transative function calls
+    #
     # We only need to look through the files in the new version
     DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
         [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
@@ -343,64 +424,6 @@ if __name__ == '__main__':
         print_stage("Complete set")
         pprint(CHANGED_FUNCTIONS)
 
-    # - - - Harness generation - - - #
-    # Regardless of which back-end we use to check equivalance, 
-    # we will need a minimal program that invokes both versions of the changed 
-    # function and then performs an assertion on all affected outputs
-    # TODO
-
-
-    # - - - Reduction of change set - - - #
-    #
-    if len(CHANGED_FUNCTIONS) > 0 and args.full and os.path.exists(args.driver):
-        try:
-            if CONFIG.VERBOSITY >= 1:
-                print_stage("Reduction")
-
-            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
-                done(-1)
-
-            # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.force_recompile)) == "": done(-1)
-            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.force_recompile)) == "": done(-1)
-
-            os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
-
-            script_env = os.environ.copy()
-            script_env.update({
-                'DEPENDENCY_NEW': DEPENDENCY_NEW,
-                'DEPENDENCY_OLD': DEPENDENCY_OLD,
-                'NEW_LIB': new_lib,
-                'OLD_LIB': old_lib,
-                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
-                'UNWIND': str(args.unwind),
-                'SETX': str(CONFIG.VERBOSITY >= 2).lower()
-            })
-
-            for change in CHANGED_FUNCTIONS:
-                # TODO: pair each change with its own dedicated driver
-                # based on the function being tested
-                if DEP_ONLY_PATH_OLD != "" and \
-                   DEP_ONLY_PATH_OLD != change.old.filepath:
-                    continue
-
-                script_env.update({
-                    'DRIVER': args.driver
-                })
-                try:
-                    print_info(f"Starting CBMC analysis for {change.old}")
-                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_driver.sh" ],
-                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
-                    )).check_returncode()
-                except subprocess.CalledProcessError:
-                    traceback.print_exc()
-                    done(-1)
-                break
-
-            done(0) # tmp
-        except KeyboardInterrupt:
-            done(-1)
-
     # - - - Impact set - - - #
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
@@ -424,7 +447,10 @@ if __name__ == '__main__':
             elif CONFIG.VERBOSITY >= 2:
                 pprint(CALL_SITES)
             else:
-                pretty_print_impact(CALL_SITES)
+                if args.reverse_mapping:
+                    pretty_print_impact_by_dep(CALL_SITES)
+                else:
+                    pretty_print_impact_by_proj(CALL_SITES)
     except Exception as e:
         traceback.print_exc()
         done(-1)

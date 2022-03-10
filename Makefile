@@ -44,7 +44,7 @@ endif
 #UNWIND=10
 
 #	libexpat
-OLD_COMMIT=e2d43320ce28949dcb91841c3e16f2b6fb4a2271
+OLD_COMMIT=bbdfcfef4747d2d66e81c19f4a55e29e291aa171
 NEW_COMMIT_INF=e07e39477157723af276abc3a3d04941abd589bb
 
 #---- ? => ../libeXpat examples ----#
@@ -53,8 +53,14 @@ expat:
 		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose $(VERBOSE) \
 		 --dep-source-root ../libexpat/expat \
+		 --exclude-dirs ./expat/tests \
 		 --dependency ../libexpat ../main
 
+expat_v:
+	./scripts/euf.sh -V \
+		-o $(OLD_COMMIT)  \
+		-n $(NEW_COMMIT_INF)  \
+		-d ../libexpat ../main | bat
 
 #---- ../main => ../matrix examples  ----#
 matrix_v:
@@ -182,6 +188,7 @@ ctrlp:
 		 --commit-new d5f9166bacfb3757dfd6117310ad54ab749b11f9 \
 		 --verbose $(VERBOSE) \
 		 --nproc 10 \
+		 --reverse-mapping \
 		 --dep-only-new crypto/evp/ctrl_params_translate.c \
 		 --dependency ../openssl ../curl
 

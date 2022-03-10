@@ -20,6 +20,5 @@ int main(int argc, char* argv[]){
 	// - - - Assert - - -
 	__CPROVER_assert(ret_old == ret_new, "Equivalent behaviour");
 #endif
-	
 	return 0;
 }

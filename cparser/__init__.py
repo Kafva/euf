@@ -130,22 +130,36 @@ class DependencyFunctionChange:
             invokes_changed_functions = []
         )
 
-    def detail(self, pretty: bool = False):
+
+    def detail(self, pretty: bool = False, brief: bool = False):
         if pretty:
             out =   "\033[31mDirect\033[0m change: " if self.direct_change else \
                     "\033[34mIndirect\033[0m change: "
         else:
             out =   "direct change: " if self.direct_change else \
                     "indirect change: "
+        if brief and pretty:
+                out += "\033[33m"
         if self.old.name == "":
             out += f"b/{self.new}"
         else:
             out += f"a/{self.old} -> b/{self.new}"
-        if len(self.invokes_changed_functions) > 0:
-            if pretty:
-                out += "\nAffected by changes to:"
-            else:
-                out += "\n affected by changes to:"
+        if brief and pretty:
+                out += "\033[0m"
+
+        if len(self.invokes_changed_functions) > 0 and not brief:
+            out += self.affected_by(pretty)
+
+        return out
+
+    def affected_by(self,pretty=True) -> str:
+        out = ""
+
+        if pretty:
+            out += "\nAffected by changes to:"
+        else:
+            out += "\n affected by changes to:"
+
         for trans_call in self.invokes_changed_functions:
             out += f"\n\t{trans_call}"
         return out
@@ -171,9 +185,11 @@ class ProjectInvocation:
     def brief(self):
         return f"call to {self.function.new} at {self.filepath}:{self.line}:{self.col}"
 
-    def detail(self):
-        return f"call to {self.function}\nat {self.filepath}:{self.line}:{self.col}:{self.enclosing_name}()"
+    def invocation(self):
+        return f"{self.filepath}:{self.line}:{self.col}:{self.enclosing_name}()"
 
+    def detail(self):
+        return f"call to {self.function}\nat {self.invocation()}"
 
     def __repr__(self):
         return self.detail()

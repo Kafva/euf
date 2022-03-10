@@ -81,10 +81,10 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
             current_enclosing
         )
 
-def pretty_print_impact(call_sites: list[ProjectInvocation]) -> None:
+def pretty_print_impact_by_proj(call_sites: list[ProjectInvocation]) -> None:
     '''
-    Group the call sites by the file and enclosing function that
-    they belong to.
+    Print each impact site as its own header with a list of dependency change
+    sources beneath it
     '''
     location_to_calls_dict = dict()
 
@@ -102,5 +102,37 @@ def pretty_print_impact(call_sites: list[ProjectInvocation]) -> None:
 
     for location,calls in location_to_calls_dict.items():
         print(f"=== \033[33m{location}\033[0m ===")
+        print("Changed function calls:\n")
         for call in calls:
             print(call)
+
+def pretty_print_impact_by_dep(call_sites: list[ProjectInvocation]) -> None:
+    '''
+    Print each dependency change as its own header with a list of impact sites 
+    in our project beneath it
+    '''
+
+
+    # Create a dictonary that maps a DependencyFunctionChange to a list of
+    # affected call sites in our project
+    func_change_to_invocations_map = {}
+
+    # Each function change can contain a list of changed functions that they
+    # call (making them indirectly changed functions) or be directly changed
+
+    for site in call_sites:
+        if site.function in func_change_to_invocations_map.keys():
+            func_change_to_invocations_map[site.function].append(site)
+        else:
+            func_change_to_invocations_map[site.function] = [ site ]
+
+
+    for dep_change,affected in func_change_to_invocations_map.items():
+        print(f"=== \033[33m{dep_change.detail(pretty=True,brief=True)}\033[0m ===")
+
+        print("Called from:")
+        for site in affected:
+            print("\t"+site.invocation())
+
+        print(dep_change.affected_by(pretty=True))
+
