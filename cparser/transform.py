@@ -1,9 +1,10 @@
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
-from git import Repo
-from cparser.util import flatten, print_err, print_info, remove_prefix, top_stash_is_euf_internal
+from git.repo import Repo
+from cparser.util import flatten, print_err, print_info, remove_prefix
 from cparser import CONFIG
+
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
     for child in cursor.get_children():
@@ -52,7 +53,6 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
 
     return global_names
 
-
 def clang_rename(filepath: list[str], commands: list[str], cwd: str) -> bool:
     '''
     Replace all files with new versions that have their global symbols renamed
@@ -77,6 +77,9 @@ def clang_rename(filepath: list[str], commands: list[str], cwd: str) -> bool:
 
     return True
 
+def top_stash_is_euf_internal(repo: Repo) -> bool:
+    top_stash: str = repo.git.stash("list").split('\n', 1)[0] # type: ignore
+    return top_stash.endswith(CONFIG.CACHE_INTERNAL_STASH)
 
 def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     suffix: str = "_old") -> bool:

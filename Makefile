@@ -48,12 +48,14 @@ OLD_COMMIT=bbdfcfef4747d2d66e81c19f4a55e29e291aa171
 NEW_COMMIT_INF=e07e39477157723af276abc3a3d04941abd589bb
 
 #---- ? => ../libeXpat examples ----#
+# The _impl.c files are for some reason not part of the compile_commands.json database...
 expat:
 	./euf.py --libclang $(LIBCLANG) --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
 		 --verbose $(VERBOSE) \
 		 --dep-source-root ../libexpat/expat \
 		 --exclude-dirs ./expat/tests \
+		 --force-recompile \
 		 --dependency ../libexpat ../main
 
 expat_v:

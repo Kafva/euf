@@ -3,6 +3,8 @@ from pathlib import Path
 from dataclasses import dataclass
 from clang import cindex
 
+from cparser.util import get_path_relative_to
+
 # Enable importing from the root directory inside the module
 sys.path.append('../')
 
@@ -73,9 +75,11 @@ class DependencyFunction:
 
 
     @classmethod
-    def new_from_cursor(cls, filepath: str, cursor: cindex.Cursor):
+    def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
         return cls(
-            filepath    = filepath,
+            filepath    = get_path_relative_to(
+                str(cursor.location.file), root_dir
+            ),
             displayname = cursor.displayname,
             name        = cursor.spelling,
             return_type = str(cursor.type.get_result().kind),
@@ -122,11 +126,11 @@ class DependencyFunctionChange:
     direct_change: bool = True
 
     @classmethod
-    def new_from_cursors(cls, old_filepath: str, new_filepath: str,
+    def new_from_cursors(cls, old_root: str, new_root: str,
             old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):
         return cls(
-            old = DependencyFunction.new_from_cursor(old_filepath, old_cursor),
-            new = DependencyFunction.new_from_cursor(new_filepath, new_cursor),
+            old = DependencyFunction.new_from_cursor(old_root, old_cursor),
+            new = DependencyFunction.new_from_cursor(new_root, new_cursor),
             invokes_changed_functions = []
         )
 
@@ -214,15 +218,3 @@ class CursorPair:
     def __init__(self):
         self.new = None # type: ignore
         self.old = None # type: ignore
-
-    def add(self, cursor: cindex.Cursor, diff:SourceDiff, is_new: bool):
-        ''' Add the provided cursor and its filepath to the pair '''
-        if is_new:
-            self.new = cursor
-            self.new_path = diff.new_path
-        else:
-            self.old = cursor
-            self.old_path = diff.old_path
-
-
-

@@ -1,10 +1,6 @@
 import sys
 from typing import Set
 
-from git.repo.base import Repo
-
-from cparser import CONFIG
-
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
 
@@ -37,16 +33,6 @@ def flatten(list_of_lists: list[list]) -> list:
         flat.extend(li)
     return flat
 
-def top_stash_is_euf_internal(repo: Repo) -> bool:
-    top_stash: str = repo.git.stash("list").split('\n', 1)[0] # type: ignore
-    return top_stash.endswith(CONFIG.CACHE_INTERNAL_STASH)
-
-def remove_prefix(target: str, prefix: str) -> str:
-    if target.startswith(prefix):
-        return target[len(prefix):]
-    else:
-        return target
-
 def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[str,int]]:
     ''' 
     Return the number of occurences of each string in a newline seperated file
@@ -68,3 +54,12 @@ def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[s
             column_stats[column_value] = 1
 
     return list(column_stats.items())
+
+def remove_prefix(target: str, prefix: str) -> str:
+    if target.startswith(prefix):
+        return target[len(prefix):]
+    else:
+        return target
+
+def get_path_relative_to(path: str, base: str) -> str:
+    return remove_prefix( remove_prefix(path, base), "/")

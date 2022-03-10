@@ -24,15 +24,15 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, get_compile_args, BASE_DIR
-from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix, \
-    top_stash_is_euf_internal
+from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
-from cparser.transform import add_suffix_to_globals, get_all_top_level_decls
+from cparser.transform import add_suffix_to_globals, get_all_top_level_decls, \
+        top_stash_is_euf_internal
 
 
 def done(code: int = 0):
@@ -201,6 +201,10 @@ if __name__ == '__main__':
                     DEP_SOURCE_DIFFS
             ))
 
+    if CONFIG.VERBOSITY >= 1:
+        print_stage("Git Diff")
+        print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
+                for d in DEP_SOURCE_DIFFS ]))
 
     # Update the project root in case the source code and .git
     # folder are not both at the root of the project
@@ -300,6 +304,7 @@ if __name__ == '__main__':
         done(-1)
 
 
+    done(0)
     # - - - Harness generation - - - #
     # Regardless of which back-end we use to check equivalance, 
     # we will need a minimal program that invokes both versions of the changed 

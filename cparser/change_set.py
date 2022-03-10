@@ -6,7 +6,7 @@ from git.repo.base import Repo
 
 from cparser import CONFIG, DependencyFunction, CursorPair, \
         DependencyFunctionChange, SourceDiff, SourceFile
-from cparser.util import get_column_counts
+from cparser.util import get_column_counts, get_path_relative_to, print_err, print_info
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
@@ -45,10 +45,21 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     cursor_pairs: dict[str,CursorPair]      = {}
 
     def extract_function_decls_to_pairs(cursor: cindex.Cursor,
-        cursor_pairs: dict[str,CursorPair], is_new: bool) -> None:
-        for child in cursor.get_children():
+        cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
 
-            if str(child.kind).endswith("FUNCTION_DECL") and child.is_definition():
+        if len(list(cursor.get_children())) == 0:
+            print_err(f"No data to parse for {cursor.spelling}")
+
+        for child in cursor.get_children():
+            if str(child.kind).endswith("FUNCTION_DECL") and \
+                child.is_definition() and \
+                str(child.location.file).startswith(root_dir):
+                # Note: A TU can #include other C-files, to properly trace
+                # calls in the output we need to store these paths rather than
+                # the path to the main file for each function
+                # Any source file outside the root of the repository is not
+                # processed (e.g. includes from /usr/include)
+
                 # Note: the key in the dict uses the new and old filepath
                 # to ensure that functions in renamed paths still end up in the same pair
                 key = f"{diff.new_path}:{diff.old_path}:{child.spelling}"
@@ -57,7 +68,14 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
                 if not key in cursor_pairs:
                     cursor_pairs[key] = CursorPair()
 
-                cursor_pairs[key].add(child, diff, is_new)
+                if is_new:
+                    cursor_pairs[key].new = child
+                    cursor_pairs[key].new_path = \
+                        get_path_relative_to(str(child.location.file), root_dir)
+                else:
+                    cursor_pairs[key].old = child
+                    cursor_pairs[key].old_path = \
+                        get_path_relative_to(str(child.location.file), root_dir)
 
     def functions_differ(cursor_old: cindex.Cursor,
         cursor_new: cindex.Cursor) -> bool:
@@ -66,7 +84,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
         the cursors have a different number of nodes at any level or if the
         typing of their arguments differ
         '''
-        for arg_old,arg_new in zip_longest(cursor_old.get_arguments(), cursor_new.get_arguments()):
+        for arg_old,arg_new in zip_longest(\
+                cursor_old.get_arguments(), cursor_new.get_arguments()):
             if not arg_old or not arg_new:
                 return True
             if arg_old.kind != arg_new.kind:
@@ -81,8 +100,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
 
         return False
 
-    extract_function_decls_to_pairs(cursor_old, cursor_pairs,  is_new=False)
-    extract_function_decls_to_pairs(cursor_new, cursor_pairs,  is_new=True)
+    extract_function_decls_to_pairs(cursor_old, cursor_pairs, old_root_dir, is_new=False)
+    extract_function_decls_to_pairs(cursor_new, cursor_pairs, new_root_dir, is_new=True)
 
     # If the function pairs differ based on AST traversal,
     # add them to the list of changed_functions.
@@ -103,7 +122,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
         cursor_new_fn = pair.new
 
         function_change = DependencyFunctionChange.new_from_cursors(
-                diff.old_path, diff.new_path,
+                old_root_dir, new_root_dir,
                 cursor_old_fn, cursor_new_fn
         )
 
@@ -223,6 +242,9 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
                         for d in dep_source_diffs)
                 )
 
+                if CONFIG.VERBOSITY >= 1:
+                    print_info(f"Adding a/{old_path} -> b/{new_path} as a " + \
+                            f"diff based on blame ratio: {round(ratio,3)}")
                 dep_source_diffs.append( SourceDiff(
                             new_path = new_path,
                             old_path = old_path,
