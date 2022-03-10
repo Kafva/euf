@@ -69,7 +69,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 
         call_sites.append(invocation)
 
-        if not matching_args and CONFIG.VERBOSITY >= 1:
+        if not matching_args and CONFIG.VERBOSITY >= 3:
             print_err(f"Potentially inconsistent parameters in {invocation.brief()}:" +
             f"\n  New prototype: {dep_func_change.new.name}(" + \
             ", ".join(map(lambda a: a.type, dep_func_change.new.arguments))+ ")"

@@ -303,8 +303,6 @@ if __name__ == '__main__':
         traceback.print_exc()
         done(-1)
 
-
-    done(0)
     # - - - Harness generation - - - #
     # Regardless of which back-end we use to check equivalance, 
     # we will need a minimal program that invokes both versions of the changed 
@@ -398,7 +396,8 @@ if __name__ == '__main__':
             with multiprocessing.Pool(CONFIG.NPROC) as p:
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
-                        changed_functions = CHANGED_FUNCTIONS
+                        changed_functions = CHANGED_FUNCTIONS,
+                        dep_root_dir = DEP_SOURCE_ROOT_NEW
                     ),
                     DEP_SOURCE_FILES
                 ))

@@ -135,7 +135,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
 
     return changed_functions
 
-def get_transative_changes_from_file(source_file: SourceFile,
+def get_transative_changes_from_file(source_file: SourceFile, dep_root_dir:str,
     changed_functions: list[DependencyFunctionChange]) -> dict[DependencyFunction,list[str]]:
     '''
     Go through the complete AST of the provided (new) file and save 
@@ -152,12 +152,12 @@ def get_transative_changes_from_file(source_file: SourceFile,
     )
     cursor: cindex.Cursor       = translation_unit.cursor
 
-    find_transative_changes_in_tu(source_file.new_path, cursor,
+    find_transative_changes_in_tu(dep_root_dir, cursor,
         changed_functions, transative_function_calls, DependencyFunction.empty()
     )
     return transative_function_calls
 
-def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
+def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
     changed_functions: list[DependencyFunctionChange],
     transative_function_calls: dict[DependencyFunction,list[str]],
     current_function: DependencyFunction) -> None:
@@ -168,8 +168,7 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
     '''
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
-
-        current_function = DependencyFunction.new_from_cursor(filepath, cursor)
+        current_function = DependencyFunction.new_from_cursor(dep_root_dir, cursor)
 
     elif str(cursor.kind).endswith("CALL_EXPR") and \
         (dep_func := next(filter(lambda fn: \
@@ -203,7 +202,7 @@ def find_transative_changes_in_tu(filepath: str, cursor: cindex.Cursor,
             )
 
     for child in cursor.get_children():
-        find_transative_changes_in_tu(filepath, child, changed_functions,
+        find_transative_changes_in_tu(dep_root_dir, child, changed_functions,
             transative_function_calls, current_function)
 
 def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff],
