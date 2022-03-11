@@ -1,7 +1,3 @@
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 // We test a simple function that has not changed as a basecase
 // 	st.c: int new_size(int)
 int main(int argc, char* argv[]){

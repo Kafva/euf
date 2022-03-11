@@ -63,3 +63,10 @@ def remove_prefix(target: str, prefix: str) -> str:
 
 def get_path_relative_to(path: str, base: str) -> str:
     return remove_prefix( remove_prefix(path, base), "/")
+
+def unique_only(li: list) -> list:
+    uniq = []
+    for item in li:
+        if not item in uniq:
+            uniq.append(item)
+    return uniq

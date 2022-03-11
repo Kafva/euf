@@ -1,5 +1,7 @@
 import shutil, subprocess, os, sys, multiprocessing, traceback, re
+from git.exc import GitCommandError
 from git.objects.commit import Commit
+from git.repo.base import Repo
 
 from cparser.util import print_err, print_info
 from cparser import CONFIG, BASE_DIR
@@ -74,27 +76,20 @@ def compile_db_fail_msg(path: str) -> None:
     "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
     "Consult the documentation for your particular dependency for additional build instructions.")
 
-def create_worktree(target: str, cwd: str, commit: Commit) -> bool:
+def create_worktree(target: str, cwd: str, commit: Commit, repo: Repo) -> bool:
     if not os.path.exists(target):
         print_info(f"Creating worktree at {target}")
+        # git checkout COMMIT_NEW.hexsha
+        # git checkout -b euf-abcdefghi
+        # git worktree add -b euf-abcdefghi /tmp/openssl euf-abcdefghi
         try:
-           # git checkout COMMIT_NEW.hexsha
-           # git checkout -b euf-abcdefghi
-           # git worktree add -b euf-abcdefghi /tmp/openssl euf-abcdefghi
-            (subprocess.run([
-                    "git", "worktree", "add", "-b",
-                    f"euf-{commit.hexsha[:8]}",
-                    target, commit.hexsha
-                ],
-                cwd = cwd, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            print(traceback.format_exc())
+            repo.git.worktree("add", "-b", f"euf-{commit.hexsha[:8]}", target, commit.hexsha) # type: ignore
+        except GitCommandError:
+            traceback.print_exc()
             return False
-
     return True
 
-def build_goto_lib(dep_dir: str, force_recompile: bool) -> str:
+def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str:
     '''
     Returns the path to the built library or an empty string on failure
     '''
@@ -102,7 +97,8 @@ def build_goto_lib(dep_dir: str, force_recompile: bool) -> str:
     script_env.update({
         'DEPENDENCY_DIR': dep_dir,
         'SETX': str(CONFIG.VERBOSITY >= 2).lower(),
-        'FORCE_RECOMPILE': str(force_recompile).lower()
+        'FORCE_RECOMPILE': str(force_recompile).lower(),
+        'DEPLIB_NAME': deplib_name
     })
 
     lib_path = ""

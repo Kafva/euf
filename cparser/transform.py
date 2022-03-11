@@ -2,7 +2,7 @@ import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
 from git.repo import Repo
-from cparser.util import flatten, print_err, print_info, remove_prefix
+from cparser.util import flatten, print_err, print_info, remove_prefix, unique_only
 from cparser import CONFIG
 
 
@@ -53,33 +53,19 @@ def get_all_top_level_decls(path: str, ccdb: cindex.CompilationDatabase) -> Set[
 
     return global_names
 
-def clang_rename(filepath: list[str], commands: list[str], cwd: str) -> bool:
+def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
     '''
-    Replace all files with new versions that have their global symbols renamed
+    Stashes are NOT per worktree so we need to check if each
+    perticular old repo has its own stash or not
+
+    Returns the stash@{x} string if the repository has a stash and
+    an empty string otherwise
     '''
+    for num,line in enumerate(repo.git.stash("list").splitlines()): # type: ignore
+        if line.endswith(f"{CONFIG.CACHE_INTERNAL_STASH} {repo_name}"):
+            return "stash@{" + str(num) + "}"
 
-    # For clang-rename to consistently rename symbols we need to run it agianst
-    # all source files at once and not one by one
-    cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML,
-        filepath, "--force", "-i",  "--" ] + commands
-
-    if CONFIG.VERBOSITY >= 2:
-        print_info(f"Patching {filepath}\n" + ' '.join(commands))
-
-    try:
-        (subprocess.run(cmd, cwd = cwd,
-        stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL
-        )).check_returncode()
-    except subprocess.CalledProcessError:
-        traceback.print_exc()
-        print_err(f"Failed to patch {filepath}")
-        return False
-
-    return True
-
-def top_stash_is_euf_internal(repo: Repo) -> bool:
-    top_stash: str = repo.git.stash("list").split('\n', 1)[0] # type: ignore
-    return top_stash.endswith(CONFIG.CACHE_INTERNAL_STASH)
+    return ""
 
 def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     suffix: str = "_old") -> bool:
@@ -95,9 +81,9 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     dep_name = os.path.basename(dep_path)
     dep_repo = Repo(dep_path)
 
-    if top_stash_is_euf_internal(dep_repo):
-        print_info(f"Using existing stash to add '{suffix}' to {dep_name}")
-        dep_repo.git.stash("pop") # type: ignore
+    if (stash_name := has_euf_internal_stash(dep_repo, dep_name)) != "":
+        print_info(f"[{dep_name}] Using existing {stash_name} to add '{suffix}'")
+        dep_repo.git.stash("apply", stash_name) # type: ignore
         return True
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
@@ -112,8 +98,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         for name in global_names:
             f.write(f"- QualifiedName: {name}\n  NewName: {name}{suffix}\n")
 
-    success = True
-
     # For `clang-rename` to consistently rename symbols we need to run it 
     # against all source files at once 
     # This means that we cannot supply compiler directives for specific files
@@ -127,8 +111,10 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         list(ccmd.arguments)[1:-4], ccmds
     ))
 
-    all_cc_commands = set(flatten(commands))
+    all_cc_commands = unique_only(flatten(commands))
 
+    # For clang-rename to consistently rename symbols we need to run it agianst
+    # all source files at once and not one by one
     cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i" ] + \
             filepaths + [ "--" ] + list(all_cc_commands)
 
@@ -143,4 +129,5 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         traceback.print_exc()
         print_err(f"Failed to add '{suffix}' suffix")
         return False
-    return success
+
+    return True

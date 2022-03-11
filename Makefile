@@ -17,7 +17,7 @@ endif
 # _c: clang -ast-dump
 # _v: view diff
 NPROC=5
-VERBOSE=1
+VERBOSE=2
 UNWIND=1
 DEP_ONLY_OLD=""
 DEP_ONLY_NEW=""
@@ -29,51 +29,48 @@ SKIP_IMPACT=""
 ifdef ONI
 	DEP_PROJECT=../oniguruma
 	MAIN_PROJECT=../jq
+	DEP_LIB_NAME=libonig.a
+
 	#	regexec.c
-	OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-	NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
-	NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
-	DEP_ONLY_OLD=regexec.c
-	DEP_ONLY_NEW=src/regexec.c
-	PROJ_ONLY=src/builtin.c
+	#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+	#NEW_COMMIT_INF=1bd71be9437db6ede501fc88102961423c1ab74c
+	#NEW_COMMIT_EQUIV=1bd71be9437db6ede501fc88102961423c1ab74c
+	#DEP_ONLY_OLD=regexec.c
+	#DEP_ONLY_NEW=src/regexec.c
+	#PROJ_ONLY=src/builtin.c
 	
 	#	st.c
-	#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
-	#NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
-	#DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
-	#UNWIND=2
-	#DEP_ONLY_OLD=st.c
-	#DEP_ONLY_NEW=src/st.c
+	OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
+	NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
+	DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
+	UNWIND=2
+	DEP_ONLY_OLD=st.c
+	DEP_ONLY_NEW=src/st.c
 else ifdef MA
 	VERBOSE=2
 	DEP_PROJECT=../matrix
 	MAIN_PROJECT=../main
+	DEP_LIB_NAME=libmatrix.a
 
 	# 	get_nearest_even():
-	#OLD_COMMIT=ddd3658debc3f0452fefbfe6ebe6bff12168752b
-	#NEW_COMMIT_EQUIV=10ebe64c17a74c01ee010dcbeb7f005a918dd6ce
-	#NEW_COMMIT_INF=0ef44ff525516f63d3104122261000526db7ab14
 	#DRIVER=~/Repos/euf/drivers/nearest_even_driver.c
-	#SMACK_DRIVER=~/Repos/euf/drivers/smack_nearest_even_driver.c
 
 	# 	matrix_sum():
-	#OLD_COMMIT=e83bd3d253964d2f891d221980874c57cbfa0380
-	#NEW_COMMIT_EQUIV=1c1d5b0ea012c69576f94c8b31baee4e5eb16691
-	#NEW_COMMIT_INF=2612a843731f6e851f96879cf913841a26137a2d
 	#DRIVER=~/Repos/euf/drivers/matrix_sum_driver.c
-	#SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_sum_driver.c
 
 	#	matrix_init()
-	OLD_COMMIT=77f5d019703f2eb12988a62d2be53216df8d4dab
-	NEW_COMMIT_EQUIV=30b4d5160a3a061eacd165803aa8a40d0d0097b0
-	NEW_COMMIT_INF=dc838cec7a6ebc47ad5f49107367164da2577a59
+	#OLD_COMMIT=366c7c10cadb13d8dc97e151993270b41b790eee
+	OLD_COMMIT=a2590d7c1fde314771f9287195a18a97b819ac1d
+	NEW_COMMIT_EQUIV=ce854b98356f0e4555735c657203e866e4f86007
+	NEW_COMMIT_INF=ca4b02be80ae3e62dc2c6fe8c9fbd2d0ecc44a5e
 	DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
-	SMACK_DRIVER=~/Repos/euf/drivers/smack_matrix_init_driver.c
 	UNWIND=10
+
 else ifdef EX
 	DEP_PROJECT=../libexpat
 	DEP_SOURCE_ROOT=../libexpat/expat
 	EXCLUDE_DIRS=./expat/tests
+	DEP_LIB_NAME=libexpat.a
 	MAIN_PROJECT=../jabberd-2.7.0
 	NPROC=12
 
@@ -84,12 +81,18 @@ else ifdef EX
 else ifdef SSL
 	DEP_PROJECT=../openssl
 	MAIN_PROJECT=../curl
-
-	OLD_COMMIT=9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f
-	NEW_COMMIT_EQUIV=d5f9166bacfb3757dfd6117310ad54ab749b11f9
-	NEW_COMMIT_INF=d5f9166bacfb3757dfd6117310ad54ab749b11f9
+	DEP_LIB_NAME=libcrypto.a
 	NPROC=10
-	DEP_ONLY_NEW=crypto/evp/ctrl_params_translate.c
+
+	#OLD_COMMIT=9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f
+	#NEW_COMMIT_EQUIV=d5f9166bacfb3757dfd6117310ad54ab749b11f9
+	#NEW_COMMIT_INF=d5f9166bacfb3757dfd6117310ad54ab749b11f9
+	#DEP_ONLY_NEW=crypto/evp/ctrl_params_translate.c
+
+	#	redirection_ok()	
+	OLD_COMMIT=29f178bddfd
+	NEW_COMMIT_EQUIV=b6fec9658be
+	DEP_ONLY_NEW=crypto/http/http_client.c
 endif
 
 run:
@@ -100,6 +103,7 @@ run:
 		 --dep-only-new $(DEP_ONLY_NEW) \
 		 --dep-only-old $(DEP_ONLY_OLD) \
 		 --project-only $(PROJ_ONLY) \
+		 --deplib-name $(DEP_LIB_NAME) \
 		 --nproc $(NPROC) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
@@ -115,6 +119,7 @@ run_skip:
 		 --nproc $(NPROC) \
 		 --skip-impact \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
+		 --deplib-name $(DEP_LIB_NAME) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_rev:
@@ -128,9 +133,10 @@ run_rev:
 		 --nproc $(NPROC) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
+		 --deplib-name $(DEP_LIB_NAME) \
 		 --reverse-mapping \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
-run_full_ce:
+run_ce:
 	./euf.py --libclang $(LIBCLANG) \
 		 --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_EQUIV) \
@@ -140,9 +146,10 @@ run_full_ce:
 		 --full --driver $(DRIVER) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
+		 --deplib-name $(DEP_LIB_NAME) \
 		 --unwind $(UNWIND) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
-run_full_ci:
+run_ci:
 	./euf.py --libclang $(LIBCLANG) \
 		 --commit-old $(OLD_COMMIT) \
 		 --commit-new $(NEW_COMMIT_INF) \
@@ -152,6 +159,35 @@ run_full_ci:
 		 --full --driver $(DRIVER) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
+		 --deplib-name $(DEP_LIB_NAME) \
+		 --unwind $(UNWIND) \
+		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
+run_re_ce:
+	./euf.py --libclang $(LIBCLANG) \
+		 --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_EQUIV) \
+		 --verbose $(VERBOSE) \
+		 --dep-only-new $(DEP_ONLY_NEW) \
+		 --dep-only-old $(DEP_ONLY_OLD) \
+		 --full --driver $(DRIVER) \
+		 --exclude-dirs $(EXCLUDE_DIRS) \
+		 --dep-source-root $(DEP_SOURCE_ROOT) \
+		 --deplib-name $(DEP_LIB_NAME) \
+		 --force-recompile \
+		 --unwind $(UNWIND) \
+		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
+run_re_ci:
+	./euf.py --libclang $(LIBCLANG) \
+		 --commit-old $(OLD_COMMIT) \
+		 --commit-new $(NEW_COMMIT_INF) \
+		 --verbose $(VERBOSE) \
+		 --dep-only-new $(DEP_ONLY_NEW) \
+		 --dep-only-old $(DEP_ONLY_OLD) \
+		 --full --driver $(DRIVER) \
+		 --exclude-dirs $(EXCLUDE_DIRS) \
+		 --dep-source-root $(DEP_SOURCE_ROOT) \
+		 --deplib-name $(DEP_LIB_NAME) \
+		 --force-recompile \
 		 --unwind $(UNWIND) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 

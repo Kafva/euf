@@ -32,24 +32,41 @@ from cparser.impact_set import get_call_sites_from_file, \
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
 from cparser.transform import add_suffix_to_globals, get_all_top_level_decls, \
-        top_stash_is_euf_internal
+        has_euf_internal_stash
 
 
-def done(code: int = 0):
+def restore_and_exit(code: int = 0):
     '''
+    Should be called when exiting the program after a successful call to
+    `add_suffix_to_globals`
+
     Stash the changes in any repository that does not already have an 
-    internal stash and has uncommited modifications
+    internal stash and has uncommited modifications. Restore any changes
+    to reposistories that already have a stash
     Keeping the '_old' suffixes around would require
     a manual reset to use EUF agian
     '''
-    repo_paths = next(os.walk(CONFIG.EUF_CACHE))[1]
+    repo_names = next(os.walk(CONFIG.EUF_CACHE))[1]
 
-    for repo_path in repo_paths:
-        repo = Repo(f"{CONFIG.EUF_CACHE}/{repo_path}")
+    for repo_name in repo_names:
+        repo = Repo(f"{CONFIG.EUF_CACHE}/{repo_name}")
         try:
-            if not top_stash_is_euf_internal(repo) and repo.git.diff() != "": # type: ignore
-                print_info(f"Stashing changes in {repo_path}")
-                repo.git.stash(message = CONFIG.CACHE_INTERNAL_STASH) # type: ignore
+            # If the repository has changes that include the string '_old' 
+            # and there is no internal stash associated with it
+            # create a new stash
+            if has_euf_internal_stash(repo, repo_name) == "" and \
+                re.search(r"_old", repo.git.diff()) != None: # type: ignore
+                    print_info(f"Stashing changes in {repo_name}")
+                    repo.git.stash(# type: ignore
+                            message = f"{CONFIG.CACHE_INTERNAL_STASH} {repo_name}",
+                    )
+            # Otherwise checkout all the changes (we can restore them from the 
+            # existing stash if need to run the analysis again)
+            else:
+                if CONFIG.VERBOSITY >= 3:
+                    print_info(f"Discarding changes in {repo_name}")
+                repo.git.checkout(".") # type: ignore
+
         except GitCommandError:
             traceback.print_exc()
             sys.exit(-1)
@@ -71,6 +88,8 @@ if __name__ == '__main__':
         'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
     parser.add_argument("--libclang", metavar="filepath",
         default=CONFIG.LIBCLANG, help=f"Path to libclang (default {CONFIG.LIBCLANG})")
+    parser.add_argument("--deplib-name", metavar="string", required=True,
+            help=f"The name (e.g. 'libcrypto.a') of the dependency's library")
 
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
@@ -106,9 +125,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.commit_new == "" or args.commit_old == "" or \
-        args.dependency == "" or len(args.project) == 0:
-        print("Missing required option/argument")
+    if len(args.project) == 0:
+        print("Missing project argument")
         sys.exit(1)
 
     CONFIG.VERBOSITY    = args.verbose
@@ -139,9 +157,9 @@ if __name__ == '__main__':
     COMMIT_NEW: Commit = None # type: ignore
 
     for commit in DEP_REPO.iter_commits():
-        if commit.hexsha == args.commit_new:
+        if commit.hexsha[:len(args.commit_new)] == args.commit_new:
             COMMIT_NEW: Commit = commit
-        elif commit.hexsha == args.commit_old:
+        elif commit.hexsha[:len(args.commit_old)] == args.commit_old:
             COMMIT_OLD: Commit = commit
 
     if not COMMIT_OLD:
@@ -177,8 +195,8 @@ if __name__ == '__main__':
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW): done(-1)
-    if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD): done(-1)
+    if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW, DEP_REPO): sys.exit(-1)
+    if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD, DEP_REPO): sys.exit(-1)
 
     OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
@@ -219,11 +237,11 @@ if __name__ == '__main__':
     DEP_SOURCE_ROOT_OLD = DEPENDENCY_OLD + dep_source_root
     DEP_SOURCE_ROOT_NEW = DEPENDENCY_NEW + dep_source_root
 
-    # Attempt to create the compiliation database automatically
+    # Attempt to create the compilation database automatically
     # if they do not already exist
-    if not autogen_compile_db(DEP_SOURCE_ROOT_OLD): done(-1)
-    if not autogen_compile_db(DEP_SOURCE_ROOT_NEW): done(-1)
-    if not autogen_compile_db(PROJECT_DIR): done(-1)
+    if not autogen_compile_db(DEP_SOURCE_ROOT_OLD): sys.exit(-1)
+    if not autogen_compile_db(DEP_SOURCE_ROOT_NEW): sys.exit(-1)
+    if not autogen_compile_db(PROJECT_DIR): sys.exit(-1)
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
@@ -232,13 +250,13 @@ if __name__ == '__main__':
             cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_OLD)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEP_SOURCE_ROOT_OLD)
-        done(-1)
+        sys.exit(-1)
     try:
         DEP_DB_NEW: cindex.CompilationDatabase  = \
                 cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_NEW)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(DEP_SOURCE_ROOT_NEW)
-        done(-1)
+        sys.exit(-1)
 
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:
@@ -253,10 +271,10 @@ if __name__ == '__main__':
     if args.dump_top_level_decls:
         decls =  get_all_top_level_decls(DEPENDENCY_OLD, DEP_DB_OLD)
         if not decls:
-            done(-1)
+            restore_and_exit(-1)
         else:
             print('\n'.join(decls))
-            done(0)
+            restore_and_exit(0)
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -269,7 +287,7 @@ if __name__ == '__main__':
         MAIN_DB = cindex.CompilationDatabase.fromDirectory(PROJECT_DIR)
     except cindex.CompilationDatabaseError as e:
         compile_db_fail_msg(PROJECT_DIR)
-        done(-1)
+        sys.exit(-1)
 
     PROJECT_SOURCE_FILES = [ SourceFile(
         new_path = filepath, # type: ignore
@@ -303,7 +321,7 @@ if __name__ == '__main__':
                 pprint(CHANGED_FUNCTIONS)
     except Exception:
         traceback.print_exc()
-        done(-1)
+        sys.exit(-1)
 
     # - - - Harness generation - - - #
     # Regardless of which back-end we use to check equivalance, 
@@ -321,11 +339,11 @@ if __name__ == '__main__':
                 print_stage("Reduction")
 
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
-                done(-1)
+                sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.force_recompile)) == "": done(-1)
-            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.force_recompile)) == "": done(-1)
+            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.deplib_name, args.force_recompile)) == "": restore_and_exit(-1)
+            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.deplib_name, args.force_recompile)) == "": restore_and_exit(-1)
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
@@ -357,12 +375,12 @@ if __name__ == '__main__':
                     )).check_returncode()
                 except subprocess.CalledProcessError:
                     traceback.print_exc()
-                    done(-1)
+                    restore_and_exit(-1)
                 break
 
-            done(0) # tmp
+            restore_and_exit(0) # tmp
         except KeyboardInterrupt:
-            done(-1)
+            restore_and_exit(-1)
 
 
     # - - - Transitive change set propagation - - - #
@@ -424,14 +442,14 @@ if __name__ == '__main__':
 
         except Exception as e:
             traceback.print_exc()
-            done(-1)
+            restore_and_exit(-1)
 
     if CONFIG.VERBOSITY >= 2:
         print_stage("Complete set")
         pprint(CHANGED_FUNCTIONS)
 
     # - - - Impact set - - - #
-    if args.skip_impact: done(0)
+    if args.skip_impact: restore_and_exit(0)
 
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
@@ -461,7 +479,7 @@ if __name__ == '__main__':
                     pretty_print_impact_by_proj(CALL_SITES)
     except Exception as e:
         traceback.print_exc()
-        done(-1)
+        restore_and_exit(-1)
 
 
-    done(0)
+    restore_and_exit(0)
