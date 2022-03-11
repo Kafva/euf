@@ -26,13 +26,14 @@ EXCLUDE_DIRS=""
 DEP_SOURCE_ROOT=""
 SKIP_IMPACT=""
 GOTO_BUILD_SCRIPT=""
-DEP_CCDB_BUILD_SCRIPT=""
+CCDB_BUILD_SCRIPT=""
 
 
 ifdef ONI 
 	DEP_PROJECT=../oniguruma
 	MAIN_PROJECT=../jq
 	DEP_LIB_NAME=libonig.a
+	CCDB_BUILD_SCRIPT=./scripts/ccdb_oni.sh
 
 	#	regexec.c
 	#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
@@ -86,7 +87,7 @@ else ifdef SSL
 	MAIN_PROJECT=../curl
 	DEP_LIB_NAME=libcrypto.a
 	GOTO_BUILD_SCRIPT=./scripts/mk_goto_openssl.sh
-	DEP_CCDB_BUILD_SCRIPT=./scripts/ccdb_openssl.sh
+	CCDB_BUILD_SCRIPT=./scripts/ccdb_openssl.sh
 	DRIVER=./drivers/crypto_http_driver.c
 	SKIP_BLAME=--skip-blame
 	EXCLUDE_DIRS=./test
@@ -114,7 +115,7 @@ run:
 		 --project-only $(PROJ_ONLY) \
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --nproc $(NPROC) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
@@ -130,7 +131,7 @@ run_skip:
 		 --nproc $(NPROC) \
 		 --skip-impact $(SKIP_BLAME) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
@@ -147,7 +148,7 @@ run_rev:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --reverse-mapping \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
@@ -162,7 +163,7 @@ run_ce:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
@@ -177,7 +178,7 @@ run_ci:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
@@ -192,7 +193,7 @@ run_re_ce:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --force-recompile \
 		 --unwind $(UNWIND) $(SKIP_BLAME) \
@@ -208,7 +209,7 @@ run_re_ci:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --force-recompile \
 		 --unwind $(UNWIND) $(SKIP_BLAME) \

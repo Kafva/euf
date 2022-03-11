@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--goto-build-script", metavar='file', default=CONFIG.GOTO_BUILD_SCRIPT, help=
         f"Custom build script for generating a goto-bin library, ran instead of ./scripts/mk_goto.sh")
-    parser.add_argument("--dep-ccdb-build-script", metavar='file', default="", help=
+    parser.add_argument("--ccdb-build-script", metavar='file', default="", help=
         f"Custom build script for generating compile_commands.json for the dependency, see ./scripts/ccdb* for examples")
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     DEP_SOURCE_ROOT_OLD = DEPENDENCY_OLD + dep_source_root
     DEP_SOURCE_ROOT_NEW = DEPENDENCY_NEW + dep_source_root
 
-    if args.dep_ccdb_build_script != "":
+    if args.ccdb_build_script != "":
         try:
             script_env = os.environ.copy()
             script_env.update({
@@ -261,7 +261,7 @@ if __name__ == '__main__':
                 'SETX': CONFIG.SETX
             })
             print_info(f"Running custom compile_commands.json generator")
-            (subprocess.run([ "./" + args.dep_ccdb_build_script ],
+            (subprocess.run([ "./" + args.ccdb_build_script ],
                 stdout = sys.stderr, cwd = BASE_DIR, env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
@@ -360,7 +360,7 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 print_stage("Reduction")
 
-            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, DEP_SOURCE_DIFFS, DEP_ONLY_PATH_OLD, "_old"):
+            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
                 sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin

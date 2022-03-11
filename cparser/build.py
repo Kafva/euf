@@ -30,19 +30,19 @@ def autogen_compile_db(source_path: str) -> bool:
     if os.path.exists(f"{source_path}/compile_commands.json"):
         return True
 
-    # 1. Configure the project according to ./configure.ac if applicable
-    if os.path.exists(f"{source_path}/configure.ac") or \
-       os.path.exists(f"{source_path}/configure.in"):
-        try:
-            print_info(f"{source_path}: Running autoreconf...")
-            (subprocess.run([ "autoreconf", "-vfi" ],
-                cwd = source_path, stdout = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            compile_db_fail_msg(source_path)
-            return False
+    # Configure the project according to ./configure.ac if applicable
+    #if os.path.exists(f"{source_path}/configure.ac") or \
+    #   os.path.exists(f"{source_path}/configure.in"):
+    #    try:
+    #        print_info(f"{source_path}: Running autoreconf...")
+    #        (subprocess.run([ "autoreconf", "-vfi" ],
+    #            cwd = source_path, stdout = sys.stderr
+    #        )).check_returncode()
+    #    except subprocess.CalledProcessError:
+    #        compile_db_fail_msg(source_path)
+    #        return False
 
-    # 2. Configure the project according to ./configure if applicable
+    # 1. Configure the project according to ./configure if applicable
     run_if_present(source_path, "configure")
     run_if_present(source_path, "Configure")
 

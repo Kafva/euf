@@ -11,7 +11,7 @@ rm -f $OUTFILE
 $SETX && set -x
 cp ./drivers/cprover_builtin_headers.h  $OUTDIR
 
-# TODO: Automate this
+# TODO: Automate this (should not be needed)
 #cp $DEPENDENCY_NEW/src/oniguruma.h 	$OUTDIR/oniguruma_new.h
 #cp $DEPENDENCY_OLD/oniguruma.h 		$OUTDIR/oniguruma_old.h
 

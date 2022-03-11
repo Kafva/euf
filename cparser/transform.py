@@ -1,3 +1,4 @@
+from datetime import datetime
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
@@ -31,48 +32,44 @@ def get_top_level_decls(cursor: cindex.Cursor) -> Set[str]:
 
     return global_decls
 
-def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase,
-        dep_source_diffs: list[SourceDiff], dep_only_path_old: str) -> tuple[Set[str], list[str], list[str]]:
+def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tuple[Set[str], list[str], list[str]]:
     '''
     Reads the compilation database and creates:
         1. A set of all top level labels in the changed files that we need to
         rename with a suffix
         2. A list of compile commands to pass to `clang-rename`
         3. A list of the filepaths we should rename with `clang-rename`
+
+    To my knowledge, we cannot selectivly rename only the labels we need unless
+    we create a custom library that prevents conflicts
     '''
     os.chdir(basepath)
+
+    if CONFIG.VERBOSITY >= 1:
+        start_time = datetime.now()
 
     global_names: Set[str] = set()
     commands: list[str] = []
     filepaths: list[str] = []
 
-    #for ccmds in ccdb.getAllCompileCommands():
-
-    for diff in dep_source_diffs:
-
-        if dep_only_path_old != "" and \
-            not diff.old_path.endswith(dep_only_path_old):
-            continue
-
-        try:
+    try:
+        for ccmds in ccdb.getAllCompileCommands():
             # Depending on how the compile_commands.json is read
             # the full path may or may not be present...
-            ccmds = ccdb.getCompileCommands(diff.old_path)
-            filepath = ccmds[0].filename
+            filepath = ccmds.filename
 
             if not filepath.startswith(basepath):
                 filepath = basepath + "/" + filepath
-
             filepaths.append(filepath)
 
             # For clang-rename we skip: -c -o <.o> <src>
-            commands.extend( list(ccmds[0].arguments)[1:-4] )
+            commands.extend( list(ccmds.arguments)[1:-4] )
 
             try:
                 # Exclude 'cc' [0] and source file [-1] from compile command
                 tu = cindex.TranslationUnit.from_source(
                         filepath,
-                        args = list(ccmds[0].arguments)[1:-1]
+                        args = list(ccmds.arguments)[1:-1]
                 )
                 cursor: cindex.Cursor = tu.cursor
                 global_names |= get_top_level_decls(cursor)
@@ -81,10 +78,12 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase,
                 traceback.format_exc()
                 print_err(f"Failed to parse TU: {filepath}")
 
-        except cindex.CompilationDatabaseError:
-            traceback.format_exc()
-            print_err(f"Failed to get compile commands {diff.old_path}")
+    except cindex.CompilationDatabaseError:
+        traceback.format_exc()
+        print_err(f"Error parsing {basepath}/compile_commands.json")
 
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"Argument generation execution time: {datetime.now() - start_time}") # type: ignore
 
     # FIXME: We currently supply a set of all flags from ccdb applied to all files
     return (global_names, unique_only(commands), filepaths)
@@ -103,8 +102,7 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
 
     return ""
 
-def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
-        dep_source_diffs: list[SourceDiff], dep_only_path_old: str, suffix: str = "_old") -> bool:
+def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_old") -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
@@ -130,9 +128,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
-    global_names, commands, filepaths = get_clang_rename_args(dep_path, ccdb,
-            dep_source_diffs, dep_only_path_old
-    )
+    global_names, commands, filepaths = get_clang_rename_args(dep_path, ccdb)
 
     if len(global_names) == 0:
         print_err("No suffixes added")
@@ -153,6 +149,8 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     if CONFIG.VERBOSITY >= 2:
         print(' '.join(cmd))
 
+    if CONFIG.VERBOSITY >= 1:
+        start_time = datetime.now()
     try:
         (subprocess.run(cmd, cwd = dep_path,
         stdout = sys.stderr, stderr = sys.stderr
@@ -161,5 +159,8 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         traceback.print_exc()
         print_err(f"Failed to add '{suffix}' suffix")
         return False
+
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"clang-rename execution time: {datetime.now() - start_time}") # type: ignore
 
     return True
