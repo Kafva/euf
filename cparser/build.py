@@ -4,7 +4,7 @@ from git.objects.commit import Commit
 from git.repo.base import Repo
 
 from cparser.util import print_err, print_info
-from cparser import CONFIG, BASE_DIR
+from cparser import CONFIG
 
 def get_bear_version(path: str) -> int:
     if shutil.which("bear") is None:
@@ -76,7 +76,7 @@ def compile_db_fail_msg(path: str) -> None:
     "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
     "Consult the documentation for your particular dependency for additional build instructions.")
 
-def create_worktree(target: str, cwd: str, commit: Commit, repo: Repo) -> bool:
+def create_worktree(target: str, commit: Commit, repo: Repo) -> bool:
     if not os.path.exists(target):
         print_info(f"Creating worktree at {target}")
         # git checkout COMMIT_NEW.hexsha
@@ -96,7 +96,7 @@ def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str
     script_env = os.environ.copy()
     script_env.update({
         'DEPENDENCY_DIR': dep_dir,
-        'SETX': str(CONFIG.VERBOSITY >= 2).lower(),
+        'SETX': CONFIG.SETX,
         'FORCE_RECOMPILE': str(force_recompile).lower(),
         'DEPLIB_NAME': deplib_name
     })
@@ -104,7 +104,7 @@ def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str
     lib_path = ""
 
     try:
-        proc = subprocess.run([ f"{BASE_DIR}/scripts/mk_goto.sh" ],
+        proc = subprocess.run([ CONFIG.GOTO_BUILD_SCRIPT ],
             env = script_env, stdout = subprocess.PIPE, cwd = dep_dir
         )
         proc.check_returncode()

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-OUTFILE=runner
-
 [[ -z "$OUTDIR" || -z "$DEPENDENCY_OLD" || -z "$DEPENDENCY_NEW" || 
    -z "$DRIVER" || -z "$UNWIND" || -z "$SETX" || -z "$NEW_LIB"  || -z "$OLD_LIB" 
 ]] && die "Missing enviroment variable(s)"
@@ -8,7 +6,7 @@ OUTFILE=runner
 OUTFILE=runner
 
 mkdir -p $OUTDIR
-rm -f $OUTDIR/$OUTFILE
+rm -f $OUTFILE
 
 $SETX && set -x
 cp ./drivers/cprover_builtin_headers.h  $OUTDIR
@@ -31,10 +29,10 @@ cbmc --drop-unused-functions --list-goto-functions $OUTFILE
 
 # Using Z3 tends to take longer compared to the default (MathSAT)
 # This works for _1_ unwinding since that drops all conditions
-time cbmc ./$OUTFILE --function main \
-	--drop-unused-functions \
-	--unwind $UNWIND \
-	--object-bits 12 --property main.assertion.1
+#time cbmc ./$OUTFILE --function main \
+#	--drop-unused-functions \
+#	--unwind $UNWIND \
+#	--object-bits 12 --property main.assertion.1
 
 # We can extract the SMT file with conditions using --outfile
 

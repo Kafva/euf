@@ -16,8 +16,12 @@ class Config:
 
     LIBCLANG = "/usr/lib/libclang.so.13.0.1"
 
-    # Percentage limit needed to consider a file renamed based on git blame
-    RENAME_RATIO: float = .3
+    # A file will be considered renamed if git blame only finds
+    # two origins for changes and the changes are within the ratio
+    # [0.5,RENAME_RATIO_LOW]
+    RENAME_RATIO_LOW: float = .3
+
+    GOTO_BUILD_SCRIPT: str
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
@@ -25,6 +29,9 @@ class Config:
     RENAME_YML = "/tmp/rename.yml"
     OUTDIR: str = ".out"
     RUN_CBMC: bool = False
+
+    # Toggles echoing of scripts
+    SETX: str = "false"
 
 
 global CONFIG
@@ -34,6 +41,8 @@ if not os.path.exists(CONFIG.EUF_CACHE):
     os.mkdir(CONFIG.EUF_CACHE)
 
 BASE_DIR = Path(__file__).parent.parent.absolute()
+
+CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:

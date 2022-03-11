@@ -25,6 +25,9 @@ PROJ_ONLY=""
 EXCLUDE_DIRS=""
 DEP_SOURCE_ROOT=""
 SKIP_IMPACT=""
+GOTO_BUILD_SCRIPT=""
+DEP_CCDB_BUILD_SCRIPT=""
+
 
 ifdef ONI 
 	DEP_PROJECT=../oniguruma
@@ -82,6 +85,11 @@ else ifdef SSL
 	DEP_PROJECT=../openssl
 	MAIN_PROJECT=../curl
 	DEP_LIB_NAME=libcrypto.a
+	GOTO_BUILD_SCRIPT=./scripts/mk_goto_openssl.sh
+	DEP_CCDB_BUILD_SCRIPT=./scripts/ccdb_openssl.sh
+	DRIVER=./drivers/crypto_http_driver.c
+	SKIP_BLAME=--skip-blame
+	EXCLUDE_DIRS=./test
 	NPROC=10
 
 	#OLD_COMMIT=9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f
@@ -93,6 +101,7 @@ else ifdef SSL
 	OLD_COMMIT=29f178bddfd
 	NEW_COMMIT_EQUIV=b6fec9658be
 	DEP_ONLY_NEW=crypto/http/http_client.c
+	DEP_ONLY_OLD=crypto/http/http_client.c
 endif
 
 run:
@@ -105,6 +114,8 @@ run:
 		 --project-only $(PROJ_ONLY) \
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --nproc $(NPROC) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
@@ -117,8 +128,10 @@ run_skip:
 		 --dep-only-old $(DEP_ONLY_OLD) \
 		 --project-only $(PROJ_ONLY) \
 		 --nproc $(NPROC) \
-		 --skip-impact \
+		 --skip-impact $(SKIP_BLAME) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
@@ -134,6 +147,8 @@ run_rev:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --reverse-mapping \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_ce:
@@ -147,7 +162,9 @@ run_ce:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --unwind $(UNWIND) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
+		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_ci:
 	./euf.py --libclang $(LIBCLANG) \
@@ -160,7 +177,9 @@ run_ci:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
-		 --unwind $(UNWIND) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
+		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_re_ce:
 	./euf.py --libclang $(LIBCLANG) \
@@ -173,8 +192,10 @@ run_re_ce:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --force-recompile \
-		 --unwind $(UNWIND) \
+		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_re_ci:
 	./euf.py --libclang $(LIBCLANG) \
@@ -187,8 +208,10 @@ run_re_ci:
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
+		 --dep-ccdb-build-script $(DEP_CCDB_BUILD_SCRIPT) \
+		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --force-recompile \
-		 --unwind $(UNWIND) \
+		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 
 #---- Diff viewing  ----#

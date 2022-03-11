@@ -6,17 +6,11 @@ goto_compile(){
 	cd $DEPENDENCY_DIR
 	make clean 2> /dev/null
 
-	[[  -f "configure.ac" || -f "configure.in" ]] &&
-		autoreconf -fi || 
-		echo "!> Missing autoconf script" >&2 
+	#./Configure CC=goto-cc LD=goto-cc --host none-none-none
+	./config CC=goto-cc LD=goto-cc --host none-none-none
 
-	[ -f "configure" ] &&
-		./configure CC=goto-cc LD=goto-cc --host none-none-none ||
-		echo "!> Missing ./configure" >&2
-
-	[ -f "Makefile" ] &&
-		make CC=goto-cc LD=goto-cc -j$PROCS ||
-		echo "!> Missing Makefile" >&2
+	make CC=goto-cc LD=goto-cc -j$PROCS build_generated &&
+	make CC=goto-cc LD=goto-cc -j$PROCS libcrypto.a
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1

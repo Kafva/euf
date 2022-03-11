@@ -31,7 +31,7 @@ from cparser.impact_set import get_call_sites_from_file, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
-from cparser.transform import add_suffix_to_globals, get_all_top_level_decls, \
+from cparser.transform import add_suffix_to_globals, \
         has_euf_internal_stash
 
 
@@ -94,18 +94,22 @@ if __name__ == '__main__':
     parser.add_argument("--deplib-name", metavar="string", required=True,
             help=f"The name (e.g. 'libcrypto.a') of the dependency's library")
 
+    parser.add_argument("--goto-build-script", metavar='file', default=CONFIG.GOTO_BUILD_SCRIPT, help=
+        f"Custom build script for generating a goto-bin library, ran instead of ./scripts/mk_goto.sh")
+    parser.add_argument("--dep-ccdb-build-script", metavar='file', default="", help=
+        f"Custom build script for generating compile_commands.json for the dependency, see ./scripts/ccdb* for examples")
     parser.add_argument("--json", action='store_true', default=False,
         help='Print results as JSON')
     parser.add_argument("--force-recompile", action='store_true', default=False,
         help='Always recompile dependencies')
+    parser.add_argument("--skip-blame", action='store_true', default=False,
+        help='Skip blame correlation')
     parser.add_argument("--full", action='store_true', default=False,
         help='Run the full analysis with CBMC')
     parser.add_argument("--skip-impact", action='store_true', default=False,
         help='Skip the final impact assessment step')
     parser.add_argument("--reverse-mapping", action='store_true', default=False,
         help='Print the impact set as a mapping from dependency changes to project invocations')
-    parser.add_argument("--dump-top-level-decls", action='store_true', default=False,
-        help='Dump the names of ALL top level declarations in the old version of the dependency')
     parser.add_argument("--verbose", metavar='level', type=int,
         default=CONFIG.VERBOSITY,
         help=f"Verbosity level in output, 0-3, (default 0)")
@@ -140,6 +144,11 @@ if __name__ == '__main__':
     PROJECT_ONLY_PATH   = args.project_only
     CONFIG.LIBCLANG     = args.libclang
     CONFIG.RUN_CBMC     = args.full
+    CONFIG.SETX         = str(CONFIG.VERBOSITY >= 2).lower()
+
+    if args.goto_build_script != "":
+        CONFIG.GOTO_BUILD_SCRIPT = args.goto_build_script
+
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
@@ -161,17 +170,17 @@ if __name__ == '__main__':
     COMMIT_NEW: Commit = None # type: ignore
 
     for commit in DEP_REPO.iter_commits():
-        if commit.hexsha[:len(args.commit_new)] == args.commit_new:
+        if commit.hexsha.startswith(args.commit_new):
             COMMIT_NEW: Commit = commit
-        elif commit.hexsha[:len(args.commit_old)] == args.commit_old:
+        elif commit.hexsha.startswith(args.commit_old):
             COMMIT_OLD: Commit = commit
 
     if not COMMIT_OLD:
         print(f"Unable to find old commit: {args.commit_old}")
-        sys.exit(1)
+        sys.exit(-1)
     if not COMMIT_NEW:
         print(f"Unable to find new commit: {args.commit_new}")
-        sys.exit(1)
+        sys.exit(-1)
 
 
     # Only include modified (M) and renamed (R) '.c' files
@@ -199,20 +208,21 @@ if __name__ == '__main__':
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(DEPENDENCY_NEW, DEPENDENCY_DIR, COMMIT_NEW, DEP_REPO): sys.exit(-1)
-    if not create_worktree(DEPENDENCY_OLD, DEPENDENCY_DIR, COMMIT_OLD, DEP_REPO): sys.exit(-1)
+    if not create_worktree(DEPENDENCY_NEW, COMMIT_NEW, DEP_REPO): sys.exit(-1)
+    if not create_worktree(DEPENDENCY_OLD, COMMIT_OLD, DEP_REPO): sys.exit(-1)
 
     OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
 
-    # Add additional diffs based on git-blame that were not recorded
-    ADDED_DIFF = list(filter(lambda d: \
-                str(d.a_path).endswith(".c") and \
-                'A' == d.change_type,
-        COMMIT_OLD.diff(COMMIT_NEW)
-    ))
+    if not args.skip_blame:
+        # Add additional diffs based on git-blame that were not recorded
+        ADDED_DIFF = list(filter(lambda d: \
+                    str(d.a_path).endswith(".c") and \
+                    'A' == d.change_type,
+            COMMIT_OLD.diff(COMMIT_NEW)
+        ))
 
-    add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
+        add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
 
     # Filter out any files that are under excluded directories
     if args.exclude_dirs != "":
@@ -241,11 +251,28 @@ if __name__ == '__main__':
     DEP_SOURCE_ROOT_OLD = DEPENDENCY_OLD + dep_source_root
     DEP_SOURCE_ROOT_NEW = DEPENDENCY_NEW + dep_source_root
 
-    # Attempt to create the compilation database automatically
-    # if they do not already exist
-    if not autogen_compile_db(DEP_SOURCE_ROOT_OLD): sys.exit(-1)
-    if not autogen_compile_db(DEP_SOURCE_ROOT_NEW): sys.exit(-1)
-    if not autogen_compile_db(PROJECT_DIR): sys.exit(-1)
+    if args.dep_ccdb_build_script != "":
+        try:
+            script_env = os.environ.copy()
+            script_env.update({
+                'DEP_SOURCE_ROOT_OLD': DEP_SOURCE_ROOT_OLD,
+                'DEP_SOURCE_ROOT_NEW': DEP_SOURCE_ROOT_NEW,
+                'PROJECT_DIR': PROJECT_DIR,
+                'SETX': CONFIG.SETX
+            })
+            print_info(f"Running custom compile_commands.json generator")
+            (subprocess.run([ "./" + args.dep_ccdb_build_script ],
+                stdout = sys.stderr, cwd = BASE_DIR, env = script_env
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            sys.exit(-1)
+    else:
+        # Attempt to create the compilation database automatically
+        # if they do not already exist
+        if not autogen_compile_db(DEP_SOURCE_ROOT_OLD): sys.exit(-1)
+        if not autogen_compile_db(DEP_SOURCE_ROOT_NEW): sys.exit(-1)
+        if not autogen_compile_db(PROJECT_DIR): sys.exit(-1)
 
     # For the AST dump to contain a resolved view of the symbols
     # we need to provide the correct compile commands
@@ -270,15 +297,6 @@ if __name__ == '__main__':
     if DEP_ONLY_PATH_NEW != "":
         DEP_SOURCE_DIFFS = list(filter(lambda d:
             d.new_path == DEP_ONLY_PATH_NEW, DEP_SOURCE_DIFFS))
-
-    # - - - (Debugging) Dump all top level symbols - - - #
-    if args.dump_top_level_decls:
-        decls =  get_all_top_level_decls(DEPENDENCY_OLD, DEP_DB_OLD)
-        if not decls:
-            restore_and_exit(-1)
-        else:
-            print('\n'.join(decls))
-            restore_and_exit(0)
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -342,12 +360,14 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 print_stage("Reduction")
 
-            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
+            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, DEP_SOURCE_DIFFS, DEP_ONLY_PATH_OLD, "_old"):
                 sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.deplib_name, args.force_recompile)) == "": restore_and_exit(-1)
-            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.deplib_name, args.force_recompile)) == "": restore_and_exit(-1)
+            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.deplib_name, args.force_recompile)) == "":
+                restore_and_exit(-1)
+            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.deplib_name, args.force_recompile)) == "":
+                restore_and_exit(-1)
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
@@ -359,7 +379,7 @@ if __name__ == '__main__':
                 'OLD_LIB': old_lib,
                 'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
                 'UNWIND': str(args.unwind),
-                'SETX': str(CONFIG.VERBOSITY >= 2).lower()
+                'SETX': CONFIG.SETX
             })
 
             for change in CHANGED_FUNCTIONS:

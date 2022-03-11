@@ -221,13 +221,13 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
         file_origins = get_column_counts(blame_output, 1) # type: ignore
 
         # If the file origin dict only contains two entries and the distrubtion
-        # is at least 30/70 we assume that the file has been renamed
+        # is between 50/50 and RENAME_RATIO/(1-RENAME_RATIO) we assume that the file has been renamed
         if len(file_origins) == 2:
 
-            ratio = file_origins[0][1] / \
-                    (file_origins[0][1] + file_origins[1][1])
+            total = file_origins[0][1] + file_origins[1][1]
+            min_ratio = min(file_origins[0][1] / total, file_origins[1][1] / total)
 
-            if ratio > CONFIG.RENAME_RATIO:
+            if .5 > min_ratio and min_ratio > CONFIG.RENAME_RATIO_LOW:
                 # Create a new source diff object for the two files in question
                 # provided that an entry does not already exist
                 if file_origins[0][0] == added_file.a_path:
@@ -243,7 +243,7 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
 
                 if CONFIG.VERBOSITY >= 1:
                     print_info(f"Adding a/{old_path} -> b/{new_path} as a " + \
-                            f"diff based on blame ratio: {round(ratio,3)}")
+                            f"diff based on blame ratio: {round(min_ratio,3)}/{round(1-min_ratio,3)}")
                 dep_source_diffs.append( SourceDiff(
                             new_path = new_path,
                             old_path = old_path,
