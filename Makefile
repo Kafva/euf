@@ -26,7 +26,7 @@ EXCLUDE_DIRS=""
 DEP_SOURCE_ROOT=""
 SKIP_IMPACT=""
 
-ifdef ONI
+ifdef ONI 
 	DEP_PROJECT=../oniguruma
 	MAIN_PROJECT=../jq
 	DEP_LIB_NAME=libonig.a
@@ -42,6 +42,7 @@ ifdef ONI
 	#	st.c
 	OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78
 	NEW_COMMIT_EQUIV=e8bd631e187873a2085899bfc99f2f2c6af2adbd
+	NEW_COMMIT_INF=e8bd631e187873a2085899bfc99f2f2c6af2adbd
 	DRIVER=~/Repos/euf/drivers/st_newsize_driver.c
 	UNWIND=2
 	DEP_ONLY_OLD=st.c
@@ -65,7 +66,6 @@ else ifdef MA
 	NEW_COMMIT_INF=ca4b02be80ae3e62dc2c6fe8c9fbd2d0ecc44a5e
 	DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
 	UNWIND=10
-
 else ifdef EX
 	DEP_PROJECT=../libexpat
 	DEP_SOURCE_ROOT=../libexpat/expat

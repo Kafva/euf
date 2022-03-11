@@ -46,6 +46,9 @@ def restore_and_exit(code: int = 0):
     Keeping the '_old' suffixes around would require
     a manual reset to use EUF agian
     '''
+    if not CONFIG.RUN_CBMC:
+        sys.exit(code)
+
     repo_names = next(os.walk(CONFIG.EUF_CACHE))[1]
 
     for repo_name in repo_names:
@@ -136,6 +139,7 @@ if __name__ == '__main__':
     DEP_ONLY_PATH_NEW   = args.dep_only_new
     PROJECT_ONLY_PATH   = args.project_only
     CONFIG.LIBCLANG     = args.libclang
+    CONFIG.RUN_CBMC     = args.full
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
@@ -333,7 +337,7 @@ if __name__ == '__main__':
 
 
     # - - - Reduction of change set - - - #
-    if len(CHANGED_FUNCTIONS) > 0 and args.full and os.path.exists(args.driver):
+    if CONFIG.RUN_CBMC:
         try:
             if CONFIG.VERBOSITY >= 1:
                 print_stage("Reduction")

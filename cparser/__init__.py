@@ -24,6 +24,7 @@ class Config:
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
     RENAME_YML = "/tmp/rename.yml"
     OUTDIR: str = ".out"
+    RUN_CBMC: bool = False
 
 
 global CONFIG
