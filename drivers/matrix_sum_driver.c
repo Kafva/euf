@@ -6,7 +6,7 @@
 #define DIM 3
 
 int matrix_sum(int* m, int rows, int columns);
-int matrix_sum_old(int* m, int rows, int columns);
+int matrix_sum_old_b026324c6904b2a(int* m, int rows, int columns);
 
 // extern int* nondet_int_pointer();
 extern int  nondet_int();
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]){
 		}
 	}
 
-	int res1 = matrix_sum_old(m1,DIM,DIM);
+	int res1 = matrix_sum_old_b026324c6904b2a(m1,DIM,DIM);
 	int res2 = matrix_sum(m2,DIM,DIM);
 	__CPROVER_assert(res1 == res2, "Equivalent behaviour"); 
 

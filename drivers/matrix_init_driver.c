@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #define DIM 3
 
-int* matrix_init_old(int rows, int columns, int limit);
+int* matrix_init_old_b026324c6904b2a(int rows, int columns, int limit);
 int* matrix_init(int rows, int columns, int limit);
 
 int main(int argc, char* argv[]){
@@ -9,7 +9,7 @@ int main(int argc, char* argv[]){
 	int limit = nondet_int();
 	__CPROVER_assume( limit > 0 );
 
-	int* m1 = matrix_init_old(DIM,DIM,limit);
+	int* m1 = matrix_init_old_b026324c6904b2a(DIM,DIM,limit);
 	int* m2 = matrix_init(DIM,DIM,limit);
 
 	for (int i = 0; i < DIM; i++){

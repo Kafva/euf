@@ -4,7 +4,7 @@ from clang import cindex
 from typing import Set
 from git.repo import Repo
 from cparser.util import print_err, print_info
-from cparser import CONFIG
+from cparser import BASE_DIR, CONFIG
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
     for child in cursor.get_children():
@@ -130,7 +130,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
-    global_names, commands, filepaths = get_clang_rename_args(dep_path, ccdb)
+    global_names, _, _ = get_clang_rename_args(dep_path, ccdb)
 
     if len(global_names) == 0:
         print_err("No global names found")
@@ -156,55 +156,25 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
     # It also seems like code inside false "#ifdefs" is not renamed
     # This should not be an issue if we compile with the same options though
     #
-    # We end up having to basically rely on 'sed' to resolve this...
-    # at which point we could just use 'sed' directly...
+    # We therefore rely purely on 'sed'...
     if CONFIG.VERBOSITY >= 1:
         start_time = datetime.now()
 
-    for filepath in filepaths:
-        # Using --force will suppress all errors but still apply changes
-        # we need this flag since not every file will have all symbols
-        cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i",
-            filepath, "--" ] + commands[filepath]
-
-        if CONFIG.VERBOSITY >= 2:
-            print(' '.join(cmd))
-        try:
-            (subprocess.run(cmd, cwd = dep_path,
-            stdout = sys.stdout, stderr = sys.stderr
-            )).check_returncode()
-
-            # Restore any changes made to headers
-            for diff in dep_repo.git.diff("--name-only").splitlines(): # type: ignore
-                if diff.endswith(".h"): # type: ignore
-                    dep_repo.git.checkout(diff) # type: ignore
-
-
-        except subprocess.CalledProcessError:
-            traceback.print_exc()
-            print_err(f"Failed to add '{suffix}' suffix")
-            return False
-
-    # Rename the headers last
-    cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i"]
-
-    for file in dep_repo.git.ls_tree("-r", "HEAD", "--name-only").splitlines(): # type: ignore
-        if not file.endswith(".h"): # type: ignore
-            continue
-
-        if CONFIG.VERBOSITY >= 2:
-            print(' '.join(cmd+[file])) # type: ignore
-        try:
-            (subprocess.run(cmd + [ file ], cwd = dep_path, # type: ignore
-            stdout = sys.stdout, stderr = sys.stderr
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            traceback.print_exc()
-            print_err(f"Failed to add '{suffix}' suffix")
-            return False
-
+    try:
+        script_env = os.environ.copy()
+        script_env.update({
+            'RENAME_YML': CONFIG.RENAME_YML,
+            'SUFFIX': CONFIG.SUFFIX,
+            'VERBOSE': "true" if CONFIG.VERBOSITY >= 2 else "false"
+        })
+        (subprocess.run([ f"{BASE_DIR}/scripts/replace.sh"  ],
+            stdout = sys.stderr, cwd = dep_path, env = script_env
+        )).check_returncode()
+    except subprocess.CalledProcessError:
+        traceback.print_exc()
+        sys.exit(-1)
 
     if CONFIG.VERBOSITY >= 1:
-        print_info(f"clang-rename execution time: {datetime.now() - start_time}") # type: ignore
+        print_info(f"Renaming execution time: {datetime.now() - start_time}") # type: ignore
 
     return True
