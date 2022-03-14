@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 die(){ echo -e "$1" >&2 ; exit 1; }
 goto_compile(){
+	# Note that the compilation 'fails' for oniguruma but libonig.a is still
+	# produced and usable
 	$SETX && set -x
 
 	cd $DEPENDENCY_DIR
@@ -34,19 +36,23 @@ PROCS=$((`nproc` - 1))
 
 if $FORCE_RECOMPILE; then 
 	goto_compile
+	exit $?
 fi
 
 # Always recompile if at least one object file is an ELF file
 # goto-bin files are recorded as 'data'
 if $(find -name "*.o" | xargs -I{} file -b {} | sort -u | grep -q ELF); then
 	goto_compile
+	exit $?
 fi
 
-if $(find $DEPENDENCY_DIR -name "$(basename $DEPLIB_NAME)" &> /dev/null); then
+DEPLIB_PATH=$(find $DEPENDENCY_DIR -name "$(basename $DEPLIB_NAME)" 2>/dev/null | head -n1)
+
+if [ -n "$DEPLIB_PATH" ]; then
 	printf "!> [$(basename $DEPENDENCY_DIR)]: Found pre-existing library: $DEPLIB_NAME -- Skipping goto-bin compilation\n" >&2
 
 	# Print the path to the dependency
-	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1
+	printf "$DEPLIB_PATH"
 else
 	goto_compile
 fi

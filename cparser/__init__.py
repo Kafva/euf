@@ -29,6 +29,7 @@ class Config:
     RENAME_YML = "/tmp/rename.yml"
     OUTDIR: str = ".out"
     RUN_CBMC: bool = False
+    SUFFIX: str = "_old_b026324c6904b2a"
 
     # Toggles echoing of scripts
     SETX: str = "false"

@@ -58,7 +58,7 @@ def restore_and_exit(code: int = 0):
             # and there is no internal stash associated with it
             # create a new stash
             if has_euf_internal_stash(repo, repo_name) == "" and \
-                re.search(r"_old", repo.git.diff()) != None: # type: ignore
+                re.search(rf"{CONFIG.SUFFIX}", repo.git.diff()) != None: # type: ignore
                     print_info(f"Stashing changes in {repo_name}")
                     repo.git.stash(# type: ignore
                             message = f"{CONFIG.CACHE_INTERNAL_STASH} {repo_name}",
@@ -360,7 +360,7 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 print_stage("Reduction")
 
-            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, "_old"):
+            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin

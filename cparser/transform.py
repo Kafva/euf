@@ -3,9 +3,8 @@ import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
 from git.repo import Repo
-from cparser.util import flatten, print_err, print_info, remove_prefix, \
-        unique_only
-from cparser import CONFIG, SourceDiff
+from cparser.util import print_err, print_info
+from cparser import CONFIG
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
     for child in cursor.get_children():
@@ -32,12 +31,12 @@ def get_top_level_decls(cursor: cindex.Cursor) -> Set[str]:
 
     return global_decls
 
-def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tuple[Set[str], list[str], list[str]]:
+def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tuple[Set[str], dict[str,list[str]], Set[str]]:
     '''
     Reads the compilation database and creates:
         1. A set of all top level labels in the changed files that we need to
         rename with a suffix
-        2. A list of compile commands to pass to `clang-rename`
+        2. A dict of compile command lists (with TU names as keys) for each TU to pass to `clang-rename`
         3. A list of the filepaths we should rename with `clang-rename`
 
     To my knowledge, we cannot selectivly rename only the labels we need unless
@@ -49,8 +48,8 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
         start_time = datetime.now()
 
     global_names: Set[str] = set()
-    commands: list[str] = []
-    filepaths: list[str] = []
+    commands: dict[str,list[str]] = {}
+    filepaths: Set[str] = set()
 
     try:
         for ccmds in ccdb.getAllCompileCommands():
@@ -60,10 +59,14 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
 
             if not filepath.startswith(basepath):
                 filepath = basepath + "/" + filepath
-            filepaths.append(filepath)
+
+            if filepath in filepaths:
+                continue # Skip duplicate entries if they somehow appear
+            else:
+                filepaths.add(filepath)
 
             # For clang-rename we skip: -c -o <.o> <src>
-            commands.extend( list(ccmds.arguments)[1:-4] )
+            commands[filepath] = list(ccmds.arguments)[1:-4]
 
             try:
                 # Exclude 'cc' [0] and source file [-1] from compile command
@@ -85,8 +88,7 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
     if CONFIG.VERBOSITY >= 1:
         print_info(f"Argument generation execution time: {datetime.now() - start_time}") # type: ignore
 
-    # FIXME: We currently supply a set of all flags from ccdb applied to all files
-    return (global_names, unique_only(commands), filepaths)
+    return (global_names, commands, filepaths)
 
 def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
     '''
@@ -102,7 +104,7 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
 
     return ""
 
-def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_old") -> bool:
+def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_abcdefghijk") -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
@@ -131,7 +133,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
     global_names, commands, filepaths = get_clang_rename_args(dep_path, ccdb)
 
     if len(global_names) == 0:
-        print_err("No suffixes added")
+        print_err("No global names found")
         return False
 
     # Generate a Qualified -> NewName YAML file with translations for all of the
@@ -141,24 +143,66 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
         for name in list(global_names):
             f.write(f"- QualifiedName: {name}\n  NewName: {name}{suffix}\n")
 
-    # For clang-rename to consistently rename symbols we need to run it agianst
-    # all source files at once and not one by one
-    cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i" ] + \
-            filepaths + [ "--" ] + commands
-
-    if CONFIG.VERBOSITY >= 2:
-        print(' '.join(cmd))
-
+    # `clang-rename` renames symbols in the current .c file AND all headers were 
+    # the symbol is referenced. This causes issues when other .c files reference 
+    # the old name of a symbol that has been renamed in the headers
+    #
+    # To circumvent this we can individually rename the symbols in each .c file
+    # TODO: If we patched the clang-rename program to not rename headers we 
+    # could run these processes in parallel
+    #   ./clang/tools/clang-rename/ClangRename.cpp
+    #
+    # clang-rename does not work for references inside macros...
+    # It also seems like code inside false "#ifdefs" is not renamed
+    # This should not be an issue if we compile with the same options though
+    #
+    # We end up having to basically rely on 'sed' to resolve this...
+    # at which point we could just use 'sed' directly...
     if CONFIG.VERBOSITY >= 1:
         start_time = datetime.now()
-    try:
-        (subprocess.run(cmd, cwd = dep_path,
-        stdout = sys.stderr, stderr = sys.stderr
-        )).check_returncode()
-    except subprocess.CalledProcessError:
-        traceback.print_exc()
-        print_err(f"Failed to add '{suffix}' suffix")
-        return False
+
+    for filepath in filepaths:
+        # Using --force will suppress all errors but still apply changes
+        # we need this flag since not every file will have all symbols
+        cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i",
+            filepath, "--" ] + commands[filepath]
+
+        if CONFIG.VERBOSITY >= 2:
+            print(' '.join(cmd))
+        try:
+            (subprocess.run(cmd, cwd = dep_path,
+            stdout = sys.stdout, stderr = sys.stderr
+            )).check_returncode()
+
+            # Restore any changes made to headers
+            for diff in dep_repo.git.diff("--name-only").splitlines(): # type: ignore
+                if diff.endswith(".h"): # type: ignore
+                    dep_repo.git.checkout(diff) # type: ignore
+
+
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            print_err(f"Failed to add '{suffix}' suffix")
+            return False
+
+    # Rename the headers last
+    cmd = [ "clang-rename", "--input", CONFIG.RENAME_YML, "--force", "-i"]
+
+    for file in dep_repo.git.ls_tree("-r", "HEAD", "--name-only").splitlines(): # type: ignore
+        if not file.endswith(".h"): # type: ignore
+            continue
+
+        if CONFIG.VERBOSITY >= 2:
+            print(' '.join(cmd+[file])) # type: ignore
+        try:
+            (subprocess.run(cmd + [ file ], cwd = dep_path, # type: ignore
+            stdout = sys.stdout, stderr = sys.stderr
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            print_err(f"Failed to add '{suffix}' suffix")
+            return False
+
 
     if CONFIG.VERBOSITY >= 1:
         print_info(f"clang-rename execution time: {datetime.now() - start_time}") # type: ignore

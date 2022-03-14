@@ -1,3 +1,9 @@
+//int new_size(int);
+//int new_size_old_b026324c6904b2a(int);
+#include "oniguruma_new.h"
+#include "oniguruma_old.h"
+
+
 // We test a simple function that has not changed as a basecase
 // 	st.c: int new_size(int)
 int main(int argc, char* argv[]){
@@ -10,7 +16,7 @@ int main(int argc, char* argv[]){
 	__CPROVER_assume( size1 == size1 );
 	
 
-	int ret_old = new_size_old(size1);
+	int ret_old = new_size_old_b026324c6904b2a(size1);
 	int ret_new = new_size(size2);
 
 	// - - - Assert - - -

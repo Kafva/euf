@@ -12,11 +12,15 @@ $SETX && set -x
 cp ./drivers/cprover_builtin_headers.h  $OUTDIR
 
 # TODO: Automate this (should not be needed)
-#cp $DEPENDENCY_NEW/src/oniguruma.h 	$OUTDIR/oniguruma_new.h
-#cp $DEPENDENCY_OLD/oniguruma.h 		$OUTDIR/oniguruma_old.h
+cp $DEPENDENCY_NEW/src/oniguruma.h 	$OUTDIR/oniguruma_new.h
+cp $DEPENDENCY_OLD/oniguruma.h 		$OUTDIR/oniguruma_old.h
 
 # Note that the libraries can become unaccessible if they are compiled with an
 # older version of goto-cc compared to the current 
+#
+# If the compilation fails, verify that the symbols in the old library are 
+# actually renamed:
+#	cbmc --list-goto-functions $OLD_LIB
 goto-cc -DCBMC -I $OUTDIR \
 	$NEW_LIB $OLD_LIB $DRIVER \
  	-o $OUTFILE
