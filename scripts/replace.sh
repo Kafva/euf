@@ -4,22 +4,26 @@
 	die "Missing environment variable(s)"
 
 # Replace all occurences of the top level identifiers in the project
-# To avoid FPs we only replace occurences of the <name> not enclosed
-# by [-_0-9a-zA-Z]
-git ls-tree -r HEAD --name-only > /tmp/git-tree
+# To avoid FPs we only replace occurences of the <name> not enclosed by:
+c_chars="[^_0-9a-zA-Z]"
 
-while read -r line; do
-	old_name=$(echo $line | sed -nE "s/- QualifiedName: (.*)/\1/p")
-	if [ -n "$old_name" ]; then
-		$VERBOSE && echo "Renaming all occurences of '$old_name'" >&2
+sed -nE "s/- QualifiedName: (.*)/\1/p" "$RENAME_YML" > /tmp/rename.txt
 
-		while read -r file; do
-			# Skip any none .h / .c files
-			echo $file | grep -q "\.[hc]$" || continue
+while read -r file; do
+	# Skip any none .h / .c files
+	echo "$file" | grep -q "\.[hc]$" || continue
 
-			sed -E -i'' "s/(.*[^-_0-9a-zA-Z])(${old_name})([^-_0-9a-zA-Z].*)/\1\2${SUFFIX}\3/" "$file"
-		done < /tmp/git-tree
-	fi
-	
-done < "$RENAME_YML"
+	$VERBOSE && echo "Renaming all global symbols in '$file'" >&2
 
+	while read -r old_name; do
+		# The expressions matches several occurences per line of the
+		# old name enclosed by either a character that is not a allowed
+		# as a part of an identifer or start-of-line/end-of-line
+		sed -E -i'' \
+			-e "s/(${c_chars}|^)(${old_name})(${c_chars}|$)/\1\2${SUFFIX}\3/g" \
+			"$file"
+
+		# Only read the list of global names from the YML
+	done < /tmp/rename.txt
+
+done < <(git ls-tree -r HEAD --name-only)

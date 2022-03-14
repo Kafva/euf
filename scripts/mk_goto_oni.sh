@@ -1,18 +1,11 @@
 #!/usr/bin/env bash
-# Oniguruma cannot be compiled successfully with goto-cc (regardless of if we perform replacements)
-# in the old (65...) version.
-#	regsyntax.c:65:1: error: reason for conflict at #this: number of members is different
-#
-# However, all of the object files are available and the archive, libonig.a, which seems to be fully built
-# However.... once we link it togheter with the new library we still get a million errors
 die(){ echo -e "$1" >&2 ; exit 1; }
 goto_compile(){
 	# Note that the compilation 'fails' for oniguruma but libonig.a is still
-	# produced and usable
+	# produced and usable (not really)
 	$SETX && set -x
 
 	cd $DEPENDENCY_DIR
-
 	make clean
 	git clean -df --exclude=compile_commands.json
 	git checkout .

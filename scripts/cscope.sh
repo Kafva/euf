@@ -9,7 +9,6 @@ while read -r line; do
 		OUT=$(grep  --include "*.h" --include "*.c" --exclude-dir=.ccls-cache --color=always -Rn "[^-_0-9a-zA-Z]$old_name[^-_0-9a-zA-Z]" . | sed "/.*${old_name}${SUFFIX}.*/d")
 		[ -n "$OUT" ] &&
 			printf "\033[34m==>\033[0m $old_name \033[34m<==\033[0m\n$OUT\n"
-		
 	fi
 	
 done < /tmp/rename.yml

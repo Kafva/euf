@@ -14,10 +14,12 @@ PROCS=$((`nproc` - 1))
 
 if ! [ -f "$DEP_SOURCE_ROOT_OLD/compile_commands.json" ]; then
 	cd $DEP_SOURCE_ROOT_OLD
-	make clean &> /dev/null
-	autoreconf -fi
+	make clean
+	git clean -fd
+	git checkout .
+
 	./configure
-	cp -r ~/Repos/oniguruma/.deps .
+
 	if $v2; then
 		bear make -j$PROCS
 	else
@@ -27,9 +29,12 @@ fi
 
 if ! [ -f "$DEP_SOURCE_ROOT_NEW/compile_commands.json" ]; then
 	cd $DEP_SOURCE_ROOT_NEW
-	make clean &> /dev/null
-	autoreconf -fi
+	make clean
+	git clean -fd
+	git checkout .
+
 	./configure
+
 	if $v2; then
 		bear make -j$PROCS
 	else

@@ -1,7 +1,7 @@
 //int new_size(int);
 //int new_size_old_b026324c6904b2a(int);
-#include "oniguruma_new.h"
-#include "oniguruma_old.h"
+//#include "oniguruma_new.h"
+//#include "oniguruma_old.h"
 
 
 // We test a simple function that has not changed as a basecase

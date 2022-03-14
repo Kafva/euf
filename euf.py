@@ -353,7 +353,6 @@ if __name__ == '__main__':
     # TODO
     #
 
-
     # - - - Reduction of change set - - - #
     if CONFIG.RUN_CBMC:
         try:

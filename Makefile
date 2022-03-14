@@ -34,6 +34,7 @@ ifdef ONI
 	MAIN_PROJECT=../jq
 	DEP_LIB_NAME=libonig.a
 	CCDB_BUILD_SCRIPT=./scripts/ccdb_oni.sh
+	#GOTO_BUILD_SCRIPT=./scripts/mk_goto_oni.sh
 
 	#	regexec.c
 	#OLD_COMMIT=65a9b1aa03c9bc2dc01b074295b9603232cb3b78

@@ -110,8 +110,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
     and save the top level declerations. 
 
     Then go through every source file and add a suffix
-    to every occurence of the global symbols using
-    'clang-rename'
+    to every occurence of the global symbols
 
     Renaming _all_ files in a big repository can take way to long so
     we limit ourselves to renaming the symbols from the files
@@ -143,24 +142,12 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
         for name in list(global_names):
             f.write(f"- QualifiedName: {name}\n  NewName: {name}{suffix}\n")
 
-    # `clang-rename` renames symbols in the current .c file AND all headers were 
-    # the symbol is referenced. This causes issues when other .c files reference 
-    # the old name of a symbol that has been renamed in the headers
-    #
-    # To circumvent this we can individually rename the symbols in each .c file
-    # TODO: If we patched the clang-rename program to not rename headers we 
-    # could run these processes in parallel
-    #   ./clang/tools/clang-rename/ClangRename.cpp
-    #
-    # clang-rename does not work for references inside macros...
-    # It also seems like code inside false "#ifdefs" is not renamed
-    # This should not be an issue if we compile with the same options though
-    #
-    # We therefore rely purely on 'sed'...
     if CONFIG.VERBOSITY >= 1:
         start_time = datetime.now()
 
     try:
+        # `clang-rename` does not work for references inside macros and
+        # we therefore rely on 'sed' to perform replacements
         script_env = os.environ.copy()
         script_env.update({
             'RENAME_YML': CONFIG.RENAME_YML,
