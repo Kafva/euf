@@ -7,10 +7,10 @@ goto_compile(){
 	make clean 2> /dev/null
 
 	#./Configure CC=goto-cc LD=goto-cc --host none-none-none
-	./config CC=goto-cc LD=goto-cc --host none-none-none
+	./config CC=goto-cc --host none-none-none
 
-	make CC=goto-cc LD=goto-cc -j$PROCS build_generated &&
-	make CC=goto-cc LD=goto-cc -j$PROCS libcrypto.a
+	make CC=goto-cc -j$PROCS build_generated &&
+	make CC=goto-cc -j$PROCS libcrypto.a
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1
@@ -28,15 +28,19 @@ PROCS=$((`nproc` - 1))
 
 if $FORCE_RECOMPILE; then 
 	goto_compile
+	exit $?
 fi
 
 # Always recompile if at least one object file is an ELF file
 # goto-bin files are recorded as 'data'
 if $(find -name "*.o" | xargs -I{} file -b {} | sort -u | grep -q ELF); then
 	goto_compile
+	exit $?
 fi
 
-if $(find $DEPENDENCY_DIR -name "$(basename $DEPLIB_NAME)" &> /dev/null); then
+DEPLIB_PATH=$(find $DEPENDENCY_DIR -name "$(basename $DEPLIB_NAME)" 2>/dev/null | head -n1)
+
+if [ -n "$DEPLIB_PATH" ]; then
 	printf "!> [$(basename $DEPENDENCY_DIR)]: Found pre-existing library: $DEPLIB_NAME -- Skipping goto-bin compilation\n" >&2
 
 	# Print the path to the dependency
@@ -44,6 +48,3 @@ if $(find $DEPENDENCY_DIR -name "$(basename $DEPLIB_NAME)" &> /dev/null); then
 else
 	goto_compile
 fi
-
-
-

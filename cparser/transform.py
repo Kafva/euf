@@ -38,9 +38,6 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
         rename with a suffix
         2. A dict of compile command lists (with TU names as keys) for each TU to pass to `clang-rename`
         3. A list of the filepaths we should rename with `clang-rename`
-
-    To my knowledge, we cannot selectivly rename only the labels we need unless
-    we create a custom library that prevents conflicts
     '''
     os.chdir(basepath)
 
