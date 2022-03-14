@@ -44,7 +44,7 @@ if [ -n "$DEPLIB_PATH" ]; then
 	printf "!> [$(basename $DEPENDENCY_DIR)]: Found pre-existing library: $DEPLIB_NAME -- Skipping goto-bin compilation\n" >&2
 
 	# Print the path to the dependency
-	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1
+	printf $DEPLIB_PATH
 else
 	goto_compile
 fi

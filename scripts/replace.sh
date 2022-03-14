@@ -3,33 +3,44 @@
 [[  -z "$SUFFIX" || -z "$RENAME_YML" || -z "$VERBOSE" ]] && 
 	die "Missing environment variable(s)"
 
-# Replace all occurences of the top level identifiers in the project
-# To avoid FPs we only replace occurences of the <name> not enclosed by:
-c_chars="[^_0-9a-zA-Z]"
-
-sed -nE "s/- QualifiedName: (.*)/\1/p" "$RENAME_YML" > /tmp/rename.txt
-
 worker_job(){
-	while read -r old_name; do
-		# The expressions matches several occurences per line of the
+	while read -r local old_name; do
+		# The expression matches several occurrences per line of the
 		# old name enclosed by either a character that is not a allowed
-		# as a part of an identifer or start-of-line/end-of-line
+		# as a part of an identifier or start-of-line/end-of-line
 		sed -E -i'' \
-			-e "s/(${c_chars}|^)(${old_name})(${c_chars}|$)/\1\2${SUFFIX}\3/g" \
+			-e "s/(${C_CHARS}|^)(${old_name})(${C_CHARS}|$)/\1\2${SUFFIX}\3/g" \
 			"$1"
 
 		# Only read the list of global names from the YML
-	done < /tmp/rename.txt
+	done < $RENAME_TXT
 }
+
+RENAME_TXT=/tmp/rename.txt
+TO_RENAME_TXT=/tmp/to_rename.txt
+
+# Replace all occurrences of the top level identifiers in the project
+# To avoid FPs we only replace occurrences of the <name> not enclosed by:
+C_CHARS="[^_0-9a-zA-Z]"
 
 WORKER_CNT=$((`nproc` - 1))
 files=()
 
-while read -r file; do
-	# Skip any none .h / .c files
-	echo "$file" | grep -q "\.[hc]$" || continue
+# To disperse the work evenly we order the input files in descending order
+# of line numbers, all threads will then have a big file to work on
+# in the same iteration. Also skip any none .c/.h files
+git ls-tree -r HEAD --name-only | xargs -I {} wc -l {} | 
+	sort -n -k1 | awk '{print $2}' | grep "\.[hc]$" > $TO_RENAME_TXT
 
+TOTAL=$(wc -l $TO_RENAME_TXT | awk '{print $1}')
+cnt=0
+
+# Extract the names of all globals to a newline-seperated file
+sed -nE "s/- QualifiedName: (.*)/\1/p" "$RENAME_YML" > $RENAME_TXT
+
+while read -r file; do
 	files+=( "$file" )
+	cnt=$((cnt + 1))
 
 	# Launch `WORKER_CNT` background jobs to perform replacements
 	# (one file per worker) and wait for each to complete
@@ -44,12 +55,13 @@ while read -r file; do
 			worker_pids+=( $! )
 		done
 
-		for i in $(seq $WORKER_CNT); do
+		for i in $(seq 0 $((WORKER_CNT-1))); do
+			echo "Waiting on worker $i: '${files[$i]}'" >&2
 			wait ${worker_pids[$i]}
 		done
 
+		echo "=> Completed ($cnt/$TOTAL)" >&2
 		files=()
 	fi
-	
 
-done < <(git ls-tree -r HEAD --name-only)
+done < $TO_RENAME_TXT

@@ -54,6 +54,10 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
             # the full path may or may not be present...
             filepath = ccmds.filename
 
+            # Skip files in other formats, e.g. asm
+            if (not filepath.endswith(".c")) and (not filepath.endswith(".h")):
+                continue
+
             if not filepath.startswith(basepath):
                 filepath = basepath + "/" + filepath
 
@@ -101,7 +105,7 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
 
     return ""
 
-def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = "_abcdefghijk") -> bool:
+def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = CONFIG.SUFFIX) -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
