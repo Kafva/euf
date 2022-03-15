@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
@@ -104,6 +105,91 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
             return "stash@{" + str(num) + "}"
 
     return ""
+
+def replace_identifiers(input_file: str, global_names: list[str], suffix: str):
+    '''
+    I have tried `clang-rename` (does not consider macros and is single-threaded)
+    I have tried `sed` (hard to avoid replacements inside strings)
+    Writing a solution in Python...
+
+    Go through each line in the input file:
+        1. Skip over comment blocks and multiline strings
+        2. On regular lines, split the line into STR and NOTSTR items
+
+            char* myself = "myself"; printf("How does \"%s\" explain myself?", myself);
+        => [ 'char* myself = ', 'myself', '; printf(', 'How do "%s" explain myself?", ', myself);' ]
+
+        3. Replace identifers inside the NONSTR items and join the result into the newline
+
+    This method does not consider usage of doubly enclosed strings...
+    '''
+
+    DELIM = "[^_0-9a-zA-Z]"
+
+    with open(input_file, mode="r+", encoding='utf8') as f:
+        inside_string = False
+        inside_comment = False
+
+        for line in f.readlines():
+            if inside_comment:
+                if res := re.search(r"\*/", line):
+                    # Parse from res.end()
+                    line = line[res.end():]
+                else:
+                    continue
+            elif inside_string:
+                pass
+
+            # TODO: skip
+            # ^\s*(#\s*include|\/\/
+
+            #if re.search()
+
+            # First split on escaped quotes
+            escaped_split = line.split('\\"')
+
+            # Unless the line starts with an unescaped quote (barring whitespace)
+            # the first item will be a NOT_QOUTE_STR item
+            if not line.lstrip().startswith('\\"'):
+                not_qoute_str_idx = 0
+            else:
+                not_qoute_str_idx = 1
+
+            # Iterate over the NOT_QOUTE_STR items
+            # and split each one into STR, NOTSTR items
+            for i in range(not_qoute_str_idx,len(escaped_split),2):
+                string_split = escaped_split[i].split('"')
+
+
+                # The first item will be a NOSTR item unless the main item
+                # starts with a '"'
+                if not escaped_split[i].lstrip().startswith('"'):
+                    not_str_idx = 0
+                else:
+                    not_str_idx = 1
+                print("[SPLIT]", string_split)
+
+                # We can now go through the NOTSTR items and replace any 
+                # occurrences of a global identifier
+                for j in range(not_str_idx,len(string_split),2):
+
+                    for name in global_names:
+                        string_split[j] = \
+                                re.sub(
+                                    pattern = rf"({DELIM}|^)({name})({DELIM}|$)",
+                                    repl = rf"\1\2{suffix}\3",
+                                    string = string_split[j]
+                                )
+
+
+                # After replacing all occurrences of any identifier
+                # overwrite the previous value
+                # TODO: ensure that the '"' is inserted back correctly
+                escaped_split[i] = '"'.join(string_split)
+
+            print(">>> " +  '\\"'.join(escaped_split), end='')
+            print(line, end='')
+
 
 def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = CONFIG.SUFFIX) -> bool:
     '''

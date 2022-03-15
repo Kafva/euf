@@ -238,7 +238,7 @@ if __name__ == '__main__':
     if CONFIG.VERBOSITY >= 1:
         print_stage("Git Diff")
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
-                for d in DEP_SOURCE_DIFFS ]))
+                for d in DEP_SOURCE_DIFFS ]) + "\n")
 
     # Update the project root in case the source code and .git
     # folder are not both at the root of the project
@@ -362,7 +362,7 @@ if __name__ == '__main__':
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
 
-            restore_and_exit(0)
+            exit(0)
 
             # Compile the old and new version of the dependency as a goto-bin
             if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.deplib_name, args.force_recompile)) == "":

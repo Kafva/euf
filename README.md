@@ -28,3 +28,6 @@ Invoke as
 	$PROJECT
 ```
 
+## Tests
+To debug with stdout add `--capture=tee-sys`
+> pytest tests/test*

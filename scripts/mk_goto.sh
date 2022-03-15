@@ -5,6 +5,10 @@
 #
 # However, all of the object files are available and the archive, libonig.a, which seems to be fully built
 # However.... once we link it togheter with the new library we still get a million errors
+#
+# libcrypto can be compiled successfully with goto-cc but the archive will include some ELF files,
+# these have a x86_64 or similar suffix and do not make sense as general goto programs
+
 die(){ echo -e "$1" >&2 ; exit 1; }
 goto_compile(){
 	# Note that the compilation 'fails' for oniguruma but libonig.a is still
@@ -15,7 +19,6 @@ goto_compile(){
 
 	make clean
 	git clean -df --exclude=compile_commands.json
-	git checkout .
 
 	#[[  -f "configure.ac" || -f "configure.in" ]] &&
 	#	autoreconf -fi || 

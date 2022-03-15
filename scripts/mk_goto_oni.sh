@@ -8,7 +8,6 @@ goto_compile(){
 	cd $DEPENDENCY_DIR
 	make clean
 	git clean -df --exclude=compile_commands.json
-	git checkout .
 
 	#[[  -f "configure.ac" || -f "configure.in" ]] &&
 	#	autoreconf -fi || 

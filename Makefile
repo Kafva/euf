@@ -243,3 +243,9 @@ ctrlp_v:
 		-o  9a1c4e41e8d \
 		-n  d5f9166bacf \
 		-d ../openssl ../curl | bat
+replace:
+	SUFFIX=aaaaaaaa VERBOSE=false RENAME_YML=/home/jonas/Repos/euf/scripts/.test.yml \
+		/home/jonas/Repos/euf/scripts/replace.sh /home/jonas/Repos/oniguruma/src/gb18030.c
+
+
+

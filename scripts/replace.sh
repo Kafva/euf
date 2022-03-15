@@ -1,20 +1,45 @@
 #!/usr/bin/env bash
+# Replace all occurrences of the top level identifiers in the project
 # Should be executed with the repo in question as cwd
 [[  -z "$SUFFIX" || -z "$RENAME_YML" || -z "$VERBOSE" ]] && 
 	die "Missing environment variable(s)"
 
+
 worker_job(){
 	# Remove all comments from the source file before any processing
+	# This operation does not expand macros (but it can fck up some other preproccessor directives)
+	#~/Repos/euf/scripts/ccomments.sed "$1" > "$tmp_file"
+	# gcc -fpreprocessed -dD -P -E "$1" > "$tmp_file"
+
+	# Remove the license header (if any from the file)
+	# (Very hacky)
 	local tmp_file="/tmp/$(basename ${1})_$RANDOM"
-	gcc -fpreprocessed -dD -P -E "$1" > "$tmp_file"
+
+	local start=$(grep -E -m1 -n "^\s*(/\*)"  "$1" |awk -F: '{print $1}')
+	local end=$(grep -E -m1 -n "^\s*(\*/)"    "$1" |awk -F: '{print $1}')
+
+	sed "${start},${end}d" "$1" > "$tmp_file"
 
 	local old_name
 	while read -r old_name; do
+		# Note that we exclude all lines starting with '#include' to avoid
+		# path names being renamed
+		# We also skip '//' single line comments
+
+		# To avoid replacements of partial matches in an identifier we only 
+		# replace occurrences of the <name> NOT enclosed by ${DELIM}
+
+		# We can get issues when matches inside strings are replaced...
+
 		# The expression matches several occurrences per line of the
 		# old name enclosed by either a character that is not a allowed
 		# as a part of an identifier or start-of-line/end-of-line
+		#
+		# We only replace the enclosements which are followed by a "
+		# preceded by a "
+		# or neither
 		sed -E -i'' \
-			-e "s/(${C_CHARS}|^)(${old_name})(${C_CHARS}|$)/\1\2${SUFFIX}\3/g" \
+			-e '/^\s*(#\s*include|\/\/)/!'"s/(${DELIM}|^)(${old_name})(${DELIM}|$)/\1\2${SUFFIX}\3/g" \
 			"$tmp_file"
 
 		# Only read the list of global names from the YML
@@ -23,15 +48,22 @@ worker_job(){
 	cp "$tmp_file" "$1"
 }
 
+
 RENAME_TXT=/tmp/rename.txt
 TO_RENAME_TXT=/tmp/to_rename.txt
 
-# Replace all occurrences of the top level identifiers in the project
-# To avoid FPs we only replace occurrences of the <name> not enclosed by:
-C_CHARS="[^_0-9a-zA-Z]"
+# Every word that we replace needs to be enclosed by some character NOT in this set (or have nothing around it)
+# Furthermore, there cannot be a "' before or after the symbol
+DELIM="[^_0-9a-zA-Z]"
 
 WORKER_CNT=$((`nproc` - 1))
 files=()
+
+# For testing
+if [ -f "$1" ]; then
+	worker_job "$1"
+	exit 0
+fi
 
 # To disperse the work evenly we order the input files in descending order
 # of line numbers, all threads will then have a big file to work on

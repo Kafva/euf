@@ -4,10 +4,11 @@ goto_compile(){
 	$SETX && set -x
 
 	cd $DEPENDENCY_DIR
-	make clean 2> /dev/null
+	make clean
+	git clean -df --exclude=compile_commands.json
 
 	#./Configure CC=goto-cc LD=goto-cc --host none-none-none
-	./config CC=goto-cc --host none-none-none
+	./config CC=goto-cc
 
 	make CC=goto-cc -j$PROCS build_generated &&
 	make CC=goto-cc -j$PROCS libcrypto.a
