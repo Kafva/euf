@@ -147,7 +147,7 @@ if __name__ == '__main__':
     CONFIG.SETX         = str(CONFIG.VERBOSITY >= 2).lower()
 
     if args.goto_build_script != "":
-        CONFIG.GOTO_BUILD_SCRIPT = args.goto_build_script
+        CONFIG.GOTO_BUILD_SCRIPT = os.path.abspath(args.goto_build_script)
 
 
     # Set the path to the clang library (platform dependent)
@@ -361,6 +361,8 @@ if __name__ == '__main__':
 
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
+
+            restore_and_exit(0)
 
             # Compile the old and new version of the dependency as a goto-bin
             if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.deplib_name, args.force_recompile)) == "":

@@ -4,16 +4,23 @@
 	die "Missing environment variable(s)"
 
 worker_job(){
-	while read -r local old_name; do
+	# Remove all comments from the source file before any processing
+	local tmp_file="/tmp/$(basename ${1})_$RANDOM"
+	gcc -fpreprocessed -dD -P -E "$1" > "$tmp_file"
+
+	local old_name
+	while read -r old_name; do
 		# The expression matches several occurrences per line of the
 		# old name enclosed by either a character that is not a allowed
 		# as a part of an identifier or start-of-line/end-of-line
 		sed -E -i'' \
 			-e "s/(${C_CHARS}|^)(${old_name})(${C_CHARS}|$)/\1\2${SUFFIX}\3/g" \
-			"$1"
+			"$tmp_file"
 
 		# Only read the list of global names from the YML
 	done < $RENAME_TXT
+
+	cp "$tmp_file" "$1"
 }
 
 RENAME_TXT=/tmp/rename.txt
@@ -35,8 +42,10 @@ git ls-tree -r HEAD --name-only | xargs -I {} wc -l {} |
 TOTAL=$(wc -l $TO_RENAME_TXT | awk '{print $1}')
 cnt=0
 
-# Extract the names of all globals to a newline-seperated file
+# Extract the names of all globals to a newline-separated file
 sed -nE "s/- QualifiedName: (.*)/\1/p" "$RENAME_YML" > $RENAME_TXT
+
+echo "!> Starting $(basename $0) at $PWD"
 
 while read -r file; do
 	files+=( "$file" )

@@ -21,7 +21,7 @@ class Config:
     # [0.5,RENAME_RATIO_LOW]
     RENAME_RATIO_LOW: float = .3
 
-    GOTO_BUILD_SCRIPT: str
+    GOTO_BUILD_SCRIPT: str = ""
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
