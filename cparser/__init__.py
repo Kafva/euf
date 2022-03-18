@@ -22,11 +22,12 @@ class Config:
     RENAME_RATIO_LOW: float = .3
 
     GOTO_BUILD_SCRIPT: str = ""
+    PLUGIN: str = ""
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
-    RENAME_YML = "/tmp/rename.yml"
+    RENAME_TXT = "/tmp/rename.txt"
     OUTDIR: str = ".out"
     RUN_CBMC: bool = False
     SUFFIX: str = "_old_b026324c6904b2a"
@@ -44,6 +45,7 @@ if not os.path.exists(CONFIG.EUF_CACHE):
 BASE_DIR = Path(__file__).parent.parent.absolute()
 
 CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
+CONFIG.PLUGIN = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:

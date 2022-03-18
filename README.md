@@ -5,6 +5,7 @@
 ## Ubuntu installation
 ```bash
 apt-get install python3.9 python3.9-venv bear clang llvm-12 jq -y
+pip3 install --user pcpp
 python3.9 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt

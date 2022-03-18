@@ -1,5 +1,4 @@
 from datetime import datetime
-import re
 import subprocess, os, sys, traceback
 from clang import cindex
 from typing import Set
@@ -106,92 +105,8 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
 
     return ""
 
-def replace_identifiers(input_file: str, global_names: list[str], suffix: str):
-    '''
-    I have tried `clang-rename` (does not consider macros and is single-threaded)
-    I have tried `sed` (hard to avoid replacements inside strings)
-    Writing a solution in Python...
-
-    Go through each line in the input file:
-        1. Skip over comment blocks and multiline strings
-        2. On regular lines, split the line into STR and NOTSTR items
-
-            char* myself = "myself"; printf("How does \"%s\" explain myself?", myself);
-        => [ 'char* myself = ', 'myself', '; printf(', 'How do "%s" explain myself?", ', myself);' ]
-
-        3. Replace identifers inside the NONSTR items and join the result into the newline
-
-    This method does not consider usage of doubly enclosed strings...
-    '''
-
-    DELIM = "[^_0-9a-zA-Z]"
-
-    with open(input_file, mode="r+", encoding='utf8') as f:
-        inside_string = False
-        inside_comment = False
-
-        for line in f.readlines():
-            if inside_comment:
-                if res := re.search(r"\*/", line):
-                    # Parse from res.end()
-                    line = line[res.end():]
-                else:
-                    continue
-            elif inside_string:
-                pass
-
-            # TODO: skip
-            # ^\s*(#\s*include|\/\/
-
-            #if re.search()
-
-            # First split on escaped quotes
-            escaped_split = line.split('\\"')
-
-            # Unless the line starts with an unescaped quote (barring whitespace)
-            # the first item will be a NOT_QOUTE_STR item
-            if not line.lstrip().startswith('\\"'):
-                not_qoute_str_idx = 0
-            else:
-                not_qoute_str_idx = 1
-
-            # Iterate over the NOT_QOUTE_STR items
-            # and split each one into STR, NOTSTR items
-            for i in range(not_qoute_str_idx,len(escaped_split),2):
-                string_split = escaped_split[i].split('"')
-
-
-                # The first item will be a NOSTR item unless the main item
-                # starts with a '"'
-                if not escaped_split[i].lstrip().startswith('"'):
-                    not_str_idx = 0
-                else:
-                    not_str_idx = 1
-                print("[SPLIT]", string_split)
-
-                # We can now go through the NOTSTR items and replace any 
-                # occurrences of a global identifier
-                for j in range(not_str_idx,len(string_split),2):
-
-                    for name in global_names:
-                        string_split[j] = \
-                                re.sub(
-                                    pattern = rf"({DELIM}|^)({name})({DELIM}|$)",
-                                    repl = rf"\1\2{suffix}\3",
-                                    string = string_split[j]
-                                )
-
-
-                # After replacing all occurrences of any identifier
-                # overwrite the previous value
-                # TODO: ensure that the '"' is inserted back correctly
-                escaped_split[i] = '"'.join(string_split)
-
-            print(">>> " +  '\\"'.join(escaped_split), end='')
-            print(line, end='')
-
-
-def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffix: str = CONFIG.SUFFIX) -> bool:
+def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
+        suffix: str = CONFIG.SUFFIX) -> bool:
     '''
     Go through every TU in the compilation database
     and save the top level declerations. 
@@ -216,39 +131,118 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase, suffi
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
-    global_names, _, _ = get_clang_rename_args(dep_path, ccdb)
+    global_names, commands, _ = get_clang_rename_args(dep_path, ccdb)
 
     if len(global_names) == 0:
         print_err("No global names found")
         return False
 
-    # Generate a Qualified -> NewName YAML file with translations for all of the
-    # identified symbols
-    with open(CONFIG.RENAME_YML, "w", encoding="utf8") as f:
-        f.write("---\n")
+
+    # * Dump a list of the global names to disk that the clang plugin can read from
+    with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
         for name in list(global_names):
-            f.write(f"- QualifiedName: {name}\n  NewName: {name}{suffix}\n")
+            f.write(name+'\n')
+
+    # * Generate a list of all source files in the repo
+    repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
+            dep_repo.git.ls_tree(                        # type: ignore
+            "-r", "HEAD", "--name-only").splitlines())   # type: ignore
+
+    source_files = list(filter(lambda f:
+        f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
 
     if CONFIG.VERBOSITY >= 1:
         start_time = datetime.now()
 
-    try:
-        # `clang-rename` does not work for references inside macros and
-        # we therefore rely on 'sed' to perform replacements
-        script_env = os.environ.copy()
-        script_env.update({
-            'RENAME_YML': CONFIG.RENAME_YML,
-            'SUFFIX': CONFIG.SUFFIX,
-            'VERBOSE': "true" if CONFIG.VERBOSITY >= 2 else "false"
-        })
-        (subprocess.run([ f"{BASE_DIR}/scripts/replace.sh"  ],
-            stdout = sys.stderr, cwd = dep_path, env = script_env
-        )).check_returncode()
-    except subprocess.CalledProcessError:
-        traceback.print_exc()
-        sys.exit(-1)
+    # TODO: mp
+    for source_file in source_files:
+        if source_file.endswith(".h"):
+            continue
+        try:
+            # * Determine the -isystem-flags for the perticular source file 
+            isystem_flags = get_isystem_flags(source_file, dep_path)
+
+            # * Run a Pool() subprocess job where each subprocess 
+            #   is an invocation of:
+            #       1. pcpp to expand macros for the file
+            #       2. clang-suffix to perform the actual renaming
+            script_env = os.environ.copy()
+            script_env.update({
+                'RENAME_TXT': CONFIG.RENAME_TXT,
+                'SUFFIX': CONFIG.SUFFIX,
+                'SETX': CONFIG.SETX,
+                'PLUGIN': CONFIG.PLUGIN,
+                'INTERNAL_FLAGS': isystem_flags,
+                'CFLAGS': ' '.join(commands[source_file]),
+                'TARGET_FILE': source_file
+            })
+            (subprocess.run([ f"{BASE_DIR}/scripts/clang-suffix.sh"  ],
+                stdout = sys.stderr, cwd = dep_path, env = script_env
+            )).check_returncode()
+
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            sys.exit(-1)
+
+    # Finally, rename all global names inside header files
+    for source_file in source_files:
+        if source_file.endswith(".c"):
+            continue
+        try:
+            # * Determine the -isystem-flags for the perticular source file 
+            isystem_flags = get_isystem_flags(source_file, dep_path)
+
+            script_env = os.environ.copy()
+            script_env.update({
+                'RENAME_TXT': CONFIG.RENAME_TXT,
+                'SUFFIX': CONFIG.SUFFIX,
+                'SETX': CONFIG.SETX,
+                'PLUGIN': CONFIG.PLUGIN,
+                'INTERNAL_FLAGS': isystem_flags,
+                'CFLAGS': '',
+                'TARGET_FILE': source_file
+            })
+            (subprocess.run([ f"{BASE_DIR}/scripts/clang-suffix.sh"  ],
+                stdout = sys.stderr, cwd = dep_path, env = script_env
+            )).check_returncode()
+
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            sys.exit(-1)
+
 
     if CONFIG.VERBOSITY >= 1:
         print_info(f"Renaming execution time: {datetime.now() - start_time}") # type: ignore
 
     return True
+
+
+def get_isystem_flags(source_file: str, dep_path: str) -> str:
+    '''
+    https://clang.llvm.org/docs/FAQ.html#id2
+    The -cc1 flag is used to invoke the clang 'frontend', using only the 
+    frontend infers that default options are lost, errors like 
+    	'stddef.h' file not found
+    are caused from the fact that the builtin-include path of clang is missing
+    We can see the default frontend options used by clang with
+    	clang -### test/file.cpp
+    '''
+    isystem_flags = subprocess.check_output(
+        f"clang -### {source_file} 2>&1 | sed '1,4d; s/\" \"/\", \"/g'",
+        shell=True, cwd = dep_path
+    ).decode('ascii').split(",")
+
+    out = ""
+    print_next = False
+
+    for flag in isystem_flags:
+        flag = flag.strip().strip('"')
+
+        if flag == '-internal-isystem':
+            out += " " + flag
+            print_next = True
+        elif print_next:
+            out += " " + flag
+            print_next = False
+
+    return out.lstrip()

@@ -1,4 +1,0 @@
-new_size
-bitset_on_num
-onig_builtin_monitor
-primes
