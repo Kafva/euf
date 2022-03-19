@@ -203,63 +203,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         traceback.print_exc()
         return False
 
-
-
-    #for source_file in source_files:
-    #    if source_file.endswith(".h") or not source_file in commands:
-    #        continue
-    #    try:
-    #        # * Determine the -isystem-flags for the perticular source file 
-    #        isystem_flags = get_isystem_flags(source_file, dep_path)
-
-    #        # * Run a Pool() subprocess job where each subprocess 
-    #        #   is an invocation of:
-    #        #       1. pcpp to expand macros for the file
-    #        #       2. clang-suffix to perform the actual renaming
-    #        cflags = get_clang_suffix_ccmds(commands[source_file])
-    #        script_env.update({
-    #            'INTERNAL_FLAGS': isystem_flags,
-    #            'CFLAGS': ' '.join(cflags),
-    #            'TARGET_FILE': source_file
-    #        })
-
-    #        if CONFIG.VERBOSITY >= 1:
-    #            print_info(f"Replacing global symbols in {source_file}")
-
-    #        (subprocess.run([ f"{BASE_DIR}/scripts/clang-suffix.sh"  ],
-    #            stdout = sys.stderr, cwd = dep_path, env = script_env
-    #        )).check_returncode()
-
-    #    except subprocess.CalledProcessError:
-    #        traceback.print_exc()
-    #        sys.exit(-1)
-
-    #script_env.update({
-    #    'CFLAGS': '',
-    #    'EXPAND': "false"
-    #})
-
-    ## After renaming all symbols in source files, 
-    ## replace all global names inside header files
-    #for source_file in source_files:
-    #    if source_file.endswith(".c"):
-    #        continue
-    #    try:
-    #        # * Determine the -isystem-flags for the perticular source file 
-    #        isystem_flags = get_isystem_flags(source_file, dep_path)
-    #        script_env.update({
-    #            'INTERNAL_FLAGS': isystem_flags,
-    #            'TARGET_FILE': source_file
-    #        })
-    #        (subprocess.run([ f"{BASE_DIR}/scripts/clang-suffix.sh"  ],
-    #            stdout = sys.stderr, cwd = dep_path, env = script_env
-    #        )).check_returncode()
-
-    #    except subprocess.CalledProcessError:
-    #        traceback.print_exc()
-    #        sys.exit(-1)
-
-
     if CONFIG.VERBOSITY >= 1:
         print_info(f"Renaming execution time: {datetime.now() - start_time}") # type: ignore
 
@@ -305,8 +248,6 @@ def call_clang_suffix_headers(source_file: str, script_env: dict[str,str],
         stdout = sys.stderr, cwd = cwd, env = script_env
     )).check_returncode()
 
-
-
 def get_clang_suffix_ccmds(ccmds: list[str]):
     '''
     Only keep the `-I` and `-D` flags from the input
@@ -324,7 +265,6 @@ def get_clang_suffix_ccmds(ccmds: list[str]):
                 use_next = True
 
     return clang_suffix_ccmds
-
 
 def get_isystem_flags(source_file: str, dep_path: str) -> str:
     '''
