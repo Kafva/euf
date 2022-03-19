@@ -30,6 +30,7 @@ CCDB_BUILD_SCRIPT=""
 
 
 ifdef ONI 
+	VERBOSE=1
 	DEP_PROJECT=../oniguruma
 	MAIN_PROJECT=../jq
 	DEP_LIB_NAME=libonig.a

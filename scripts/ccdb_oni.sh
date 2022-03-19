@@ -54,5 +54,4 @@ if ! [ -f "$PROJECT_DIR/compile_commands.json" ]; then
 		bear -- make -j$PROCS
 fi
 
-$SETX && set +x
-
+exit 0

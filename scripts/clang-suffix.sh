@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-[[  -z "$SUFFIX" || -z "$RENAME_TXT"  || -z "$SETX" ||
+[[  -z "$SUFFIX" || -z "$RENAME_TXT"  || -z "$SETX" || -z "$EXPAND" ||
     -z "$PLUGIN" || -z "$TARGET_FILE" || -z "$INTERNAL_FLAGS" ]] &&
 	die "Missing environment variable(s)"
 # To allow us to replace references to global symbols inside macros
@@ -26,26 +26,35 @@ expand_macros(){
 
 $SETX && set -x
 
-expanded_file="$(mktemp --suffix .c)"
+if $EXPAND; then
+	# We do not want to expand header files
+	expanded_file="/tmp/expanded_$(basename $TARGET_FILE)"
 
-expand_macros "$TARGET_FILE" > "$expanded_file"
+	expand_macros "$TARGET_FILE" > "$expanded_file"
 
-# Verify that the expanded file does not have any weird
-# re-#define behaviour
-diff <(expand_macros $expanded_file) $expanded_file ||
-  die "Preprocessing is not idempotent for $TARGET_FILE"
+	# Verify that the expanded file does not have any weird
+	# re-#define behaviour
+	diff <(expand_macros $expanded_file) $expanded_file ||
+	  die "Preprocessing is not idempotent for $TARGET_FILE"
 
-mv "$expanded_file" "$TARGET_FILE"
+	mv "$expanded_file" "$TARGET_FILE"
+fi
 
-outfile="$(mktemp --suffix .c)"
+
+# To properly compare the old and new version it may be neccessary 
+# to expand #defines in the new version as well
+
+outfile="/tmp/old_$(basename $TARGET_FILE)"
+
+# Hack for oniguruma
+printf $TARGET_FILE | grep -q "oniguruma" &&
+	touch "$PWD/config.h"
 
 # We always include /usr/include
 clang -cc1 -load "$PLUGIN" \
 	-plugin AddSuffix \
 	-plugin-arg-AddSuffix -names-file -plugin-arg-AddSuffix $RENAME_TXT  \
 	-plugin-arg-AddSuffix -suffix -plugin-arg-AddSuffix $SUFFIX \
-	$INTERNAL_FLAGS "$TARGET_FILE" $CFLAGS -I/usr/include > "$outfile"
+	$INTERNAL_FLAGS "$TARGET_FILE" $CFLAGS -I/usr/include > "$outfile" &&
 
 mv "$outfile" "$TARGET_FILE"
-
-$SETX && set +x
