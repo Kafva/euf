@@ -1,30 +1,14 @@
-import os, re, subprocess, traceback
+'''
+This module expands #define statements in self-contained stub files
+with the purpose of not missing any renames that haft to occur for
+global references inside macros.
+
+Doing this solves one issue but can also cause new ones, mainly when a #define statement
+is expanded incorrectly due to missing references to other macros defined in seperate files
+'''
+import os, re, shutil
 from typing import Set
 from cparser import C_SYMBOL_CHARS, CONFIG, Macro
-from cparser.transform import call_clang_suffix_bare
-
-def replace_macros_in_file(source_file: str, script_env: dict[str,str], cwd: str, global_names: Set[str], dry_run: bool = False):
-    macros    = get_macros_from_file(source_file)
-    stub_file = write_macro_stub_file(source_file, macros)
-
-    # Expand all macros in the stub file
-    script_env.update({
-        'EXPAND': "true"
-    })
-
-    # We will nearly always get errors when parsing a file with
-    # macros that have been duct taped togheter
-    try:
-        call_clang_suffix_bare(stub_file, script_env, cwd)
-    except subprocess.CalledProcessError:
-        traceback.print_exc()
-
-    # Update the data property of each macro object
-    # with the data from the stub file
-    updated_macros = update_macros_from_stub(stub_file, macros, global_names)
-
-    # Overwrite the original file with the updated macro data
-    update_original_file_with_macros(source_file, updated_macros, dry_run)
 
 def update_original_file_with_macros(source_file: str, macros: list[Macro], dry_run: bool = False):
     original_content = ""
@@ -60,7 +44,7 @@ def update_original_file_with_macros(source_file: str, macros: list[Macro], dry_
             f.writelines( original_content[linenr:] )
 
     if not dry_run:
-        os.replace(tmp_file, source_file)
+        shutil.move(tmp_file, source_file)
 
 def update_macros_from_stub(stub_file: str, macros: list[Macro], global_names: Set[str]) -> list[Macro]:
     skip = False
@@ -97,6 +81,9 @@ def update_macros_from_stub(stub_file: str, macros: list[Macro], global_names: S
                 # macros array is the same
                 updated_macros.append( macros[len(updated_macros)] )
                 assert( macro_name == updated_macros[-1].name )
+
+    # Delete the stub file after retrieving the neccessary data
+    os.remove(stub_file)
 
     return updated_macros
 

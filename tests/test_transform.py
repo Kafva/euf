@@ -1,4 +1,8 @@
-from cparser.transform import get_clang_suffix_ccmds
+import os
+from cparser import CONFIG, BASE_DIR
+from cparser.transform import get_clang_suffix_ccmds, replace_macros_in_file
+
+FILE = f"/home/jonas/Repos/oniguruma/src/st.c"
 
 def test_get_clang_suffix_ccmds():
     ccmds = [ "-DHAVE_CONFIG_H", "-D", "DEBUG", "-I.",
@@ -10,4 +14,22 @@ def test_get_clang_suffix_ccmds():
 
     assert( out  == ["-DHAVE_CONFIG_H", "-D", "DEBUG",
             "-I.", "-I", "/usr/local/include", "-I/usr/include"])
+
+def test_replace_macros_in_file():
+    script_env = os.environ.copy()
+    script_env.update({
+        'RENAME_TXT': CONFIG.RENAME_TXT,
+        'SUFFIX': CONFIG.SUFFIX,
+        'SETX': CONFIG.SETX,
+        'PLUGIN': CONFIG.PLUGIN,
+        'EXPAND': "true"
+    })
+
+    global_names = set()
+
+    with open(CONFIG.RENAME_TXT, mode="r",  encoding='utf8') as f:
+        for line in f.readlines():
+            global_names.add(line.rstrip("\n"))
+
+    replace_macros_in_file(FILE, script_env, BASE_DIR, global_names, dry_run = True)
 

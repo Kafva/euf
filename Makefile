@@ -79,6 +79,7 @@ else ifdef EX
 	DEP_LIB_NAME=libexpat.a
 	MAIN_PROJECT=../jabberd-2.7.0
 	NPROC=12
+	DRIVER=./drivers/crypto_http_driver.c
 
 	OLD_COMMIT=bbdfcfef4747d2d66e81c19f4a55e29e291aa171
 	NEW_COMMIT_EQUIV=c16300f0bc4318f31f9e27eb2702ddbffe086fea

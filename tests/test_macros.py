@@ -1,10 +1,9 @@
 '''
 Note: the tests will fail if /tmp/rename.yml does not exist
 '''
-import os
-from cparser import BASE_DIR, CONFIG
+from cparser import BASE_DIR
 from cparser.macros import get_macros_from_file, \
-        write_macro_stub_file, replace_macros_in_file
+        write_macro_stub_file
 
 FILE = f"/home/jonas/Repos/oniguruma/src/st.c"
 
@@ -35,22 +34,3 @@ def test_write_macro_stub_file():
     macros = get_macros_from_file(FILE)
 
     write_macro_stub_file(FILE,macros)
-
-def test_replace_macros_in_file():
-    script_env = os.environ.copy()
-    script_env.update({
-        'RENAME_TXT': CONFIG.RENAME_TXT,
-        'SUFFIX': CONFIG.SUFFIX,
-        'SETX': CONFIG.SETX,
-        'PLUGIN': CONFIG.PLUGIN,
-        'EXPAND': "true"
-    })
-
-    global_names = set()
-
-    with open(CONFIG.RENAME_TXT, mode="r",  encoding='utf8') as f:
-        for line in f.readlines():
-            global_names.add(line.rstrip("\n"))
-
-    replace_macros_in_file(FILE, script_env, BASE_DIR, global_names, dry_run = True)
-

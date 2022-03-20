@@ -5,6 +5,8 @@ from functools import partial
 from clang import cindex
 from typing import Set
 from git.repo import Repo
+from cparser.macros import get_macros_from_file, update_macros_from_stub, \
+        update_original_file_with_macros, write_macro_stub_file
 from cparser.util import print_err, print_info
 from cparser import BASE_DIR, CONFIG
 
@@ -169,49 +171,71 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     })
 
     try:
-        # Run a Pool() subprocess job where each subprocess 
-        # is an invocation of clang-suffix to perform the actual renaming
         with multiprocessing.Pool(CONFIG.NPROC) as p:
+            # 1. Run a Pool() subprocess job where each subprocess 
+            # is an invocation of clang-suffix to perform the actual renaming
+            # of a specific file
             p.map(partial(call_clang_suffix,
                     script_env = script_env,
                     cwd = dep_path,
                     commands = commands
                 ), c_files
             )
-    except subprocess.CalledProcessError:
-        traceback.print_exc()
-        return False
-
-
-    script_env.update({
-        'CFLAGS': '',
-        'EXPAND': "false"
-    })
-
-    # After renaming all symbols in source files, 
-    # replace all global names inside header files
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
+            script_env.update({
+                'CFLAGS': '',
+                'EXPAND': "false"
+            })
+            # 2. After renaming all symbols in .c files, 
+            # replace all global names inside header files (silent errors)
             p.map(partial(call_clang_suffix_bare,
                     script_env = script_env,
-                    cwd = dep_path
+                    cwd = dep_path,
+                    silent = True
                 ), h_files
+            )
+
+            # 3. Finally, go through all of the files (.c and .h) again and 
+            # replace any global names present inside macros (this process 
+            # does not handle macros that call macros defined in seperate files)
+            p.map(partial(replace_macros_in_file,
+                    script_env = script_env,
+                    cwd = dep_path,
+                    global_names = global_names
+                ), source_files
             )
     except subprocess.CalledProcessError:
         traceback.print_exc()
         return False
 
-
-    # Finally, go through all of files agian and replace any global names present inside
-    # macros (this process does not handle macros that call macros defined in seperate files)
-    #for source_file in source_files:
-    #    pass
-
-
     if CONFIG.VERBOSITY >= 1:
         print_info(f"Renaming execution time: {datetime.now() - start_time}") # type: ignore
 
     return True
+
+def replace_macros_in_file(source_file: str, script_env: dict[str,str],
+        cwd: str, global_names: Set[str], dry_run: bool = False):
+
+    macros    = get_macros_from_file(source_file)
+    stub_file = write_macro_stub_file(source_file, macros)
+
+    # Expand all macros in the stub file
+    script_env.update({
+        'EXPAND': "true"
+    })
+
+    # We will nearly always get errors when parsing a file with
+    # macros that have been duct taped togheter
+    try:
+        call_clang_suffix_bare(stub_file, script_env, cwd, silent = True)
+    except subprocess.CalledProcessError:
+        traceback.print_exc()
+
+    # Update the data property of each macro object
+    # with the data from the stub file
+    updated_macros = update_macros_from_stub(stub_file, macros, global_names)
+
+    # Overwrite the original file with the updated macro data
+    update_original_file_with_macros(source_file, updated_macros, dry_run)
 
 def call_clang_suffix(source_file: str, script_env: dict[str,str], cwd: str,
         commands: dict[str,list[str]]):
@@ -237,7 +261,7 @@ def call_clang_suffix(source_file: str, script_env: dict[str,str], cwd: str,
     )).check_returncode()
 
 def call_clang_suffix_bare(source_file: str, script_env: dict[str,str],
-    cwd: str):
+        cwd: str, silent: bool = False):
 
     # * Determine the -isystem-flags for the perticular source file 
     isystem_flags = get_isystem_flags(source_file, cwd)
@@ -249,8 +273,13 @@ def call_clang_suffix_bare(source_file: str, script_env: dict[str,str],
     if CONFIG.VERBOSITY >= 1:
         print_info(f"Replacing global symbols in {source_file}")
 
+    if silent:
+        out = subprocess.DEVNULL
+    else:
+        out = sys.stderr
+
     (subprocess.run([ f"{BASE_DIR}/scripts/clang-suffix.sh"  ],
-        stdout = sys.stderr, cwd = cwd, env = script_env
+        stdout = out, stderr = out, cwd = cwd, env = script_env
     )).check_returncode()
 
 def get_clang_suffix_ccmds(ccmds: list[str]):
