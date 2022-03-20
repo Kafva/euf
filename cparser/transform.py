@@ -46,6 +46,7 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
     os.chdir(basepath)
 
     if CONFIG.VERBOSITY >= 1:
+        print_info(f"Enumerating global symbols: {CONFIG.RENAME_TXT}")
         start_time = datetime.now()
 
     global_names: Set[str] = set()
@@ -91,7 +92,7 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
         print_err(f"Error parsing {basepath}/compile_commands.json")
 
     if CONFIG.VERBOSITY >= 1:
-        print_info(f"Argument generation execution time: {datetime.now() - start_time}") # type: ignore
+        print_info(f"Global symbol enumeration: {datetime.now() - start_time}") # type: ignore
 
     return (global_names, commands, filepaths)
 
@@ -159,7 +160,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     h_files = list(filter(lambda f: f.endswith(".h"), deepcopy(source_files)))
 
     if CONFIG.VERBOSITY >= 1:
-        start_time = datetime.now()
+        start_time_total = datetime.now()
 
     script_env = os.environ.copy()
     script_env.update({
@@ -170,45 +171,74 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         'EXPAND': "false"
     })
 
+    start_time: datetime = datetime.now()
+
     try:
+        # OPENSSL:
+        # For the parsing to work better it is preferable if one has
+        # already built the project once with `make` since this
+        # creates 'include/openssl/configuraion.h' from 
+        # 'include/openssl/configuraion.h.in' which every step
+        # otherwise complains about
+
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             # 1. Run a Pool() subprocess job where each subprocess 
             # is an invocation of clang-suffix to perform the actual renaming
             # of a specific file
+
+            time_update("", ".c files", len(c_files), start_time)
             p.map(partial(call_clang_suffix,
                     script_env = script_env,
                     cwd = dep_path,
                     commands = commands
                 ), c_files
             )
-            script_env.update({
-                'CFLAGS': '',
-                'EXPAND': "false"
-            })
+    except subprocess.CalledProcessError:
+        print_err("Error occured for .c file processing")
+        traceback.print_exc()
+
+    script_env.update({
+        'CFLAGS': '',
+        'EXPAND': "false"
+    })
+
+    try:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
             # 2. After renaming all symbols in .c files, 
             # replace all global names inside header files (silent errors)
+
+            time_update(".c files", ".h files", len(h_files), start_time)
             p.map(partial(call_clang_suffix_bare,
                     script_env = script_env,
                     cwd = dep_path,
                     silent = True
                 ), h_files
             )
+    except subprocess.CalledProcessError:
+        print_err("Error occured for .h file processing")
+        traceback.print_exc()
 
+    try:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
             # 3. Finally, go through all of the files (.c and .h) again and 
             # replace any global names present inside macros (this process 
             # does not handle macros that call macros defined in seperate files)
+
+            time_update(".h files", "macros", len(source_files), start_time)
             p.map(partial(replace_macros_in_file,
                     script_env = script_env,
                     cwd = dep_path,
                     global_names = global_names
                 ), source_files
             )
+            time_update("macros", "", -1, start_time)
+
     except subprocess.CalledProcessError:
+        print_err("Error occured for macro processing")
         traceback.print_exc()
-        return False
 
     if CONFIG.VERBOSITY >= 1:
-        print_info(f"Renaming execution time: {datetime.now() - start_time}") # type: ignore
+        print_info(f"clang-suffix (total): {datetime.now() - start_time_total}") # type: ignore
 
     return True
 
@@ -329,3 +359,13 @@ def get_isystem_flags(source_file: str, dep_path: str) -> str:
             print_next = False
 
     return out.lstrip()
+
+def time_update(prev_step: str, next_step: str, next_step_cnt: int, start_time: datetime):
+    if CONFIG.VERBOSITY >= 1:
+        if prev_step != "":
+            print_info(f"Done ({prev_step}): {datetime.now() - start_time}")
+        if next_step != "":
+            print_info(f"Starting clang-suffix ({next_step}): {next_step_cnt}")
+
+        start_time = datetime.now()
+

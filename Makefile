@@ -86,6 +86,7 @@ else ifdef EX
 	#NEW_COMMIT_EQUIV=e07e39477157723af276abc3a3d04941abd589bb
 	NEW_COMMIT_INF=e07e39477157723af276abc3a3d04941abd589bb
 else ifdef SSL
+	VERBOSE=1
 	DEP_PROJECT=../openssl
 	MAIN_PROJECT=../curl
 	DEP_LIB_NAME=libcrypto.a
@@ -94,7 +95,7 @@ else ifdef SSL
 	DRIVER=./drivers/crypto_http_driver.c
 	SKIP_BLAME=--skip-blame
 	EXCLUDE_DIRS=./test
-	NPROC=10
+	NPROC=14
 
 	#OLD_COMMIT=9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f
 	#NEW_COMMIT_EQUIV=d5f9166bacfb3757dfd6117310ad54ab749b11f9
