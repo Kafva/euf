@@ -26,8 +26,8 @@ expand_macros(){
 
 $SETX && set -x
 
+# We do not want to expand header files
 if $EXPAND; then
-	# We do not want to expand header files
 	expanded_file="/tmp/expanded_$(basename $TARGET_FILE)"
 
 	expand_macros "$TARGET_FILE" > "$expanded_file"
@@ -51,10 +51,12 @@ printf $TARGET_FILE | grep -q "oniguruma" &&
 	touch "$PWD/config.h"
 
 # We always include /usr/include
+# Note that we move the output regardless of if errors occured 
+# (neccessary during macro replacement)
 clang -cc1 -load "$PLUGIN" \
 	-plugin AddSuffix \
 	-plugin-arg-AddSuffix -names-file -plugin-arg-AddSuffix $RENAME_TXT  \
 	-plugin-arg-AddSuffix -suffix -plugin-arg-AddSuffix $SUFFIX \
-	$INTERNAL_FLAGS "$TARGET_FILE" $CFLAGS -I/usr/include > "$outfile" &&
+	$INTERNAL_FLAGS "$TARGET_FILE" $CFLAGS -I/usr/include > "$outfile" ;
 
 mv "$outfile" "$TARGET_FILE"

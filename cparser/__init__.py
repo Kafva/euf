@@ -39,10 +39,12 @@ class Config:
 global CONFIG
 CONFIG = Config()
 
+C_SYMBOL_CHARS = "[_0-9a-zA-Z]"
+
 if not os.path.exists(CONFIG.EUF_CACHE):
     os.mkdir(CONFIG.EUF_CACHE)
 
-BASE_DIR = Path(__file__).parent.parent.absolute()
+BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
 CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
 CONFIG.PLUGIN = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
@@ -231,3 +233,25 @@ class CursorPair:
     def __init__(self):
         self.new = None # type: ignore
         self.old = None # type: ignore
+
+@dataclass(init=True)
+class Macro:
+    name: str
+    arguments: list[str]
+
+    start_line: int
+    end_line: int
+    data: str = ""
+
+    # This is the line in the stub file (after replacement has taken place)
+    # were the expanded macro is located
+    # We assume that all expanded macros only occupy one line
+    stub_file_call_line: int = -1
+
+    def text(self) -> str:
+        if len(self.arguments) == 0:
+            return f"#define {self.name} {self.data}"
+        else:
+            comma_sep_args = ','.join(self.arguments).strip(',')
+            return f"#define {self.name}({comma_sep_args}) {self.data}"
+
