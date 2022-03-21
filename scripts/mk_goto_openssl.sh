@@ -7,14 +7,13 @@ goto_compile(){
 	make clean
 	git clean -df --exclude=compile_commands.json
 
-	#./Configure CC=goto-cc LD=goto-cc --host none-none-none
-	./config CC=goto-cc
+	# https://github.com/danbev/learning-libcrypto/blob/master/notes/building.md
+	./config CC=goto-cc no-shared
 
-	cp ~/Repos/euf/tests/data/configuration.h $DEPENDENCY_DIR/include/openssl
-
-	# CFLAGS='-x cpp-output'
-	make CC=goto-cc -j$PROCS build_generated &&
-	make CC=goto-cc -j$PROCS libcrypto.a
+	make -j$PROCS build_generated &&
+	make -j$PROCS crypto/buildinf.h &&
+	make -j$PROCS apps/progs.h &&
+	make -j$PROCS libcrypto.a
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1

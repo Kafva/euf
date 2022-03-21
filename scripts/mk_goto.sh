@@ -25,12 +25,12 @@ goto_compile(){
 	#	echo "!> Missing autoconf script" >&2 
 
 	[ -f "configure" ] &&
-		./configure CC=goto-cc --host none-none-none ||
-		echo "!> Missing ./configure" >&2
+		./configure CC=goto-cc --host none-none-none
+	[ -f "configure" ] ||	echo "!> Missing ./configure" >&2
 
 	[ -f "Makefile" ] &&
-		make CC=goto-cc -j$PROCS ||
-		echo "!> Missing Makefile" >&2
+		make CC=goto-cc -j$PROCS
+	[ -f "Makefile" ] ||	echo "!> Missing Makefile" >&2
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1

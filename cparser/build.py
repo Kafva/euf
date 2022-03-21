@@ -27,20 +27,10 @@ def run_if_present(path:str, filename: str) -> bool:
     return True
 
 def autogen_compile_db(source_path: str) -> bool:
-    if os.path.exists(f"{source_path}/compile_commands.json"):
-        return True
+    cmds_json = f"{source_path}/compile_commands.json"
 
-    # Configure the project according to ./configure.ac if applicable
-    #if os.path.exists(f"{source_path}/configure.ac") or \
-    #   os.path.exists(f"{source_path}/configure.in"):
-    #    try:
-    #        print_info(f"{source_path}: Running autoreconf...")
-    #        (subprocess.run([ "autoreconf", "-vfi" ],
-    #            cwd = source_path, stdout = sys.stderr
-    #        )).check_returncode()
-    #    except subprocess.CalledProcessError:
-    #        compile_db_fail_msg(source_path)
-    #        return False
+    if os.path.exists(cmds_json):
+        return True
 
     # 1. Configure the project according to ./configure if applicable
     run_if_present(source_path, "configure")
@@ -49,7 +39,7 @@ def autogen_compile_db(source_path: str) -> bool:
     # 3. Run 'make' with 'bear'
     if os.path.exists(f"{source_path}/Makefile"):
         try:
-            print_info(f"Generating {source_path}/compile_commands.json...")
+            print_info(f"Generating {cmds_json}...")
             cmd = [ "bear", "--", "make", "-j",
                     str(multiprocessing.cpu_count() - 1)
             ]
@@ -65,6 +55,15 @@ def autogen_compile_db(source_path: str) -> bool:
         except subprocess.CalledProcessError:
             compile_db_fail_msg(source_path)
             return False
+
+    # If the project has already been built the database will be empty
+    f = open(cmds_json, mode="r", encoding = "utf8")
+
+    if f.read().startswith("[]"):
+        print_err(f"Empty compile_commands.json generated: Clean '{source_path}' and try agian")
+        f.close()
+        os.remove(cmds_json)
+        return False
 
     return True
 

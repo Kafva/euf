@@ -1,5 +1,5 @@
-import shutil
-import subprocess, os, sys, traceback, multiprocessing
+from pathlib import Path
+import subprocess, os, sys, traceback, multiprocessing, shutil, re
 from copy import deepcopy
 from datetime import datetime
 from functools import partial
@@ -47,12 +47,18 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
     os.chdir(basepath)
 
     if CONFIG.VERBOSITY >= 1:
-        print_info(f"Enumerating global symbols: {CONFIG.RENAME_TXT}")
+        print_info(f"Enumerating global symbols ({CONFIG.RENAME_TXT}) and generating ccmd list")
         start_time = datetime.now()
 
     global_names: Set[str] = set()
     commands: dict[str,list[str]] = {}
     filepaths: Set[str] = set()
+
+    use_existing_names = False
+    if os.path.exists(CONFIG.RENAME_TXT):
+        print_info(f"Found preexisting {CONFIG.RENAME_TXT}: Skipping symbol enumeration")
+        read_in_global_names(CONFIG.RENAME_TXT, global_names)
+        use_existing_names = True
 
     try:
         for ccmds in ccdb.getAllCompileCommands():
@@ -73,7 +79,12 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
                 filepaths.add(filepath)
 
             # For clang-rename we skip: -c -o <.o> <src>
-            commands[filepath] = list(ccmds.arguments)[1:-4]
+            arguments = list(ccmds.arguments)[1:-4]
+
+            os.chdir(ccmds.directory)
+            ensure_abs_path_in_includes(arguments)
+            commands[filepath] = arguments
+            os.chdir(basepath)
 
             try:
                 # Exclude 'cc' [0] and source file [-1] from compile command
@@ -82,7 +93,8 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
                         args = list(ccmds.arguments)[1:-1]
                 )
                 cursor: cindex.Cursor = tu.cursor
-                global_names |= get_top_level_decls(cursor)
+                if not use_existing_names:
+                    global_names |= get_top_level_decls(cursor)
 
             except cindex.TranslationUnitLoadError:
                 traceback.format_exc()
@@ -95,7 +107,25 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
     if CONFIG.VERBOSITY >= 1:
         print_info(f"Global symbol enumeration: {datetime.now() - start_time}") # type: ignore
 
+
+
     return (global_names, commands, filepaths)
+
+def ensure_abs_path_in_includes(arguments: list[str]):
+    '''
+    Requires the cwd to be the directory of the source file being processed
+    '''
+    next_arg_is_path = False
+
+    for i,arg in enumerate(arguments):
+        if next_arg_is_path:
+            arguments[i] = os.path.abspath(arg)
+            next_arg_is_path = False
+        if arg.startswith("-I"):
+            if arg != "-I":
+                arguments[i] = "-I" + os.path.abspath(arg[2:])
+            else:
+                next_arg_is_path = True
 
 def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
     '''
@@ -121,7 +151,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     to every occurence of the global symbols
 
     '''
-
     dep_name = os.path.basename(dep_path)
     dep_repo = Repo(dep_path)
 
@@ -153,10 +182,8 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
 
     c_files = list(filter(lambda f: f.endswith(".c"), deepcopy(source_files)))
-    #h_files = list(filter(lambda f: f.endswith(".h"), deepcopy(source_files)))
 
-    #if CONFIG.VERBOSITY >= 1:
-    #    start_time_total = datetime.now()
+    start_time: datetime = datetime.now()
 
     script_env = os.environ.copy()
     script_env.update({
@@ -167,66 +194,28 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         'EXPAND': "false"
     })
 
-    # To fully rename all globals we need preprocessing to be ran on the files
-    # we perform replacements in, otherwise macros that access global identifiers
-    # will not be properly resolved
-
-    # Run `clang <compile-commands> -E` on every c_file and replace the original
-    # before continuing
-    # the goto-bin compilation will require `-x cpp-output` to be passed to everything
-    # this will make the compiler consider every input file as a preprocessed file
-    start_time: datetime = datetime.now()
-
-    # When compiling preprocessed files CBMC is unable to work with 
-    #   /usr/include/bits/floatn-common.h:214:1: error: conflicting type modifiers
-    #       typedef float _Float32;
-    # Typedefs for float
-    # https://github.com/diffblue/cbmc/issues/2170
-    # We should be able to dodge this issue by just deleting these lines
-    #   grep --exclude-dir=.ccls-cache  -R _Float32 .
-    # DEPENDENCY_DIR=$PWD ~/Repos/euf/scripts/floatn_rm.sh
+    #-------------- Rename C,H and Macros seperatly ----------------#
+    #if CONFIG.VERBOSITY >= 1:
+    #    start_time_total = datetime.now()
+    #h_files = list(filter(lambda f: f.endswith(".h"), deepcopy(source_files)))
     #
-    # We cannot prevent this with `-U` flags
-    #   https://stackoverflow.com/a/1978163/9033629
-    # We will essentially need a stub version of a header file
+    #try:
+    #    with multiprocessing.Pool(CONFIG.NPROC) as p:
+    #        # Run a Pool() subprocess job where each subprocess 
+    #        # is an invocation of clang-suffix to perform the actual renaming
+    #        # of a specific file
 
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            time_update("", ".c files", len(c_files), start_time, "preprocessing")
-            p.map(partial(preprocess_source_file,
-                    script_env = script_env,
-                    cwd = dep_path,
-                    commands = commands
-                ), c_files
-            )
-    except subprocess.CalledProcessError:
-        print_err("Error occured for .c file preprocessing")
-        traceback.print_exc()
-
-    try:
-        # OPENSSL:
-        # For the parsing to work better it is preferable if one has
-        # already built the project once with `make` since this
-        # creates 'include/openssl/configuraion.h' from 
-        # 'include/openssl/configuraion.h.in' which every step
-        # otherwise complains about
-
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            # 1. Run a Pool() subprocess job where each subprocess 
-            # is an invocation of clang-suffix to perform the actual renaming
-            # of a specific file
-
-            time_update(".c files", ".c files", len(c_files), start_time)
-            p.map(partial(call_clang_suffix,
-                    script_env = script_env,
-                    cwd = dep_path,
-                    commands = commands
-                ), c_files
-            )
-            time_update(".c files", "", -1, start_time)
-    except subprocess.CalledProcessError:
-        print_err("Error occured for .c file renaming")
-        traceback.print_exc()
+    #        time_update(".c files", ".c files", len(c_files), start_time)
+    #        p.map(partial(call_clang_suffix,
+    #                script_env = script_env,
+    #                cwd = dep_path,
+    #                commands = commands
+    #            ), c_files
+    #        )
+    #        time_update(".c files", "", -1, start_time)
+    #except subprocess.CalledProcessError:
+    #    print_err("Error occured for .c file renaming")
+    #    traceback.print_exc()
 
     #script_env.update({
     #    'CFLAGS': '',
@@ -271,6 +260,69 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     #if CONFIG.VERBOSITY >= 1:
     #    print_info(f"clang-suffix (total): {datetime.now() - start_time_total}") # type: ignore
 
+
+
+    #-------------- Rename expanded C files ----------------#
+    # OPENSSL: (hack)
+    # Show current config: 
+    #   perl configdata.pm -m
+    # For pre-processing to work we need to configure
+    # openssl correctly, otherwise we get errors e.g.
+    #   include/openssl/macros.h:113:4: error: #error "OPENSSL_API_COMPAT expresses an impossible API compatibility level"
+    #     113 | #  error "OPENSSL_API_COMPAT expresses an impossible API compatibility level"
+    #
+    # We can't do this immeidiatelly since compile_commands.json is not properply created with goto-cc
+    #if re.search("openssl", dep_path) != None:
+    #    try:
+    #        (subprocess.run( [ f"{BASE_DIR}/scripts/ssl_prep.sh" ], cwd = dep_path )
+    #            .check_returncode())
+    #    except subprocess.CalledProcessError:
+    #        traceback.print_exc()
+    #        return False
+
+    try:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
+            # 1. To fully rename all globals we need preprocessing to be ran on 
+            # the files we perform replacements in, otherwise macros that 
+            # access global identifiers will not be properly resolved
+            time_update("", ".c files", len(c_files), start_time, "preprocessing")
+            p.map(partial(preprocess_source_file,
+                    script_env = script_env,
+                    cwd = dep_path,
+                    commands = commands
+                ), c_files
+            )
+    except subprocess.CalledProcessError:
+        print_err("Error occured for .c file preprocessing")
+        traceback.print_exc()
+        return False
+
+    try:
+        # OPENSSL:
+        # For the parsing to work better it is preferable if one has
+        # already built the project once with `make` since this
+        # creates 'include/openssl/configuration.h' from 
+        # 'include/openssl/configuration.h.in' which every step
+        # otherwise complains about
+
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
+            # 2. Run a Pool() subprocess job where each subprocess 
+            # is an invocation of clang-suffix to perform the actual renaming
+            # of a specific file
+
+            time_update(".c files", ".c files", len(c_files), start_time)
+            p.map(partial(call_clang_suffix,
+                    script_env = script_env,
+                    cwd = dep_path,
+                    commands = commands
+                ), c_files
+            )
+            time_update(".c files", "", -1, start_time)
+    except subprocess.CalledProcessError:
+        print_err("Error occured for .c file renaming")
+        traceback.print_exc()
+
+
     return True
 
 def replace_macros_in_file(source_file: str, script_env: dict[str,str],
@@ -311,9 +363,16 @@ def preprocess_source_file(source_file: str, script_env: dict[str,str], cwd: str
     # that should not be there, e.g. typedef for _Float32
     #   /usr/include/bits/floatn-common.h:214:1: error: conflicting type modifiers
     #       typedef float _Float32;
-    (subprocess.run([ "goto-cc", "-E",
-        ] + commands[source_file] +
-        [ source_file, "-o", outfile ],
+
+    # TODO: The expat compile_commands.json does not include ./lib/xmltok_impl.c 
+    # likely because it does not have a 'dedicated' target in the Makefile
+
+    cmd = [ "goto-cc", "-E" ] + commands[source_file] + [ source_file, "-o", outfile ]
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"Processing {source_file}")
+        print(' '.join(cmd))
+
+    (subprocess.run(cmd,
         stdout = sys.stderr, cwd = cwd, env = script_env
     )).check_returncode()
 
@@ -418,7 +477,12 @@ def time_update(prev_step: str, next_step: str, next_step_cnt: int, start_time: 
         if prev_step != "":
             print_info(f"Done ({prev_step}): {datetime.now() - start_time}")
         if next_step != "":
-            print_info(f"Starting {task} ({next_step}): {next_step_cnt}")
+            print_info(f"Start: {task} ({next_step}): {next_step_cnt}")
 
         start_time = datetime.now()
+
+def read_in_global_names(rename_txt: str, global_names: Set[str]):
+    with open(rename_txt, mode="r",  encoding='utf8') as f:
+        for line in f.readlines():
+            global_names.add(line.rstrip("\n"))
 

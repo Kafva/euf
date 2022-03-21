@@ -6,7 +6,7 @@ goto_compile(){
 	cd $DEPENDENCY_DIR
 	make clean
 	git clean -df --exclude=compile_commands.json
-	make  CC=goto-cc -j$PROCS libmatrix.a
+	make CC=goto-cc -j$PROCS libmatrix.a
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1

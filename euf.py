@@ -364,9 +364,9 @@ if __name__ == '__main__':
                 sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEPENDENCY_NEW, args.deplib_name, args.force_recompile)) == "":
+            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, args.deplib_name, args.force_recompile)) == "":
                 restore_and_exit(-1)
-            if (old_lib := build_goto_lib(DEPENDENCY_OLD, args.deplib_name, args.force_recompile)) == "":
+            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, args.deplib_name, args.force_recompile)) == "":
                 restore_and_exit(-1)
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)

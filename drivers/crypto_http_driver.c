@@ -13,7 +13,7 @@ int main(int argc, char* argv[]){
 	const char* old_url = "http://example.com";
 	const char* new_url = "http://example.com";
 
-	int ret_old = redirection_ok_old(n_redir1, old_url, new_url);
+	int ret_old = redirection_ok_old_b026324c6904b2a(n_redir1, old_url, new_url);
 	int ret_new = redirection_ok(n_redir2, old_url, new_url);
 
 	// - - - Assert - - -
