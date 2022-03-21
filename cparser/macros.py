@@ -5,6 +5,12 @@ global references inside macros.
 
 Doing this solves one issue but can also cause new ones, mainly when a #define statement
 is expanded incorrectly due to missing references to other macros defined in seperate files
+
+crypto/asn1/a_d2i_fp.c:  #define ASN1err -> #define ERR_raise_data -> void ERR_set_error
+
+ERR_set_error is renamed inside of include/openssl/err.h but not within macros
+I.e. we need to ensure that the replace functionality works somewhat properly for headers
+
 '''
 import os, re, shutil
 from typing import Set

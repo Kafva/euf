@@ -341,7 +341,7 @@ def get_isystem_flags(source_file: str, dep_path: str) -> str:
     	clang -### test/file.cpp
     '''
     isystem_flags = subprocess.check_output(
-        f"clang -### {source_file} 2>&1 | sed '1,4d; s/\" \"/\", \"/g'",
+        f"clang -### {source_file} 2>&1 | sed -E '1,4d; s/\" \"/\", \"/g; s/(.*)(\\(in-process\\))(.*)/\\1\\3/'",
         shell=True, cwd = dep_path
     ).decode('ascii').split(",")
 

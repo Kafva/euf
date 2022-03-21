@@ -1,6 +1,3 @@
-'''
-Note: the tests will fail if /tmp/rename.yml does not exist
-'''
 from cparser import BASE_DIR
 from cparser.macros import get_macros_from_file, \
         write_macro_stub_file
