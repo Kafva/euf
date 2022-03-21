@@ -58,6 +58,7 @@ else ifdef MA
 	DEP_PROJECT=../matrix
 	MAIN_PROJECT=../main
 	DEP_LIB_NAME=libmatrix.a
+	GOTO_BUILD_SCRIPT=./scripts/mk_goto_matrix.sh
 
 	# 	get_nearest_even():
 	#DRIVER=~/Repos/euf/drivers/nearest_even_driver.c
@@ -67,9 +68,9 @@ else ifdef MA
 
 	#	matrix_init()
 	#OLD_COMMIT=366c7c10cadb13d8dc97e151993270b41b790eee
-	OLD_COMMIT=a2590d7c1fde314771f9287195a18a97b819ac1d
-	NEW_COMMIT_EQUIV=ce854b98356f0e4555735c657203e866e4f86007
-	NEW_COMMIT_INF=ca4b02be80ae3e62dc2c6fe8c9fbd2d0ecc44a5e
+	OLD_COMMIT=0dc943cd604f4cb8c0c365242a06248f9ae95b41
+	NEW_COMMIT_EQUIV=8b599ffdaf25154d1f50efc1269f7442f49eb2c5
+	NEW_COMMIT_INF=e1bf27347987acea85c41f70b31cd0e416a31e81
 	DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
 	UNWIND=10
 else ifdef EX

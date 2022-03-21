@@ -6,15 +6,7 @@ goto_compile(){
 	cd $DEPENDENCY_DIR
 	make clean
 	git clean -df --exclude=compile_commands.json
-
-	#./Configure CC=goto-cc LD=goto-cc --host none-none-none
-	./config CC=goto-cc
-
-	cp ~/Repos/euf/tests/data/configuration.h $DEPENDENCY_DIR/include/openssl
-
-	# CFLAGS='-x cpp-output'
-	make CC=goto-cc -j$PROCS build_generated &&
-	make CC=goto-cc -j$PROCS libcrypto.a
+	make  CC=goto-cc -j$PROCS libmatrix.a
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1
@@ -52,3 +44,4 @@ if [ -n "$DEPLIB_PATH" ]; then
 else
 	goto_compile
 fi
+

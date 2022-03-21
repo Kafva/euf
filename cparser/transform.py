@@ -177,6 +177,19 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     # this will make the compiler consider every input file as a preprocessed file
     start_time: datetime = datetime.now()
 
+    # When compiling preprocessed files CBMC is unable to work with 
+    #   /usr/include/bits/floatn-common.h:214:1: error: conflicting type modifiers
+    #       typedef float _Float32;
+    # Typedefs for float
+    # https://github.com/diffblue/cbmc/issues/2170
+    # We should be able to dodge this issue by just deleting these lines
+    #   grep --exclude-dir=.ccls-cache  -R _Float32 .
+    # DEPENDENCY_DIR=$PWD ~/Repos/euf/scripts/floatn_rm.sh
+    #
+    # We cannot prevent this with `-U` flags
+    #   https://stackoverflow.com/a/1978163/9033629
+    # We will essentially need a stub version of a header file
+
     try:
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             time_update("", ".c files", len(c_files), start_time, "preprocessing")
@@ -189,24 +202,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     except subprocess.CalledProcessError:
         print_err("Error occured for .c file preprocessing")
         traceback.print_exc()
-
-    #for c_file in c_files:
-    #    try:
-    #        if not c_file in commands.keys():
-    #            print_err(f"Missing compilation instructions: {c_file}")
-    #            continue
-
-    #        outfile = f"/tmp/E_{os.path.basename(c_file)}"
-
-    #        (subprocess.run([ "clang", "-E"] + commands[c_file] +
-    #            [ c_file, "-o", outfile ],
-    #            stdout = sys.stderr, cwd = dep_path, env = script_env
-    #        )).check_returncode()
-
-    #        shutil.move(outfile, c_file)
-    #    except subprocess.CalledProcessError:
-    #        traceback.print_exc()
-
 
     try:
         # OPENSSL:
@@ -312,7 +307,12 @@ def preprocess_source_file(source_file: str, script_env: dict[str,str], cwd: str
 
     outfile = f"/tmp/E_{os.path.basename(source_file)}"
 
-    (subprocess.run([ "clang", "-E"] + commands[source_file] +
+    # If we use `clang` here the includes become corrupted with things
+    # that should not be there, e.g. typedef for _Float32
+    #   /usr/include/bits/floatn-common.h:214:1: error: conflicting type modifiers
+    #       typedef float _Float32;
+    (subprocess.run([ "goto-cc", "-E",
+        ] + commands[source_file] +
         [ source_file, "-o", outfile ],
         stdout = sys.stderr, cwd = cwd, env = script_env
     )).check_returncode()
