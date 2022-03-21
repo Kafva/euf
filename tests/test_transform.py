@@ -35,9 +35,12 @@ def test_replace_macros_in_file():
     replace_macros_in_file(FILE, script_env, BASE_DIR, global_names, dry_run = True)
 
 def test_replace_macros_in_header():
+    rename_txt = f"{BASE_DIR}/tests/data/ssl_rename.txt"
+    file = f"/home/jonas/Repos/openssl/include/openssl/err.h"
+
     script_env = os.environ.copy()
     script_env.update({
-        'RENAME_TXT': RENAME_TXT,
+        'RENAME_TXT': rename_txt,
         'SUFFIX': CONFIG.SUFFIX,
         'SETX': CONFIG.SETX,
         'PLUGIN': CONFIG.PLUGIN,
@@ -46,9 +49,8 @@ def test_replace_macros_in_header():
 
     global_names = set()
 
-    with open(CONFIG.RENAME_TXT, mode="r",  encoding='utf8') as f:
+    with open(rename_txt, mode="r",  encoding='utf8') as f:
         for line in f.readlines():
             global_names.add(line.rstrip("\n"))
 
-    replace_macros_in_file(FILE, script_env, BASE_DIR, global_names, dry_run = True)
-
+    replace_macros_in_file(file, script_env, BASE_DIR, global_names, dry_run = True)

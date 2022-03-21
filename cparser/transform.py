@@ -1,3 +1,4 @@
+import shutil
 import subprocess, os, sys, traceback, multiprocessing
 from copy import deepcopy
 from datetime import datetime
@@ -119,11 +120,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     Then go through every source file and add a suffix
     to every occurence of the global symbols
 
-    Renaming _all_ files in a big repository can take way to long so
-    we limit ourselves to renaming the symbols from the files
-    we know have changed. There will thus be duplicate symbols in both
-    libraries but the functions that have been modified will still be
-    differentiable
     '''
 
     dep_name = os.path.basename(dep_path)
@@ -157,10 +153,10 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
 
     c_files = list(filter(lambda f: f.endswith(".c"), deepcopy(source_files)))
-    h_files = list(filter(lambda f: f.endswith(".h"), deepcopy(source_files)))
+    #h_files = list(filter(lambda f: f.endswith(".h"), deepcopy(source_files)))
 
-    if CONFIG.VERBOSITY >= 1:
-        start_time_total = datetime.now()
+    #if CONFIG.VERBOSITY >= 1:
+    #    start_time_total = datetime.now()
 
     script_env = os.environ.copy()
     script_env.update({
@@ -171,7 +167,46 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         'EXPAND': "false"
     })
 
+    # To fully rename all globals we need preprocessing to be ran on the files
+    # we perform replacements in, otherwise macros that access global identifiers
+    # will not be properly resolved
+
+    # Run `clang <compile-commands> -E` on every c_file and replace the original
+    # before continuing
+    # the goto-bin compilation will require `-x cpp-output` to be passed to everything
+    # this will make the compiler consider every input file as a preprocessed file
     start_time: datetime = datetime.now()
+
+    try:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
+            time_update("", ".c files", len(c_files), start_time, "preprocessing")
+            p.map(partial(preprocess_source_file,
+                    script_env = script_env,
+                    cwd = dep_path,
+                    commands = commands
+                ), c_files
+            )
+    except subprocess.CalledProcessError:
+        print_err("Error occured for .c file preprocessing")
+        traceback.print_exc()
+
+    #for c_file in c_files:
+    #    try:
+    #        if not c_file in commands.keys():
+    #            print_err(f"Missing compilation instructions: {c_file}")
+    #            continue
+
+    #        outfile = f"/tmp/E_{os.path.basename(c_file)}"
+
+    #        (subprocess.run([ "clang", "-E"] + commands[c_file] +
+    #            [ c_file, "-o", outfile ],
+    #            stdout = sys.stderr, cwd = dep_path, env = script_env
+    #        )).check_returncode()
+
+    #        shutil.move(outfile, c_file)
+    #    except subprocess.CalledProcessError:
+    #        traceback.print_exc()
+
 
     try:
         # OPENSSL:
@@ -186,59 +221,60 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
             # is an invocation of clang-suffix to perform the actual renaming
             # of a specific file
 
-            time_update("", ".c files", len(c_files), start_time)
+            time_update(".c files", ".c files", len(c_files), start_time)
             p.map(partial(call_clang_suffix,
                     script_env = script_env,
                     cwd = dep_path,
                     commands = commands
                 ), c_files
             )
+            time_update(".c files", "", -1, start_time)
     except subprocess.CalledProcessError:
-        print_err("Error occured for .c file processing")
+        print_err("Error occured for .c file renaming")
         traceback.print_exc()
 
-    script_env.update({
-        'CFLAGS': '',
-        'EXPAND': "false"
-    })
+    #script_env.update({
+    #    'CFLAGS': '',
+    #    'EXPAND': "false"
+    #})
 
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            # 2. After renaming all symbols in .c files, 
-            # replace all global names inside header files (silent errors)
+    #try:
+    #    with multiprocessing.Pool(CONFIG.NPROC) as p:
+    #        # 2. After renaming all symbols in .c files, 
+    #        # replace all global names inside header files (silent errors)
 
-            time_update(".c files", ".h files", len(h_files), start_time)
-            p.map(partial(call_clang_suffix_bare,
-                    script_env = script_env,
-                    cwd = dep_path,
-                    silent = True
-                ), h_files
-            )
-    except subprocess.CalledProcessError:
-        print_err("Error occured for .h file processing")
-        traceback.print_exc()
+    #        time_update(".c files", ".h files", len(h_files), start_time)
+    #        p.map(partial(call_clang_suffix_bare,
+    #                script_env = script_env,
+    #                cwd = dep_path,
+    #                silent = True
+    #            ), h_files
+    #        )
+    #except subprocess.CalledProcessError:
+    #    print_err("Error occured for .h file processing")
+    #    traceback.print_exc()
 
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            # 3. Finally, go through all of the files (.c and .h) again and 
-            # replace any global names present inside macros (this process 
-            # does not handle macros that call macros defined in seperate files)
+    #try:
+    #    with multiprocessing.Pool(CONFIG.NPROC) as p:
+    #        # 3. Finally, go through all of the files (.c and .h) again and 
+    #        # replace any global names present inside macros (this process 
+    #        # does not handle macros that call macros defined in seperate files)
 
-            time_update(".h files", "macros", len(source_files), start_time)
-            p.map(partial(replace_macros_in_file,
-                    script_env = script_env,
-                    cwd = dep_path,
-                    global_names = global_names
-                ), source_files
-            )
-            time_update("macros", "", -1, start_time)
+    #        time_update(".h files", "macros", len(source_files), start_time)
+    #        p.map(partial(replace_macros_in_file,
+    #                script_env = script_env,
+    #                cwd = dep_path,
+    #                global_names = global_names
+    #            ), source_files
+    #        )
+    #        time_update("macros", "", -1, start_time)
 
-    except subprocess.CalledProcessError:
-        print_err("Error occured for macro processing")
-        traceback.print_exc()
+    #except subprocess.CalledProcessError:
+    #    print_err("Error occured for macro processing")
+    #    traceback.print_exc()
 
-    if CONFIG.VERBOSITY >= 1:
-        print_info(f"clang-suffix (total): {datetime.now() - start_time_total}") # type: ignore
+    #if CONFIG.VERBOSITY >= 1:
+    #    print_info(f"clang-suffix (total): {datetime.now() - start_time_total}") # type: ignore
 
     return True
 
@@ -262,10 +298,26 @@ def replace_macros_in_file(source_file: str, script_env: dict[str,str],
 
     # Update the data property of each macro object
     # with the data from the stub file
-    updated_macros = update_macros_from_stub(stub_file, macros, global_names)
+    updated_macros = update_macros_from_stub(stub_file, macros, global_names, dry_run = dry_run)
 
     # Overwrite the original file with the updated macro data
     update_original_file_with_macros(source_file, updated_macros, dry_run)
+
+def preprocess_source_file(source_file: str, script_env: dict[str,str], cwd: str,
+        commands: dict[str,list[str]]):
+
+    if not source_file in commands.keys():
+        print_err(f"Missing compilation instructions: {source_file}")
+        return
+
+    outfile = f"/tmp/E_{os.path.basename(source_file)}"
+
+    (subprocess.run([ "clang", "-E"] + commands[source_file] +
+        [ source_file, "-o", outfile ],
+        stdout = sys.stderr, cwd = cwd, env = script_env
+    )).check_returncode()
+
+    shutil.move(outfile, source_file)
 
 def call_clang_suffix(source_file: str, script_env: dict[str,str], cwd: str,
         commands: dict[str,list[str]]):
@@ -360,12 +412,13 @@ def get_isystem_flags(source_file: str, dep_path: str) -> str:
 
     return out.lstrip()
 
-def time_update(prev_step: str, next_step: str, next_step_cnt: int, start_time: datetime):
+def time_update(prev_step: str, next_step: str, next_step_cnt: int, start_time: datetime,
+        task: str = "clang-suffix"):
     if CONFIG.VERBOSITY >= 1:
         if prev_step != "":
             print_info(f"Done ({prev_step}): {datetime.now() - start_time}")
         if next_step != "":
-            print_info(f"Starting clang-suffix ({next_step}): {next_step_cnt}")
+            print_info(f"Starting {task} ({next_step}): {next_step_cnt}")
 
         start_time = datetime.now()
 

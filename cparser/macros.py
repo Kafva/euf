@@ -52,7 +52,8 @@ def update_original_file_with_macros(source_file: str, macros: list[Macro], dry_
     if not dry_run:
         shutil.move(tmp_file, source_file)
 
-def update_macros_from_stub(stub_file: str, macros: list[Macro], global_names: Set[str]) -> list[Macro]:
+def update_macros_from_stub(stub_file: str, macros: list[Macro],
+        global_names: Set[str], dry_run: bool = False) -> list[Macro]:
     skip = False
     macro_name = None
     proto_match = None
@@ -89,7 +90,8 @@ def update_macros_from_stub(stub_file: str, macros: list[Macro], global_names: S
                 assert( macro_name == updated_macros[-1].name )
 
     # Delete the stub file after retrieving the neccessary data
-    os.remove(stub_file)
+    if not dry_run:
+        os.remove(stub_file)
 
     return updated_macros
 
@@ -118,13 +120,13 @@ def get_macros_from_file(source_file: str) -> list[Macro]:
                 continue
 
             # Match: #define name(a,b,c)
-            if (macro_match := re.search(rf"^\s*#define\s+({C_SYMBOL_CHARS}+)\(({ARGS_REGEX}+)\)", line)) != None:
+            if (macro_match := re.search(rf"^\s*#\s*define\s+({C_SYMBOL_CHARS}+)\(({ARGS_REGEX}+)\)", line)) != None:
                 arguments = list(map(lambda arg: arg.strip(),
                     macro_match.group(2).split(",")))
 
             # Match: #define name ...
             # Note that we do not match #define statements without a 'body'
-            elif (macro_match := re.search(rf"^\s*#define\s+({C_SYMBOL_CHARS}+)\s+.+", line)) != None:
+            elif (macro_match := re.search(rf"^\s*#\s*define\s+({C_SYMBOL_CHARS}+)\s+.+", line)) != None:
                 arguments = []
 
             if macro_match:

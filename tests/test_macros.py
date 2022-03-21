@@ -29,5 +29,10 @@ def test_macros_from_file():
 
 def test_write_macro_stub_file():
     macros = get_macros_from_file(FILE)
-
     write_macro_stub_file(FILE,macros)
+
+    file = f"/home/jonas/Repos/openssl/include/openssl/err.h"
+
+    macros = get_macros_from_file(file)
+    write_macro_stub_file(file,macros)
+

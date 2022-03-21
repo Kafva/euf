@@ -10,8 +10,10 @@ goto_compile(){
 	#./Configure CC=goto-cc LD=goto-cc --host none-none-none
 	./config CC=goto-cc
 
-	make CC=goto-cc -j$PROCS build_generated &&
-	make CC=goto-cc -j$PROCS libcrypto.a
+	cp ~/Repos/euf/tests/data/configuration.h $DEPENDENCY_DIR/include/openssl
+
+	make CFLAGS="-x cpp-output" CC=goto-cc -j$PROCS build_generated &&
+	make CFLAGS="-x cpp-output" CC=goto-cc -j$PROCS libcrypto.a
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1
