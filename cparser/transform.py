@@ -186,10 +186,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
 
     # Open a standalone vim installation with lspconfig and ccls
-
-    # Attach to the session
-    #nvim = pynvim.attach()
-
+    # gogogo
 
     time_taken(start_time, "Renaming")
 
