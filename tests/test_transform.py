@@ -1,6 +1,6 @@
 import os
 from cparser import CONFIG, BASE_DIR
-from cparser.transform import get_clang_suffix_ccmds, read_in_global_names, \
+from cparser.transform import get_clang_suffix_ccmds, read_in_names, \
         replace_macros_in_file, ensure_abs_path_in_includes
 
 FILE = f"/home/jonas/Repos/oniguruma/src/st.c"
@@ -57,6 +57,6 @@ def test_replace_macros_in_header():
 
     global_names = set()
 
-    read_in_global_names(rename_txt, global_names)
+    read_in_names(rename_txt, global_names)
 
     replace_macros_in_file(file, script_env, BASE_DIR, global_names, dry_run = True)

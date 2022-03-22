@@ -27,6 +27,7 @@ DEP_SOURCE_ROOT=""
 SKIP_IMPACT=""
 GOTO_BUILD_SCRIPT=""
 CCDB_BUILD_SCRIPT=""
+RENAME_BLACKLIST=""
 
 
 ifdef ONI 
@@ -74,6 +75,7 @@ else ifdef MA
 	DRIVER=~/Repos/euf/drivers/matrix_init_driver.c
 	UNWIND=10
 else ifdef EX
+	VERBOSE=1
 	DEP_PROJECT=../libexpat
 	DEP_SOURCE_ROOT=../libexpat/expat
 	EXCLUDE_DIRS=./expat/tests
@@ -81,6 +83,7 @@ else ifdef EX
 	MAIN_PROJECT=../jabberd-2.7.0
 	NPROC=12
 	DRIVER=./drivers/gettok_driver.c
+	RENAME_BLACKLIST=./tests/data/expat_blacklist.txt
 
 	OLD_COMMIT=bbdfcfef4747d2d66e81c19f4a55e29e291aa171
 	NEW_COMMIT_EQUIV=c16300f0bc4318f31f9e27eb2702ddbffe086fea
@@ -120,6 +123,7 @@ run:
 		 --project-only $(PROJ_ONLY) \
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --nproc $(NPROC) \
+		 --rename-blacklist $(RENAME_BLACKLIST) \
 		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
@@ -134,6 +138,7 @@ run_skip:
 		 --dep-only-old $(DEP_ONLY_OLD) \
 		 --project-only $(PROJ_ONLY) \
 		 --nproc $(NPROC) \
+		 --rename-blacklist $(RENAME_BLACKLIST) \
 		 --skip-impact $(SKIP_BLAME) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
@@ -150,6 +155,7 @@ run_rev:
 		 --dep-only-old $(DEP_ONLY_OLD) \
 		 --project-only $(PROJ_ONLY) \
 		 --nproc $(NPROC) \
+		 --rename-blacklist $(RENAME_BLACKLIST) \
 		 --exclude-dirs $(EXCLUDE_DIRS) \
 		 --dep-source-root $(DEP_SOURCE_ROOT) \
 		 --deplib-name $(DEP_LIB_NAME) \
@@ -170,6 +176,7 @@ run_ce:
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
+		 --rename-blacklist $(RENAME_BLACKLIST) \
 		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_ci:
@@ -185,6 +192,7 @@ run_ci:
 		 --deplib-name $(DEP_LIB_NAME) \
 		 --ccdb-build-script $(CCDB_BUILD_SCRIPT) \
 		 --goto-build-script $(GOTO_BUILD_SCRIPT) \
+		 --rename-blacklist $(RENAME_BLACKLIST) \
 		 --unwind $(UNWIND) $(SKIP_BLAME) \
 		 --dependency $(DEP_PROJECT) $(MAIN_PROJECT)
 run_re_ce:

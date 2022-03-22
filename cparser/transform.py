@@ -1,5 +1,4 @@
-from pathlib import Path
-import subprocess, os, sys, traceback, multiprocessing, shutil, re
+import subprocess, os, sys, traceback, multiprocessing, shutil, pynvim
 from copy import deepcopy
 from datetime import datetime
 from functools import partial
@@ -9,7 +8,7 @@ from git.repo import Repo
 from cparser.macros import get_macros_from_file, update_macros_from_stub, \
         update_original_file_with_macros, write_macro_stub_file
 from cparser.util import print_err, print_info
-from cparser import BASE_DIR, CONFIG
+from cparser import BASE_DIR, CONFIG, IdentifierLocation
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
     for child in cursor.get_children():
@@ -19,46 +18,42 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             indent += 1
         dump_children(child, indent)
 
-def get_top_level_decls(cursor: cindex.Cursor) -> Set[str]:
+def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocation]:
     ''' 
     Extract the names of all top level declerations (variables and functions) 
     excluding those defined externally under /usr/include
     
     '''
-    global_decls: Set[str] = set()
+    global_decls: Set[IdentifierLocation] = set()
 
     for child in cursor.get_children():
         if (str(child.kind).endswith("FUNCTION_DECL") or \
             str(child.kind).endswith("VAR_DECL") ) and \
             child.is_definition() and \
             not str(child.location.file).startswith("/usr/include"):
-                global_decls.add(child.spelling)
+                global_decls.add(
+                        IdentifierLocation.new_from_cursor(child)
+                )
 
     return global_decls
 
-def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tuple[Set[str], dict[str,list[str]], Set[str]]:
+def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
     '''
     Reads the compilation database and creates:
-        1. A set of all top level labels in the changed files that we need to
-        rename with a suffix
-        2. A dict of compile command lists (with TU names as keys) for each TU to pass to `clang-rename`
-        3. A list of the filepaths we should rename with `clang-rename`
+        A set of all top level labels in the changed files that we need to
+        rename with a suffix as IdentifierLocation objects:
+        filepath;global_name;line;col
+    Note that the filepath refers to the file were the symbol was found,
+    it can very well exist in more TUs
     '''
     os.chdir(basepath)
 
     if CONFIG.VERBOSITY >= 1:
-        print_info(f"Enumerating global symbols ({CONFIG.RENAME_TXT}) and generating ccmd list")
+        print_info(f"Enumerating global symbols ({CONFIG.RENAME_CSV})")
         start_time = datetime.now()
 
-    global_names: Set[str] = set()
-    commands: dict[str,list[str]] = {}
+    global_names: Set[IdentifierLocation] = set()
     filepaths: Set[str] = set()
-
-    use_existing_names = False
-    if os.path.exists(CONFIG.RENAME_TXT):
-        print_info(f"Found preexisting {CONFIG.RENAME_TXT}: Skipping symbol enumeration")
-        read_in_global_names(CONFIG.RENAME_TXT, global_names)
-        use_existing_names = True
 
     try:
         for ccmds in ccdb.getAllCompileCommands():
@@ -78,14 +73,6 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
             else:
                 filepaths.add(filepath)
 
-            # For clang-rename we skip: -c -o <.o> <src>
-            arguments = list(ccmds.arguments)[1:-4]
-
-            os.chdir(ccmds.directory)
-            ensure_abs_path_in_includes(arguments)
-            commands[filepath] = arguments
-            os.chdir(basepath)
-
             try:
                 # Exclude 'cc' [0] and source file [-1] from compile command
                 tu = cindex.TranslationUnit.from_source(
@@ -93,8 +80,7 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
                         args = list(ccmds.arguments)[1:-1]
                 )
                 cursor: cindex.Cursor = tu.cursor
-                if not use_existing_names:
-                    global_names |= get_top_level_decls(cursor)
+                global_names |= get_top_level_decl_locations(cursor)
 
             except cindex.TranslationUnitLoadError:
                 traceback.format_exc()
@@ -108,8 +94,9 @@ def get_clang_rename_args(basepath: str, ccdb: cindex.CompilationDatabase) -> tu
         print_info(f"Global symbol enumeration: {datetime.now() - start_time}") # type: ignore
 
 
+    return global_names
 
-    return (global_names, commands, filepaths)
+
 
 def ensure_abs_path_in_includes(arguments: list[str]):
     '''
@@ -161,17 +148,18 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     print_info(f"Adding '{suffix}' suffixes to {dep_name}...")
 
-    global_names, commands, _ = get_clang_rename_args(dep_path, ccdb)
+    global_identifiers = get_global_identifiers(dep_path, ccdb)
 
-    if len(global_names) == 0:
-        print_err("No global names found")
+    if len(global_identifiers) == 0:
+        print_err("No global identifiers found")
         return False
 
 
-    # * Dump a list of the global names to disk for the clang plugin 
-    with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
-        for name in list(global_names):
-            f.write(name+'\n')
+    # * Dump a list of global_name;line;col names to disk 
+    with open(CONFIG.RENAME_CSV, "w", encoding="utf8") as f:
+        f.write("filepath;name;line;column\n")
+        for identifier in global_identifiers:
+            f.write(f"{identifier.to_csv()}\n")
 
     # * Generate a list of all source files in the repo
     repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
@@ -185,143 +173,25 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     start_time: datetime = datetime.now()
 
-    script_env = os.environ.copy()
-    script_env.update({
-        'RENAME_TXT': CONFIG.RENAME_TXT,
-        'SUFFIX': CONFIG.SUFFIX,
-        'SETX': CONFIG.SETX,
-        'PLUGIN': CONFIG.PLUGIN,
-        'EXPAND': "false"
-    })
-
-    #-------------- Rename C,H and Macros seperatly ----------------#
-    #if CONFIG.VERBOSITY >= 1:
-    #    start_time_total = datetime.now()
-    #h_files = list(filter(lambda f: f.endswith(".h"), deepcopy(source_files)))
+    # Add _old suffixes to all globals in the old version
     #
-    #try:
-    #    with multiprocessing.Pool(CONFIG.NPROC) as p:
-    #        # Run a Pool() subprocess job where each subprocess 
-    #        # is an invocation of clang-suffix to perform the actual renaming
-    #        # of a specific file
-
-    #        time_update(".c files", ".c files", len(c_files), start_time)
-    #        p.map(partial(call_clang_suffix,
-    #                script_env = script_env,
-    #                cwd = dep_path,
-    #                commands = commands
-    #            ), c_files
-    #        )
-    #        time_update(".c files", "", -1, start_time)
-    #except subprocess.CalledProcessError:
-    #    print_err("Error occured for .c file renaming")
-    #    traceback.print_exc()
-
-    #script_env.update({
-    #    'CFLAGS': '',
-    #    'EXPAND': "false"
-    #})
-
-    #try:
-    #    with multiprocessing.Pool(CONFIG.NPROC) as p:
-    #        # 2. After renaming all symbols in .c files, 
-    #        # replace all global names inside header files (silent errors)
-
-    #        time_update(".c files", ".h files", len(h_files), start_time)
-    #        p.map(partial(call_clang_suffix_bare,
-    #                script_env = script_env,
-    #                cwd = dep_path,
-    #                silent = True
-    #            ), h_files
-    #        )
-    #except subprocess.CalledProcessError:
-    #    print_err("Error occured for .h file processing")
-    #    traceback.print_exc()
-
-    #try:
-    #    with multiprocessing.Pool(CONFIG.NPROC) as p:
-    #        # 3. Finally, go through all of the files (.c and .h) again and 
-    #        # replace any global names present inside macros (this process 
-    #        # does not handle macros that call macros defined in seperate files)
-
-    #        time_update(".h files", "macros", len(source_files), start_time)
-    #        p.map(partial(replace_macros_in_file,
-    #                script_env = script_env,
-    #                cwd = dep_path,
-    #                global_names = global_names
-    #            ), source_files
-    #        )
-    #        time_update("macros", "", -1, start_time)
-
-    #except subprocess.CalledProcessError:
-    #    print_err("Error occured for macro processing")
-    #    traceback.print_exc()
-
-    #if CONFIG.VERBOSITY >= 1:
-    #    print_info(f"clang-suffix (total): {datetime.now() - start_time_total}") # type: ignore
-
-
-
-    #-------------- Rename expanded C files ----------------#
-    # OPENSSL: (hack)
-    # Show current config: 
-    #   perl configdata.pm -m
-    # For pre-processing to work we need to configure
-    # openssl correctly, otherwise we get errors e.g.
-    #   include/openssl/macros.h:113:4: error: #error "OPENSSL_API_COMPAT expresses an impossible API compatibility level"
-    #     113 | #  error "OPENSSL_API_COMPAT expresses an impossible API compatibility level"
+    # ccls is able to rename symbols (cross-TU) while also taking macros
+    # into consideration
     #
-    # We can't do this immeidiatelly since compile_commands.json is not properply created with goto-cc
-    #if re.search("openssl", dep_path) != None:
-    #    try:
-    #        (subprocess.run( [ f"{BASE_DIR}/scripts/ssl_prep.sh" ], cwd = dep_path )
-    #            .check_returncode())
-    #    except subprocess.CalledProcessError:
-    #        traceback.print_exc()
-    #        return False
+    # 1. Open ALL of the source files in vim
+    #
+    # 2. Go through each global symbol from /tmp/rename.csv
+    # and place the cursor at the appropriate location 
+    # 3. Initiate a rename of all occurrences
 
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            # 1. To fully rename all globals we need preprocessing to be ran on 
-            # the files we perform replacements in, otherwise macros that 
-            # access global identifiers will not be properly resolved
-            time_update("", ".c files", len(c_files), start_time, "preprocessing")
-            p.map(partial(preprocess_source_file,
-                    script_env = script_env,
-                    cwd = dep_path,
-                    commands = commands
-                ), c_files
-            )
-    except subprocess.CalledProcessError:
-        print_err("Error occured for .c file preprocessing")
-        traceback.print_exc()
-        return False
 
-    try:
-        # OPENSSL:
-        # For the parsing to work better it is preferable if one has
-        # already built the project once with `make` since this
-        # creates 'include/openssl/configuration.h' from 
-        # 'include/openssl/configuration.h.in' which every step
-        # otherwise complains about
+    # Open a standalone vim installation with lspconfig and ccls
 
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            # 2. Run a Pool() subprocess job where each subprocess 
-            # is an invocation of clang-suffix to perform the actual renaming
-            # of a specific file
+    # Attach to the session
+    #nvim = pynvim.attach()
 
-            time_update(".c files", ".c files", len(c_files), start_time)
-            p.map(partial(call_clang_suffix,
-                    script_env = script_env,
-                    cwd = dep_path,
-                    commands = commands
-                ), c_files
-            )
-            time_update(".c files", "", -1, start_time)
-    except subprocess.CalledProcessError:
-        print_err("Error occured for .c file renaming")
-        traceback.print_exc()
 
+    time_taken(start_time, "Renaming")
 
     return True
 
@@ -349,34 +219,6 @@ def replace_macros_in_file(source_file: str, script_env: dict[str,str],
 
     # Overwrite the original file with the updated macro data
     update_original_file_with_macros(source_file, updated_macros, dry_run)
-
-def preprocess_source_file(source_file: str, script_env: dict[str,str], cwd: str,
-        commands: dict[str,list[str]]):
-
-    if not source_file in commands.keys():
-        print_err(f"Missing compilation instructions: {source_file}")
-        return
-
-    outfile = f"/tmp/E_{os.path.basename(source_file)}"
-
-    # If we use `clang` here the includes become corrupted with things
-    # that should not be there, e.g. typedef for _Float32
-    #   /usr/include/bits/floatn-common.h:214:1: error: conflicting type modifiers
-    #       typedef float _Float32;
-
-    # TODO: The expat compile_commands.json does not include ./lib/xmltok_impl.c 
-    # likely because it does not have a 'dedicated' target in the Makefile
-
-    cmd = [ "goto-cc", "-E" ] + commands[source_file] + [ source_file, "-o", outfile ]
-    if CONFIG.VERBOSITY >= 1:
-        print_info(f"Processing {source_file}")
-        print(' '.join(cmd))
-
-    (subprocess.run(cmd,
-        stdout = sys.stderr, cwd = cwd, env = script_env
-    )).check_returncode()
-
-    shutil.move(outfile, source_file)
 
 def call_clang_suffix(source_file: str, script_env: dict[str,str], cwd: str,
         commands: dict[str,list[str]]):
@@ -471,18 +313,13 @@ def get_isystem_flags(source_file: str, dep_path: str) -> str:
 
     return out.lstrip()
 
-def time_update(prev_step: str, next_step: str, next_step_cnt: int, start_time: datetime,
-        task: str = "clang-suffix"):
-    if CONFIG.VERBOSITY >= 1:
-        if prev_step != "":
-            print_info(f"Done ({prev_step}): {datetime.now() - start_time}")
-        if next_step != "":
-            print_info(f"Start: {task} ({next_step}): {next_step_cnt}")
-
-        start_time = datetime.now()
-
-def read_in_global_names(rename_txt: str, global_names: Set[str]):
+def read_in_names(rename_txt: str, names: Set[str]):
     with open(rename_txt, mode="r",  encoding='utf8') as f:
         for line in f.readlines():
-            global_names.add(line.rstrip("\n"))
+            names.add(line.rstrip("\n"))
+
+def time_taken(start_time: datetime, task: str):
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"[{task}] Done: {datetime.now() - start_time}")
+        start_time = datetime.now()
 

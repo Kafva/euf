@@ -4,3 +4,9 @@
 [submodule "clang-suffix"]
 	path = clang-suffix
 	url = git@github.com:Kafva/clang-suffix.git
+[submodule "nvim-lspconfig"]
+	path = nvim-lspconfig
+	url = git@github.com:neovim/nvim-lspconfig.git
+[submodule "ccls"]
+	path = ccls
+	url = git@github.com:MaskRay/ccls.git

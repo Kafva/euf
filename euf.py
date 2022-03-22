@@ -94,6 +94,8 @@ if __name__ == '__main__':
     parser.add_argument("--deplib-name", metavar="string", required=True,
             help=f"The name (e.g. 'libcrypto.a') of the dependency's library")
 
+    parser.add_argument("--rename-blacklist", metavar='file', default="", help=
+        f"Newline seperated file of names that should not be renamed")
     parser.add_argument("--goto-build-script", metavar='file', default=CONFIG.GOTO_BUILD_SCRIPT, help=
         f"Custom build script for generating a goto-bin library, ran instead of ./scripts/mk_goto.sh")
     parser.add_argument("--ccdb-build-script", metavar='file', default="", help=
@@ -139,6 +141,7 @@ if __name__ == '__main__':
     CONFIG.VERBOSITY    = args.verbose
     PROJECT_DIR         = os.path.abspath(args.project[0])
     DEPENDENCY_DIR      = os.path.abspath(args.dependency)
+    CONFIG.RENAME_BLACKLIST = os.path.abspath(args.rename_blacklist)
     DEP_ONLY_PATH_OLD   = args.dep_only_old
     DEP_ONLY_PATH_NEW   = args.dep_only_new
     PROJECT_ONLY_PATH   = args.project_only
@@ -359,15 +362,20 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 print_stage("Reduction")
 
-            # Add _old suffixes to all globals in the old version
+
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
+
+            exit(0)
 
             # Compile the old and new version of the dependency as a goto-bin
             if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, args.deplib_name, args.force_recompile)) == "":
                 restore_and_exit(-1)
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, args.deplib_name, args.force_recompile)) == "":
                 restore_and_exit(-1)
+
+
+
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
@@ -488,7 +496,7 @@ if __name__ == '__main__':
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             CALL_SITES = flatten(p.map(
                 partial(get_call_sites_from_file,
-                changed_functions=CHANGED_FUNCTIONS),
+                changed_functions = set(CHANGED_FUNCTIONS)),
                 PROJECT_SOURCE_FILES
             ))
 

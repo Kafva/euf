@@ -21,6 +21,7 @@ class Config:
     # [0.5,RENAME_RATIO_LOW]
     RENAME_RATIO_LOW: float = .3
 
+    RENAME_BLACKLIST: str = ""
     GOTO_BUILD_SCRIPT: str = ""
     PLUGIN: str = ""
 
@@ -34,6 +35,11 @@ class Config:
 
     # Toggles echoing of scripts
     SETX: str = "false"
+
+    # Reuse /tmp/rename.txt if present
+    REUSE_EXISTING_NAMES: bool = False
+    RENAME_CSV: str = "/tmp/rename.csv"
+
 
 
 global CONFIG
@@ -255,3 +261,32 @@ class Macro:
             comma_sep_args = ','.join(self.arguments).strip(',')
             return f"#define {self.name}({comma_sep_args}) {self.data}"
 
+@dataclass(init=True)
+class IdentifierLocation:
+    '''
+    This class is equvivalent to clang's SourceLocation
+    except that it only contains simple properties
+    and can thereby be hashed
+    '''
+    line: int
+    column: int
+    filepath: str
+    name: str
+
+
+    @classmethod
+    def new_from_cursor(cls, cursor: cindex.Cursor):
+        return cls(
+                line = cursor.location.line,
+                column = cursor.location.column,
+                filepath = str(cursor.location.file),
+                name = cursor.spelling
+        )
+
+
+    def to_csv(self) -> str:
+        return f"{self.filepath};{self.name};{self.line};{self.column}"
+
+
+    def __hash__(self):
+        return hash(str(self.line)+str(self.column)+str(self.filepath)+self.name)
