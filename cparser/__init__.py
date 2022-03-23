@@ -37,13 +37,13 @@ class Config:
 
     INIT_VIM: str = ""
     RENAME_LUA: str = ""
-    EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
     # Reuse /tmp/rename.txt if present
     REUSE_EXISTING_NAMES: bool = False
     RENAME_TXT = "/tmp/rename.txt"
     RENAME_CSV: str = "/tmp/rename.csv"
     NVIM: str = "/usr/bin/nvim"
+    EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
 
 

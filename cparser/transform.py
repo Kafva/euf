@@ -162,47 +162,35 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         print_err("No global identifiers found")
         return False
 
+    # ccls is able to rename symbols (cross-TU) while also taking macros
+    # into consideration
 
-    # * Dump a list of global_name;line;col names to disk 
-    with open(CONFIG.RENAME_CSV, "w", encoding="utf8") as f:
-        f.write("filepath;name;line;column\n")
-        for identifier in global_identifiers:
-            f.write(f"{identifier.to_csv()}\n")
 
-    # * Generate a list of all source files in the repo
-    repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
-            dep_repo.git.ls_tree(                        # type: ignore
-            "-r", "HEAD", "--name-only").splitlines())   # type: ignore
-
-    source_files = list(filter(lambda f:
-        f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
-
-    #c_files = list(filter(lambda f: f.endswith(".c"), deepcopy(source_files)))
+    # Example launch command:
+    # cd ~/.cache/euf/oniguruma-65a9b1aa && NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua --headless regexec.c
 
     start_time = time_start("Launching nvim+ccls")
 
-    # Add _old suffixes to all globals in the old version
-    #
-    # ccls is able to rename symbols (cross-TU) while also taking macros
-    # into consideration
-    #
-    # 1. Open ALL of the source files in vim
-    #
-    # 2. Go through each global symbol from /tmp/rename.csv
-    # and place the cursor at the appropriate location 
-    # 3. Initiate a rename of all occurrences
-    #
-    # Currently, this has to be done with a slight bit of manual interaction
-    # Sourcing the luafile directly is not possible since the LSP does not start
-    # until we enter the 'interactive' mode
-    #
-    # For the LSP to start proerply we also need to have a file from the project
-    # open before we run the script (this ensures that ccls is connected)
-    #
-    # FURTHERMORE...
+    source_file = next(iter(global_identifiers)).filepath
 
-    # Launch command:
-    # cd ~/.cache/euf/oniguruma-65a9b1aa && NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua regexec.c
+    script_env = os.environ.copy()
+    script_env.update({
+        'NVIM_LISTEN_ADDRESS': CONFIG.EUF_NVIM_SOCKET
+    })
+
+    # For the LSP to start proerply we need to have a file from the project
+    # open before we run any commands (this ensures that ccls is connected)
+    #
+    # Manually launching with pynvim.attach(argv) does not load ccls
+    _ = subprocess.Popen([
+        CONFIG.NVIM, '-n', '--clean', '-u', CONFIG.INIT_VIM,
+        "--headless", source_file ],
+        cwd = dep_path, env = script_env,
+        stdout = subprocess.PIPE, stderr = subprocess.PIPE
+    )
+
+    # Wait for the socket (NVIM_LISTEN_ADDRESS) to be created
+    time.sleep(2)
 
     with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
 
@@ -231,14 +219,8 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         try:
             nvim.command("quit")
         except OSError:
-            pass
+                pass
 
-
-
-
-    #subprocess.run([CONFIG.NVIM, '-n', '--clean', '-u', CONFIG.INIT_VIM, '-c',
-    #    f":call feedkeys(\":luafile {CONFIG.RENAME_LUA}\")", source_files[0] ]
-    #)
 
     time_end("Finished renaming", start_time)
 

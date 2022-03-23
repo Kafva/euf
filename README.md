@@ -4,7 +4,7 @@
 
 ## Ubuntu installation
 ```bash
-apt-get install python3.9 python3.9-venv bear clang llvm-12 jq neovim -y
+apt-get install python3.9 python3.9-venv bear clang llvm-12 jq neovim ccls -y
 pip3 install --user pcpp
 python3.9 -m venv venv
 source ./venv/bin/activate
