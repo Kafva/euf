@@ -1,5 +1,4 @@
-import subprocess, os, sys, traceback, multiprocessing, shutil, pynvim, time
-from copy import deepcopy
+import subprocess, os, sys, traceback, pynvim, time
 from datetime import datetime
 from clang import cindex
 from typing import Set
@@ -192,20 +191,23 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     # 2. Go through each global symbol from /tmp/rename.csv
     # and place the cursor at the appropriate location 
     # 3. Initiate a rename of all occurrences
+    #
+    # Currently, this has to be done with a slight bit of manual interaction
+    # Sourcing the luafile directly is not possible since the LSP does not start
+    # until we enter the 'interactive' mode
+    #
+    # For the LSP to start proerply we also need to have a file from the project
+    # open before we run the script (this ensures that ccls is connected)
+    #
+    # FURTHERMORE...
 
+    # Launch command:
+    # cd ~/.cache/euf/oniguruma-65a9b1aa && NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua regexec.c
 
-    # Create a new nvim session (without a swap file) with 
-    # a custom init.vim and dedicated installations of lspconfig and ccls
-    euf_dir = os.getcwd()
-    os.chdir(dep_path)
-    launch_cmd = [
-        '/usr/bin/env', 'nvim', '--embed', '--headless',
-        '-n', '--clean', '-u', CONFIG.INIT_VIM, source_files[0]
-    ]
-
-    with pynvim.attach('child', argv = launch_cmd) as nvim:
+    with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
 
         for identifier in global_identifiers:
+            if not identifier.filepath.endswith("regexec.c"): continue
 
             print(f"edit {identifier.filepath}")
             nvim.command(f"edit {identifier.filepath}")
@@ -213,28 +215,33 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
             print("cursor", identifier.line, identifier.column)
             nvim.call("cursor", identifier.line, identifier.column)
 
-            #clients = nvim.command_output("lua vim.inspect(vim.lsp.buf_get_clients())")
-
-            #while not clients:
-            #    print("Clients:", clients)
-            #    clients = nvim.command_output("lua vim.inspect(vim.lsp.buf_get_clients())")
-            #    time.sleep(2)
-
-            #print(f"vim.lsp.buf.rename({identifier.name + CONFIG.SUFFIX})")
-            #rename_out = nvim.command_output(f"lua vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
-            #print(rename_out)
-
+            print(f"vim.lsp.buf.rename({identifier.name + CONFIG.SUFFIX})")
             nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
 
+            # We write and input a <CR> after each replace, otherwise we get
+            #   No write since last change (add ! to override)
+            # there is no problem if we run these commands to many times
+            crs = ''.join([ "<cr>" for _ in range(100) ])
+            nvim.feedkeys(crs, escape_csi = True)
 
-            #nvim.current.buffer[:] = [ "wow" ]
-            nvim.command("write")
+            for _ in range(50):
+                nvim.command("wa")
 
-            break
+        # Closing the file will close the socket and generate an error
+        try:
+            nvim.command("quit")
+        except OSError:
+            pass
+
+
+
+
+    #subprocess.run([CONFIG.NVIM, '-n', '--clean', '-u', CONFIG.INIT_VIM, '-c',
+    #    f":call feedkeys(\":luafile {CONFIG.RENAME_LUA}\")", source_files[0] ]
+    #)
 
     time_end("Finished renaming", start_time)
 
-    os.chdir(euf_dir)
     return True
 
 

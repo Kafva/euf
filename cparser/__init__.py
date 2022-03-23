@@ -36,11 +36,14 @@ class Config:
     SETX: str = "false"
 
     INIT_VIM: str = ""
+    RENAME_LUA: str = ""
+    EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
     # Reuse /tmp/rename.txt if present
     REUSE_EXISTING_NAMES: bool = False
     RENAME_TXT = "/tmp/rename.txt"
     RENAME_CSV: str = "/tmp/rename.csv"
+    NVIM: str = "/usr/bin/nvim"
 
 
 
@@ -57,6 +60,7 @@ BASE_DIR = str(Path(__file__).parent.parent.absolute())
 CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
 CONFIG.PLUGIN = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
 CONFIG.INIT_VIM =  f"{BASE_DIR}/scripts/init.lua"
+CONFIG.RENAME_LUA = f"{BASE_DIR}/scripts/rename.lua"
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:

@@ -1,15 +1,15 @@
 #!/usr/bin/env lua
--- nvim -n --clean -u ~/Repos/euf/scripts/init.lua -S ~/Repos/euf/scripts/rename.lua
+-- cd ~/.cache/euf/oniguruma-65a9b1aa && /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua -c ":call feedkeys(':luafile ~/Repos/euf/scripts/rename.lua')" regexec.c; cd -
 
-function dump(obj)
-	print( obj.filepath .. " " .. obj.name .. " " .. obj.line .. ":" .. obj.column )
+local function dump(obj)
+	return obj.filepath .. " " .. obj.name .. " " .. obj.line .. ":" .. obj.column
 end
 
-function sleep(n)
+local function sleep(n)
 	os.execute("sleep " .. tonumber(n))
 end
 
-function split(arg)
+local function split(arg)
 	-- Split the given string into an array based on the delim
 	-- If keys are provided, use them instead of integer indices
 	local items = {}
@@ -32,12 +32,11 @@ local iter = 0
 local table_headings = {}
 
 for line in io.lines(RENAME_CSV) do
-
 	if iter == 0 then
 		-- First line should be a header
 		table_headings = split{str = line}
 	else
-		data = split{str = line, keys = table_headings}
+		local data = split{str = line, keys = table_headings}
 
 		if data.filepath ~= nil and data.name ~= nil
 		   and data.column ~= nil and data.line ~= nil then
@@ -49,21 +48,12 @@ for line in io.lines(RENAME_CSV) do
 			vim.api.nvim_command(
 			"call cursor(" .. data.line .. "," .. data.column .. ")"
 			)
-
-			-- Wait for ccls to connect
-			connected_clients = vim.inspect(vim.lsp.buf_get_clients())
-			while #connected_clients == 0 do
-				connected_clients = vim.inspect(vim.lsp.buf_get_clients())
-				sleep(4)
-			end
-			dump(data)
-			print(connected_clients)
-			
 			-- Invoke a rename operation through ccls
 			vim.lsp.buf.rename(data.name .. SUFFIX)
+			print("Done: " .. dump(data) )
+			vim.api.nvim_command("let &ro = &ro")
 		end
 	end
-
 	iter = iter + 1
 end
 
