@@ -1,7 +1,6 @@
-import subprocess, os, sys, traceback, multiprocessing, shutil, pynvim
+import subprocess, os, sys, traceback, multiprocessing, shutil, pynvim, time
 from copy import deepcopy
 from datetime import datetime
-from functools import partial
 from clang import cindex
 from typing import Set
 from git.repo import Repo
@@ -48,9 +47,7 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
     '''
     os.chdir(basepath)
 
-    if CONFIG.VERBOSITY >= 1:
-        print_info(f"Enumerating global symbols ({CONFIG.RENAME_CSV})")
-        start_time = datetime.now()
+    start_time = time_start(f"Enumerating global symbols ({CONFIG.RENAME_CSV})")
 
     global_names: Set[IdentifierLocation] = set()
     filepaths: Set[str] = set()
@@ -90,13 +87,25 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
         traceback.format_exc()
         print_err(f"Error parsing {basepath}/compile_commands.json")
 
-    if CONFIG.VERBOSITY >= 1:
-        print_info(f"Global symbol enumeration: {datetime.now() - start_time}") # type: ignore
 
+    time_end("Global symbol enumeration", start_time)
 
     return global_names
 
+def read_in_names(rename_txt: str, names: Set[str]):
+    with open(rename_txt, mode="r",  encoding='utf8') as f:
+        for line in f.readlines():
+            names.add(line.rstrip("\n"))
 
+def time_start(msg: str) -> datetime:
+    if CONFIG.VERBOSITY >= 1:
+        print_info(msg)
+    return datetime.now()
+
+def time_end(msg: str, start_time: datetime) -> None:
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"{msg}: {datetime.now() - start_time}")
+        start_time = datetime.now()
 
 def ensure_abs_path_in_includes(arguments: list[str]):
     '''
@@ -169,9 +178,9 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     source_files = list(filter(lambda f:
         f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
 
-    c_files = list(filter(lambda f: f.endswith(".c"), deepcopy(source_files)))
+    #c_files = list(filter(lambda f: f.endswith(".c"), deepcopy(source_files)))
 
-    start_time: datetime = datetime.now()
+    start_time = time_start("Launching nvim+ccls")
 
     # Add _old suffixes to all globals in the old version
     #
@@ -185,12 +194,54 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     # 3. Initiate a rename of all occurrences
 
 
-    # Open a standalone vim installation with lspconfig and ccls
-    # gogogo
+    # Create a new nvim session (without a swap file) with 
+    # a custom init.vim and dedicated installations of lspconfig and ccls
+    euf_dir = os.getcwd()
+    os.chdir(dep_path)
+    launch_cmd = [
+        '/usr/bin/env', 'nvim', '--embed', '--headless',
+        '-n', '--clean', '-u', CONFIG.INIT_VIM, source_files[0]
+    ]
 
-    time_taken(start_time, "Renaming")
+    with pynvim.attach('child', argv = launch_cmd) as nvim:
 
+        for identifier in global_identifiers:
+
+            print(f"edit {identifier.filepath}")
+            nvim.command(f"edit {identifier.filepath}")
+
+            print("cursor", identifier.line, identifier.column)
+            nvim.call("cursor", identifier.line, identifier.column)
+
+            #clients = nvim.command_output("lua vim.inspect(vim.lsp.buf_get_clients())")
+
+            #while not clients:
+            #    print("Clients:", clients)
+            #    clients = nvim.command_output("lua vim.inspect(vim.lsp.buf_get_clients())")
+            #    time.sleep(2)
+
+            #print(f"vim.lsp.buf.rename({identifier.name + CONFIG.SUFFIX})")
+            #rename_out = nvim.command_output(f"lua vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
+            #print(rename_out)
+
+            nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
+
+
+            #nvim.current.buffer[:] = [ "wow" ]
+            nvim.command("write")
+
+            break
+
+    time_end("Finished renaming", start_time)
+
+    os.chdir(euf_dir)
     return True
+
+
+
+
+
+#  - - -  Clang suffix  - - - #
 
 def replace_macros_in_file(source_file: str, script_env: dict[str,str],
         cwd: str, global_names: Set[str], dry_run: bool = False):
@@ -309,14 +360,3 @@ def get_isystem_flags(source_file: str, dep_path: str) -> str:
             print_next = False
 
     return out.lstrip()
-
-def read_in_names(rename_txt: str, names: Set[str]):
-    with open(rename_txt, mode="r",  encoding='utf8') as f:
-        for line in f.readlines():
-            names.add(line.rstrip("\n"))
-
-def time_taken(start_time: datetime, task: str):
-    if CONFIG.VERBOSITY >= 1:
-        print_info(f"[{task}] Done: {datetime.now() - start_time}")
-        start_time = datetime.now()
-

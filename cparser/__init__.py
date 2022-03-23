@@ -28,7 +28,6 @@ class Config:
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
-    RENAME_TXT = "/tmp/rename.txt"
     OUTDIR: str = ".out"
     RUN_CBMC: bool = False
     SUFFIX: str = "_old_b026324c6904b2a"
@@ -36,8 +35,11 @@ class Config:
     # Toggles echoing of scripts
     SETX: str = "false"
 
+    INIT_VIM: str = ""
+
     # Reuse /tmp/rename.txt if present
     REUSE_EXISTING_NAMES: bool = False
+    RENAME_TXT = "/tmp/rename.txt"
     RENAME_CSV: str = "/tmp/rename.csv"
 
 
@@ -54,6 +56,7 @@ BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
 CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
 CONFIG.PLUGIN = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
+CONFIG.INIT_VIM =  f"{BASE_DIR}/scripts/init.lua"
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
