@@ -1,5 +1,4 @@
-import subprocess, os, traceback, pynvim, time
-import sys
+import subprocess, os, traceback, pynvim, time, sys
 from datetime import datetime
 from clang import cindex
 from typing import Set
@@ -35,7 +34,7 @@ def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocatio
 
     return global_decls
 
-def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
+def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> Set[IdentifierLocation]:
     '''
     Reads the compilation database and creates:
         A set of all top level labels in the changed files that we need to
@@ -48,7 +47,7 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
 
     start_time = time_start(f"Enumerating global symbols...")
 
-    global_names: Set[IdentifierLocation] = set()
+    global_identifiers: Set[IdentifierLocation] = set()
     filepaths: Set[str] = set()
 
     try:
@@ -76,7 +75,7 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
                         args = list(ccmds.arguments)[1:-1]
                 )
                 cursor: cindex.Cursor = tu.cursor
-                global_names |= get_top_level_decl_locations(cursor)
+                global_identifiers |= get_top_level_decl_locations(cursor)
 
             except cindex.TranslationUnitLoadError:
                 traceback.format_exc()
@@ -89,7 +88,15 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase):
 
     time_end("Global symbol enumeration", start_time)
 
-    return global_names
+    if CONFIG.RENAME_BLACKLIST != "":
+        blacklisted = set()
+        read_in_names(CONFIG.RENAME_BLACKLIST, blacklisted)
+
+        global_identifiers = set(list(filter(lambda ident:
+            not ident.name in blacklisted, global_identifiers
+        )))
+
+    return global_identifiers
 
 def read_in_names(rename_txt: str, names: Set[str]):
     with open(rename_txt, mode="r",  encoding='utf8') as f:
@@ -121,6 +128,17 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     ccls is able to rename symbols (cross-TU) while also taking macros
     into consideration
+
+    ccls does not seem to be guaranteed to work in the same way every time...
+        grep -R 2a_old_ .
+    race-conditions or other incosnsitent behaviour
+
+    expat:
+        xmlparse.c:716:1: warning: function 'XML_ParserCreate_MM_old_b026324c6904b2a' is not declared
+
+        xmlrole.c:517:1: error: failed to find symbol 'entity6_old_b026324c6904b2a'
+               state->handler = entity6_old_b026324c6904b2a;
+
     '''
     dep_name = os.path.basename(dep_path)
     dep_repo = Repo(dep_path)
@@ -138,25 +156,35 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         print_err("No global identifiers found")
         return False
 
-    # Example launch command:
-    # NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua --headless regexec.c
+    # (Debugging) Dump a list of global_name;line;col names to disk 
+    with open(CONFIG.RENAME_CSV, "w", encoding="utf8") as f:
+        f.write("filepath;name;line;column\n")
+        for identifier in global_identifiers:
+            f.write(f"{identifier.to_csv()}\n")
 
-    GLOBALS_CNT = len(global_identifiers)
-    start_time = time_start(f"Refactoring global symbols... ({GLOBALS_CNT})")
 
     source_file = next(iter(global_identifiers)).filepath
+    GLOBALS_CNT = len(global_identifiers)
 
+    crs = ''.join([ "<cr>" for _ in range(100) ])
     script_env = os.environ.copy()
     script_env.update({
         'NVIM_LISTEN_ADDRESS': CONFIG.EUF_NVIM_SOCKET
     })
 
     out = sys.stderr if CONFIG.VERBOSITY >= 3 else subprocess.DEVNULL
+    try:
+        os.remove(CONFIG.EUF_NVIM_SOCKET)
+    except OSError:
+        pass
 
-    # For the LSP to start proerply we need to have a file from the project
+    # For the LSP to start properly we need to have a file from the project
     # open before we run any commands (this ensures that ccls is connected)
     #
     # Manually launching with pynvim.attach(argv) does not load ccls
+    #
+    # Example launch command:
+    # NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua --headless regexec.c
     p = subprocess.Popen([
         CONFIG.NVIM, '-n', '--clean', '-u', CONFIG.INIT_VIM,
         "--headless", source_file ],
@@ -164,48 +192,52 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         stdout = out, stderr = out
     )
 
+    start_time = time_start(f"Refactoring global symbols... ({GLOBALS_CNT})")
+
     # Wait for the socket (NVIM_LISTEN_ADDRESS) to be created
-    time.sleep(2)
+    time.sleep(5)
 
-    with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
+    try:
+        with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
 
-        for i,identifier in enumerate(global_identifiers):
-            #if not identifier.filepath.endswith("regexec.c"): continue
+            for i,identifier in enumerate(global_identifiers):
 
-            # Open the file where the global symbol was found
-            nvim.command(f"edit {identifier.filepath}")
+                #time.sleep(2) # Short wait for every identifier to avoid incosnsitent behaviour?
+                if CONFIG.VERBOSITY >= 1:
+                    print_info(f"Adding suffix to '{identifier.name}' ({i+1}/{GLOBALS_CNT})")
 
-            # Move the cursor to its location
-            nvim.call("cursor", identifier.line, identifier.column)
+                # Open the file where the global symbol was found
+                nvim.command(f"edit {identifier.filepath}")
 
-            # Replace all occurences of it cross-TUs
-            nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
+                # Move the cursor to its location
+                nvim.call("cursor", identifier.line, identifier.column)
 
-            # We 'wa' and input <CR> sequences after each replace, otherwise 
-            # we get errors such as:
-            #   No write since last change (add ! to override)
-            # there is no problem if we run these commands to many times
-            crs = ''.join([ "<cr>" for _ in range(100) ])
-            nvim.feedkeys(crs, escape_csi = True)
+                # Replace all occurrences of it cross-TUs
+                nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
 
-            for _ in range(50):
-                nvim.command("wa")
+                # We 'wa' and input <CR> sequences after each replace, otherwise 
+                # we get errors such as:
+                #   No write since last change (add ! to override)
+                # there is no problem if we run these commands to many times
+                nvim.feedkeys(crs, escape_csi = True)
 
-            if CONFIG.VERBOSITY >= 1:
-                print_info(f"Adding suffix to '{identifier.name}' ({i+1}/{GLOBALS_CNT})")
+                for _ in range(50):
+                    nvim.command("wa")
 
-        # Closing the file will close the socket and generate an error
-        try:
-            nvim.command("quit")
-        except OSError:
-                pass
+            # Closing the file will close the socket and generate an error
+            try:
+                nvim.command("quit")
+            except OSError:
+                    pass
+    except pynvim.NvimError:
+        traceback.print_exc()
 
+    p.kill()
 
     if CONFIG.VERBOSITY >= 3:
         print("\n\n")
 
     time_end("Finished global symbol refactoring", start_time)
-    p.terminate()
 
     return True
 

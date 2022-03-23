@@ -17,6 +17,7 @@ goto_compile(){
 
 	cd $DEPENDENCY_DIR
 
+	# make clean && ./configure CC=goto-cc --host none-none-none && make CC=goto-cc -j15
 	make clean
 	git clean -df --exclude=compile_commands.json
 
@@ -24,13 +25,17 @@ goto_compile(){
 	#	autoreconf -fi || 
 	#	echo "!> Missing autoconf script" >&2 
 
+	echo "Starting goto-bin compilation: $DEPLIB_NAME" >&2
+	
+
+	# This is not the same as running from cli for expat?
 	[ -f "configure" ] &&
 		./configure CC=goto-cc --host none-none-none
 	[ -f "configure" ] ||	echo "!> Missing ./configure" >&2
 
-	[ -f "Makefile" ] &&
-		make CC=goto-cc -j$PROCS
-	[ -f "Makefile" ] ||	echo "!> Missing Makefile" >&2
+	#[ -f "Makefile" ] &&
+	#	make CC=goto-cc -j$PROCS
+	#[ -f "Makefile" ] ||	echo "!> Missing Makefile" >&2
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1

@@ -100,6 +100,7 @@ else ifdef SSL
 	SKIP_BLAME=--skip-blame
 	EXCLUDE_DIRS=./test
 	NPROC=14
+	RENAME_BLACKLIST=./tests/data/ssl_blacklist.txt
 
 	#OLD_COMMIT=9a1c4e41e8d3fd8fe9d1bd8eeb8b1e1df21da37f
 	#NEW_COMMIT_EQUIV=d5f9166bacfb3757dfd6117310ad54ab749b11f9
