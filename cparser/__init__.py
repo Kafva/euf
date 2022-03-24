@@ -3,7 +3,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from clang import cindex
 
-from cparser.util import get_path_relative_to
+from cparser.util import get_path_relative_to, remove_prefix
 
 # Enable importing from the root directory inside the module
 sys.path.append('../')
@@ -290,6 +290,9 @@ class IdentifierLocation:
                 name = cursor.spelling
         )
 
+    def __repr__(self) -> str:
+        brief_path = "~/.c/e" + remove_prefix(self.filepath, CONFIG.EUF_CACHE)
+        return f"{brief_path}:{self.name}:{self.line}:{self.column}"
 
     def to_csv(self) -> str:
         return f"{self.filepath};{self.name};{self.line};{self.column}"

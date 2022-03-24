@@ -1,3 +1,8 @@
 start
 end
 main
+utf8_toUtf16
+utf8_toUtf8
+utf16_toUtf16
+checkCharRefNumber
+arc4random_buf

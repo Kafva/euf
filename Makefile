@@ -84,6 +84,7 @@ else ifdef EX
 	NPROC=12
 	DRIVER=./drivers/gettok_driver.c
 	RENAME_BLACKLIST=./tests/data/expat_blacklist.txt
+	CCDB_BUILD_SCRIPT=./scripts/ccdb_expat.sh
 
 	OLD_COMMIT=bbdfcfef4747d2d66e81c19f4a55e29e291aa171
 	NEW_COMMIT_EQUIV=c16300f0bc4318f31f9e27eb2702ddbffe086fea

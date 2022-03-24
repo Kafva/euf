@@ -24,10 +24,13 @@ def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocatio
     global_decls: Set[IdentifierLocation] = set()
 
     for child in cursor.get_children():
-        if (str(child.kind).endswith("FUNCTION_DECL") or \
-            str(child.kind).endswith("VAR_DECL") ) and \
+        if  str(child.kind).endswith("FUNCTION_DECL") and \
             child.is_definition() and \
             not str(child.location.file).startswith("/usr/include"):
+        #if (str(child.kind).endswith("FUNCTION_DECL") or \
+        #    str(child.kind).endswith("VAR_DECL") ) and \
+        #    child.is_definition() and \
+        #    not str(child.location.file).startswith("/usr/include"):
                 global_decls.add(
                         IdentifierLocation.new_from_cursor(child)
                 )
@@ -127,17 +130,52 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     to every occurence of the global symbols
 
     ccls is able to rename symbols (cross-TU) while also taking macros
-    into consideration
+    into consideration. Note that ccls takes the compile_commands.json into account
+    AND avoids renaming identifiers inside undefined code blocks i.e.
+    #if 0
+        // Things in here are not renamed
+    #endif
+
+    --- EXPAT
+    The functions with a PREFIX are not properly renamed, the cursor lands at the start of
+    the line instead of at the actual symbol due to the location reported by clang being
+    that of the expanded symbol... However even if we place the cursor at this postion
+    the lsp does not understand what it should rename...
+
+    Furthermore, there are still some edge cases were renaming does not work
+
+    lib/xmltok.c:465    -> (renaming utf8_toUtf16 does not work)
+    static const struct normal_encoding utf8_encoding_ns_old_b026324c6904b2a
+        = {{VTABLE1, utf8_toUtf8, utf8_toUtf16, 1, 1, 0}
 
     ccls does not seem to be guaranteed to work in the same way every time...
         grep -R 2a_old_ .
     race-conditions or other incosnsitent behaviour
 
+    xmltok_impl.c is not processed at all since it does not have a TU entry 
+    (it is #included within xmltok.c) this makes it so that no replacements occur in it
+    and no global symbols are enumerated
+
+    I think the replacements in xmltok.c become fucked because it has line numbers from xmltok_impl.c
+    ....
+
     expat:
         xmlparse.c:716:1: warning: function 'XML_ParserCreate_MM_old_b026324c6904b2a' is not declared
-
         xmlrole.c:517:1: error: failed to find symbol 'entity6_old_b026324c6904b2a'
                state->handler = entity6_old_b026324c6904b2a;
+
+     ccls is able to rename globals inside macro definitions (sometimes)
+     clang-suffix cannot rename anything inside of a macro unless we use it on `cc -E` files. 
+     With preprocessed files we can also properly rename functions with interoplated names e.g.
+        PREFIX(fn) -> processed_fn
+     Note that the traversal of the AST will produce macro-expanded names
+
+     For the PREFIX(fn) case specifically we could techincally use '*' in vim
+     as a fallback if we manage to place ourselves on fn. This is a complete hack though...
+
+     ms-cpptools cant handle these instances either, we are effectivly trying to rename """references""" 
+     to a macro-argument
+
 
     '''
     dep_name = os.path.basename(dep_path)
@@ -194,6 +232,9 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     start_time = time_start(f"Refactoring global symbols... ({GLOBALS_CNT})")
 
+    PREFIXES = [ "little2_", "normal_", "big2_" ]
+    PREFIX_MACRO = "PREFIX"
+
     # Wait for the socket (NVIM_LISTEN_ADDRESS) to be created
     time.sleep(5)
 
@@ -201,20 +242,42 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
 
             for i,identifier in enumerate(global_identifiers):
-
-                time.sleep(1) # Short wait for every identifier to avoid inconsistent behaviour?
-
-                if CONFIG.VERBOSITY >= 1:
-                    print_info(f"Adding suffix to '{identifier.name}' ({i+1}/{GLOBALS_CNT})")
+                # Short wait for every identifier to avoid inconsistent 
+                # behaviour? (We still get 
+                #   Vim(edit):E37: No write since last change 
+                # sometimes but generally the renaming works
+                time.sleep(0.8)
 
                 # Open the file where the global symbol was found
                 nvim.command(f"edit {identifier.filepath}")
 
-                # Move the cursor to its location
-                nvim.call("cursor", identifier.line, identifier.column)
+                # Check if the identifier has a macro prefix
+                base_symbol_name = identifier.name
+                for prefix in PREFIXES:
+                    if identifier.name.startswith(prefix):
+                        base_symbol_name = identifier.name[ len(prefix): ]
 
-                # Replace all occurrences of it cross-TUs
-                nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
+                if base_symbol_name != identifier.name:
+                    if CONFIG.VERBOSITY >= 1:
+                        print_info(f"[*] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+
+                    # Do an exact string replace in the source file for 'PREFIX_MACRO(base_symbol_name)'
+                    try:
+                        # TODO: This needs to be cfdo
+                        nvim.command(f"%s/{PREFIX_MACRO}({base_symbol_name})/{PREFIX_MACRO}({base_symbol_name}{CONFIG.SUFFIX})/g")
+                    except pynvim.NvimError:
+                        # If the base_symbol_name has already been replaced based on another
+                        # prefix we will get an error since there are no matches
+                        pass
+                else:
+                    if CONFIG.VERBOSITY >= 1:
+                        print_info(f"[ccls] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+
+                    # Move the cursor to the location of the identifier
+                    nvim.call("cursor", identifier.line, identifier.column)
+
+                    # Replace all occurrences of it cross-TUs
+                    nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
 
                 # We 'wa' and input <CR> sequences after each replace, otherwise 
                 # we get errors such as:

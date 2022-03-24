@@ -263,7 +263,7 @@ if __name__ == '__main__':
                 'PROJECT_DIR': PROJECT_DIR,
                 'SETX': CONFIG.SETX
             })
-            print_info(f"Running custom compile_commands.json generator: ./{args.ccdb_build_script}")
+            print_info(f"Running custom compile_commands.json generator: {args.ccdb_build_script}")
             (subprocess.run([ "./" + args.ccdb_build_script ],
                 stdout = sys.stderr, cwd = BASE_DIR, env = script_env
             )).check_returncode()
@@ -366,6 +366,7 @@ if __name__ == '__main__':
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
 
+            restore_and_exit(0)
 
             # Compile the old and new version of the dependency as a goto-bin
             if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, args.deplib_name, args.force_recompile)) == "":
@@ -373,7 +374,6 @@ if __name__ == '__main__':
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, args.deplib_name, args.force_recompile)) == "":
                 restore_and_exit(-1)
 
-            exit(0)
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
