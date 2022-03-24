@@ -33,9 +33,9 @@ goto_compile(){
 		./configure CC=goto-cc --host none-none-none
 	[ -f "configure" ] ||	echo "!> Missing ./configure" >&2
 
-	#[ -f "Makefile" ] &&
-	#	make CC=goto-cc -j$PROCS
-	#[ -f "Makefile" ] ||	echo "!> Missing Makefile" >&2
+	[ -f "Makefile" ] &&
+		make CC=goto-cc -j$PROCS
+	[ -f "Makefile" ] ||	echo "!> Missing Makefile" >&2
 	
 	# Print the path to the library
 	find $DEPENDENCY_DIR -name "$DEPLIB_NAME" | head -n1

@@ -202,7 +202,8 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
             for i,identifier in enumerate(global_identifiers):
 
-                #time.sleep(2) # Short wait for every identifier to avoid incosnsitent behaviour?
+                time.sleep(1) # Short wait for every identifier to avoid inconsistent behaviour?
+
                 if CONFIG.VERBOSITY >= 1:
                     print_info(f"Adding suffix to '{identifier.name}' ({i+1}/{GLOBALS_CNT})")
 
@@ -231,6 +232,9 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     pass
     except pynvim.NvimError:
         traceback.print_exc()
+        print_err("An error occurred during global refactoring")
+        p.kill()
+        return False
 
     p.kill()
 

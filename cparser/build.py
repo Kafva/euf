@@ -103,11 +103,17 @@ def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str
     lib_path = ""
 
     try:
+        # The build script should output the path to the finished library
+        # on the final line of stdout on success
         proc = subprocess.run([ CONFIG.GOTO_BUILD_SCRIPT ],
-            env = script_env, stdout = subprocess.PIPE, cwd = dep_dir
+            stdout = subprocess.PIPE, stderr = sys.stderr,
+            cwd = dep_dir, env = script_env
         )
         proc.check_returncode()
         lines = proc.stdout.splitlines()
+
+        if CONFIG.VERBOSITY >= 1:
+            for line in lines: print(line.decode('ascii'))
 
         if lines:
             lib_path = lines[-1].decode('ascii')
@@ -115,5 +121,8 @@ def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str
     except subprocess.CalledProcessError:
         traceback.print_exc()
 
-    return lib_path
+    if os.path.exists(lib_path):
+        return lib_path
+    else:
+        return ""
 
