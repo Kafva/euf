@@ -3,7 +3,7 @@ from git.exc import GitCommandError
 from git.objects.commit import Commit
 from git.repo.base import Repo
 
-from cparser.util import print_err, print_info
+from cparser.util import print_err, print_info, find
 from cparser import CONFIG
 
 def get_bear_version(path: str) -> int:
@@ -92,42 +92,29 @@ def create_worktree(target: str, commit: Commit, repo: Repo) -> bool:
             return False
     return True
 
-def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str:
+def build_goto_lib(dep_dir: str) -> str:
     '''
     Returns the path to the built library or an empty string on failure
     '''
-    script_env = os.environ.copy()
+    script_env = CONFIG.get_script_env()
     script_env.update({
-        'DEPENDENCY_DIR': dep_dir,
-        'SETX': CONFIG.SETX,
-        'FORCE_RECOMPILE': str(force_recompile).lower(),
-        'DEPLIB_NAME': deplib_name
+        'DEP_DIR_EUF': dep_dir,
+        'FORCE_RECOMPILE': str(CONFIG.FORCE_RECOMPILE).lower(),
     })
 
-    lib_path = ""
+    if CONFIG.VERBOSITY >= 0:
+        out = sys.stderr
+    else:
+        out = subprocess.DEVNULL
 
     try:
-        # The build script should output the path to the finished library
-        # on the final line of stdout on success
-        proc = subprocess.run([ CONFIG.GOTO_BUILD_SCRIPT ],
-            stdout = subprocess.PIPE, stderr = sys.stderr,
+        subprocess.run([ CONFIG.GOTO_BUILD_SCRIPT ],
+            stdout = out, stderr = out,
             cwd = dep_dir, env = script_env
-        )
-        lines = proc.stdout.splitlines()
-
-        if CONFIG.VERBOSITY >= 1:
-            for line in lines: print(line.decode('ascii'))
-
-        proc.check_returncode()
-
-        if lines:
-            lib_path = lines[-1].decode('ascii')
+        ).check_returncode()
 
     except subprocess.CalledProcessError:
         traceback.print_exc()
 
-    if os.path.exists(lib_path):
-        return lib_path
-    else:
-        return ""
+    return find(CONFIG.DEPLIB_NAME, dep_dir)
 

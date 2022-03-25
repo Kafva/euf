@@ -23,7 +23,7 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
-    ProjectInvocation, SourceDiff, SourceFile, Config, get_compile_args, BASE_DIR
+    ProjectInvocation, SourceDiff, SourceFile, Config, BASE_DIR
 from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -75,6 +75,19 @@ def restore_and_exit(code: int = 0):
             sys.exit(-1)
 
     sys.exit(code)
+
+def get_compile_args(compile_db: cindex.CompilationDatabase,
+    filepath: str) -> list[str]:
+    ''' Load the compilation configuration for the particular file
+    and retrieve the compilation arguments '''
+    ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
+    if ccmds:
+        compile_args                    = list(ccmds[0].arguments)
+        # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
+        # and add the default linker paths
+        return compile_args[1:-1]
+    else:
+        raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
 if __name__ == '__main__':
     config_passed = '--config' in sys.argv
@@ -145,7 +158,7 @@ if __name__ == '__main__':
         DEP_ONLY_PATH_NEW   = ""
         PROJECT_ONLY_PATH   = ""
 
-        CONFIG = Config.new_from_file(args.config)
+        CONFIG.update_from_file(args.config)
     else:
         if not args.project:
             print("Missing project argument")
@@ -164,6 +177,11 @@ if __name__ == '__main__':
         CONFIG.RENAME_BLACKLIST     = args.rename_blacklist
         CONFIG.LIBCLANG             = args.libclang
         CONFIG.FULL                 = args.full
+        CONFIG.UNWIND               = args.unwind
+        CONFIG.DRIVER               = args.driver
+        CONFIG.FORCE_RECOMPILE      = args.force_recompile
+        CONFIG.SKIP_IMPACT          = args.skip_impact
+        CONFIG.SKIP_BLAME           = args.skip_blame
 
         if args.commit_new != "":
             CONFIG.COMMIT_NEW   = args.commit_new
@@ -181,6 +199,9 @@ if __name__ == '__main__':
 
     if CONFIG.VERBOSITY >= 1:
         pprint(CONFIG)
+
+    if not os.path.exists(CONFIG.EUF_CACHE):
+        os.mkdir(CONFIG.EUF_CACHE)
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
@@ -246,7 +267,7 @@ if __name__ == '__main__':
     OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
 
-    if not args.skip_blame:
+    if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
         ADDED_DIFF = list(filter(lambda d: \
                     str(d.a_path).endswith(".c") and \
@@ -283,12 +304,10 @@ if __name__ == '__main__':
 
     if CONFIG.CCDB_BUILD_SCRIPT != "":
         try:
-            script_env = os.environ.copy()
+            script_env = CONFIG.get_script_env()
             script_env.update({
                 'DEP_SOURCE_ROOT_OLD': DEP_SOURCE_ROOT_OLD,
                 'DEP_SOURCE_ROOT_NEW': DEP_SOURCE_ROOT_NEW,
-                'PROJECT_DIR': CONFIG.PROJECT_DIR,
-                'SETX': CONFIG.SETX
             })
             print_info(f"Running custom compile_commands.json generator: {CONFIG.CCDB_BUILD_SCRIPT}")
             (subprocess.run([ CONFIG.CCDB_BUILD_SCRIPT ],
@@ -393,24 +412,20 @@ if __name__ == '__main__':
                 sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, CONFIG.DEPLIB_NAME, args.force_recompile)) == "":
+            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW)) == "":
                 restore_and_exit(-1)
-            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, CONFIG.DEPLIB_NAME, args.force_recompile)) == "":
+            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD)) == "":
                 restore_and_exit(-1)
 
-            exit(0)
 
             #os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
-            #script_env = os.environ.copy()
+            #script_env = CONFIG.get_script_env()
             #script_env.update({
-            #    'DEPENDENCY_NEW': DEPENDENCY_NEW,
-            #    'DEPENDENCY_OLD': DEPENDENCY_OLD,
             #    'NEW_LIB': new_lib,
             #    'OLD_LIB': old_lib,
             #    'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
-            #    'UNWIND': str(args.unwind),
-            #    'SETX': CONFIG.SETX
+            #    'UNWIND': str(CONFIG.UNWIND)
             #})
 
             #for change in CHANGED_FUNCTIONS:
@@ -421,7 +436,7 @@ if __name__ == '__main__':
             #        continue
 
             #    script_env.update({
-            #        'DRIVER': args.driver
+            #        'DRIVER': CONFIG.DRIVER
             #    })
             #    try:
             #        print_info(f"Starting CBMC analysis for {change.old}")
@@ -437,6 +452,7 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             restore_and_exit(-1)
 
+    if CONFIG.SKIP_IMPACT: exit(0) # restore_and_exit(0)
 
     # - - - Transitive change set propagation - - - #
     # To include functions that have not had a textual change but call a 
@@ -499,13 +515,13 @@ if __name__ == '__main__':
             traceback.print_exc()
             restore_and_exit(-1)
 
+
     if CONFIG.VERBOSITY >= 2:
         print_stage("Complete set")
         pprint(CHANGED_FUNCTIONS)
 
-    # - - - Impact set - - - #
-    if args.skip_impact: restore_and_exit(0)
 
+    # - - - Impact set - - - #
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
     CALL_SITES: list[ProjectInvocation]      = []

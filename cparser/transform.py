@@ -264,6 +264,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     # for 'PREFIX_MACRO(base_symbol_name)' after closing nvim
                     macro_replace_symbols.add(base_symbol_name)
                 else:
+                    continue
                     if CONFIG.VERBOSITY >= 1:
                         print_info(f"[ccls] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
 
@@ -293,7 +294,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
             # Closing the file will close the socket and generate an error
             try:
-                nvim.command("quit")
+                nvim.command("quit!")
             except OSError:
                     pass
     except pynvim.NvimError:
@@ -316,26 +317,15 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         ))
         replace_in_file(source_file, needles, replacements)
 
-    # Replace names within macro generators
-    for name_generator in CONFIG.NAME_GENERATORS:
-        needles = list(map(lambda sym:
-            f"{name_generator.arg}##{sym}",
-            name_generator.global_name_suffixes
-        ))
-        replacements = list(map(lambda sym:
-            f"{name_generator.arg}##{sym}{CONFIG.SUFFIX}",
-            name_generator.global_name_suffixes
-        ))
-        replace_in_file(
-                f"{dep_path}/{name_generator.filepath}",
-                needles, replacements
-        )
-
-    # Finally, run the custom fixup script to resolve any other
-    # failed renamings
+    # If applicable, run the custom fix-up script to resolve any project
+    # specific quirks
     if CONFIG.RENAME_SCRIPT != "":
         try:
-            subprocess.run( [ f"{CONFIG.RENAME_SCRIPT}", dep_path ]
+            print_info(f"Running custom renaming script: {CONFIG.RENAME_SCRIPT}")
+            script_env = CONFIG.get_script_env()
+            script_env.update({ 'DEP_DIR_EUF': dep_path })
+            subprocess.run([ CONFIG.RENAME_SCRIPT ],
+                    env = script_env
             ).check_returncode()
         except subprocess.CalledProcessError:
             traceback.print_exc()

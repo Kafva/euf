@@ -1,4 +1,4 @@
-import sys
+import sys, os
 from typing import Set
 
 
@@ -81,3 +81,10 @@ def compact_path(path: str) -> str:
             out += "/" + name[0]
 
     return out
+
+def find(name, path) -> str:
+    for root, _, files in os.walk(path):
+        if name in files:
+            return os.path.join(root, name)
+    return ""
+

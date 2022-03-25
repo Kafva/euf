@@ -2,29 +2,10 @@ import sys, os, json
 from pathlib import Path
 from dataclasses import dataclass, field
 from clang import cindex
-
 from cparser.util import compact_path, get_path_relative_to, remove_prefix
 
 # Enable importing from the root directory inside the module
 sys.path.append('../')
-
-@dataclass(init=True)
-class MacroNameGenerator:
-    '''
-    Expat has macros which expand to several function calls using a
-    custom prefix passed as an argument
-    
-      #define STANDARD_VTABLE(E)
-      E##byteType, E##isNameMin, E##isNmstrtMin, E##byteToAscii, E##charMatches,
-    
-    We explicitly replace these using exact regex matching
-
-    Note that the filepath does NOT use the --dep-source-root argument,
-    the path should be relative to the .git root
-    '''
-    filepath: str                   # #define location (from project root)
-    arg: str                        # 'E' in the example
-    global_name_suffixes: list[str] # 'byteType', 'isNameMin' ...
 
 BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
@@ -42,6 +23,10 @@ class Config:
     NPROC: int = 5
     UNWIND: int = 1
     FULL: bool = False
+    DRIVER: str = ""
+    FORCE_RECOMPILE: bool = False
+    SKIP_BLAME: bool = False
+    SKIP_IMPACT: bool = False
 
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
 
@@ -76,14 +61,10 @@ class Config:
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
-
-    # - - - Expat - - -
     # Prefixes on the form 'PREFIX(basename)' that should trigger an 
     # exact string replacement rather than a ccls replacement
-    RENAME_PREFIXES = [ "little2_", "normal_", "big2_" ] # followed by 'basename'
-    PREFIX_MACRO = "PREFIX"
-
-    NAME_GENERATORS: list[MacroNameGenerator] = field(default_factory = list)
+    RENAME_PREFIXES: list[str] = field(default_factory = list) # followed by 'basename'
+    PREFIX_MACRO: str = ""
 
     # - - - Property setters
     def _parse_path(self, value) -> str:
@@ -91,6 +72,23 @@ class Config:
             return os.path.abspath(os.path.expanduser(value))
         else:
             return ""
+
+    def get_script_env(self) -> dict:
+        '''
+        All custom shell scripts invoked by EUF will 
+        have (at least) these values available
+        '''
+        script_env = os.environ.copy()
+        script_env.update({
+            'DEPENDENCY_DIR': self.DEPENDENCY_DIR,
+            'DEP_SOURCE_ROOT': self.DEP_SOURCE_ROOT,
+            'SUFFIX': self.SUFFIX,
+            'PROJECT_DIR': self.PROJECT_DIR,
+            'SETX': self.SETX,
+            'DEPLIB_NAME': self.DEPLIB_NAME
+        })
+
+        return script_env
 
     @property
     def PROJECT_DIR(self) -> str:
@@ -136,57 +134,17 @@ class Config:
     def RENAME_SCRIPT(self,value):
         self._RENAME_SCRIPT = self._parse_path(value)
 
-
-    @classmethod
-    def new_from_file(cls, filepath: str):
-        ''' Set default values for keys that were not present in the file '''
-        config = cls()
+    def update_from_file(self, filepath: str):
+        ''' If we create a new object the CONFIG object wont be shared '''
         with open(filepath, mode = "r", encoding = "utf8") as f:
            dct = json.load(f)
            for key,val in dct.items():
             if key in dct:
-                setattr(config, key, val) # Respects .setters
-
-        return config
-
+                setattr(self, key, val) # Respects .setters
 
 global CONFIG
 CONFIG = Config()
 
-CONFIG.NAME_GENERATORS = [
-        MacroNameGenerator(
-                filepath = "expat/lib/xmltok.c",
-                arg = "E",
-                global_name_suffixes = [
-                    "byteType", "isNameMin", "isNmstrtMin", "byteToAscii", "charMatches"
-                ]
-        ),
-        MacroNameGenerator(
-                filepath = "expat/lib/xmltok.c",
-                arg = "E",
-                global_name_suffixes = [
-                    "isName2", "isName3", "isName4", "isNmstrt2", "isNmstrt3",
-                    "isNmstrt4", "isInvalid2", "isInvalid3", "isInvalid4"
-                ]
-        )
-]
-
-
-if not os.path.exists(CONFIG.EUF_CACHE):
-    os.mkdir(CONFIG.EUF_CACHE)
-
-def get_compile_args(compile_db: cindex.CompilationDatabase,
-    filepath: str) -> list[str]:
-    ''' Load the compilation configuration for the particular file
-    and retrieve the compilation arguments '''
-    ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
-    if ccmds:
-        compile_args                    = list(ccmds[0].arguments)
-        # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-        # and add the default linker paths
-        return compile_args[1:-1]
-    else:
-        raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
 @dataclass(init=True)
 class DependencyArgument:
@@ -359,27 +317,6 @@ class CursorPair:
     def __init__(self):
         self.new = None # type: ignore
         self.old = None # type: ignore
-
-@dataclass(init=True)
-class Macro:
-    name: str
-    arguments: list[str]
-
-    start_line: int
-    end_line: int
-    data: str = ""
-
-    # This is the line in the stub file (after replacement has taken place)
-    # were the expanded macro is located
-    # We assume that all expanded macros only occupy one line
-    stub_file_call_line: int = -1
-
-    def text(self) -> str:
-        if len(self.arguments) == 0:
-            return f"#define {self.name} {self.data}"
-        else:
-            comma_sep_args = ','.join(self.arguments).strip(',')
-            return f"#define {self.name}({comma_sep_args}) {self.data}"
 
 @dataclass(init=True)
 class IdentifierLocation:
