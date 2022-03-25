@@ -33,5 +33,25 @@ for name in ${GLOBAL_NAME_SUFFIXES[@]}; do
 done
 
 : '''
-	2. 
+	2.  
+	lib/xmlrole.c  
+	entity6?????
+
+
+	lib/xmltok.c
+
+	s/utf8_to_Utf16/ utf8_to_Utf16_old_b026324c6904b2a /
+	s/utf8_to_Utf8/ utf8_to_Utf8_old_b026324c6904b2a /
+
+	The resolution for  
+	lib/xmltok.c:169	#define utf8_isNmstrt4 isNever
+	lib/xmltok.c:155	#define utf8_isName4 isNever
+
+	does not work since utf8_isNmstrt4 has been given a suffix
+
+
+
+	... ccls works _____sometimes_______ for certain identifiers
+	.... Maybe its an #if defined() problem?
+	........ If we are lucky
 '''

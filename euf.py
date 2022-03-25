@@ -23,7 +23,7 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
-    ProjectInvocation, SourceDiff, SourceFile, Config, BASE_DIR
+    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -415,8 +415,7 @@ if __name__ == '__main__':
             if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW)) == "":
                 restore_and_exit(-1)
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD)) == "":
-                restore_and_exit(-1)
-
+                exit(-1) # restore_and_exit(-1)
 
             #os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 

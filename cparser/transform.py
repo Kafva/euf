@@ -264,7 +264,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     # for 'PREFIX_MACRO(base_symbol_name)' after closing nvim
                     macro_replace_symbols.add(base_symbol_name)
                 else:
-                    continue
                     if CONFIG.VERBOSITY >= 1:
                         print_info(f"[ccls] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
 
@@ -283,7 +282,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     # there is no problem if we run these commands to many times
                     nvim.feedkeys("<cr>"*100, escape_csi = True)
 
-                    for _ in range(50):
+                    for _ in range(70):
                         nvim.command("wa")
 
                     # Short wait for every identifier to avoid inconsistent 
@@ -294,7 +293,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
             # Closing the file will close the socket and generate an error
             try:
-                nvim.command("quit!")
+                nvim.command("quit")
             except OSError:
                     pass
     except pynvim.NvimError:
