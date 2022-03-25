@@ -109,11 +109,12 @@ def build_goto_lib(dep_dir: str, deplib_name: str, force_recompile: bool) -> str
             stdout = subprocess.PIPE, stderr = sys.stderr,
             cwd = dep_dir, env = script_env
         )
-        proc.check_returncode()
         lines = proc.stdout.splitlines()
 
         if CONFIG.VERBOSITY >= 1:
             for line in lines: print(line.decode('ascii'))
+
+        proc.check_returncode()
 
         if lines:
             lib_path = lines[-1].decode('ascii')

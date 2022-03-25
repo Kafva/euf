@@ -373,7 +373,7 @@ if __name__ == '__main__':
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, args.deplib_name, args.force_recompile)) == "":
                 restore_and_exit(-1)
 
-            restore_and_exit(0)
+            exit(0)
 
             os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 

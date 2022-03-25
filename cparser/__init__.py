@@ -8,6 +8,24 @@ from cparser.util import compact_path, get_path_relative_to, remove_prefix
 # Enable importing from the root directory inside the module
 sys.path.append('../')
 
+@dataclass(init=True)
+class MacroNameGenerator:
+    '''
+    Expat has macros which expand to several function calls using a
+    custom prefix passed as an argument
+    
+      #define STANDARD_VTABLE(E)
+      E##byteType, E##isNameMin, E##isNmstrtMin, E##byteToAscii, E##charMatches,
+    
+    We explicitly replace these using exact regex matching
+
+    Note that the filepath does NOT use the --dep-source-root argument,
+    the path should be relative to the .git root
+    '''
+    filepath: str                   # #define location (from project root)
+    arg: str                 # 'E' in the example
+    global_name_suffixes: list[str] # 'byteType', 'isNameMin' ...
+
 class Config:
     VERBOSITY: int = 0
     TRANSATIVE_PASSES: int = 1
@@ -46,11 +64,13 @@ class Config:
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
 
-    # Prefixes that should trigger an exact string
-    # replacement rather than a ccls replacement
-    PREFIXES = [ "little2_", "normal_", "big2_" ]
+    # - - - Expat - - -
+    # Prefixes on the form 'PREFIX(basename)' that should trigger an 
+    # exact string replacement rather than a ccls replacement
+    PREFIXES = [ "little2_", "normal_", "big2_" ] # followed by 'basename'
     PREFIX_MACRO = "PREFIX"
 
+    NAME_GENERATORS: list[MacroNameGenerator]
 
 
 
@@ -68,6 +88,24 @@ CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
 CONFIG.PLUGIN = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
 CONFIG.INIT_VIM =  f"{BASE_DIR}/scripts/init.lua"
 CONFIG.RENAME_LUA = f"{BASE_DIR}/scripts/rename.lua"
+
+CONFIG.NAME_GENERATORS = [
+        MacroNameGenerator(
+                filepath = "expat/lib/xmltok.c",
+                arg = "E",
+                global_name_suffixes = [
+                    "byteType", "isNameMin", "isNmstrtMin", "byteToAscii", "charMatches"
+                ]
+        ),
+        MacroNameGenerator(
+                filepath = "expat/lib/xmltok.c",
+                arg = "E",
+                global_name_suffixes = [
+                    "isName2", "isName3", "isName4", "isNmstrt2", "isNmstrt3",
+                    "isNmstrt4", "isInvalid2", "isInvalid3", "isInvalid4"
+                ]
+        )
+]
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:

@@ -293,7 +293,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
             # Closing the file will close the socket and generate an error
             try:
-                nvim.command("quit")
+                nvim.command("quit!")
             except OSError:
                     pass
     except pynvim.NvimError:
@@ -306,17 +306,30 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     # Give a suffix to any macro_symbols that were encountered
     for source_file in source_files:
-        content = ""
-        with open(source_file, "r", encoding = 'utf8') as f:
-            content = f.read()
-        with open(source_file, "w", encoding = 'utf8') as f:
-            for macro_replace_symbol in macro_replace_symbols:
-                content = content.replace(
-                        f"{CONFIG.PREFIX_MACRO}({macro_replace_symbol})",
-                        f"{CONFIG.PREFIX_MACRO}({macro_replace_symbol}{CONFIG.SUFFIX})"
-                )
-            f.write(content)
+        needles = list(map(lambda sym:
+            f"{CONFIG.PREFIX_MACRO}({sym})",
+            macro_replace_symbols
+        ))
+        replacements = list(map(lambda sym:
+            f"{CONFIG.PREFIX_MACRO}({sym}{CONFIG.SUFFIX})",
+            macro_replace_symbols
+        ))
+        replace_in_file(source_file, needles, replacements)
 
+    # Replace names within macro generators
+    for name_generator in CONFIG.NAME_GENERATORS:
+        needles = list(map(lambda sym:
+            f"{name_generator.arg}##{sym}",
+            name_generator.global_name_suffixes
+        ))
+        replacements = list(map(lambda sym:
+            f"{name_generator.arg}##{sym}{CONFIG.SUFFIX}",
+            name_generator.global_name_suffixes
+        ))
+        replace_in_file(
+                f"{dep_path}/{name_generator.filepath}",
+                needles, replacements
+        )
 
     if CONFIG.VERBOSITY >= 3:
         print("\n\n")
@@ -334,3 +347,14 @@ def time_end(msg: str, start_time: datetime) -> None:
     if CONFIG.VERBOSITY >= 1:
         print_info(f"{msg}: {datetime.now() - start_time}")
         start_time = datetime.now()
+
+def replace_in_file(source_file: str, needles:list[str], replacements: list[str]):
+        content = ""
+        with open(source_file, "r", encoding = 'utf8') as f:
+            content = f.read()
+        with open(source_file, "w", encoding = 'utf8') as f:
+            for i in range(len(needles)):
+                content = content.replace(
+                        needles[i], replacements[i]
+                )
+            f.write(content)
