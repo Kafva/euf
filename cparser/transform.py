@@ -252,7 +252,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
             for i,identifier in enumerate(global_identifiers):
                 # Check if the identifier has a macro prefix
                 base_symbol_name = identifier.name
-                for prefix in CONFIG.PREFIXES:
+                for prefix in CONFIG.RENAME_PREFIXES:
                     if identifier.name.startswith(prefix):
                         base_symbol_name = identifier.name[ len(prefix): ]
 
@@ -289,11 +289,11 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     # behaviour? (We still get 
                     #   Vim(edit):E37: No write since last change 
                     # sometimes but generally the renaming works
-                    sleep(0.8)
+                    sleep(1.5)
 
             # Closing the file will close the socket and generate an error
             try:
-                nvim.command("quit!")
+                nvim.command("quit")
             except OSError:
                     pass
     except pynvim.NvimError:
@@ -330,6 +330,17 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                 f"{dep_path}/{name_generator.filepath}",
                 needles, replacements
         )
+
+    # Finally, run the custom fixup script to resolve any other
+    # failed renamings
+    if CONFIG.RENAME_SCRIPT != "":
+        try:
+            subprocess.run( [ f"{CONFIG.RENAME_SCRIPT}", dep_path ]
+            ).check_returncode()
+        except subprocess.CalledProcessError:
+            traceback.print_exc()
+            print_err(f"Custom renaming script failed: {CONFIG.RENAME_SCRIPT}")
+            return False
 
     if CONFIG.VERBOSITY >= 3:
         print("\n\n")

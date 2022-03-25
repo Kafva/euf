@@ -56,16 +56,20 @@ def autogen_compile_db(source_path: str) -> bool:
             compile_db_fail_msg(source_path)
             return False
 
-    # If the project has already been built the database will be empty
-    f = open(cmds_json, mode="r", encoding = "utf8")
+    if os.path.exists(cmds_json):
+        # If the project has already been built the database will be empty
+        f = open(cmds_json, mode="r", encoding = "utf8")
 
-    if f.read().startswith("[]"):
-        print_err(f"Empty compile_commands.json generated: Clean '{source_path}' and try agian")
-        f.close()
-        os.remove(cmds_json)
+        if f.read().startswith("[]"):
+            print_err(f"Empty compile_commands.json generated: Clean '{source_path}' and try agian")
+            f.close()
+            os.remove(cmds_json)
+            return False
+
+        return True
+    else:
+        compile_db_fail_msg(source_path)
         return False
-
-    return True
 
 def compile_db_fail_msg(path: str) -> None:
     backtrace = traceback.format_exc()

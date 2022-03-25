@@ -1,6 +1,6 @@
-import sys, os
+import sys, os, json
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from clang import cindex
 
 from cparser.util import compact_path, get_path_relative_to, remove_prefix
@@ -23,42 +23,55 @@ class MacroNameGenerator:
     the path should be relative to the .git root
     '''
     filepath: str                   # #define location (from project root)
-    arg: str                 # 'E' in the example
+    arg: str                        # 'E' in the example
     global_name_suffixes: list[str] # 'byteType', 'isNameMin' ...
 
+BASE_DIR = str(Path(__file__).parent.parent.absolute())
+
+@dataclass
 class Config:
+    # - - - CLI options  - - -
+    _PROJECT_DIR: str = ""
+    _DEPENDENCY_DIR: str = ""
+    _DEP_SOURCE_ROOT: str = ""
+    DEPLIB_NAME: str = ""
+    COMMIT_NEW: str = ""
+    COMMIT_OLD: str = ""
+
     VERBOSITY: int = 0
-    TRANSATIVE_PASSES: int = 1
     NPROC: int = 5
     UNWIND: int = 1
+    FULL: bool = False
 
-    LIBCLANG = "/usr/lib/libclang.so.13.0.1"
+    LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
 
+    _RENAME_BLACKLIST: str = ""
+    _GOTO_BUILD_SCRIPT: str = f"{BASE_DIR}/scripts/mk_goto.sh"
+    _CCDB_BUILD_SCRIPT: str = ""
+    _RENAME_SCRIPT: str = ""
+    PLUGIN: str = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
+
+    # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio
     # [0.5,RENAME_RATIO_LOW]
     RENAME_RATIO_LOW: float = .3
-
-    RENAME_BLACKLIST: str = ""
-    GOTO_BUILD_SCRIPT: str = ""
-    PLUGIN: str = ""
+    TRANSATIVE_PASSES: int = 1
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
     OUTDIR: str = ".out"
-    RUN_CBMC: bool = False
     SUFFIX: str = "_old_b026324c6904b2a"
 
     # Toggles echoing of scripts
     SETX: str = "false"
 
-    INIT_VIM: str = ""
-    RENAME_LUA: str = ""
+    INIT_VIM: str = f"{BASE_DIR}/scripts/init.lua"
+    RENAME_LUA: str = f"{BASE_DIR}/scripts/rename.lua"
 
     # Reuse /tmp/rename.txt if present
     REUSE_EXISTING_NAMES: bool = False
-    RENAME_TXT = "/tmp/rename.txt"
     RENAME_CSV: str = "/tmp/rename.csv"
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
@@ -67,27 +80,78 @@ class Config:
     # - - - Expat - - -
     # Prefixes on the form 'PREFIX(basename)' that should trigger an 
     # exact string replacement rather than a ccls replacement
-    PREFIXES = [ "little2_", "normal_", "big2_" ] # followed by 'basename'
+    RENAME_PREFIXES = [ "little2_", "normal_", "big2_" ] # followed by 'basename'
     PREFIX_MACRO = "PREFIX"
 
-    NAME_GENERATORS: list[MacroNameGenerator]
+    NAME_GENERATORS: list[MacroNameGenerator] = field(default_factory = list)
 
+    # - - - Property setters
+    def _parse_path(self, value) -> str:
+        if value != "":
+            return os.path.abspath(os.path.expanduser(value))
+        else:
+            return ""
+
+    @property
+    def PROJECT_DIR(self) -> str:
+        return self._PROJECT_DIR
+    @property
+    def DEPENDENCY_DIR(self) -> str:
+        return self._DEPENDENCY_DIR
+    @property
+    def DEP_SOURCE_ROOT(self) -> str:
+        return self._DEP_SOURCE_ROOT
+    @property
+    def RENAME_BLACKLIST(self) -> str:
+        return self._RENAME_BLACKLIST
+    @property
+    def GOTO_BUILD_SCRIPT(self) -> str:
+        return self._GOTO_BUILD_SCRIPT
+    @property
+    def CCDB_BUILD_SCRIPT(self) -> str:
+        return self._CCDB_BUILD_SCRIPT
+    @property
+    def RENAME_SCRIPT(self) -> str:
+        return self._RENAME_SCRIPT
+
+    @PROJECT_DIR.setter
+    def PROJECT_DIR(self,value):
+        self._PROJECT_DIR = self._parse_path(value)
+    @DEPENDENCY_DIR.setter
+    def DEPENDENCY_DIR(self,value):
+        self._DEPENDENCY_DIR = self._parse_path(value)
+    @DEP_SOURCE_ROOT.setter
+    def DEP_SOURCE_ROOT(self,value):
+        self._DEP_SOURCE_ROOT = self._parse_path(value)
+    @RENAME_BLACKLIST.setter
+    def RENAME_BLACKLIST(self,value):
+        self._RENAME_BLACKLIST = self._parse_path(value)
+    @GOTO_BUILD_SCRIPT.setter
+    def GOTO_BUILD_SCRIPT(self,value):
+        self._GOTO_BUILD_SCRIPT = self._parse_path(value)
+    @CCDB_BUILD_SCRIPT.setter
+    def CCDB_BUILD_SCRIPT(self,value):
+        self._CCDB_BUILD_SCRIPT = self._parse_path(value)
+    @RENAME_SCRIPT.setter
+    def RENAME_SCRIPT(self,value):
+        self._RENAME_SCRIPT = self._parse_path(value)
+
+
+    @classmethod
+    def new_from_file(cls, filepath: str):
+        ''' Set default values for keys that were not present in the file '''
+        config = cls()
+        with open(filepath, mode = "r", encoding = "utf8") as f:
+           dct = json.load(f)
+           for key,val in dct.items():
+            if key in dct:
+                setattr(config, key, val) # Respects .setters
+
+        return config
 
 
 global CONFIG
 CONFIG = Config()
-
-C_SYMBOL_CHARS = "[_0-9a-zA-Z]"
-
-if not os.path.exists(CONFIG.EUF_CACHE):
-    os.mkdir(CONFIG.EUF_CACHE)
-
-BASE_DIR = str(Path(__file__).parent.parent.absolute())
-
-CONFIG.GOTO_BUILD_SCRIPT = f"{BASE_DIR}/scripts/mk_goto.sh"
-CONFIG.PLUGIN = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
-CONFIG.INIT_VIM =  f"{BASE_DIR}/scripts/init.lua"
-CONFIG.RENAME_LUA = f"{BASE_DIR}/scripts/rename.lua"
 
 CONFIG.NAME_GENERATORS = [
         MacroNameGenerator(
@@ -106,6 +170,10 @@ CONFIG.NAME_GENERATORS = [
                 ]
         )
 ]
+
+
+if not os.path.exists(CONFIG.EUF_CACHE):
+    os.mkdir(CONFIG.EUF_CACHE)
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
