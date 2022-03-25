@@ -71,3 +71,13 @@ def unique_only(li: list) -> list:
         if not item in uniq:
             uniq.append(item)
     return uniq
+
+def compact_path(path: str) -> str:
+    out = ""
+    for name in path.split("/"):
+        if len(name) >= 2 and not name[0].isalnum():
+            out += "/" + name[:2]
+        elif len(name) > 0:
+            out += "/" + name[0]
+
+    return out

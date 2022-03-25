@@ -1,4 +1,5 @@
-import subprocess, os, traceback, pynvim, time, sys
+import subprocess, os, traceback, pynvim, sys
+from time import sleep
 from datetime import datetime
 from clang import cindex
 from typing import Set
@@ -201,10 +202,16 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
             f.write(f"{identifier.to_csv()}\n")
 
 
-    source_file = next(iter(global_identifiers)).filepath
+    # Generate a list of all source files in the repo
+    repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
+            dep_repo.git.ls_tree(                        # type: ignore
+            "-r", "HEAD", "--name-only").splitlines())   # type: ignore
+
+    source_files = list(filter(lambda f:
+        f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
+
     GLOBALS_CNT = len(global_identifiers)
 
-    crs = ''.join([ "<cr>" for _ in range(100) ])
     script_env = os.environ.copy()
     script_env.update({
         'NVIM_LISTEN_ADDRESS': CONFIG.EUF_NVIM_SOCKET
@@ -223,55 +230,45 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     #
     # Example launch command:
     # NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua --headless regexec.c
+    #
+    # To support `argdo` commands we need to have all files open from the start
     p = subprocess.Popen([
         CONFIG.NVIM, '-n', '--clean', '-u', CONFIG.INIT_VIM,
-        "--headless", source_file ],
+        "--headless" ] + source_files,
         cwd = dep_path, env = script_env,
         stdout = out, stderr = out
     )
 
     start_time = time_start(f"Refactoring global symbols... ({GLOBALS_CNT})")
 
-    PREFIXES = [ "little2_", "normal_", "big2_" ]
-    PREFIX_MACRO = "PREFIX"
+    macro_replace_symbols = set()
 
     # Wait for the socket (NVIM_LISTEN_ADDRESS) to be created
-    time.sleep(5)
+    sleep(3)
 
     try:
         with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
 
             for i,identifier in enumerate(global_identifiers):
-                # Short wait for every identifier to avoid inconsistent 
-                # behaviour? (We still get 
-                #   Vim(edit):E37: No write since last change 
-                # sometimes but generally the renaming works
-                time.sleep(0.8)
-
-                # Open the file where the global symbol was found
-                nvim.command(f"edit {identifier.filepath}")
-
                 # Check if the identifier has a macro prefix
                 base_symbol_name = identifier.name
-                for prefix in PREFIXES:
+                for prefix in CONFIG.PREFIXES:
                     if identifier.name.startswith(prefix):
                         base_symbol_name = identifier.name[ len(prefix): ]
 
                 if base_symbol_name != identifier.name:
                     if CONFIG.VERBOSITY >= 1:
-                        print_info(f"[*] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+                        print_info(f"[exact] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
 
-                    # Do an exact string replace in the source file for 'PREFIX_MACRO(base_symbol_name)'
-                    try:
-                        # TODO: This needs to be cfdo
-                        nvim.command(f"%s/{PREFIX_MACRO}({base_symbol_name})/{PREFIX_MACRO}({base_symbol_name}{CONFIG.SUFFIX})/g")
-                    except pynvim.NvimError:
-                        # If the base_symbol_name has already been replaced based on another
-                        # prefix we will get an error since there are no matches
-                        pass
+                    # We perform an exact string replace in _all_ source files 
+                    # for 'PREFIX_MACRO(base_symbol_name)' after closing nvim
+                    macro_replace_symbols.add(base_symbol_name)
                 else:
                     if CONFIG.VERBOSITY >= 1:
                         print_info(f"[ccls] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+
+                    # Open the file where the global symbol was found
+                    nvim.command(f"edit {identifier.filepath}")
 
                     # Move the cursor to the location of the identifier
                     nvim.call("cursor", identifier.line, identifier.column)
@@ -279,14 +276,20 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     # Replace all occurrences of it cross-TUs
                     nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
 
-                # We 'wa' and input <CR> sequences after each replace, otherwise 
-                # we get errors such as:
-                #   No write since last change (add ! to override)
-                # there is no problem if we run these commands to many times
-                nvim.feedkeys(crs, escape_csi = True)
+                    # We 'wa' and input <CR> sequences after each replace, otherwise 
+                    # we get errors such as:
+                    #   No write since last change (add ! to override)
+                    # there is no problem if we run these commands to many times
+                    nvim.feedkeys("<cr>"*100, escape_csi = True)
 
-                for _ in range(50):
-                    nvim.command("wa")
+                    for _ in range(50):
+                        nvim.command("wa")
+
+                    # Short wait for every identifier to avoid inconsistent 
+                    # behaviour? (We still get 
+                    #   Vim(edit):E37: No write since last change 
+                    # sometimes but generally the renaming works
+                    sleep(0.8)
 
             # Closing the file will close the socket and generate an error
             try:
@@ -300,6 +303,20 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         return False
 
     p.kill()
+
+    # Give a suffix to any macro_symbols that were encountered
+    for source_file in source_files:
+        content = ""
+        with open(source_file, "r", encoding = 'utf8') as f:
+            content = f.read()
+        with open(source_file, "w", encoding = 'utf8') as f:
+            for macro_replace_symbol in macro_replace_symbols:
+                content = content.replace(
+                        f"{CONFIG.PREFIX_MACRO}({macro_replace_symbol})",
+                        f"{CONFIG.PREFIX_MACRO}({macro_replace_symbol}{CONFIG.SUFFIX})"
+                )
+            f.write(content)
+
 
     if CONFIG.VERBOSITY >= 3:
         print("\n\n")

@@ -3,7 +3,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from clang import cindex
 
-from cparser.util import get_path_relative_to, remove_prefix
+from cparser.util import compact_path, get_path_relative_to, remove_prefix
 
 # Enable importing from the root directory inside the module
 sys.path.append('../')
@@ -44,6 +44,13 @@ class Config:
     RENAME_CSV: str = "/tmp/rename.csv"
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
+
+
+    # Prefixes that should trigger an exact string
+    # replacement rather than a ccls replacement
+    PREFIXES = [ "little2_", "normal_", "big2_" ]
+    PREFIX_MACRO = "PREFIX"
+
 
 
 
@@ -291,7 +298,7 @@ class IdentifierLocation:
         )
 
     def __repr__(self) -> str:
-        brief_path = "~/.c/e" + remove_prefix(self.filepath, CONFIG.EUF_CACHE)
+        brief_path = compact_path(CONFIG.EUF_CACHE) + remove_prefix(self.filepath, CONFIG.EUF_CACHE)
         return f"{brief_path}:{self.name}:{self.line}:{self.column}"
 
     def to_csv(self) -> str:
