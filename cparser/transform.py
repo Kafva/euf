@@ -268,7 +268,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     # behaviour? (We still get 
                     #   Vim(edit):E37: No write since last change 
                     # sometimes but generally the renaming works
-                    sleep(3.0)
+                    sleep(2.0)
 
                     # We 'wa' and input <CR> sequences after each replace, otherwise 
                     # we get errors such as:
@@ -279,7 +279,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     for _ in range(70):
                         nvim.command("wa")
 
-                    sleep(1.5)
+                    sleep(1.0)
 
             # Closing the file will close the socket and generate an error
             try:
