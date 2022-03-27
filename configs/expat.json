@@ -21,6 +21,14 @@
 	"SKIP_IMPACT": true,
 	"FULL": true,
 
-	"RENAME_PREFIXES": [ "little2_", "normal_", "big2_" ],
-	"PREFIX_MACRO": "PREFIX"
+	"MACRO_NAMES": [  
+			{
+					"name": "PREFIX",
+					"prefixes": [ "little2_", "normal_", "big2_" ]
+			},
+			{
+					"name": "NS",
+					"prefixes": []
+			}
+		]
 }

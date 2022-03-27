@@ -136,48 +136,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     #if 0
         // Things in here are not renamed
     #endif
-
-    --- EXPAT
-    The functions with a PREFIX are not properly renamed, the cursor lands at the start of
-    the line instead of at the actual symbol due to the location reported by clang being
-    that of the expanded symbol... However even if we place the cursor at this postion
-    the lsp does not understand what it should rename...
-
-    Furthermore, there are still some edge cases were renaming does not work
-
-    lib/xmltok.c:465    -> (renaming utf8_toUtf16 does not work)
-    static const struct normal_encoding utf8_encoding_ns_old_b026324c6904b2a
-        = {{VTABLE1, utf8_toUtf8, utf8_toUtf16, 1, 1, 0}
-
-    ccls does not seem to be guaranteed to work in the same way every time...
-        grep -R 2a_old_ .
-    race-conditions or other incosnsitent behaviour
-
-    xmltok_impl.c is not processed at all since it does not have a TU entry 
-    (it is #included within xmltok.c) this makes it so that no replacements occur in it
-    and no global symbols are enumerated
-
-    I think the replacements in xmltok.c become fucked because it has line numbers from xmltok_impl.c
-    ....
-
-    expat:
-        xmlparse.c:716:1: warning: function 'XML_ParserCreate_MM_old_b026324c6904b2a' is not declared
-        xmlrole.c:517:1: error: failed to find symbol 'entity6_old_b026324c6904b2a'
-               state->handler = entity6_old_b026324c6904b2a;
-
-     ccls is able to rename globals inside macro definitions (sometimes)
-     clang-suffix cannot rename anything inside of a macro unless we use it on `cc -E` files. 
-     With preprocessed files we can also properly rename functions with interoplated names e.g.
-        PREFIX(fn) -> processed_fn
-     Note that the traversal of the AST will produce macro-expanded names
-
-     For the PREFIX(fn) case specifically we could techincally use '*' in vim
-     as a fallback if we manage to place ourselves on fn. This is a complete hack though...
-
-     ms-cpptools cant handle these instances either, we are effectivly trying to rename """references""" 
-     to a macro-argument
-
-
     '''
     dep_name = os.path.basename(dep_path)
     dep_repo = Repo(dep_path)
@@ -229,7 +187,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
     # Manually launching with pynvim.attach(argv) does not load ccls
     #
     # Example launch command:
-    # NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua --headless regexec.c
+    # NVIM_LISTEN_ADDRESS=/tmp/eufnvim  /usr/bin/nvim -n --clean -u ~/Repos/euf/scripts/init.lua --headless xml
     #
     # To support `argdo` commands we need to have all files open from the start
     p = subprocess.Popen([
@@ -241,7 +199,9 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     start_time = time_start(f"Refactoring global symbols... ({GLOBALS_CNT})")
 
-    macro_replace_symbols = set()
+    macro_replace_symbols = list()
+    longest_macro_name = max(map(lambda m: len(m), CONFIG.MACRO_NAMES))
+    assert(longest_macro_name >= 1)
 
     # Wait for the socket (NVIM_LISTEN_ADDRESS) to be created
     sleep(3)
@@ -250,31 +210,65 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         with pynvim.attach('socket', path = CONFIG.EUF_NVIM_SOCKET) as nvim:
 
             for i,identifier in enumerate(global_identifiers):
+                #if not identifier.filepath.endswith("xmltok_ns.c"): continue
                 # Check if the identifier has a macro prefix
                 base_symbol_name = identifier.name
-                for prefix in CONFIG.RENAME_PREFIXES:
-                    if identifier.name.startswith(prefix):
-                        base_symbol_name = identifier.name[ len(prefix): ]
+                symbol_prefix = ""
+                found = False
+
+                for macro_name in CONFIG.MACRO_NAMES:
+                    for prefix in macro_name['prefixes']:
+
+                        if identifier.name.startswith(prefix):
+                            base_symbol_name = identifier.name[ len(prefix): ]
+                            symbol_prefix = prefix
+                            found = True; break
+
+                    if found: break
 
                 if base_symbol_name != identifier.name:
                     if CONFIG.VERBOSITY >= 1:
-                        print_info(f"[exact] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+                        print_info(f"[prefix-macro] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
 
                     # We perform an exact string replace in _all_ source files 
                     # for 'PREFIX_MACRO(base_symbol_name)' after closing nvim
-                    macro_replace_symbols.add(base_symbol_name)
+                    macro_replace_symbols.append({
+                        'prefix': symbol_prefix,
+                        'name': base_symbol_name
+                    })
                 else:
-                    if CONFIG.VERBOSITY >= 1:
-                        print_info(f"[ccls] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
-
                     # Open the file where the global symbol was found
                     nvim.command(f"edit {identifier.filepath}")
 
                     # Move the cursor to the location of the identifier
                     nvim.call("cursor", identifier.line, identifier.column)
 
+                    # If we are standing on a macro symbol (without a prefix)
+                    # we will perform an exact match replacement instead of using ccls
+                    text_to_replace = nvim.command_output(
+                        f"echon getline('.')[col('.')-1:col('.')+{longest_macro_name}-1]"
+                    )
+
+                    if any(map(lambda m: text_to_replace.startswith(m['name']+"(") , CONFIG.MACRO_NAMES)): # type: ignore
+                        if CONFIG.VERBOSITY >= 1:
+                            print_info(f"[noop-macro] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+                        macro_replace_symbols.append({
+                            'prefix': "",
+                            'name': identifier.name
+                        })
+                        continue
+
+                    if CONFIG.VERBOSITY >= 1:
+                        print_info(f"[ccls] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
+
                     # Replace all occurrences of it cross-TUs
                     nvim.exec_lua(f"vim.lsp.buf.rename(\"{identifier.name + CONFIG.SUFFIX}\")")
+
+                    # Short wait for every identifier to avoid inconsistent 
+                    # behaviour? (We still get 
+                    #   Vim(edit):E37: No write since last change 
+                    # sometimes but generally the renaming works
+                    sleep(3.0)
 
                     # We 'wa' and input <CR> sequences after each replace, otherwise 
                     # we get errors such as:
@@ -285,10 +279,6 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                     for _ in range(70):
                         nvim.command("wa")
 
-                    # Short wait for every identifier to avoid inconsistent 
-                    # behaviour? (We still get 
-                    #   Vim(edit):E37: No write since last change 
-                    # sometimes but generally the renaming works
                     sleep(1.5)
 
             # Closing the file will close the socket and generate an error
@@ -306,15 +296,16 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
     # Give a suffix to any macro_symbols that were encountered
     for source_file in source_files:
-        needles = list(map(lambda sym:
-            f"{CONFIG.PREFIX_MACRO}({sym})",
-            macro_replace_symbols
-        ))
-        replacements = list(map(lambda sym:
-            f"{CONFIG.PREFIX_MACRO}({sym}{CONFIG.SUFFIX})",
-            macro_replace_symbols
-        ))
-        replace_in_file(source_file, needles, replacements)
+        for macro_name in CONFIG.MACRO_NAMES:
+            needles = list(map(lambda sym:
+                f"{macro_name['name']}({sym['name']})",
+                macro_replace_symbols
+            ))
+            replacements = list(map(lambda sym:
+                f"{macro_name['name']}({sym['name']}{CONFIG.SUFFIX})",
+                macro_replace_symbols
+            ))
+            replace_in_file(source_file, needles, replacements)
 
     # If applicable, run the custom fix-up script to resolve any project
     # specific quirks

@@ -61,10 +61,27 @@ class Config:
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
-    # Prefixes on the form 'PREFIX(basename)' that should trigger an 
-    # exact string replacement rather than a ccls replacement
-    RENAME_PREFIXES: list[str] = field(default_factory = list) # followed by 'basename'
-    PREFIX_MACRO: str = ""
+
+    '''
+    Expat has a 'noop' macro on the form
+        #define NS(x) x
+
+    CCLS cannot rename declerations on the form (even if we have the cursor on 'foo')
+        void NS(foo) (int arg);
+
+    The same occurs for PREFIX() (which has the additional complication of 
+    manipulating the actual function name)
+
+    To exclude replacement steps for these cases we check if the cursor is on 'NS('
+    before doing any replacements (we cant sieve out these entries eariler since they dont have a prefix)
+    The dicts in this object are on the form 
+		{
+            "name": "PREFIX",
+            "prefixes": [ "little2_", "normal_", "big2_" ]
+		}
+    To simplify the config file parsing we dont use a class for this
+    '''
+    MACRO_NAMES: list[dict[str,str|list[str]]] = field(default_factory=list)
 
     # - - - Property setters
     def _parse_path(self, value) -> str:

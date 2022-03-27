@@ -1,2 +1,3 @@
 main
 isNever
+_fail_unless
