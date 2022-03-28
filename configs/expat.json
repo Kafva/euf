@@ -21,6 +21,8 @@
 	"SKIP_IMPACT": true,
 	"FULL": true,
 
+	"EDIT_DELAY": 1,
+
 	"MACRO_NAMES": [  
 			{
 					"name": "PREFIX",

@@ -61,6 +61,7 @@ class Config:
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
 
+    EDIT_DELAY: float = 2
 
     '''
     Expat has a 'noop' macro on the form
