@@ -35,7 +35,7 @@ from cparser.transform import add_suffix_to_globals, \
         has_euf_internal_stash
 
 
-def restore_and_exit(code: int = 0):
+def restore_and_exit(old_dep_path: str, code: int = 0):
     '''
     Should be called when exiting the program after a successful call to
     `add_suffix_to_globals`
@@ -46,33 +46,29 @@ def restore_and_exit(code: int = 0):
     Keeping the '_old' suffixes around would require
     a manual reset to use EUF agian
     '''
-    if not CONFIG.FULL:
-        sys.exit(code)
+    try:
+        # If the repository has changes that include the string '_old' 
+        # and there is no internal stash associated with it
+        # create a new stash
+        repo = Repo(old_dep_path)
+        repo_name = os.path.basename(old_dep_path)
 
-    repo_names = next(os.walk(CONFIG.EUF_CACHE))[1]
+        if has_euf_internal_stash(repo, repo_name) == "" and \
+            re.search(rf"{CONFIG.SUFFIX}", repo.git.diff()) != None: # type: ignore
+                print_info(f"Stashing changes in {repo_name}")
+                repo.git.stash(# type: ignore
+                        message = f"{CONFIG.CACHE_INTERNAL_STASH} {repo_name}",
+                )
+        # Otherwise checkout all the changes (we can restore them from the 
+        # existing stash if need to run the analysis again)
+        else:
+            if CONFIG.VERBOSITY >= 3:
+                print_info(f"Discarding changes in {repo_name}")
+            repo.git.checkout(".") # type: ignore
 
-    for repo_name in repo_names:
-        repo = Repo(f"{CONFIG.EUF_CACHE}/{repo_name}")
-        try:
-            # If the repository has changes that include the string '_old' 
-            # and there is no internal stash associated with it
-            # create a new stash
-            if has_euf_internal_stash(repo, repo_name) == "" and \
-                re.search(rf"{CONFIG.SUFFIX}", repo.git.diff()) != None: # type: ignore
-                    print_info(f"Stashing changes in {repo_name}")
-                    repo.git.stash(# type: ignore
-                            message = f"{CONFIG.CACHE_INTERNAL_STASH} {repo_name}",
-                    )
-            # Otherwise checkout all the changes (we can restore them from the 
-            # existing stash if need to run the analysis again)
-            else:
-                if CONFIG.VERBOSITY >= 3:
-                    print_info(f"Discarding changes in {repo_name}")
-                repo.git.checkout(".") # type: ignore
-
-        except GitCommandError:
-            traceback.print_exc()
-            sys.exit(-1)
+    except GitCommandError:
+        traceback.print_exc()
+        sys.exit(-1)
 
     sys.exit(code)
 
@@ -413,9 +409,9 @@ if __name__ == '__main__':
 
             # Compile the old and new version of the dependency as a goto-bin
             if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW)) == "":
-                restore_and_exit(-1)
+                sys.exit(-1)
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD)) == "":
-                exit(-1) # restore_and_exit(-1)
+                sys.exit(-1)
 
             os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
@@ -445,14 +441,13 @@ if __name__ == '__main__':
                     )).check_returncode()
                 except subprocess.CalledProcessError:
                     traceback.print_exc()
-                    restore_and_exit(-1)
+                    restore_and_exit(DEPENDENCY_OLD, -1)
                 break
 
-            restore_and_exit(0) # tmp
         except KeyboardInterrupt:
-            restore_and_exit(-1)
+            restore_and_exit(DEPENDENCY_OLD, -1)
 
-    if CONFIG.SKIP_IMPACT:  restore_and_exit(0)
+    if CONFIG.SKIP_IMPACT:  restore_and_exit(DEPENDENCY_OLD, 0)
 
     # - - - Transitive change set propagation - - - #
     # To include functions that have not had a textual change but call a 
@@ -513,7 +508,7 @@ if __name__ == '__main__':
 
         except Exception as e:
             traceback.print_exc()
-            restore_and_exit(-1)
+            restore_and_exit(DEPENDENCY_OLD, -1)
 
 
     if CONFIG.VERBOSITY >= 2:
@@ -550,7 +545,7 @@ if __name__ == '__main__':
                     pretty_print_impact_by_proj(CALL_SITES)
     except Exception as e:
         traceback.print_exc()
-        restore_and_exit(-1)
+        restore_and_exit(DEPENDENCY_OLD, -1)
 
 
-    restore_and_exit(0)
+    restore_and_exit(DEPENDENCY_OLD, 0)
