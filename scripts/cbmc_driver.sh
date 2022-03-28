@@ -25,9 +25,21 @@ goto-cc -DCBMC -I $OUTDIR \
 	$NEW_LIB $OLD_LIB $DRIVER \
  	-o $OUTFILE
 
-cbmc --drop-unused-functions --list-goto-functions $OUTFILE
-#cbmc --drop-unused-functions --show-goto-functions $OUTFILE
+# If we use '--drop-unused-functions' we lose getDebugLevel()
+# We still have $link versions but as soon as we try to invoke them
+# they dissapear ('body not available')
 
+fnc_name=poolBytesToAllocateFor
+
+cbmc --object-bits 12 --list-goto-functions $OUTFILE |
+	grep --color=always -C 5 -i $fnc_name
+
+cbmc --object-bits 12  --show-goto-functions $OUTFILE |
+	grep --color=always -C 100 -i $fnc_name
+
+#time cbmc ./$OUTFILE --function main \
+#	--unwind $UNWIND \
+#	--object-bits 12 --property main.assertion.1
 
 
 

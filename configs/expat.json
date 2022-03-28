@@ -8,7 +8,7 @@
 	"EXCLUDE_DIRS": "./expat/tests",
 	"DEPLIB_NAME": "libexpat.a",
 	
-	"DRIVER": "./drivers/getdebuglevel_driver.c",
+	"DRIVER": "./drivers/poolBytes_driver.c",
 	"RENAME_BLACKLIST": "~/Repos/euf/configs/expat_blacklist.txt",
 	"RENAME_SCRIPT": "~/Repos/euf/scripts/expat_rename.sh",
 	"CCDB_BUILD_SCRIPT": "",

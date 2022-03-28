@@ -6,6 +6,9 @@ Check which files are different:
 
 DEP_DIR_EUF=~/.cache/euf/libexpat-bbdfcfef SUFFIX=_old_b026324c6904b2a ~/Repos/euf/scripts/expat_rename.sh
 
+TODO: All of these steps could be generalised into the config.json
+
+
 '''
 
 [[ -z "$DEP_DIR_EUF" || -z "$SUFFIX" ]] && 
