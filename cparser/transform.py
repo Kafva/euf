@@ -249,7 +249,9 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
                         f"echon getline('.')[col('.')-1:col('.')+{longest_macro_name}-1]"
                     )
 
-                    if any(map(lambda m: text_to_replace.startswith(m['name']+"(") , CONFIG.MACRO_NAMES)): # type: ignore
+                    if any(map(lambda m:
+                        text_to_replace.startswith(m['name']+"(") , # type: ignore
+                        CONFIG.MACRO_NAMES)):
                         if CONFIG.VERBOSITY >= 1:
                             print_info(f"[noop-macro] Adding suffix to '{identifier}' ({i+1}/{GLOBALS_CNT})")
                         macro_replace_symbols.append({

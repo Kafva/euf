@@ -9,7 +9,7 @@
 	"DEPLIB_NAME": "libexpat.a",
 	
 	"DRIVER": "./drivers/gettok_driver.c",
-	"RENAME_BLACKLIST": "~/Repos/euf/tests/data/expat_blacklist.txt",
+	"RENAME_BLACKLIST": "~/Repos/euf/configs/expat_blacklist.txt",
 	"RENAME_SCRIPT": "~/Repos/euf/scripts/expat_rename.sh",
 	"CCDB_BUILD_SCRIPT": "",
 	"GOTO_BUILD_SCRIPT": "~/Repos/euf/scripts/mk_goto.sh",
