@@ -417,41 +417,42 @@ if __name__ == '__main__':
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD)) == "":
                 exit(-1) # restore_and_exit(-1)
 
-            #os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
+            os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
 
-            #script_env = CONFIG.get_script_env()
-            #script_env.update({
-            #    'NEW_LIB': new_lib,
-            #    'OLD_LIB': old_lib,
-            #    'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
-            #    'UNWIND': str(CONFIG.UNWIND)
-            #})
+            script_env = CONFIG.get_script_env()
+            script_env.update({
+                'NEW_LIB': new_lib,
+                'OLD_LIB': old_lib,
+                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+                'UNWIND': str(CONFIG.UNWIND)
+            })
 
-            #for change in CHANGED_FUNCTIONS:
-            #    # TODO: pair each change with its own dedicated driver
-            #    # based on the function being tested
-            #    if DEP_ONLY_PATH_OLD != "" and \
-            #       DEP_ONLY_PATH_OLD != change.old.filepath:
-            #        continue
+            for change in CHANGED_FUNCTIONS:
+                # TODO: pair each change with its own dedicated driver
+                # based on the function being tested
+                if DEP_ONLY_PATH_OLD != "" and \
+                   DEP_ONLY_PATH_OLD != change.old.filepath:
+                    continue
 
-            #    script_env.update({
-            #        'DRIVER': CONFIG.DRIVER
-            #    })
-            #    try:
-            #        print_info(f"Starting CBMC analysis for {change.old}")
-            #        (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_driver.sh" ],
-            #        env = script_env, stdout = sys.stderr, cwd = BASE_DIR
-            #        )).check_returncode()
-            #    except subprocess.CalledProcessError:
-            #        traceback.print_exc()
-            #        restore_and_exit(-1)
-            #    break
+                script_env.update({
+                    'DRIVER': CONFIG.DRIVER
+                })
+                try:
+                    print("\n")
+                    print_info(f"Starting CBMC analysis for {change.old}")
+                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_driver.sh" ],
+                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
+                    )).check_returncode()
+                except subprocess.CalledProcessError:
+                    traceback.print_exc()
+                    restore_and_exit(-1)
+                break
 
-            #restore_and_exit(0) # tmp
+            restore_and_exit(0) # tmp
         except KeyboardInterrupt:
             restore_and_exit(-1)
 
-    if CONFIG.SKIP_IMPACT: exit(0) # restore_and_exit(0)
+    if CONFIG.SKIP_IMPACT:  restore_and_exit(0)
 
     # - - - Transitive change set propagation - - - #
     # To include functions that have not had a textual change but call a 
