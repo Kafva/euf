@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-[[ -z "$OUTDIR" || -z "$DEPENDENCY_OLD" || -z "$DEPENDENCY_NEW" || 
-   -z "$DRIVER" || -z "$UNWIND" || -z "$SETX" || -z "$NEW_LIB"  || -z "$OLD_LIB" 
+die(){ echo -e "\033[31m!>\033[0m $1" >&2 ; exit 1; }
+[[ -z "$OUTDIR" || -z "$DRIVER" || -z "$UNWIND" || 
+	-z "$SETX" || -z "$NEW_LIB"  || -z "$OLD_LIB" 
 ]] && die "Missing enviroment variable(s)"
 
 OUTFILE=runner
@@ -9,11 +10,16 @@ mkdir -p $OUTDIR
 rm -f $OUTFILE
 
 $SETX && set -x
-cp ./drivers/cprover_builtin_headers.h  $OUTDIR
+#echo $OUTDIR
+#cp ./drivers/cprover_builtin_headers.h  						$OUTDIR
+cp ~/.cache/euf/libexpat-c16300f0/expat/lib/expat{_external.h,.h} 	$OUTDIR/
+# TODO: Not needed
+cp ~/.cache/euf/libexpat-bbdfcfef/expat/lib/expat.h 								$OUTDIR/expat_old.h
+cp ~/.cache/euf/libexpat-bbdfcfef/expat/lib/expat_external.h 				$OUTDIR/expat_external_old.h
+sed -i'' -E 's/expat_external.h/expat_external_old.h/g' $OUTDIR/expat_external.h
 
-# TODO: Automate this (should not be needed)
-#cp $DEPENDENCY_NEW/src/oniguruma.h 	$OUTDIR/oniguruma_new.h
-#cp $DEPENDENCY_OLD/oniguruma.h 		$OUTDIR/oniguruma_old.h
+# ???
+# goto-harness --harness-type call-function --function euf_main  --harness-function-name harness_entry  runner runner_harness.c
 
 # Note that the libraries can become unaccessible if they are compiled with an
 # older version of goto-cc compared to the current 
@@ -21,6 +27,10 @@ cp ./drivers/cprover_builtin_headers.h  $OUTDIR
 # If the compilation fails, verify that the symbols in the old library are 
 # actually renamed:
 #	cbmc --list-goto-functions $OLD_LIB
+#goto-cc -DCBMC -I $(dirname $(dirname $NEW_LIB)) \
+#	$NEW_LIB $OLD_LIB $DRIVER \
+# 	-o $OUTFILE
+
 goto-cc -DCBMC -I $OUTDIR \
 	$NEW_LIB $OLD_LIB $DRIVER \
  	-o $OUTFILE
@@ -29,17 +39,19 @@ goto-cc -DCBMC -I $OUTDIR \
 # We still have $link versions but as soon as we try to invoke them
 # they dissapear ('body not available')
 
-fnc_name=poolBytesToAllocateFor
+fnc_name=XML_ErrorString
+#fnc_name=poolBytesToAllocateFor
+#fnc_name=matrix_init
 
-cbmc --object-bits 12 --list-goto-functions $OUTFILE |
-	grep --color=always -C 5 -i $fnc_name
+#cbmc --unwind $UNWIND --object-bits 24 --list-goto-functions $OUTFILE |
+#	grep --color=always -C 5 -i $fnc_name
 
-cbmc --object-bits 12  --show-goto-functions $OUTFILE |
-	grep --color=always -C 100 -i $fnc_name
+#cbmc --object-bits 12  --show-goto-functions $OUTFILE |
+#	grep --color=always -C 100 -i $fnc_name
 
-#time cbmc ./$OUTFILE --function main \
-#	--unwind $UNWIND \
-#	--object-bits 12 --property main.assertion.1
+time cbmc ./$OUTFILE --function euf_main \
+	--unwind $UNWIND \
+	--object-bits 12 --property euf_main.assertion.1 #--compact-trace
 
 
 

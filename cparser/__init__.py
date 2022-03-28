@@ -11,7 +11,7 @@ BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
 @dataclass
 class Config:
-    # - - - CLI options  - - -
+    ''' - - - CLI options  - - - '''
     _PROJECT_DIR: str = ""
     _DEPENDENCY_DIR: str = ""
     _DEP_SOURCE_ROOT: str = ""
@@ -46,7 +46,7 @@ class Config:
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
-    OUTDIR: str = ".out"
+    OUTDIR: str = f"{BASE_DIR}/.out"
     SUFFIX: str = "_old_b026324c6904b2a"
 
     # Toggles echoing of scripts

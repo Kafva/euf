@@ -417,13 +417,13 @@ if __name__ == '__main__':
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD)) == "":
                 exit(-1) # restore_and_exit(-1)
 
-            os.makedirs(f"{BASE_DIR}/{CONFIG.OUTDIR}", exist_ok=True)
+            os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
             script_env = CONFIG.get_script_env()
             script_env.update({
                 'NEW_LIB': new_lib,
                 'OLD_LIB': old_lib,
-                'OUTDIR': f"{BASE_DIR}/{CONFIG.OUTDIR}",
+                'OUTDIR': CONFIG.OUTDIR,
                 'UNWIND': str(CONFIG.UNWIND)
             })
 

@@ -4,7 +4,7 @@
 int* matrix_init_old_b026324c6904b2a(int rows, int columns, int limit);
 int* matrix_init(int rows, int columns, int limit);
 
-int main(int argc, char* argv[]){
+int euf_main(int argc, char* argv[]){
 	#ifdef CBMC
 	int limit = nondet_int();
 	__CPROVER_assume( limit > 0 );

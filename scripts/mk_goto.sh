@@ -19,23 +19,23 @@ goto_compile(){
 
 	# make clean && ./configure CC=goto-cc --host none-none-none && make CC=goto-cc -j9
 	make clean
-	git clean -df --exclude=compile_commands.json
-
-	#[[  -f "configure.ac" || -f "configure.in" ]] &&
-	#	autoreconf -fi || 
-	#	echo "!> Missing autoconf script" >&2 
+	#git clean -df --exclude=compile_commands.json
 
 	echo "!> Starting goto-bin compilation: $DEPLIB_NAME" >&2
 	
 	# This is not the same as running from cli for expat?
-	[ -f "configure" ] ||	echo "!> Missing ./configure" >&2
-	[ -f "configure" ] &&
-		./configure CC=goto-cc --host none-none-none || return -1
-
-	[ -f "Makefile" ] ||	echo "!> Missing Makefile" >&2
-	[ -f "Makefile" ] &&
+	if [ -f "configure" ]; then
+		./configure CC=goto-cc --host none-none-none
+	else
+		echo "!> Missing ./configure" >&2
+	fi
+		
+	if [ -f "Makefile" ]; then
 		make CC=goto-cc -j$PROCS || return -1
-	
+	else
+		echo "!> Missing Makefile" >&2
+	fi
+
 	# Print the path to the library
 	find $DEP_DIR_EUF -name "$DEPLIB_NAME" | head -n1
 
@@ -65,7 +65,7 @@ fi
 DEPLIB_PATH=$(find $DEP_DIR_EUF -name "$(basename $DEPLIB_NAME)" 2>/dev/null | head -n1)
 
 if [ -n "$DEPLIB_PATH" ]; then
-	printf "!> [$(basename $DEP_DIR_EUF)]: Found pre-existing library: $DEPLIB_NAME -- Skipping goto-bin compilation\n" >&2
+	printf "\n!> [$(basename $DEP_DIR_EUF)]: Found pre-existing library: $DEPLIB_NAME -- Skipping goto-bin compilation\n" >&2
 
 	# Print the path to the dependency
 	printf "$DEPLIB_PATH"

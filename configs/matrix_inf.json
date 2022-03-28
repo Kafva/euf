@@ -1,0 +1,21 @@
+{
+	"COMMIT_OLD": "0dc943cd604f4cb8c0c365242a06248f9ae95b41",
+	"COMMIT_NEW": "e1bf27347987acea85c41f70b31cd0e416a31e81",
+
+	"PROJECT_DIR": "~/Repos/main",
+	"DEPENDENCY_DIR": "~/Repos/matrix",
+	"DEPLIB_NAME": "libmatrix.a",
+	"DRIVER": "./drivers/matrix_init_driver.c",
+
+	"VERBOSITY": 1,
+	"NPROC": 1,
+	"SKIP_BLAME": false,
+	"UNWIND": 10,
+	"SKIP_IMPACT": false,
+	"FULL": true,
+	"FORCE_RECOMPILE": true,
+
+	"EDIT_DELAY": 1
+}
+
+
