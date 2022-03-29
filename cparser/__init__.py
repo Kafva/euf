@@ -32,7 +32,7 @@ class Config:
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
 
     _RENAME_BLACKLIST: str = ""
-    _GOTO_BUILD_SCRIPT: str = f"{BASE_DIR}/scripts/mk_goto.sh"
+    _GOTO_BUILD_SCRIPT: str = ""
     _CCDB_BUILD_SCRIPT: str = ""
     _RENAME_SCRIPT: str = ""
     PLUGIN: str = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
@@ -84,6 +84,22 @@ class Config:
     To simplify the config file parsing we dont use a class for this
     '''
     MACRO_NAMES: list[dict[str,str|list[str]]] = field(default_factory=list)
+
+    # Limits CBMC analysis to a specific function
+    FUNC_NAME: str = ""
+
+
+    # Not all functions defined in a library are visible to our driver if the
+    # authors of the library have used the `-fvisibility=hidden` flag during compilation
+    # This flag removes any functions that are not explicitly marked as visible from
+    # the symbol table. We need it to be set to 'default' to make everything visible (`man gcc`)
+
+    # Enviroment varaibles to set when running `./configure`
+    # during ccdb generation and goto-bin compliation
+    # This will usually involve setting CFLAGS and/or CPPFLAGS to override
+    # specific default values set in AM_CFLAGS and AM_CPPFLAGS
+    BUILD_ENV: dict[str,str] = field(default_factory=dict)
+
 
     # - - - Property setters
     def _parse_path(self, value) -> str:

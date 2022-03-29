@@ -19,7 +19,7 @@ goto_compile(){
 
 	# make clean && ./configure CC=goto-cc --host none-none-none && make CC=goto-cc -j9
 	make clean
-	#git clean -df --exclude=compile_commands.json
+	git clean -df --exclude=compile_commands.json
 
 	echo "!> Starting goto-bin compilation: $DEPLIB_NAME" >&2
 	
@@ -31,7 +31,7 @@ goto_compile(){
 	fi
 		
 	if [ -f "Makefile" ]; then
-		make CC=goto-cc -j$PROCS || return -1
+		bash -c "make CC=goto-cc -j$PROCS $CFLAGS"	|| return -1
 	else
 		echo "!> Missing Makefile" >&2
 	fi

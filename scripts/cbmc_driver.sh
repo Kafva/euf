@@ -14,13 +14,13 @@ rm -f $OUTFILE
 $SETX && set -x
 #echo $OUTDIR
 #cp ./drivers/cprover_builtin_headers.h  						$OUTDIR
-cp ~/.cache/euf/libexpat-c16300f0/expat/lib/expat{_external.h,.h} 	$OUTDIR/
+#cp ~/.cache/euf/libexpat-c16300f0/expat/lib/expat{_external.h,.h} 	$OUTDIR/
 
 
 # TODO: Not needed
-cp ~/.cache/euf/libexpat-bbdfcfef/expat/lib/expat.h 								$OUTDIR/expat_old.h
-cp ~/.cache/euf/libexpat-bbdfcfef/expat/lib/expat_external.h 				$OUTDIR/expat_external_old.h
-sed -i'' -E 's/expat_external.h/expat_external_old.h/g' $OUTDIR/expat_external.h
+#cp ~/.cache/euf/libexpat-bbdfcfef/expat/lib/expat.h 								$OUTDIR/expat_old.h
+#cp ~/.cache/euf/libexpat-bbdfcfef/expat/lib/expat_external.h 				$OUTDIR/expat_external_old.h
+#sed -i'' -E 's/expat_external.h/expat_external_old.h/g' $OUTDIR/expat_external.h
 
 # There is a built-in harness command:
 # 	goto-harness --harness-type call-function --function $EUF_ENTRY  --harness-function-name harness_entry  runner runner_harness.c
@@ -52,11 +52,14 @@ goto-cc -DCBMC -I $OUTDIR \
 
 # Drop the goto functions in the binary to see if bodies were dropped 
 # (in which case analysis cannot continue)
-cbmc --unwind $UNWIND --object-bits $OBJECT_BITS --list-goto-functions $OUTFILE |
-	grep --color=always -C 5 -i $FUNC_NAME
+#cbmc --unwind $UNWIND --object-bits $OBJECT_BITS --list-goto-functions $OUTFILE |
+#	grep --color=always -C 5 -i $FUNC_NAME | grep "body not available" && exit 0
 
-#cbmc --object-bits $OBJECT_BITS  --show-goto-functions $OUTFILE |
-#	grep --color=always -C 100 -i $fnc_name
+cbmc --unwind $UNWIND --object-bits $OBJECT_BITS --list-goto-functions $OUTFILE |
+	grep --color=always -C 5 -i $FUNC_NAME ; exit 0
+
+#cbmc --object-bits $OBJECT_BITS --show-goto-functions $OUTFILE |
+#	grep --color=always -C 100 -i $FUNC_NAME; exit 0
 
 time cbmc ./$OUTFILE --function $EUF_ENTRY \
 	--unwind $UNWIND \

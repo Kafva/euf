@@ -408,10 +408,12 @@ if __name__ == '__main__':
                 sys.exit(-1)
 
             # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW)) == "":
+            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)) == "":
                 sys.exit(-1)
-            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD)) == "":
+            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)) == "":
                 sys.exit(-1)
+
+            restore_and_exit(DEPENDENCY_OLD, 0)
 
             os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
@@ -433,7 +435,8 @@ if __name__ == '__main__':
 
                 script_env.update({
                     'DRIVER': CONFIG.DRIVER,
-                    'FUNC_NAME': change.old.name
+                    'FUNC_NAME': CONFIG.FUNC_NAME if CONFIG.FUNC_NAME != "" \
+                            else change.old.name
                 })
                 try:
                     print("\n")

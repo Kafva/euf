@@ -1,0 +1,37 @@
+{
+	"COMMIT_OLD": "bbdfcfef4747d2d66e81c19f4a55e29e291aa171",
+	"COMMIT_NEW": "c16300f0bc4318f31f9e27eb2702ddbffe086fea",
+	"PROJECT_DIR": "~/Repos/jabberd-2.7.0",
+	"DEPENDENCY_DIR": "~/Repos/libexpat",
+	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
+	"EXCLUDE_DIRS": "./expat/tests",
+	"DEPLIB_NAME": "libexpat.a",
+
+	"UNWIND": 10,
+	"OBJECT_BITS": 12,
+	
+	"RENAME_BLACKLIST": "~/Repos/euf/expat/blacklist.txt",
+	"RENAME_SCRIPT": "~/Repos/euf/expat/rename.sh",
+	"EDIT_DELAY": 1,
+	"MACRO_NAMES": [  
+			{
+					"name": "PREFIX",
+					"prefixes": [ "little2_", "normal_", "big2_" ]
+			},
+			{
+					"name": "NS",
+					"prefixes": []
+			}
+		],
+
+
+	"BUILD_ENV": {
+			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
+			"CFLAGS": "-g -O2 -fvisibility=default"
+	},
+	"VERBOSITY": 2,
+	"NPROC": 12,
+	"SKIP_BLAME": false,
+	"SKIP_IMPACT": true,
+	"FULL": true
+}
