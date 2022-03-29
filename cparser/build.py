@@ -33,7 +33,6 @@ def run_if_present(path:str, filename: str) -> bool:
             return False
     return True
 
-
 def has_valid_compile_db(source_path: str) -> bool:
     cmds_json = f"{source_path}/compile_commands.json"
 
@@ -51,9 +50,7 @@ def has_valid_compile_db(source_path: str) -> bool:
     else:
         return False
 
-
 def autogen_compile_db(source_path: str) -> bool:
-
     if has_valid_compile_db(source_path):
         return True
 

@@ -93,6 +93,15 @@ class Config:
     # authors of the library have used the `-fvisibility=hidden` flag during compilation
     # This flag removes any functions that are not explicitly marked as visible from
     # the symbol table. We need it to be set to 'default' to make everything visible (`man gcc`)
+    #
+    # However, if a function lacks a decleration in a header file it will still
+    # be rendered unexported so we need to manually ensure that all functions
+    # we want to test have a decleration in the main header of the library
+    #
+    # Furthermore, we need to drop the `static` specificer from any functions
+    # that use it since static functions are bound to a single TU
+    # This can cause issues when a static function expects a global to be
+    # present.
 
     # Enviroment varaibles to set when running `./configure`
     # during ccdb generation and goto-bin compliation
