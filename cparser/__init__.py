@@ -24,7 +24,6 @@ class Config:
     UNWIND: int = 1
     OBJECT_BITS: int = 12
     FULL: bool = False
-    DRIVER: str = ""
     FORCE_RECOMPILE: bool = False
     SKIP_BLAME: bool = False
     SKIP_IMPACT: bool = False
@@ -88,9 +87,11 @@ class Config:
     '''
     MACRO_NAMES: list[dict[str,str|list[str]]] = field(default_factory=list)
 
-    # Limits CBMC analysis to a specific function
-    FUNC_NAME: str = ""
+    # Maps function names to filepaths of drivers
+    DRIVERS: dict[str,str] = field(default_factory=dict)
 
+    # Override to only use a specific (provided) driver for CBMC
+    USE_PROVIDED_DRIVER: bool = False
 
     # Not all functions defined in a library are visible to our driver if the
     # authors of the library have used the `-fvisibility=hidden` flag during compilation
@@ -191,7 +192,6 @@ class Config:
 
 global CONFIG
 CONFIG = Config()
-
 
 @dataclass(init=True)
 class DependencyArgument:

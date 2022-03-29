@@ -25,6 +25,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
+from cparser.gen_harness import create_harness
 from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -137,8 +138,6 @@ if __name__ == '__main__':
         'Only process a specific path of the dependency (uses the path in the new commit)')
     parser.add_argument("--dep-only-old", metavar="filepath", default="", help=
         'Only process a specific path of the dependency (uses the path in the old commit)')
-    parser.add_argument("--driver", metavar="filepath", default="", help=
-        'The entrypoint to use for CBMC tests')
     parser.add_argument("--project-only", metavar="filepath", default="", help=
         'Only process a specific path of the main project')
     parser.add_argument("--dep-source-root", metavar="filepath",
@@ -175,7 +174,6 @@ if __name__ == '__main__':
         CONFIG.LIBCLANG             = args.libclang
         CONFIG.FULL                 = args.full
         CONFIG.UNWIND               = args.unwind
-        CONFIG.DRIVER               = args.driver
         CONFIG.FORCE_RECOMPILE      = args.force_recompile
         CONFIG.SKIP_IMPACT          = args.skip_impact
         CONFIG.SKIP_BLAME           = args.skip_blame
@@ -389,10 +387,6 @@ if __name__ == '__main__':
         traceback.print_exc()
         sys.exit(-1)
 
-    # - - - Harness generation - - - #
-    # Regardless of which back-end we use to check equivalance, 
-    # we will need a minimal program that invokes both versions of the changed 
-    # function and then performs an assertion on all affected outputs
 
 
 
@@ -436,16 +430,36 @@ if __name__ == '__main__':
             })
 
             for change in CHANGED_FUNCTIONS:
-                # TODO: pair each change with its own dedicated driver
-                # based on the function being tested
                 if DEP_ONLY_PATH_OLD != "" and \
                    DEP_ONLY_PATH_OLD != change.old.filepath:
                     continue
 
+                if CONFIG.USE_PROVIDED_DRIVER:
+                    driver = next(iter(CONFIG.DRIVERS.values()))
+                    func_name = next(iter(CONFIG.DRIVERS.keys()))
+                else:
+                    # - - - Harness generation - - - #
+                    # Regardless of which back-end we use to check equivalance, 
+                    # we will need a minimal program that invokes both versions of the changed 
+                    # function and then performs an assertion on all affected outputs
+                    #
+                    # If no explicit driver was passed, attempt to generate one
+                    if change.old.name in CONFIG.DRIVERS:
+                        driver = CONFIG.DRIVERS[change.old.name]
+                        fail_msg = f"Missing driver: '{driver}'"
+                    else:
+                        driver = create_harness(change)
+                        fail_msg = "Failed to generate driver"
+
+                    if not os.path.exists(driver):
+                        print_err(f"[{change.old.name}()] {fail_msg}")
+                        continue
+
+                    func_name = change.old.name
+
                 script_env.update({
-                    'DRIVER': CONFIG.DRIVER,
-                    'FUNC_NAME': CONFIG.FUNC_NAME if CONFIG.FUNC_NAME != "" \
-                            else change.old.name
+                    'DRIVER': driver,
+                    'FUNC_NAME': func_name
                 })
                 try:
                     print("\n")

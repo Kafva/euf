@@ -7,14 +7,17 @@ if [ "$1" = ls ]; then
 	exit 0
 fi
 
-name=$(printf ./expat/drivers/$1*.c)
+driver_path=$(printf ./expat/drivers/$1*.c)
+func_name=$(basename ${driver_path%%.c})
 
-[ -f "$name" ] || die "Invalid argument: $name"
+[ -f "$driver_path" ] || die "Invalid argument: $driver_path"
 
 cat << EOF > /tmp/$1.json
 {
-	"DRIVER": "$name",
-	"FUNC_NAME": "$(basename ${name%%.c})"
+	"DRIVERS": {
+	 "$func_name": "$driver_path"
+	},
+	"USE_PROVIDED_DRIVER": true
 }
 EOF
 

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-esc=$(printf "\033[")
 die(){ echo -e "\033[31m!>\033[0m $1" >&2 ; exit 1; }
+output_formatting(){
+	esc=$(printf "\033[")
+	sed "/^file/d; 
+		s/ SUCCESS$/${esc}1;32m SUCCESS${esc}0m/;
+		s/ FAILURE/${esc}1;31m FAILURE${esc}0m/;
+		"
+}
 [[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$UNWIND" 		|| 
 	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
 	 -z "$FUNC_NAME"  || -z "$OBJECT_BITS" 	|| -z "$OUTFILE"
@@ -19,14 +25,12 @@ CBMC_OPTS=(
 	--object-bits $OBJECT_BITS
 )
 
-cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE |
-	grep --color=always -A 10 -i "^$FUNC_NAME" #; exit 0
+cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
+	grep --color=always -A 10 -i "^$FUNC_NAME" 2>&1 \
+	| output_formatting
 
 time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 		--function $EUF_ENTRYPOINT \
 	  --property $EUF_ENTRYPOINT.assertion.1 2>&1 \
-		| sed "/^file/d; 
-			s/ SUCCESS$/${esc}1;32m SUCCESS${esc}0m/;
-			s/FAILURE/${esc}1;31mFAILURE${esc}0m/;
-			"
+		| output_formatting
 exit 0
