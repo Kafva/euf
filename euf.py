@@ -420,7 +420,8 @@ if __name__ == '__main__':
                 'NEW_LIB': new_lib,
                 'OLD_LIB': old_lib,
                 'OUTDIR': CONFIG.OUTDIR,
-                'UNWIND': str(CONFIG.UNWIND)
+                'UNWIND': str(CONFIG.UNWIND),
+                'OBJECT_BITS': str(CONFIG.OBJECT_BITS)
             })
 
             for change in CHANGED_FUNCTIONS:
@@ -431,7 +432,8 @@ if __name__ == '__main__':
                     continue
 
                 script_env.update({
-                    'DRIVER': CONFIG.DRIVER
+                    'DRIVER': CONFIG.DRIVER,
+                    'FUNC_NAME': change.old.name
                 })
                 try:
                     print("\n")

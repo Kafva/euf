@@ -22,6 +22,7 @@ class Config:
     VERBOSITY: int = 0
     NPROC: int = 5
     UNWIND: int = 1
+    OBJECT_BITS: int = 12
     FULL: bool = False
     DRIVER: str = ""
     FORCE_RECOMPILE: bool = False
