@@ -1,5 +1,4 @@
 #include <stdlib.h>
-//#include "expat_old.h"
 
 // Required!
 #include "expat.h" // Has the decleration for types 
@@ -13,7 +12,7 @@ int euf_main(){
 	XML_LChar out1 = XML_ErrorString(code);
 	XML_LChar out2 = XML_ErrorString_old_b026324c6904b2a(code);
 
-	__CPROVER_assert(out1 == out2, "Same");
+	__CPROVER_assert(out1 == out2, "Equivalent output");
 	#endif
 
 	return 0;

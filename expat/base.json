@@ -25,6 +25,10 @@
 		],
 
 
+	"REQUIRED_HEADERS": [
+			"expat/lib/expat.h",
+			"expat/lib/expat_external.h"
+	],
 	"BUILD_ENV": {
 			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
 			"CFLAGS": "-g -O2 -fvisibility=default"

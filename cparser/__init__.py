@@ -61,8 +61,11 @@ class Config:
     RENAME_CSV: str = "/tmp/rename.csv"
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
+    CBMC_OUTFILE: str = "runner"
+    EUF_ENTRYPOINT: str = "euf_main"
 
     EDIT_DELAY: float = 2
+    REQUIRED_HEADERS: list[str] = field(default_factory=list)
 
     '''
     Expat has a 'noop' macro on the form

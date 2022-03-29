@@ -15,6 +15,7 @@ remove equivilent entries
 all locations were functions from the change set are called
 '''
 import argparse, re, sys, os, traceback, multiprocessing, subprocess
+import shutil
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -231,7 +232,6 @@ if __name__ == '__main__':
         print(f"Unable to find new commit: {args.commit_new}")
         sys.exit(-1)
 
-
     # Only include modified (M) and renamed (R) '.c' files
     # Renamed files still provide us with context information when a
     # change has occurred at the same time as a move operation:
@@ -248,7 +248,6 @@ if __name__ == '__main__':
                 new_compile_args = [],
                 old_compile_args = []
     ) for d in COMMIT_DIFF ]
-
 
     DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
     DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_NEW.hexsha[:8]}"
@@ -419,13 +418,20 @@ if __name__ == '__main__':
             if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)) == "":
                 sys.exit(-1)
 
+            # Copy any required headers into the include
+            # directory of the driver
             os.makedirs(CONFIG.OUTDIR, exist_ok=True)
+            for header in CONFIG.REQUIRED_HEADERS:
+                shutil.copy(f"{DEPENDENCY_NEW}/{header}", CONFIG.OUTDIR)
+
 
             script_env = CONFIG.get_script_env()
             script_env.update({
                 'NEW_LIB': new_lib,
                 'OLD_LIB': old_lib,
                 'OUTDIR': CONFIG.OUTDIR,
+                'OUTFILE': CONFIG.CBMC_OUTFILE,
+                'EUF_ENTRYPOINT': CONFIG.EUF_ENTRYPOINT,
                 'UNWIND': str(CONFIG.UNWIND),
                 'OBJECT_BITS': str(CONFIG.OBJECT_BITS)
             })
