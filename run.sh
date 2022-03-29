@@ -7,7 +7,7 @@ if [ "$1" = ls ]; then
 	exit 0
 fi
 
-driver_path=$(printf ./expat/drivers/$1*.c)
+driver_path=$(printf $BASE_DIR/expat/drivers/$1*.c)
 func_name=$(basename ${driver_path%%.c})
 
 [ -f "$driver_path" ] || die "Invalid argument: $driver_path"
