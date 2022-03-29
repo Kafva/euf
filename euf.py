@@ -393,9 +393,8 @@ if __name__ == '__main__':
     # Regardless of which back-end we use to check equivalance, 
     # we will need a minimal program that invokes both versions of the changed 
     # function and then performs an assertion on all affected outputs
-    #
-    # TODO
-    #
+
+
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:

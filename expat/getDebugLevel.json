@@ -1,4 +1,0 @@
-{
-	"DRIVER": "./expat/drivers/getDebugLevel.c",
-	"FUNC_NAME": "getDebugLevel"
-}

@@ -1,4 +1,0 @@
-{
-	"DRIVER": "./expat/drivers/XML_ErrorString.c",
-	"FUNC_NAME": "XML_ErrorString"
-}
