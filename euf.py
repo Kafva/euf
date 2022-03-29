@@ -32,7 +32,7 @@ from cparser.impact_set import get_call_sites_from_file, \
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
 from cparser.transform import add_suffix_to_globals, \
-        has_euf_internal_stash
+        has_euf_internal_stash, remove_static_specifiers
 
 
 def restore_and_exit(old_dep_path: str, code: int = 0):
@@ -404,12 +404,14 @@ if __name__ == '__main__':
             if CONFIG.VERBOSITY >= 1:
                 print_stage("Reduction")
 
+            # If expat has fewer than 449 something is wrong
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
 
-            # Hacky removal of 'static' specifier from all functions
-            # (won't handle macro expansions that make functions static)
-            # TODO
+            # Hacky removal of 'static' specifiers from all functions
+            # (does not consider macro expansions that make functions static)
+            remove_static_specifiers(DEPENDENCY_OLD)
+            remove_static_specifiers(DEPENDENCY_NEW)
 
             # Compile the old and new version of the dependency as a goto-bin
             if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)) == "":

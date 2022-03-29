@@ -4,11 +4,9 @@ die(){ echo -e "$1" >&2 ; exit 1; }
 Check which files are different:
 	rm -rf expat*/.ccls-cache ; git difftool --no-index ./expat4 ./expat5	
 
-DEP_DIR_EUF=~/.cache/euf/libexpat-bbdfcfef SUFFIX=_old_b026324c6904b2a ~/Repos/euf/scripts/expat_rename.sh
+DEP_DIR_EUF=~/.cache/euf/libexpat-bbdfcfef SUFFIX=_old_b026324c6904b2a ~/Repos/euf/expat/rename.sh
 
 TODO: All of these steps could be generalised into the config.json
-
-
 '''
 
 [[ -z "$DEP_DIR_EUF" || -z "$SUFFIX" ]] && 
@@ -76,6 +74,12 @@ done
 	tests/chardata.c:
 		#define fail(x) _fail_unless(x)
 
+	`normal_updatePosition` is never replaced since we never land on it with ccls
+	(it is defined as PREFIX(updatePosition), the rest of the code base rarely
+	addresses expanded versions of functions)
+	Note that this seemingly only becomes an issue when we strip 
+	away `static` specifiers
+
 	More spurious failures occur for:
 
 	lib/expat.h:
@@ -98,6 +102,8 @@ while read -r line; do
 	replace_ident utf8_toUtf8  $line
 	replace_ident utf8_toUtf16 $line
 	replace_ident _fail_unless $line
+	replace_ident normal_updatePosition $line
+
 	replace_ident	XML_SetBillionLaughsAttackProtectionActivationThreshold $line
 	replace_ident XML_SetBillionLaughsAttackProtectionMaximumAmplification $line
 	replace_ident initScan $line

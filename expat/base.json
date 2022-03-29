@@ -12,7 +12,7 @@
 	
 	"RENAME_BLACKLIST": "~/Repos/euf/expat/blacklist.txt",
 	"RENAME_SCRIPT": "~/Repos/euf/expat/rename.sh",
-	"EDIT_DELAY": 1,
+	"EDIT_DELAY": 2.5,
 	"MACRO_NAMES": [  
 			{
 					"name": "PREFIX",

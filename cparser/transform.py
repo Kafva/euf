@@ -1,3 +1,4 @@
+import re
 import subprocess, os, traceback, pynvim, sys
 from time import sleep
 from datetime import datetime
@@ -15,6 +16,21 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             print(f"{child.kind} {child.type.kind} {child.spelling}")
             indent += 1
         dump_children(child, indent)
+
+def remove_static_specifiers(dep_path: str):
+    source_files = get_source_files(dep_path)
+
+    for source_file in source_files:
+        content = ""
+        with open(source_file, mode='r', encoding='utf8') as f:
+            content = f.read()
+
+        with open(source_file, mode='w', encoding='utf8') as f:
+            f.write(re.sub(
+                pattern = r"(\n\s*)static\s*",
+                repl = r"\1",
+                string = content
+            ))
 
 def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocation]:
     ''' 
@@ -121,6 +137,16 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
 
     return ""
 
+
+def get_source_files(dep_path: str) -> list[str]:
+    ''' Generate a list of all source files in the given repo '''
+    repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
+            Repo(dep_path).git.ls_tree(                        # type: ignore
+            "-r", "HEAD", "--name-only").splitlines())   # type: ignore
+
+    return list(filter(lambda f:
+        f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
+
 def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         suffix: str = CONFIG.SUFFIX) -> bool:
     '''
@@ -159,14 +185,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
         for identifier in global_identifiers:
             f.write(f"{identifier.to_csv()}\n")
 
-
-    # Generate a list of all source files in the repo
-    repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
-            dep_repo.git.ls_tree(                        # type: ignore
-            "-r", "HEAD", "--name-only").splitlines())   # type: ignore
-
-    source_files = list(filter(lambda f:
-        f.endswith(".c") or f.endswith(".h"), repo_files)) # types: ignore
+    source_files = get_source_files(dep_path)
 
     GLOBALS_CNT = len(global_identifiers)
 
@@ -285,7 +304,7 @@ def add_suffix_to_globals(dep_path: str, ccdb: cindex.CompilationDatabase,
 
             # Closing the file will close the socket and generate an error
             try:
-                nvim.command("quit")
+                nvim.command("quit!")
             except OSError:
                     pass
     except pynvim.NvimError:
