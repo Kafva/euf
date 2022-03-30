@@ -48,6 +48,7 @@ class Config:
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
     OUTDIR: str = f"{BASE_DIR}/.out"
     SUFFIX: str = "_old_b026324c6904b2a"
+    REVERSE_MAPPING: bool = False
 
     # Toggles echoing of scripts
     SETX: str = "false"

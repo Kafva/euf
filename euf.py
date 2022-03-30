@@ -177,6 +177,7 @@ if __name__ == '__main__':
         CONFIG.FORCE_RECOMPILE      = args.force_recompile
         CONFIG.SKIP_IMPACT          = args.skip_impact
         CONFIG.SKIP_BLAME           = args.skip_blame
+        CONFIG.REVERSE_MAPPING      = args.reverse_mapping
 
         if args.commit_new != "":
             CONFIG.COMMIT_NEW   = args.commit_new
@@ -567,7 +568,7 @@ if __name__ == '__main__':
             elif CONFIG.VERBOSITY >= 2:
                 pprint(CALL_SITES)
             else:
-                if args.reverse_mapping:
+                if CONFIG.REVERSE_MAPPING:
                     pretty_print_impact_by_dep(CALL_SITES)
                 else:
                     pretty_print_impact_by_proj(CALL_SITES)

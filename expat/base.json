@@ -33,9 +33,11 @@
 			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
 			"CFLAGS": "-g -O2 -fvisibility=default"
 	},
-	"VERBOSITY": 2,
+
+	"REVERSE_MAPPING": true,
+	"VERBOSITY": 0,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
-	"SKIP_IMPACT": true,
+	"SKIP_IMPACT": false,
 	"FULL": true
 }
