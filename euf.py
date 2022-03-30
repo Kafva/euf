@@ -401,8 +401,7 @@ if __name__ == '__main__':
             if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
                 sys.exit(-1)
 
-            # Hacky removal of 'static' specifiers from all functions
-            # (does not consider macro expansions that make functions static)
+            # Removal of 'static' specifiers from all functions
             remove_static_specifiers(DEPENDENCY_OLD)
             remove_static_specifiers(DEPENDENCY_NEW)
 

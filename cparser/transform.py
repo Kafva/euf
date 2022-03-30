@@ -137,7 +137,6 @@ def has_euf_internal_stash(repo: Repo, repo_name: str) -> str:
 
     return ""
 
-
 def get_source_files(dep_path: str) -> list[str]:
     ''' Generate a list of all source files in the given repo '''
     repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
