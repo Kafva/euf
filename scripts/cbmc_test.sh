@@ -3,7 +3,7 @@ OLD_DEP=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat
 NEW_DEP=/home/jonas/.cache/euf/libexpat-c16300f0/expat
 OLD_LIB=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat/lib/xmlparse.o
 NEW_LIB=/home/jonas/.cache/euf/libexpat-c16300f0/expat/lib/xmlparse.o
-DRIVER=/home/jonas/Repos/euf/drivers/cbmc_XML_ErrorString.c
+DRIVER=/home/jonas/Repos/euf/expat/drivers/XML_ErrorString.c
 OUTFILE=/home/jonas/Repos/euf/runner
 
 if [ "$1" = clean ]; then
@@ -24,7 +24,7 @@ make clean
 
 rm -f $OUTFILE
 goto-cc -DCBMC -I $OUTDIR \
-  $OLD_LIB $DRIVER \
+  $OLD_LIB $NEW_LIB $DRIVER \
   -o $OUTFILE
 
 
