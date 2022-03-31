@@ -47,7 +47,7 @@ class Config:
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
     OUTDIR: str = f"{BASE_DIR}/.out"
-    SUFFIX: str = "_old_b026324c6904b2a"
+    SUFFIX: str = "_old_b026324c6904b2a" # Do not change, hardcoded in CBMC fork
     REVERSE_MAPPING: bool = False
 
     # Toggles echoing of scripts

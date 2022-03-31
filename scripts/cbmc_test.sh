@@ -1,0 +1,49 @@
+OUTDIR=/home/jonas/Repos/euf/.out
+OLD_DEP=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat
+NEW_DEP=/home/jonas/.cache/euf/libexpat-c16300f0/expat
+OLD_LIB=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat/lib/xmlparse.o
+NEW_LIB=/home/jonas/.cache/euf/libexpat-c16300f0/expat/lib/xmlparse.o
+DRIVER=/home/jonas/Repos/euf/drivers/cbmc_XML_ErrorString.c
+OUTFILE=/home/jonas/Repos/euf/runner
+
+if [ "$1" = clean ]; then
+  cd $NEW_DEP 
+  make clean
+  ./configure CC=goto-cc --host none-none-none && 
+    make -j14
+
+  cp $NEW_DEP/lib/expat.h $OUTDIR
+
+  # cbmc --show-symbol-table $OLD_LIB
+fi
+
+cd $OLD_DEP 
+make clean
+./configure CC=goto-cc --host none-none-none && 
+  USE_SUFFIX=1 make -j14
+
+rm -f $OUTFILE
+goto-cc -DCBMC -I $OUTDIR \
+  $OLD_LIB $DRIVER \
+  -o $OUTFILE
+
+
+
+#patched_old=$(basename $OLD_LIB)
+#./scripts/carver.py $OLD_LIB $patched_old
+#cbmc --show-symbol-table $patched_old
+
+EUF_ENTRYPOINT=euf_main
+CBMC_OPTS=(
+	--unwind 1
+	--object-bits 12
+)
+
+cbmc $OUTFILE  ${CBMC_OPTS[@]} \
+		--function $EUF_ENTRYPOINT \
+	  --property $EUF_ENTRYPOINT.assertion.1 2>&1 \
+
+
+
+
+
