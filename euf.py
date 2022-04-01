@@ -89,10 +89,10 @@ if __name__ == '__main__':
             COMMIT_OLD: Commit = commit
 
     if not COMMIT_OLD:
-        print(f"Unable to find old commit: {args.commit_old}")
+        print(f"Unable to find old commit: {CONFIG.COMMIT_OLD}")
         sys.exit(-1)
     if not COMMIT_NEW:
-        print(f"Unable to find new commit: {args.commit_new}")
+        print(f"Unable to find new commit: {CONFIG.COMMIT_NEW}")
         sys.exit(-1)
 
     # Only include modified (M) and renamed (R) '.c' files

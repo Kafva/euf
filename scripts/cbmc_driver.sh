@@ -2,7 +2,7 @@
 die(){ echo -e "\033[31m!>\033[0m $1" >&2 ; exit 1; }
 output_formatting(){
 	esc=$(printf "\033[")
-	sed "/^file/d; 
+	sed "/^file/d; /^Unwinding/d;
 		s/ SUCCESS$/${esc}1;32m SUCCESS${esc}0m/;
 		s/ FAILURE/${esc}1;31m FAILURE${esc}0m/;
 		"
