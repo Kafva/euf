@@ -1,11 +1,17 @@
 OUTDIR=/home/jonas/Repos/euf/.out
 OLD_DEP=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat
 NEW_DEP=/home/jonas/.cache/euf/libexpat-c16300f0/expat
-OLD_LIB=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat/lib/xmlparse.o
-NEW_LIB=/home/jonas/.cache/euf/libexpat-c16300f0/expat/lib/xmlparse.o
+
+#OLD_LIB=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat/lib/xmlparse.o
+#NEW_LIB=/home/jonas/.cache/euf/libexpat-c16300f0/expat/lib/xmlparse.o
+
 #DRIVER=/home/jonas/Repos/euf/expat/drivers/XML_ErrorString.c
 #DRIVER=/home/jonas/Repos/euf/expat/drivers/getDebugLevel.c
 DRIVER=/home/jonas/Repos/euf/expat/drivers/keyeq.c
+
+
+OLD_LIB=/home/jonas/.cache/euf/libexpat-bbdfcfef/expat/lib/.libs/libexpat.a
+NEW_LIB=/home/jonas/.cache/euf/libexpat-c16300f0/expat/lib/.libs/libexpat.a
 
 OUTFILE=/home/jonas/Repos/euf/runner
 
@@ -16,8 +22,6 @@ if [ "$1" = clean ]; then
   ./configure CC=goto-cc --host none-none-none && 
     make -j14
 fi
-
-
 
 cp $NEW_DEP/lib/expat.h $OUTDIR
 

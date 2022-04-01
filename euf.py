@@ -19,7 +19,6 @@ import shutil
 from functools import partial
 from pprint import pprint
 from clang import cindex
-from git.exc import GitCommandError
 from git.repo import Repo
 from git.objects.commit import Commit
 
@@ -33,46 +32,7 @@ from cparser.impact_set import get_call_sites_from_file, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         compile_db_fail_msg
-from cparser.transform import add_suffix_to_globals, \
-        has_euf_internal_stash, remove_static_specifiers
-
-
-def restore_and_exit(old_dep_path: str, code: int = 0):
-    '''
-    Should be called when exiting the program after a successful call to
-    `add_suffix_to_globals`
-
-    Stash the changes in any repository that does not already have an 
-    internal stash and has uncommited modifications. Restore any changes
-    to reposistories that already have a stash
-    Keeping the '_old' suffixes around would require
-    a manual reset to use EUF agian
-    '''
-    try:
-        # If the repository has changes that include the string '_old' 
-        # and there is no internal stash associated with it
-        # create a new stash
-        repo = Repo(old_dep_path)
-        repo_name = os.path.basename(old_dep_path)
-
-        if has_euf_internal_stash(repo, repo_name) == "" and \
-            re.search(rf"{CONFIG.SUFFIX}", repo.git.diff()) != None: # type: ignore
-                print_info(f"Stashing changes in {repo_name}")
-                repo.git.stash(# type: ignore
-                        message = f"{CONFIG.CACHE_INTERNAL_STASH} {repo_name}",
-                )
-        # Otherwise checkout all the changes (we can restore them from the 
-        # existing stash if need to run the analysis again)
-        else:
-            if CONFIG.VERBOSITY >= 3:
-                print_info(f"Discarding changes in {repo_name}")
-            repo.git.checkout(".") # type: ignore
-
-    except GitCommandError:
-        traceback.print_exc()
-        sys.exit(-1)
-
-    sys.exit(code)
+from cparser.enumerate_globals import write_rename_files
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
@@ -88,111 +48,15 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
         raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
 if __name__ == '__main__':
-    config_passed = '--config' in sys.argv
-
     parser = argparse.ArgumentParser(description=
-    "A 'compile_commands.json' database must be present for both the project and the dependency."
+    "A 'compile_commands.json' database must be generated for both the project and the dependency."
     )
-
-    parser.add_argument("project", type=str, nargs='?' if config_passed else 1,
-        help='Project to analyze')
-    parser.add_argument("--commit-new", metavar="hash", required=not config_passed,
-        help='Git hash of the new commit in the dependency')
-    parser.add_argument("--commit-old", metavar="hash", required=not config_passed,
-        help='Git hash of the old (current) commit in the dependency')
-    parser.add_argument("--dependency", metavar="directory", required=not config_passed, help=
-        'The dependency to upgrade, should be an up-to-date git repository with the most recent commit checked out')
-    parser.add_argument("--libclang", metavar="filepath",
-        default=CONFIG.LIBCLANG, help=f"Path to libclang (default {CONFIG.LIBCLANG})")
-    parser.add_argument("--deplib-name", metavar="string", required=not config_passed,
-            help=f"The name (e.g. 'libcrypto.a') of the dependency's library")
-
-    parser.add_argument("--goto-build-script", metavar='file', default=CONFIG.GOTO_BUILD_SCRIPT, help=
-        f"Custom build script for generating a goto-bin library, ran instead of ./scripts/mk_goto.sh")
-    parser.add_argument("--ccdb-build-script", metavar='file', default="", help=
-        f"Custom build script for generating compile_commands.json for the dependency, see ./scripts/ccdb* for examples")
-    parser.add_argument("--rename-script", metavar="file", type=str,
-        default="", help=f"Shell scripts for additional processing of source files during the renaming process")
-    parser.add_argument("--rename-blacklist", metavar='file', default="", help=
-        f"Newline seperated file of names that should not be renamed")
-    parser.add_argument("--json", action='store_true', default=False,
-        help='Print results as JSON')
-    parser.add_argument("--force-recompile", action='store_true', default=False,
-        help='Always recompile dependencies')
-    parser.add_argument("--skip-blame", action='store_true', default=False,
-        help='Skip blame correlation')
-    parser.add_argument("--full", action='store_true', default=False,
-        help='Run the full analysis with CBMC')
-    parser.add_argument("--skip-impact", action='store_true', default=False,
-        help='Skip the final impact assessment step')
-    parser.add_argument("--reverse-mapping", action='store_true', default=False,
-        help='Print the impact set as a mapping from dependency changes to project invocations')
-    parser.add_argument("--verbose", metavar='level', type=int,
-        default=CONFIG.VERBOSITY,
-        help=f"Verbosity level in output, 0-3, (default 0)")
-    parser.add_argument("--unwind", metavar='count', default=CONFIG.UNWIND, help=
-        f"Unwindings to perform for loops during CBMC analysis")
-    parser.add_argument("--nprocs", metavar='count', default=CONFIG.NPROC, help=
-        f"The number of processes to spawn for parallel execution (default {CONFIG.NPROC})")
-    parser.add_argument("--dep-only-new", metavar="filepath", default="", help=
-        'Only process a specific path of the dependency (uses the path in the new commit)')
-    parser.add_argument("--dep-only-old", metavar="filepath", default="", help=
-        'Only process a specific path of the dependency (uses the path in the old commit)')
-    parser.add_argument("--project-only", metavar="filepath", default="", help=
-        'Only process a specific path of the main project')
-    parser.add_argument("--dep-source-root", metavar="filepath",
-        default="", help=f"Path to source root with ./configure script (same as git root by default)")
-    parser.add_argument("--exclude-dirs", metavar="directories", type=str,
-        default="", help=f"Comma separated string of directory paths relative to the old root of the dependency that should be excluded from analysis")
-    parser.add_argument("--config", metavar="json", type=str,
+    parser.add_argument("--config", metavar="json", type=str, required=True,
         default="", help=f"JSON file containing a custom Config object to use")
 
     args = parser.parse_args()
-
-    if config_passed:
-        DEP_ONLY_PATH_OLD   = ""
-        DEP_ONLY_PATH_NEW   = ""
-        PROJECT_ONLY_PATH   = ""
-
-        CONFIG.update_from_file(args.config)
-    else:
-        if not args.project:
-            print("Missing project argument")
-            sys.exit(1)
-
-        DEP_ONLY_PATH_OLD   = args.dep_only_old
-        DEP_ONLY_PATH_NEW   = args.dep_only_new
-        PROJECT_ONLY_PATH   = args.project_only
-
-        CONFIG.PROJECT_DIR         = args.project[0]
-        CONFIG.DEPENDENCY_DIR      = args.dependency
-        CONFIG.DEP_SOURCE_ROOT     = args.dep_source_root
-        CONFIG.DEPLIB_NAME         = args.deplib_name
-
-        CONFIG.VERBOSITY            = args.verbose
-        CONFIG.RENAME_BLACKLIST     = args.rename_blacklist
-        CONFIG.LIBCLANG             = args.libclang
-        CONFIG.FULL                 = args.full
-        CONFIG.UNWIND               = args.unwind
-        CONFIG.FORCE_RECOMPILE      = args.force_recompile
-        CONFIG.SKIP_IMPACT          = args.skip_impact
-        CONFIG.SKIP_BLAME           = args.skip_blame
-        CONFIG.REVERSE_MAPPING      = args.reverse_mapping
-
-        if args.commit_new != "":
-            CONFIG.COMMIT_NEW   = args.commit_new
-        if args.commit_old != "":
-            CONFIG.COMMIT_OLD   = args.commit_old
-
-        if args.goto_build_script != "":
-            CONFIG.GOTO_BUILD_SCRIPT = args.goto_build_script
-        if args.ccdb_build_script != "":
-            CONFIG.CCDB_BUILD_SCRIPT = args.ccdb_build_script
-        if args.rename_script != "":
-            CONFIG.RENAME_SCRIPT     = args.rename_script
-
-    CONFIG.SETX                 = str(CONFIG.VERBOSITY >= 2).lower()
-
+    CONFIG.update_from_file(args.config)
+    CONFIG.SETX = str(CONFIG.VERBOSITY >= 2).lower()
     if CONFIG.VERBOSITY >= 1:
         pprint(CONFIG)
 
@@ -271,17 +135,6 @@ if __name__ == '__main__':
 
         add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
 
-    # Filter out any files that are under excluded directories
-    if args.exclude_dirs != "":
-        for exclude_dir in args.exclude_dirs.split(","):
-
-            DEP_SOURCE_DIFFS = list(filter(lambda d:
-                    not os.path.dirname(d.old_path).endswith(
-                        remove_prefix(exclude_dir, "./")
-                    ),
-                    DEP_SOURCE_DIFFS
-            ))
-
     if CONFIG.VERBOSITY >= 1:
         print_stage("Git Diff")
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
@@ -337,10 +190,6 @@ if __name__ == '__main__':
         diff.old_compile_args = get_compile_args(DEP_DB_OLD, diff.old_path)
         diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path)
 
-    if DEP_ONLY_PATH_NEW != "":
-        DEP_SOURCE_DIFFS = list(filter(lambda d:
-            d.new_path == DEP_ONLY_PATH_NEW, DEP_SOURCE_DIFFS))
-
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
     main_repo = Repo(CONFIG.PROJECT_DIR)
@@ -358,10 +207,6 @@ if __name__ == '__main__':
         new_path = filepath, # type: ignore
         new_compile_args = get_compile_args(MAIN_DB, filepath) # type: ignore
     ) for filepath in PROJECT_SOURCE_FILES ]
-
-    if PROJECT_ONLY_PATH != "":
-        PROJECT_SOURCE_FILES = list(filter(lambda f:
-            f.new_path == PROJECT_ONLY_PATH, PROJECT_SOURCE_FILES))
 
     # - - - Change set - - - #
     if CONFIG.VERBOSITY >= 2:
@@ -389,8 +234,6 @@ if __name__ == '__main__':
         sys.exit(-1)
 
 
-
-
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
         try:
@@ -398,17 +241,13 @@ if __name__ == '__main__':
                 print_stage("Reduction")
 
             # If expat has fewer than 449 something is wrong
-            if not add_suffix_to_globals(DEPENDENCY_OLD, DEP_DB_OLD, CONFIG.SUFFIX):
-                sys.exit(-1)
+            write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
 
-            # Removal of 'static' specifiers from all functions
-            remove_static_specifiers(DEPENDENCY_OLD)
-            remove_static_specifiers(DEPENDENCY_NEW)
-
-            # Compile the old and new version of the dependency as a goto-bin
-            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)) == "":
+            # Compile the old and new version of the dependency as a set of 
+            # goto-bin files
+            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW, False)) == "":
                 sys.exit(-1)
-            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)) == "":
+            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD, True)) == "":
                 sys.exit(-1)
 
             # Copy any required headers into the include
@@ -416,7 +255,6 @@ if __name__ == '__main__':
             os.makedirs(CONFIG.OUTDIR, exist_ok=True)
             for header in CONFIG.REQUIRED_HEADERS:
                 shutil.copy(f"{DEPENDENCY_NEW}/{header}", CONFIG.OUTDIR)
-
 
             script_env = CONFIG.get_script_env()
             script_env.update({
@@ -430,10 +268,6 @@ if __name__ == '__main__':
             })
 
             for change in CHANGED_FUNCTIONS:
-                if DEP_ONLY_PATH_OLD != "" and \
-                   DEP_ONLY_PATH_OLD != change.old.filepath:
-                    continue
-
                 if CONFIG.USE_PROVIDED_DRIVER:
                     driver = next(iter(CONFIG.DRIVERS.values()))
                     func_name = next(iter(CONFIG.DRIVERS.keys()))
@@ -469,13 +303,13 @@ if __name__ == '__main__':
                     )).check_returncode()
                 except subprocess.CalledProcessError:
                     traceback.print_exc()
-                    restore_and_exit(DEPENDENCY_OLD, -1)
+                    sys.exit(-1)
                 break
 
         except KeyboardInterrupt:
-            restore_and_exit(DEPENDENCY_OLD, -1)
+            sys.exit(-1)
 
-    if CONFIG.SKIP_IMPACT:  restore_and_exit(DEPENDENCY_OLD, 0)
+    if CONFIG.SKIP_IMPACT:  sys.exit(0)
 
     # - - - Transitive change set propagation - - - #
     # To include functions that have not had a textual change but call a 
@@ -495,10 +329,6 @@ if __name__ == '__main__':
         new_path = filepath, # type: ignore
         new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
     ) for filepath in DEP_SOURCE_FILES ]
-
-    if DEP_ONLY_PATH_NEW != "":
-        DEP_SOURCE_FILES = list(filter(lambda f:
-            f.new_path == DEP_ONLY_PATH_NEW, DEP_SOURCE_FILES))
 
     if CONFIG.VERBOSITY >= 1:
         print_stage("Transitive change set")
@@ -536,7 +366,7 @@ if __name__ == '__main__':
 
         except Exception as e:
             traceback.print_exc()
-            restore_and_exit(DEPENDENCY_OLD, -1)
+            sys.exit(-1)
 
 
     if CONFIG.VERBOSITY >= 2:
@@ -562,9 +392,7 @@ if __name__ == '__main__':
                 PROJECT_SOURCE_FILES
             ))
 
-            if args.json:
-                print("TODO")
-            elif CONFIG.VERBOSITY >= 2:
+            if CONFIG.VERBOSITY >= 2:
                 pprint(CALL_SITES)
             else:
                 if CONFIG.REVERSE_MAPPING:
@@ -573,7 +401,7 @@ if __name__ == '__main__':
                     pretty_print_impact_by_proj(CALL_SITES)
     except Exception as e:
         traceback.print_exc()
-        restore_and_exit(DEPENDENCY_OLD, -1)
+        sys.exit(-1)
 
 
-    restore_and_exit(DEPENDENCY_OLD, 0)
+    sys.exit(0)

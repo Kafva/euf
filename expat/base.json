@@ -10,28 +10,14 @@
 	"UNWIND": 10,
 	"OBJECT_BITS": 12,
 	
-	"RENAME_BLACKLIST": "~/Repos/euf/expat/blacklist.txt",
-	"RENAME_SCRIPT": "~/Repos/euf/expat/rename.sh",
-	"EDIT_DELAY": 2.5,
-	"MACRO_NAMES": [  
-			{
-					"name": "PREFIX",
-					"prefixes": [ "little2_", "normal_", "big2_" ]
-			},
-			{
-					"name": "NS",
-					"prefixes": []
-			}
-		],
-
-
 	"REQUIRED_HEADERS": [
 			"expat/lib/expat.h",
 			"expat/lib/expat_external.h"
 	],
+
 	"BUILD_ENV": {
 			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
-			"CFLAGS": "-g -O2 -fvisibility=default"
+			"CFLAGS": "-O2 -fvisibility=default"
 	},
 
 	"REVERSE_MAPPING": true,

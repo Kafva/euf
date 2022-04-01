@@ -113,7 +113,7 @@ def dir_has_magic_file(dep_source_dir: str, magic: bytes = b'\x7fELF') -> bool:
                     break
     return has_elf
 
-def build_goto_lib(dep_source_dir: str, dep_dir: str) -> str:
+def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
     '''
     Returns the path to the built library or an empty string on failure
     '''
@@ -167,6 +167,11 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str) -> str:
                     stdout = out, stderr = out,
                     cwd = dep_source_dir, env = script_env
                 ).check_returncode()
+
+                if old_version:
+                    # Tell CBMC to add a suffix to every global
+                    # symbol when we compile the old version
+                    script_env.update({CONFIG.SUFFIX_ENV_FLAG: '1'})
 
                 subprocess.run([
                     "make", "-j",

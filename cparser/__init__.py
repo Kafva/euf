@@ -11,7 +11,6 @@ BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
 @dataclass
 class Config:
-    ''' - - - CLI options  - - - '''
     _PROJECT_DIR: str = ""
     _DEPENDENCY_DIR: str = ""
     _DEP_SOURCE_ROOT: str = ""
@@ -30,11 +29,22 @@ class Config:
 
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
 
-    _RENAME_BLACKLIST: str = ""
     _GOTO_BUILD_SCRIPT: str = ""
     _CCDB_BUILD_SCRIPT: str = ""
-    _RENAME_SCRIPT: str = ""
-    PLUGIN: str = f"{BASE_DIR}/clang-suffix/build/lib/libAddSuffix.so"
+    REVERSE_MAPPING: bool = False
+
+    # Enviroment varaibles to set when running `./configure`
+    # during ccdb generation and goto-bin compliation
+    # This will usually involve setting CFLAGS and/or CPPFLAGS to override
+    # specific default values set in AM_CFLAGS and AM_CPPFLAGS 
+    #
+    # It is not neccessary to pass `-fvisibility=default` to access
+    # all functions, the CBMC fork is configured to make functions
+    # accessible outside of their TU
+    BUILD_ENV: dict[str,str] = field(default_factory=dict)
+
+    # Toggles echoing of scripts
+    SETX: str = "false"
 
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
@@ -45,75 +55,25 @@ class Config:
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
-    CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
     OUTDIR: str = f"{BASE_DIR}/.out"
-    SUFFIX: str = "_old_b026324c6904b2a" # DO NOT CHANGE, hardcoded in CBMC fork
-    REVERSE_MAPPING: bool = False
-
-    # Toggles echoing of scripts
-    SETX: str = "false"
-
-    INIT_VIM: str = f"{BASE_DIR}/scripts/init.lua"
-    RENAME_LUA: str = f"{BASE_DIR}/scripts/rename.lua"
-
-    # Reuse /tmp/rename.txt if present
-    REUSE_EXISTING_NAMES: bool = False
-    RENAME_CSV: str = "/tmp/rename.csv" # DO NOT CHANGE, hardcoded in CBMC fork
-    NVIM: str = "/usr/bin/nvim"
-    EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
+    RENAME_CSV: str = "/tmp/rename.csv"
     CBMC_OUTFILE: str = "runner"
     EUF_ENTRYPOINT: str = "euf_main"
 
-    EDIT_DELAY: float = 2
+    # !! DO NOT CHANGE, hardcoded in CBMC fork !!
+    SUFFIX: str = "_old_b026324c6904b2a"
+    RENAME_TXT: str = "/tmp/rename.txt"
+    SUFFIX_ENV_FLAG: str = "USE_SUFFIX"
+
+    # Any headers that should be copied into '.out' for the
+    # driver to work
     REQUIRED_HEADERS: list[str] = field(default_factory=list)
-
-    '''
-    Expat has a 'noop' macro on the form
-        #define NS(x) x
-
-    CCLS cannot rename declerations on the form (even if we have the cursor on 'foo')
-        void NS(foo) (int arg);
-
-    The same occurs for PREFIX() (which has the additional complication of 
-    manipulating the actual function name)
-
-    To exclude replacement steps for these cases we check if the cursor is on 'NS('
-    before doing any replacements (we cant sieve out these entries eariler since they dont have a prefix)
-    The dicts in this object are on the form 
-		{
-            "name": "PREFIX",
-            "prefixes": [ "little2_", "normal_", "big2_" ]
-		}
-    To simplify the config file parsing we dont use a class for this
-    '''
-    MACRO_NAMES: list[dict[str,str|list[str]]] = field(default_factory=list)
 
     # Maps function names to filepaths of drivers
     DRIVERS: dict[str,str] = field(default_factory=dict)
 
     # Override to only use a specific (provided) driver for CBMC
     USE_PROVIDED_DRIVER: bool = False
-
-    # Not all functions defined in a library are visible to our driver if the
-    # authors of the library have used the `-fvisibility=hidden` flag during compilation
-    # This flag removes any functions that are not explicitly marked as visible from
-    # the symbol table. We need it to be set to 'default' to make everything visible (`man gcc`)
-    #
-    # However, if a function lacks a decleration in a header file it will still
-    # be rendered unexported so we need to manually ensure that all functions
-    # we want to test have a decleration in the main header of the library
-    #
-    # Furthermore, we need to drop the `static` specificer from any functions
-    # that use it since static functions are bound to a single TU
-    # This can cause issues when a static function expects a global to be
-    # present.
-
-    # Enviroment varaibles to set when running `./configure`
-    # during ccdb generation and goto-bin compliation
-    # This will usually involve setting CFLAGS and/or CPPFLAGS to override
-    # specific default values set in AM_CFLAGS and AM_CPPFLAGS
-    BUILD_ENV: dict[str,str] = field(default_factory=dict)
-
 
     # - - - Property setters
     def _parse_path(self, value) -> str:
@@ -149,17 +109,11 @@ class Config:
     def DEP_SOURCE_ROOT(self) -> str:
         return self._DEP_SOURCE_ROOT
     @property
-    def RENAME_BLACKLIST(self) -> str:
-        return self._RENAME_BLACKLIST
-    @property
     def GOTO_BUILD_SCRIPT(self) -> str:
         return self._GOTO_BUILD_SCRIPT
     @property
     def CCDB_BUILD_SCRIPT(self) -> str:
         return self._CCDB_BUILD_SCRIPT
-    @property
-    def RENAME_SCRIPT(self) -> str:
-        return self._RENAME_SCRIPT
 
     @PROJECT_DIR.setter
     def PROJECT_DIR(self,value):
@@ -170,18 +124,12 @@ class Config:
     @DEP_SOURCE_ROOT.setter
     def DEP_SOURCE_ROOT(self,value):
         self._DEP_SOURCE_ROOT = self._parse_path(value)
-    @RENAME_BLACKLIST.setter
-    def RENAME_BLACKLIST(self,value):
-        self._RENAME_BLACKLIST = self._parse_path(value)
     @GOTO_BUILD_SCRIPT.setter
     def GOTO_BUILD_SCRIPT(self,value):
         self._GOTO_BUILD_SCRIPT = self._parse_path(value)
     @CCDB_BUILD_SCRIPT.setter
     def CCDB_BUILD_SCRIPT(self,value):
         self._CCDB_BUILD_SCRIPT = self._parse_path(value)
-    @RENAME_SCRIPT.setter
-    def RENAME_SCRIPT(self,value):
-        self._RENAME_SCRIPT = self._parse_path(value)
 
     def update_from_file(self, filepath: str):
         ''' If we create a new object the CONFIG object wont be shared '''
