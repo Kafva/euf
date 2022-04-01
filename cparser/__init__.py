@@ -47,7 +47,7 @@ class Config:
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     CACHE_INTERNAL_STASH: str = "INTERNAL EUF STASH"
     OUTDIR: str = f"{BASE_DIR}/.out"
-    SUFFIX: str = "_old_b026324c6904b2a" # Do not change, hardcoded in CBMC fork
+    SUFFIX: str = "_old_b026324c6904b2a" # DO NOT CHANGE, hardcoded in CBMC fork
     REVERSE_MAPPING: bool = False
 
     # Toggles echoing of scripts
@@ -58,7 +58,7 @@ class Config:
 
     # Reuse /tmp/rename.txt if present
     REUSE_EXISTING_NAMES: bool = False
-    RENAME_CSV: str = "/tmp/rename.csv"
+    RENAME_CSV: str = "/tmp/rename.csv" # DO NOT CHANGE, hardcoded in CBMC fork
     NVIM: str = "/usr/bin/nvim"
     EUF_NVIM_SOCKET: str = "/tmp/eufnvim"
     CBMC_OUTFILE: str = "runner"

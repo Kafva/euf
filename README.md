@@ -29,6 +29,9 @@ Invoke as
 	$PROJECT
 ```
 
+## CBMC fork
+To avoid duplicate symbols a fork of CBMC which adds a suffix to all global symbols has been created. The symbol renaming is triggered by starting `cbmc`, `goto-cc` or any of the other Cprover tools with `USE_SUFFIX` set in the environment.
+
 ## Tests
 To debug with stdout add `--capture=tee-sys`
 > pytest tests/test*
