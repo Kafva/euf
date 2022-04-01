@@ -4,7 +4,7 @@
 
 ## Ubuntu installation
 ```bash
-apt-get install python3.9 python3.9-venv bear clang llvm-12 jq -y
+apt-get install python3.9 python3.9-venv bear clang llvm-12 -y
 python3.9 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
@@ -25,7 +25,6 @@ apt-get install flex bison make curl patch cmake -y
 make install # Custom Makefile for the fork
 ```
 
-
 ## Tests
-To debug with stdout add `--capture=tee-sys`
+Unit tests for the functions of the actual script are ran with
 > pytest tests/test*

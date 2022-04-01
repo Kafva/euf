@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+: '''
+ #== EXAMPLE ==#
+ cd ~/.cache/euf/openssl-29f178bd
+ cp ~/Repos/euf/tests/data/ssl_rename.txt /tmp/rename.txt;
+ SUFFIX=_old_aaaaaaaaaaaa VERBOSE=false
+ ~/Repos/euf/scripts/replace.sh
+'''
+
+
 # Replace all occurrences of the top level identifiers in the project
 # Should be executed with the repo in question as cwd
 [[  -z "$SUFFIX" || -z "$RENAME_YML" || -z "$VERBOSE" ]] && 
@@ -75,8 +84,6 @@ TOTAL=$(wc -l $TO_RENAME_TXT | awk '{print $1}')
 cnt=0
 
 # Extract the names of all globals to a newline-separated file
-sed -nE "s/- QualifiedName: (.*)/\1/p" "$RENAME_YML" > $RENAME_TXT
-
 echo "!> Starting $(basename $0) at $PWD"
 
 while read -r file; do

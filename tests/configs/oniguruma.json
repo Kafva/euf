@@ -1,0 +1,26 @@
+{
+	"COMMIT_OLD": "65a9b1aa03c9bc2dc01b074295b9603232cb3b78",
+	"COMMIT_NEW": "e8bd631e187873a2085899bfc99f2f2c6af2adbd",
+	"PROJECT_DIR": "~/Repos/jq",
+	"DEPENDENCY_DIR": "~/Repos/oniguruma",
+	"DEPLIB_NAME": "libonig.a",
+
+	"UNWIND": 10,
+	"OBJECT_BITS": 12,
+	
+	"REQUIRED_HEADERS": [
+			"src/oniguruma.h"
+	],
+
+  "DRIVERS": {
+      "new_size": "~/Repos/euf/tests/drivers/st_newsize_driver.c"
+  },
+
+	"REVERSE_MAPPING": false,
+	"VERBOSITY": 1,
+	"NPROC": 12,
+	"SKIP_BLAME": false,
+	"SKIP_IMPACT": false,
+	"FULL": true
+}
+  

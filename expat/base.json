@@ -4,7 +4,6 @@
 	"PROJECT_DIR": "~/Repos/jabberd-2.7.0",
 	"DEPENDENCY_DIR": "~/Repos/libexpat",
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
-	"EXCLUDE_DIRS": "./expat/tests",
 	"DEPLIB_NAME": "libexpat.a",
 
 	"UNWIND": 10,
@@ -21,7 +20,7 @@
 	},
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 2,
+	"VERBOSITY": 1,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,

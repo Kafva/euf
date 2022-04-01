@@ -5,7 +5,11 @@
 	"PROJECT_DIR": "~/Repos/main",
 	"DEPENDENCY_DIR": "~/Repos/matrix",
 	"DEPLIB_NAME": "libmatrix.a",
-	"DRIVER": "./drivers/matrix_init_driver.c",
+
+ 	"DRIVERS": {
+	  "matrix_init": "./tests/drivers/matrix_init_driver.c"
+	},
+  "USE_PROVIDED_DRIVER": true,
 
 	"VERBOSITY": 1,
 	"NPROC": 1,
