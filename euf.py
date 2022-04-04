@@ -10,7 +10,7 @@ the base change-set
 are transativly changed, i.e. functions that call a function that 
 has been changed
 5. Analyze each of the objects in the base change-set and 
-remove equivilent entries
+remove equivilent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)
     CONFIG.SETX = str(CONFIG.VERBOSITY >= 2).lower()
-    if CONFIG.VERBOSITY >= 1:
+    if CONFIG.VERBOSITY >= 2:
         pprint(CONFIG)
 
     if not os.path.exists(CONFIG.EUF_CACHE):

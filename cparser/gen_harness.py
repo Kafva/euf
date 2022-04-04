@@ -1,6 +1,5 @@
 from cparser import DependencyFunctionChange
 
-
 def create_harness(change: DependencyFunctionChange) -> str:
     '''
     Firstly, we need to know basic information about the function we are

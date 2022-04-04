@@ -223,6 +223,7 @@ map_search_backward
 type_code2_hash
 compile_range_repeat_node
 st_add_direct
+onig_st_add_direct
 add_length
 onig_new_deluxe
 get_name_end_code_point
