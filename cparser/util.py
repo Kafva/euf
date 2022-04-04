@@ -55,14 +55,8 @@ def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[s
 
     return list(column_stats.items())
 
-def remove_prefix(target: str, prefix: str) -> str:
-    if target.startswith(prefix):
-        return target[len(prefix):]
-    else:
-        return target
-
 def get_path_relative_to(path: str, base: str) -> str:
-    return remove_prefix( remove_prefix(path, base), "/")
+    return path.removeprefix(base).removeprefix("/")
 
 def unique_only(li: list) -> list:
     uniq = []

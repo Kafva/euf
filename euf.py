@@ -25,7 +25,7 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.gen_harness import create_harness
-from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage, remove_prefix
+from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, \
@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
     # Update the project root in case the source code and .git
     # folder are not both at the root of the project
-    dep_source_root = remove_prefix(CONFIG.DEP_SOURCE_ROOT, CONFIG.DEPENDENCY_DIR) \
+    dep_source_root = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
         if CONFIG.DEP_SOURCE_ROOT != "" \
         else ""
 

@@ -2,7 +2,7 @@ import sys, os, json
 from pathlib import Path
 from dataclasses import dataclass, field
 from clang import cindex
-from cparser.util import compact_path, get_path_relative_to, remove_prefix
+from cparser.util import compact_path, get_path_relative_to
 
 # Enable importing from the root directory inside the module
 sys.path.append('../')
@@ -165,12 +165,13 @@ class Identifier:
     @typing.setter
     def typing(self,value: str):
         ''' Remove TypeKind prefix if present '''
-        self._typing = value.lstrip("TypeKind.")
+        self._typing = value.removeprefix("TypeKind.")
 
     def __repr__(self):
         constant = 'const ' if self.is_const else ''
         func = '()' if self.is_function else ''
-        return f"{constant}{self.type_spelling} {self.spelling}{func}"
+        ptr = '*' if self.is_ptr else ''
+        return f"{constant}{self.type_spelling}{ptr} {self.spelling}{func}"
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor):
@@ -187,12 +188,14 @@ class Identifier:
         if result_pointee_type.spelling != "":
             # Pointer return type
             typing = str(result_pointee_type.kind)
-            type_spelling = str(result_pointee_type.spelling)
+            type_spelling = str(result_pointee_type.spelling) \
+                .removeprefix("const ")
             is_const = result_pointee_type.is_const_qualified()
             is_ptr = True
         else:
             typing = str(type_obj.kind)
-            type_spelling = str(type_obj.spelling)
+            type_spelling = str(type_obj.spelling) \
+                    .removeprefix("const ")
             is_const = type_obj.is_const_qualified()
             is_ptr = False
 
@@ -405,7 +408,7 @@ class IdentifierLocation:
         )
 
     def __repr__(self) -> str:
-        brief_path = compact_path(CONFIG.EUF_CACHE) + remove_prefix(self.filepath, CONFIG.EUF_CACHE)
+        brief_path = compact_path(CONFIG.EUF_CACHE) + self.filepath.removeprefix(CONFIG.EUF_CACHE)
         return f"{brief_path}:{self.name}:{self.line}:{self.column}"
 
     def to_csv(self) -> str:
