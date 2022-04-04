@@ -1,5 +1,8 @@
 #include <stdlib.h>
 
+// Note: The return type of XML_ErrorString is constant pointer
+// We should be able to autogen for cases of this type
+
 // Required!
 #include "expat.h" // Has the decleration for types 
 									 // and the new version of XML_ErrorString

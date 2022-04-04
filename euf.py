@@ -278,8 +278,8 @@ if __name__ == '__main__':
                     # function and then performs an assertion on all affected outputs
                     #
                     # If no explicit driver was passed, attempt to generate one
-                    if change.old.name in CONFIG.DRIVERS:
-                        driver = CONFIG.DRIVERS[change.old.name]
+                    if change.old.ident.spelling in CONFIG.DRIVERS:
+                        driver = CONFIG.DRIVERS[change.old.ident.spelling]
                         fail_msg = f"Missing driver: '{driver}'"
                     else:
                         driver = create_harness(change)
@@ -289,7 +289,7 @@ if __name__ == '__main__':
                         #print_err(f"[{change.old.name}()] {fail_msg}")
                         continue
 
-                    func_name = change.old.name
+                    func_name = change.old.ident.spelling
 
                 script_env.update({
                     'DRIVER': driver,

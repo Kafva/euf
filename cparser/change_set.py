@@ -52,6 +52,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
 
         for child in cursor.get_children():
             if str(child.kind).endswith("FUNCTION_DECL") and \
+                str(child.type.kind).endswith("FUNCTIONPROTO") and \
                 child.is_definition() and \
                 str(child.location.file).startswith(root_dir):
                 # Note: A TU can #include other C-files, to properly trace
@@ -172,7 +173,7 @@ def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
 
     elif str(cursor.kind).endswith("CALL_EXPR") and \
         (dep_func := next(filter(lambda fn: \
-        fn.new.name == cursor.spelling, changed_functions), None \
+        fn.new.ident.spelling == cursor.spelling, changed_functions), None \
     )):
         # Ensure that arguments and return value also match the changed entity
         # NOTE: This omits transative changes were function prototypes

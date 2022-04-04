@@ -31,6 +31,10 @@ def run_if_present(path:str, filename: str) -> bool:
         except subprocess.CalledProcessError:
             compile_db_fail_msg(path)
             return False
+    else:
+        print_err(f"Not found: '{path}/{filename}'")
+        return False
+
     return True
 
 def has_valid_compile_db(source_path: str) -> bool:
@@ -55,6 +59,8 @@ def autogen_compile_db(source_path: str) -> bool:
         return True
 
     # 1. Configure the project according to ./configure if applicable
+    # For some projects, `autoreconf -vfi` needs to be manually invoked
+    # to create configure after which the autogen should work
     run_if_present(source_path, "configure")
     run_if_present(source_path, "Configure")
 

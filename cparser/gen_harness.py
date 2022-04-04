@@ -13,7 +13,7 @@ def create_harness(change: DependencyFunctionChange) -> str:
     the AST diffing stage
     '''
     harness_path = ""
-    print_info(f"{change.old.filepath}: {change.old.name}  {change.old.return_type}")
+    print_info(f"{change.old.filepath}: {change.old.ident}")
 
 
     return harness_path

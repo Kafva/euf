@@ -143,10 +143,76 @@ global CONFIG
 CONFIG = Config()
 
 @dataclass(init=True)
-class DependencyArgument:
-    ''' The type is a string conversions from cindex.TypeKind '''
-    type: str
+class Identifier:
+    ''' 
+    Refers to either a function argument or a function, 
+    '''
     spelling: str
+    type_spelling: str
+
+    # The type is a string conversions from `cindex.TypeKind`
+    # If the object refers to a function, the type reflects the return type
+    _typing: str = ""
+
+    # If set, the identifier is a pointer to the specified type
+    is_ptr: bool = False
+    is_const: bool = False
+    is_function: bool = False
+
+    @property
+    def typing(self) -> str:
+        return self._typing
+    @typing.setter
+    def typing(self,value: str):
+        ''' Remove TypeKind prefix if present '''
+        self._typing = value.lstrip("TypeKind.")
+
+    def __repr__(self):
+        constant = 'const ' if self.is_const else ''
+        func = '()' if self.is_function else ''
+        return f"{constant}{self.type_spelling} {self.spelling}{func}"
+
+    @classmethod
+    def new_from_cursor(cls, cursor: cindex.Cursor):
+
+        is_function = str(cursor.type.kind).endswith("FUNCTIONPROTO")
+
+        # For functions we are intrested in the `.result_type`, this value
+        # is empty for function arguments which instead 
+        # have their typing in `.type`
+        type_obj = cursor.result_type if is_function else cursor.type
+
+        result_pointee_type = type_obj.get_pointee()
+
+        if result_pointee_type.spelling != "":
+            # Pointer return type
+            typing = str(result_pointee_type.kind)
+            type_spelling = str(result_pointee_type.spelling)
+            is_const = result_pointee_type.is_const_qualified()
+            is_ptr = True
+        else:
+            typing = str(type_obj.kind)
+            type_spelling = str(type_obj.spelling)
+            is_const = type_obj.is_const_qualified()
+            is_ptr = False
+
+        ret = cls(
+            spelling = cursor.spelling,
+            type_spelling = type_spelling,
+            is_ptr = is_ptr,
+            is_const = is_const,
+            is_function = is_function
+        )
+        ret.typing = typing
+        return ret
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            spelling="",
+            type_spelling="",
+        )
+
 
 @dataclass(init=True)
 class DependencyFunction:
@@ -158,30 +224,33 @@ class DependencyFunction:
     We pair functions based on the key:
     {diff.new_path}:{diff.old_path}:{child.spelling}
     All other attributes could thus differ between the new and old version.
-
     '''
+    ident: Identifier # Function name and return type
     displayname: str # Includes the full prototype string
-    name: str # Same between changes but used for __repr__
     filepath: str
-    return_type: str
-    arguments: list[DependencyArgument]
+    arguments: list[Identifier]
     line: int
     col: int
 
-
     @classmethod
     def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
+        #print(cursor.type.kind, cursor.spelling, cursor.type.is_const_qualified(), cursor.result_type.is_const_qualified())
+        # Only create objects from function prototypes
+        assert(str(cursor.type.kind).endswith("FUNCTIONPROTO"))
+        assert(not cursor.type.is_const_qualified() and  not cursor.result_type.is_const_qualified())
+
+        #result_ptr = cursor.result_type.get_pointee()
+        #if result_ptr.spelling != "":
+        #    print(cursor.spelling, result_ptr.spelling,  result_ptr.is_const_qualified()  )
+
         return cls(
             filepath    = get_path_relative_to(
                 str(cursor.location.file), root_dir
             ),
             displayname = cursor.displayname,
-            name        = cursor.spelling,
-            return_type = str(cursor.type.get_result().kind),
-            arguments   = [ DependencyArgument( \
-                    type = str(n.type.kind), \
-                    spelling = str(n.spelling) \
-                 ) for n in cursor.get_arguments() ],
+            ident        = Identifier.new_from_cursor(cursor) ,
+            arguments   = [ Identifier.new_from_cursor(arg)
+                  for arg in cursor.get_arguments() ],
             line = cursor.location.line,
             col = cursor.location.column
         )
@@ -191,18 +260,17 @@ class DependencyFunction:
         return cls(
             filepath    = "",
             displayname = "",
-            name        = "",
-            return_type = "",
+            ident       = Identifier.empty(),
             arguments   = [],
             line = 0,
             col = 0
         )
 
     def __repr__(self):
-        return f"{self.filepath}:{self.line}:{self.col}:{self.name}()"
+        return f"{self.filepath}:{self.line}:{self.col}:{self.ident.spelling}()"
 
     def __hash__(self):
-        return hash(self.filepath + self.return_type + self.displayname +
+        return hash(self.filepath + self.ident.__repr__() + self.displayname +
                 str(self.line) + str(self.col))
 
 @dataclass(init=True)
@@ -239,7 +307,7 @@ class DependencyFunctionChange:
                     "indirect change: "
         if brief and pretty:
                 out += "\033[33m"
-        if self.old.name == "":
+        if self.old.ident.spelling == "":
             out += f"b/{self.new}"
         else:
             out += f"a/{self.old} -> b/{self.new}"

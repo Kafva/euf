@@ -20,7 +20,7 @@
 	},
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 0,
+	"VERBOSITY": 2,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,

@@ -44,7 +44,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 
     if str(cursor.kind).endswith("CALL_EXPR") and \
         (dep_func_change := next(filter(lambda fn: \
-        fn.old.name == cursor.spelling, changed_functions), None \
+        fn.old.ident.spelling == cursor.spelling, changed_functions), None \
     )):
 
         # Look for conflicts in types of parameters that are passed
