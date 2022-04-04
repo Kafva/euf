@@ -15,4 +15,7 @@ xml:
 	head -n20 expat/drivers/XML_ErrorString.c | bat --language c --style full
 	./run.sh XML_ErrorString
 
+xml_cbmc:
+	git diff --color=always  --no-index ~/.cache/euf/libexpat-811c41e3/expat/lib/xmlparse.c ~/.cache/euf/libexpat-b1d03960/expat/lib/xmlparse.c | grep -A 15 --color=always  "XML_ErrorString("
+	./euf.py --config expat/gen.json
 

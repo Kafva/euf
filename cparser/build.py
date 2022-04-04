@@ -15,16 +15,39 @@ def get_bear_version(path: str) -> int:
     prefix_len = len("bear ")
     return int(out.stdout[prefix_len])
 
+def run_autoreconf(path: str) -> bool:
+    script_env = os.environ.copy()
+
+    if os.path.exists(f"{path}/configure.ac") or \
+       os.path.exists(f"{path}/configure.in"):
+        try:
+            print_info(f"{path}: Running autoreconf -vfi...")
+            (subprocess.run([ "autoreconf", "-vfi" ],
+                cwd = path, stdout = sys.stderr,
+                env = script_env
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            compile_db_fail_msg(path)
+            return False
+    else:
+        print_err(f"Missing autoconf files")
+        return False
+
+    return True
+
 def run_if_present(path:str, filename: str) -> bool:
     script_env = os.environ.copy()
+    args = ""
 
     if filename.lower() == "configure":
         script_env.update(CONFIG.BUILD_ENV)
+        # Only required for __really__ old versions of expat
+        #args = f" --target {CONFIG.TARGET_TRIPLET}"
 
     if os.path.exists(f"{path}/{filename}"):
         try:
-            print_info(f"{path}: Running ./{filename}...")
-            (subprocess.run([ f"./{filename}", ],
+            print_info(f"{path}: Running ./{filename}{args}...")
+            (subprocess.run([ f"./{filename}" ] + args.split(' '),
                 cwd = path, stdout = sys.stderr,
                 env = script_env
             )).check_returncode()
@@ -58,9 +81,12 @@ def autogen_compile_db(source_path: str) -> bool:
     if has_valid_compile_db(source_path):
         return True
 
+    # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
+    # needs to be manually invoked to create configure
+    if not os.path.exists(f"{source_path}/configure"):
+        run_autoreconf(source_path)
+
     # 1. Configure the project according to ./configure if applicable
-    # For some projects, `autoreconf -vfi` needs to be manually invoked
-    # to create configure after which the autogen should work
     run_if_present(source_path, "configure")
     run_if_present(source_path, "Configure")
 
@@ -176,7 +202,7 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
                 else:
                     if os.path.exists(f"{dep_source_dir}/configure"):
                         subprocess.run([
-                            "./configure", "--host", "none-none-none"
+                            "./configure", "--host", "none-none-none", #"--no-verify"
                             ],
                             stdout = out, stderr = out,
                             cwd = dep_source_dir, env = script_env

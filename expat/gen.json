@@ -1,6 +1,7 @@
 {
-	"COMMIT_OLD": "811c41e3b",
+  "COMMIT_OLD": "811c41e3b",
 	"COMMIT_NEW": "b1d039607",
+
 	"PROJECT_DIR": "~/Repos/jabberd-2.7.0",
 	"DEPENDENCY_DIR": "~/Repos/libexpat",
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
@@ -26,7 +27,7 @@
 	},
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 1,
+	"VERBOSITY": 2,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,

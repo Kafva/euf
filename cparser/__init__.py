@@ -53,6 +53,9 @@ class Config:
     RENAME_RATIO_LOW: float = .3
     TRANSATIVE_PASSES: int = 1
 
+    # Only used during ccdb generation
+    TARGET_TRIPLET: str = "x86_64-unknown-linux"
+
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     HARNESS_DIR: str = ".harnesses"
