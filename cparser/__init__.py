@@ -152,20 +152,12 @@ class Identifier:
 
     # The type is a string conversions from `cindex.TypeKind`
     # If the object refers to a function, the type reflects the return type
-    _typing: str = ""
+    typing: str
 
     # If set, the identifier is a pointer to the specified type
     is_ptr: bool = False
     is_const: bool = False
     is_function: bool = False
-
-    @property
-    def typing(self) -> str:
-        return self._typing
-    @typing.setter
-    def typing(self,value: str):
-        ''' Remove TypeKind prefix if present '''
-        self._typing = value.removeprefix("TypeKind.")
 
     def __repr__(self):
         constant = 'const ' if self.is_const else ''
@@ -175,7 +167,6 @@ class Identifier:
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor):
-
         is_function = str(cursor.type.kind).endswith("FUNCTIONPROTO")
 
         # For functions we are intrested in the `.result_type`, this value
@@ -187,35 +178,46 @@ class Identifier:
 
         if result_pointee_type.spelling != "":
             # Pointer return type
-            typing = str(result_pointee_type.kind)
+            typing = str(result_pointee_type.kind) \
+                    .removeprefix("TypeKind.")
             type_spelling = str(result_pointee_type.spelling) \
                 .removeprefix("const ")
             is_const = result_pointee_type.is_const_qualified()
             is_ptr = True
         else:
-            typing = str(type_obj.kind)
+            typing = str(type_obj.kind) \
+                    .removeprefix("TypeKind.")
             type_spelling = str(type_obj.spelling) \
                     .removeprefix("const ")
             is_const = type_obj.is_const_qualified()
             is_ptr = False
 
-        ret = cls(
+        return cls(
             spelling = cursor.spelling,
+            typing = typing,
             type_spelling = type_spelling,
             is_ptr = is_ptr,
             is_const = is_const,
             is_function = is_function
         )
-        ret.typing = typing
-        return ret
 
     @classmethod
     def empty(cls):
         return cls(
             spelling="",
-            type_spelling="",
+            typing="",
+            type_spelling=""
         )
 
+    def __eq__(self, other) -> bool:
+        ''' 
+        Does not consider nodes which only differ in spelling
+        as different
+        '''
+        return self.type_spelling == other.type_spelling and \
+               self.typing == other.typing and self.is_ptr == other.is_ptr and \
+               self.is_function == other.is_function and \
+               self.is_const == other.is_const
 
 @dataclass(init=True)
 class DependencyFunction:

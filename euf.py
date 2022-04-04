@@ -282,11 +282,11 @@ if __name__ == '__main__':
                         driver = CONFIG.DRIVERS[change.old.ident.spelling]
                         fail_msg = f"Missing driver: '{driver}'"
                     else:
-                        driver = create_harness(change)
-                        fail_msg = "Failed to generate driver"
+                        (driver,msg) = create_harness(change)
+                        fail_msg = f"Failed to generate driver: {msg}"
 
                     if not os.path.exists(driver):
-                        #print_err(f"[{change.old.name}()] {fail_msg}")
+                        print_err(f"[{change.old}] {fail_msg}")
                         continue
 
                     func_name = change.old.ident.spelling
