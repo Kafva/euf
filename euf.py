@@ -286,7 +286,7 @@ if __name__ == '__main__':
                         fail_msg = "Failed to generate driver"
 
                     if not os.path.exists(driver):
-                        print_err(f"[{change.old.name}()] {fail_msg}")
+                        #print_err(f"[{change.old.name}()] {fail_msg}")
                         continue
 
                     func_name = change.old.name
