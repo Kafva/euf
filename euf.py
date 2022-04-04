@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
-from cparser.gen_harness import create_harness, run_harness
+from cparser.harness import create_harness, run_harness
 from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file

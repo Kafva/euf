@@ -29,7 +29,6 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
     # The number-of arugments and their types have not changed
 
     if not identity:
-
         if (old_cnt := len(change.old.arguments)) != \
             (new_cnt := len(change.new.arguments)):
             return ("", f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt}")
@@ -49,6 +48,8 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
     harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS if identity else ''}.c"
 
     INDENT=CONFIG.INDENT
+    failed_generation = False
+    fail_msg = ""
 
     # Write the harness
     with open(harness_path, mode='w', encoding='utf8') as f:
@@ -86,7 +87,6 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
         # type of argument dictates how the initialization is done
         arg_string = ""
         for arg in change.old.arguments:
-
             if not arg.is_ptr:
                 # For non-pointer types we only need to create one variable
                 # since the original value will not be modified and thus
@@ -98,34 +98,42 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
                 # We cannot auto-generate harnesses for 
                 # functions that require void pointers
                 if arg.type_spelling == "void*":
-                    return ("", f"Function requires a 'void*' argument: {arg.spelling}")
+                    failed_generation = True
+                    fail_msg = f"Function requires a 'void*' argument: {arg.spelling}"
+                    break
 
-                return ("", f"Unable to initialise argument of type: {arg.typing}")
+                failed_generation = True
+                fail_msg = f"Unable to initialise argument of type: {arg.typing}"
+                break
 
-        arg_string = arg_string.removesuffix(", ")
+        if not failed_generation:
+            arg_string = arg_string.removesuffix(", ")
 
-        # 2. Preconditions
-        # Any __assume statements about the input that we need to incorporate
+            # 2. Preconditions
+            # Any __assume statements about the input that we need to incorporate
 
-        # 3. Call the functions under verification
-        ret_type = change.old.ident.type_spelling
+            # 3. Call the functions under verification
+            ret_type = change.old.ident.type_spelling
 
-        f.write(f"{INDENT}{ret_type} ret_old = ")
-        f.write(f"{change.old.ident.spelling}{CONFIG.SUFFIX}({arg_string});\n")
+            f.write(f"{INDENT}{ret_type} ret_old = ")
+            f.write(f"{change.old.ident.spelling}{CONFIG.SUFFIX}({arg_string});\n")
 
-        f.write(f"{INDENT}{ret_type} ret = ")
-        f.write(f"{change.new.ident.spelling}{CONFIG.SUFFIX if identity else ''}({arg_string});\n\n")
+            f.write(f"{INDENT}{ret_type} ret = ")
+            f.write(f"{change.new.ident.spelling}{CONFIG.SUFFIX if identity else ''}({arg_string});\n\n")
 
-        # 4. Postconditions
-        #   Verify equivalance with one or more assertions
-        f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
+            # 4. Postconditions
+            #   Verify equivalance with one or more assertions
+            f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
 
 
-        # Enclose driver function
-        f.write(f"\n{INDENT}#endif\n{INDENT}return 0;\n}}\n")
+            # Enclose driver function
+            f.write(f"\n{INDENT}#endif\n{INDENT}return 0;\n}}\n")
 
-    return (harness_path, "")
-
+    if failed_generation:
+        os.remove(harness_path)
+        return ("", fail_msg)
+    else:
+        return (harness_path, "")
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         driver: str, func_name: str, quiet: bool) -> bool:

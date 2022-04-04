@@ -2,4 +2,3 @@ clang==13.0.1
 pylint==2.12.2
 GitPython==3.1.26
 pytest==7.0.1
-pynvim==0.4.3
