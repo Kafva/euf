@@ -1,7 +1,8 @@
-from cparser import DependencyFunctionChange
+import os
+from cparser import CONFIG, DependencyFunctionChange
 from cparser.util import print_info
 
-def create_harness(change: DependencyFunctionChange) -> tuple[str,str]:
+def create_harness(change: DependencyFunctionChange, dep_path: str) -> tuple[str,str]:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -36,6 +37,23 @@ def create_harness(change: DependencyFunctionChange) -> tuple[str,str]:
         return ("", f"Different return type: a/{change.old.ident.type_spelling} -> b/{change.old.ident.type_spelling}")
 
 
+    harness_dir = f"{dep_path}/{CONFIG.HARNESS_DIR}"
+    if not os.path.exists(harness_dir):
+        os.mkdir(harness_dir)
+    harness_path = f"{harness_dir}/{change.old.ident.spelling}.c"
+
+    # Write the harness
+    with open(harness_path, mode='w', encoding='utf8') as f:
+        for header in CONFIG.STD_HEADERS:
+            f.write(f"#include <{header}>\n")
+        for header in CONFIG.INCLUDE_HEADERS:
+            f.write(f"#include \"{os.path.basename(header)}\"\n")
+
+        f.write("\n")
+
+        f.write(f"int {CONFIG.EUF_ENTRYPOINT}() {{\n")
+        # ...
+        f.write(f"  return 0;\n}}\n")
 
     #print_info(f"{change.old.filepath}: {change.old.ident}")
     #for arg in change.old.arguments:

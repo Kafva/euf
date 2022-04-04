@@ -253,7 +253,7 @@ if __name__ == '__main__':
             # Copy any required headers into the include
             # directory of the driver
             os.makedirs(CONFIG.OUTDIR, exist_ok=True)
-            for header in CONFIG.REQUIRED_HEADERS:
+            for header in CONFIG.CP_HEADERS:
                 shutil.copy(f"{DEPENDENCY_NEW}/{header}", CONFIG.OUTDIR)
 
             script_env = CONFIG.get_script_env()
@@ -282,7 +282,7 @@ if __name__ == '__main__':
                         driver = CONFIG.DRIVERS[change.old.ident.spelling]
                         fail_msg = f"Missing driver: '{driver}'"
                     else:
-                        (driver,msg) = create_harness(change)
+                        (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD)
                         fail_msg = f"Failed to generate driver: {msg}"
 
                     if not os.path.exists(driver):
@@ -295,6 +295,7 @@ if __name__ == '__main__':
                     'DRIVER': driver,
                     'FUNC_NAME': func_name
                 })
+                continue
                 try:
                     print("\n")
                     print_info(f"Starting CBMC analysis for {change.old}")

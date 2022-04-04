@@ -55,6 +55,7 @@ class Config:
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
+    HARNESS_DIR: str = ".harnesses"
     OUTDIR: str = f"{BASE_DIR}/.out"
     RENAME_CSV: str = "/tmp/rename.csv"
     CBMC_OUTFILE: str = "runner"
@@ -67,7 +68,14 @@ class Config:
 
     # Any headers that should be copied into '.out' for the
     # driver to work
-    REQUIRED_HEADERS: list[str] = field(default_factory=list)
+    CP_HEADERS: list[str] = field(default_factory=list)
+
+    # List of copied headers which need to be included
+    # in the harness
+    INCLUDE_HEADERS: list[str] = field(default_factory=list)
+
+    # Headers to be included with <...>
+    STD_HEADERS: list[str] = field(default_factory=list)
 
     # Maps function names to filepaths of drivers
     DRIVERS: dict[str,str] = field(default_factory=dict)

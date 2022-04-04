@@ -8,7 +8,10 @@
 	"UNWIND": 10,
 	"OBJECT_BITS": 12,
 	
-	"REQUIRED_HEADERS": [
+	"CP_HEADERS": [
+			"src/oniguruma.h"
+	],
+	"INCLUDE_HEADERS": [
 			"src/oniguruma.h"
 	],
 

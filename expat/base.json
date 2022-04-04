@@ -9,10 +9,13 @@
 	"UNWIND": 10,
 	"OBJECT_BITS": 12,
 	
-	"REQUIRED_HEADERS": [
+	"CP_HEADERS": [
 			"expat/lib/expat.h",
 			"expat/lib/expat_external.h"
 	],
+  "INCLUDE_HEADERS": [
+			"expat/lib/expat.h"
+  ],
 
 	"BUILD_ENV": {
 			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
