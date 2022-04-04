@@ -10,7 +10,7 @@ the base change-set
 are transativly changed, i.e. functions that call a function that 
 has been changed
 5. Analyze each of the objects in the base change-set and 
-remove equivilent entries based on CBMC analysis
+remove equivalent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
-from cparser.gen_harness import create_harness
+from cparser.gen_harness import create_harness, run_harness
 from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -267,6 +267,8 @@ if __name__ == '__main__':
                 'OBJECT_BITS': str(CONFIG.OBJECT_BITS)
             })
 
+            driver = ""
+
             for change in CHANGED_FUNCTIONS:
                 if CONFIG.USE_PROVIDED_DRIVER:
                     driver = next(iter(CONFIG.DRIVERS.values()))
@@ -277,35 +279,40 @@ if __name__ == '__main__':
                     # we will need a minimal program that invokes both versions of the changed 
                     # function and then performs an assertion on all affected outputs
                     #
+                    func_name = change.old.ident.spelling
+
                     # If no explicit driver was passed, attempt to generate one
-                    if change.old.ident.spelling in CONFIG.DRIVERS:
+                    if not change.old.ident.spelling in CONFIG.DRIVERS:
+                        # Begin by generating an identity driver and verify that it
+                        # passes as equivalent
+                        (identity_driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=True)
+                        fail_msg = f"Failed to generate driver: {msg}"
+
+                        if not os.path.exists(identity_driver):
+                            print_err(f"[{change.old}] {fail_msg}")
+                            continue
+
+                        if not run_harness(change, script_env, identity_driver, func_name, quiet=True):
+                            fail_msg = f"Identity verification failed: {func_name}"
+                        else:
+                            # Generate the actual harness
+                            (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=False)
+                            fail_msg = f"Failed to generate driver: {msg}"
+                    else:
                         driver = CONFIG.DRIVERS[change.old.ident.spelling]
                         fail_msg = f"Missing driver: '{driver}'"
-                    else:
-                        (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD)
-                        fail_msg = f"Failed to generate driver: {msg}"
+
 
                     if not os.path.exists(driver):
                         print_err(f"[{change.old}] {fail_msg}")
                         continue
 
-                    func_name = change.old.ident.spelling
-
-                script_env.update({
-                    'DRIVER': driver,
-                    'FUNC_NAME': func_name
-                })
-                continue
-                try:
-                    print("\n")
-                    print_info(f"Starting CBMC analysis for {change.old}")
-                    (subprocess.run([ f"{BASE_DIR}/scripts/cbmc_driver.sh" ],
-                    env = script_env, stdout = sys.stderr, cwd = BASE_DIR
-                    )).check_returncode()
-                except subprocess.CalledProcessError:
-                    traceback.print_exc()
-                    sys.exit(-1)
-                break
+                if not run_harness(change, script_env, driver, func_name, quiet = CONFIG.VERBOSITY<=1):
+                    print_info(f"[{func_name}] CBMC equivalance check \033[1;31mFAILURE\033[0m")
+                else:
+                    print_info(f"[{func_name}] CBMC equivalance check \033[1;32mSUCCESS\033[0m")
+                    CHANGED_FUNCTIONS.remove(change)
+                #break
 
         except KeyboardInterrupt:
             sys.exit(-1)

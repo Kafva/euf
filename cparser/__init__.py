@@ -57,9 +57,13 @@ class Config:
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     HARNESS_DIR: str = ".harnesses"
     OUTDIR: str = f"{BASE_DIR}/.out"
+    CBMC_SCRIPT: str = f"{BASE_DIR}/scripts/cbmc_driver.sh"
     RENAME_CSV: str = "/tmp/rename.csv"
     CBMC_OUTFILE: str = "runner"
     EUF_ENTRYPOINT: str = "euf_main"
+    CBMC_ASSERT_MSG: str = "Equivalent output"
+    IDENTITY_HARNESS: str = "_id"
+    INDENT: str = " "*2
 
     # !! DO NOT CHANGE, hardcoded in CBMC fork !!
     SUFFIX: str = "_old_b026324c6904b2a"
@@ -156,7 +160,8 @@ class Identifier:
     Refers to either a function argument or a function, 
     '''
     spelling: str
-    type_spelling: str
+    type_spelling: str # Includes a '*' if the ident is a ptr
+
 
     # The type is a string conversions from `cindex.TypeKind`
     # If the object refers to a function, the type reflects the return type
@@ -167,11 +172,10 @@ class Identifier:
     is_const: bool = False
     is_function: bool = False
 
-    def __repr__(self):
+    def __repr__(self, paranthesis: bool = True):
         constant = 'const ' if self.is_const else ''
-        func = '()' if self.is_function else ''
-        ptr = '*' if self.is_ptr else ''
-        return f"{constant}{self.type_spelling}{ptr} {self.spelling}{func}"
+        func = '()' if self.is_function and paranthesis else ''
+        return f"{constant}{self.type_spelling} {self.spelling}{func}"
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor):
@@ -187,14 +191,14 @@ class Identifier:
         if result_pointee_type.spelling != "":
             # Pointer return type
             typing = str(result_pointee_type.kind) \
-                    .removeprefix("TypeKind.")
+                    .removeprefix("TypeKind.").lower()
             type_spelling = str(result_pointee_type.spelling) \
                 .removeprefix("const ")
             is_const = result_pointee_type.is_const_qualified()
             is_ptr = True
         else:
             typing = str(type_obj.kind) \
-                    .removeprefix("TypeKind.")
+                    .removeprefix("TypeKind.").lower()
             type_spelling = str(type_obj.spelling) \
                     .removeprefix("const ")
             is_const = type_obj.is_const_qualified()
@@ -203,7 +207,7 @@ class Identifier:
         return cls(
             spelling = cursor.spelling,
             typing = typing,
-            type_spelling = type_spelling,
+            type_spelling = type_spelling + ('*' if is_ptr else ''),
             is_ptr = is_ptr,
             is_const = is_const,
             is_function = is_function
@@ -247,14 +251,9 @@ class DependencyFunction:
 
     @classmethod
     def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
-        #print(cursor.type.kind, cursor.spelling, cursor.type.is_const_qualified(), cursor.result_type.is_const_qualified())
         # Only create objects from function prototypes
         assert(str(cursor.type.kind).endswith("FUNCTIONPROTO"))
         assert(not cursor.type.is_const_qualified() and  not cursor.result_type.is_const_qualified())
-
-        #result_ptr = cursor.result_type.get_pointee()
-        #if result_ptr.spelling != "":
-        #    print(cursor.spelling, result_ptr.spelling,  result_ptr.is_const_qualified()  )
 
         return cls(
             filepath    = get_path_relative_to(
@@ -281,6 +280,13 @@ class DependencyFunction:
 
     def __repr__(self):
         return f"{self.filepath}:{self.line}:{self.col}:{self.ident.spelling}()"
+
+    def prototype_string(self, suffix: str = "") -> str:
+        out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
+        for arg in self.arguments:
+            out += f"{arg}, "
+
+        return out.removesuffix(", ") + ")"
 
     def __hash__(self):
         return hash(self.filepath + self.ident.__repr__() + self.displayname +

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Runs only the provided driver
+# The first argument can be any driver under expat
 die(){ echo -e "$1" >&2 ; exit 1; }
 BASE_DIR=~/Repos/euf
 
@@ -6,6 +8,7 @@ if [ "$1" = ls ]; then
 	ls ./expat/drivers/*.c
 	exit 0
 fi
+
 
 driver_path=$(printf $BASE_DIR/expat/drivers/$1*.c)
 func_name=$(basename ${driver_path%%.c})

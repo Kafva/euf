@@ -26,7 +26,7 @@
 	},
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 2,
+	"VERBOSITY": 1,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,

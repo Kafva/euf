@@ -10,8 +10,9 @@ output_formatting(){
 [[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$UNWIND" 		|| 
 	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
 	 -z "$FUNC_NAME"  || -z "$OBJECT_BITS" 	|| -z "$OUTFILE"
-]] && die "Missing enviroment variable(s)"
+]] && die "Missing environment variable(s)"
 
+cbmc_output=$(mktemp)
 rm -f $OUTFILE
 
 goto-cc -DCBMC -I $OUTDIR \
@@ -26,11 +27,15 @@ CBMC_OPTS=(
 )
 
 cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
-	grep --color=always -A 10 -i "^$FUNC_NAME" 2>&1 \
+	grep --color=always -A 25 -i "^$FUNC_NAME" 2>&1 \
 	| output_formatting
 
 time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 		--function $EUF_ENTRYPOINT \
 	  --property $EUF_ENTRYPOINT.assertion.1 2>&1 \
-		| output_formatting
-exit 0
+    | output_formatting | tee $cbmc_output
+
+
+
+# Arbitrary return code to signify a failed verification
+grep -q "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54
