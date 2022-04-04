@@ -8,7 +8,6 @@
 									 // and the new version of XML_ErrorString
 const XML_LChar *XMLCALL
 XML_ErrorString_old_b026324c6904b2a(enum XML_Error code);
-
 // Example to trigger failure
 //const XML_LChar *XMLCALL
 //XML_ErrorString_old_b026324c6904b2a(enum XML_Error code){
@@ -31,6 +30,7 @@ int euf_main(){
 
 	return 0;
 }
+
 
 
 #if 0

@@ -188,7 +188,7 @@ def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
         else:
             for fn_arg_dep, fn_arg_main_type in \
                     zip(dep_func.new.arguments, func_args_main_types):
-                if fn_arg_dep.type != fn_arg_main_type:
+                if fn_arg_dep.typing != fn_arg_main_type:
                     matching = False
                     break
 

@@ -314,7 +314,10 @@ if __name__ == '__main__':
                 else:
                     print_info(f"[{func_name}] CBMC equivalance check \033[1;32mSUCCESS\033[0m")
                     CHANGED_FUNCTIONS.remove(change)
-                #break
+
+
+                if CONFIG.USE_PROVIDED_DRIVER:
+                    break # tmp
 
         except KeyboardInterrupt:
             sys.exit(-1)
