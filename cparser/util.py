@@ -7,6 +7,12 @@ def print_info(msg: str):
 def print_stage(msg: str):
     print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ", file=sys.stderr)
 
+def print_success(msg: str):
+    print("[\033[32m+\033[0m] " +  msg, file=sys.stderr)
+
+def print_fail(msg: str):
+    print("[\033[31mX\033[0m] " +  msg, file=sys.stderr)
+
 def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg, file=sys.stderr)
 

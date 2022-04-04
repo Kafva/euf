@@ -25,7 +25,7 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.harness import create_harness, run_harness
-from cparser.util import flatten, flatten_dict, print_err, print_info, print_stage
+from cparser.util import flatten, flatten_dict, print_err, print_fail, print_info, print_stage, print_success
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
 from cparser.impact_set import get_call_sites_from_file, \
@@ -289,12 +289,14 @@ if __name__ == '__main__':
                         fail_msg = f"Failed to generate driver: {msg}"
 
                         if not os.path.exists(identity_driver):
-                            print_err(f"[{change.old}] {fail_msg}")
+                            print_fail(f"[{change.old}] {fail_msg}")
                             continue
 
                         if not run_harness(change, script_env, identity_driver, func_name, quiet=True):
                             fail_msg = f"Identity verification failed: {func_name}"
                         else:
+                            print_success(f"Identity verification successful: {func_name}")
+
                             # Generate the actual harness
                             (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=False)
                             fail_msg = f"Failed to generate driver: {msg}"
@@ -304,7 +306,7 @@ if __name__ == '__main__':
 
 
                     if not os.path.exists(driver):
-                        print_err(f"[{change.old}] {fail_msg}")
+                        print_fail(f"{change.old}: {fail_msg}")
                         continue
 
                 if not run_harness(change, script_env, driver, func_name, quiet = CONFIG.VERBOSITY<=1):
@@ -325,8 +327,8 @@ if __name__ == '__main__':
     # additional passes were we look for invocations of changed functions 
     # in the dependency 
     #
-    # Note that we perform propogation after the reduction step
-    # We do not want to use CBMC analysis for transative function calls
+    # Note that we perform propagation after the reduction step
+    # We do not want to use CBMC analysis for transitive function calls
     #
     # We only need to look through the files in the new version
     DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),

@@ -1,0 +1,35 @@
+{
+  "COMMIT_NEW": "ab89ae73",
+  "COMMIT_OLD": "322ca04c",
+
+	"PROJECT_DIR": "~/Repos/jabberd-2.7.0",
+	"DEPENDENCY_DIR": "~/Repos/libexpat",
+	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
+	"DEPLIB_NAME": "libexpat.a",
+
+	"UNWIND": 10,
+	"OBJECT_BITS": 12,
+	
+	"CP_HEADERS": [
+			"expat/lib/expat.h",
+			"expat/lib/expat_external.h"
+	],
+  "INCLUDE_HEADERS": [
+			"expat/lib/expat.h"
+  ],
+  "STD_HEADERS": [
+      "stdlib.h"
+  ],
+
+	"BUILD_ENV": {
+			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
+			"CFLAGS": "-O2 -fvisibility=default"
+	},
+
+	"REVERSE_MAPPING": true,
+	"VERBOSITY": 2,
+	"NPROC": 12,
+	"SKIP_BLAME": false,
+	"SKIP_IMPACT": true,
+	"FULL": true
+}
