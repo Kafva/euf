@@ -63,7 +63,7 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
         f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n\n")
 
         # Entrypoint function
-        f.write(f"int {CONFIG.EUF_ENTRYPOINT}() {{\n{INDENT}#ifdef CBMC\n")
+        f.write(f"void {CONFIG.EUF_ENTRYPOINT}() {{\n{INDENT}#ifdef CBMC\n")
 
         # Contracts:
         #   https://github.com/diffblue/cbmc/blob/develop/doc/cprover-manual/contracts-history-variables.md
@@ -127,7 +127,7 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
 
 
             # Enclose driver function
-            f.write(f"\n{INDENT}#endif\n{INDENT}return 0;\n}}\n")
+            f.write(f"\n{INDENT}#endif\n{INDENT}\n}}\n")
 
     if failed_generation:
         os.remove(harness_path)
@@ -148,7 +148,8 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     out = subprocess.DEVNULL if quiet else sys.stderr
 
-    print_info(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
+    if CONFIG.VERBOSITY >= 3:
+        print_info(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
     return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
         env = script_env, stdout = out, stderr = out, cwd = BASE_DIR
     ).returncode

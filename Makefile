@@ -21,6 +21,7 @@ xml_gen:
 	git diff --color=always  --no-index ~/.cache/euf/libexpat-811c41e3/expat/lib/xmlparse.c ~/.cache/euf/libexpat-b1d03960/expat/lib/xmlparse.c | grep -A 15 --color=always  "XML_ErrorString("
 	./euf.py --config expat/gen.json
 
+# Harnesses:  ~/.cache/euf/libexpat-322ca04c/expat/.harnesses
 xml_rand:
 	./euf.py --config expat/rand.json
 
