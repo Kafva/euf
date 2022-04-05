@@ -2,6 +2,9 @@ basic:
 	-git diff --no-index ~/.cache/euf/matrix-d85085cb/src/matrix.c ~/.cache/euf/matrix-867b6581/src/matrix.c
 	./euf.py --config tests/configs/basic.json	
 
+bmc:
+	cbmc ./tests/drivers/example.c --unwind 5 -DCBMC --object-bits 12 --function euf_main --property euf_main.assertion.1
+
 onig:
 	./euf.py --config tests/configs/oniguruma.json
 
