@@ -4,7 +4,7 @@ import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, DependencyFunctionChange, SourceDiff
-from cparser.util import print_err, time_end, time_start
+from cparser.util import print_err, print_stage, time_end, time_start
 
 def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
     '''
@@ -102,14 +102,27 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tu
         # Debug information
         f.write(f"// {change}\n")
 
-        # Include directives (order matters)
+        # System include directives
         for header in includes[0]:
             f.write(f"#include <{header}>\n")
 
         f.write("\n")
 
+        # Project include directives
         for header in includes[1]:
             f.write(f"#include \"{os.path.basename(header)}\"\n")
+
+        # Any custom include directives for the specific file
+        filename = os.path.basename(change.old.filepath)
+        if filename in CONFIG.CUSTOM_HEADERS:
+            f.write("\n")
+            for header in CONFIG.CUSTOM_HEADERS[filename]:
+                header = os.path.expanduser(header)
+                header_name = os.path.basename(header)
+                shutil.copy(header, f"{CONFIG.OUTDIR}/{header_name}")
+                f.write(f"#include \"{header_name}\"")
+            f.write("\n")
+
 
         # Decleration of the old version of the function
         f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n\n")
@@ -208,30 +221,37 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     time_start(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
     if driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c"):
-        print("\033[34m========\033[0m Identity verification \033[34m========\033[0m")
+        print_stage("Identity verification")
 
     start = datetime.now()
+    driver_name = os.path.basename(driver)
 
     try:
         return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
             env = script_env, stdout = out, stderr = out, cwd = BASE_DIR
         ).returncode
     except KeyboardInterrupt:
-        time_end(f"\n\nCancelled execution for {os.path.basename(driver)}",  start)
+        print("\n")
+        time_end(f"Cancelled execution for {driver_name}",  start)
+        #if os.path.exists(driver):
+        #    os.remove(driver)
         return False
 
-    time_end(f"Finished CBMC analysis for {os.path.basename(driver)}",  start)
+    time_end(f"Finished CBMC analysis for {driver_name}",  start)
 
     match return_code:
         case 0:
             return True
         # SUCCESS verification: equivalent change
-        case 54:
+        case 53:
+        # "SUCCESS": No verification conditions generated
+            print_err(f"No verification conditions generated for: {driver}")
             return False
+        case 54:
         # FAILED verification: non-equivalent change
+            return False
         case _:
         # ERROR
-            traceback.print_exc()
             if not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
                 print_err(f"An error occured during goto-cc compilation of {driver}")
             else:

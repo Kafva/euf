@@ -9,7 +9,7 @@ from cparser import CONFIG
 def get_bear_version(path: str) -> int:
     if shutil.which("bear") is None:
         print_err("Missing 'bear' executable")
-        compile_db_fail_msg(path)
+        check_ccdb_fail(path)
         return -1
     out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
     prefix_len = len("bear ")
@@ -27,7 +27,7 @@ def run_autoreconf(path: str) -> bool:
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
+            check_ccdb_fail(path)
             return False
     else:
         print_err(f"Missing autoconf files")
@@ -52,8 +52,7 @@ def run_if_present(path:str, filename: str) -> bool:
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
-            compile_db_fail_msg(path)
-            return False
+            return check_ccdb_fail(path)
     else:
         print_err(f"Not found: '{path}/{filename}'")
         return False
@@ -100,8 +99,7 @@ def autogen_compile_db(source_path: str) -> bool:
             version = get_bear_version(source_path)
 
             if version <= 0:
-                compile_db_fail_msg(source_path)
-                return False
+                return check_ccdb_fail(source_path)
             elif version <= 2:
                 del cmd[1]
 
@@ -109,18 +107,24 @@ def autogen_compile_db(source_path: str) -> bool:
             (subprocess.run(cmd, cwd = source_path, stdout = sys.stderr
             )).check_returncode()
         except subprocess.CalledProcessError:
-            compile_db_fail_msg(source_path)
-            return False
+            return check_ccdb_fail(source_path)
 
     return has_valid_compile_db(source_path)
 
-def compile_db_fail_msg(path: str) -> None:
+def check_ccdb_fail(path: str) -> bool:
+    ''' Returns True if the ccdb actually exists '''
     backtrace = traceback.format_exc()
-    if not re.match("^NoneType: None$", backtrace):
-        print(backtrace)
-    print_err(f"Failed to parse or create {path}/compile_commands.json\n" +
-    "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
-    "Consult the documentation for your particular dependency for additional build instructions.")
+    if not has_valid_compile_db(path):
+        if not re.match("^NoneType: None$", backtrace):
+            print(backtrace)
+        print_err(f"Failed to parse or create {path}/compile_commands.json\n" +
+        "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
+        "Consult the documentation for your particular dependency for additional build instructions.")
+        return False
+    else:
+        print_err(f"An error occured but {path}/compile_commands.json was created")
+        return True
+
 
 def create_worktree(target: str, commit: Commit, repo: Repo) -> bool:
     if not os.path.exists(target):

@@ -107,6 +107,18 @@ class Config:
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])
 
+    # Some projects will declare types inside source files rather
+    # than in header files. If these types are needed as arguments to a
+    # function in a driver we need some way of including them
+    # Currently, we simply provide the option of giving a custom header
+    # with the neccessary definitions to resolve this
+    #
+    # Format:
+    #   src_file: [
+    #       "custom.h"
+    #    ]
+    CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
+
     # Show diffs of files in change set and exit
     SHOW_DIFFS: bool = False
 

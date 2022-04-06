@@ -23,9 +23,9 @@ goto-cc -DCBMC -I $OUTDIR \
 # all functions (at least according to --list-goto-functions)
 IFS=', ' read -r -a CBMC_OPTS <<< "$CBMC_OPTS_STR"
 
-#cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
-#	grep --color=always -A 25 -i "^$FUNC_NAME" 2>&1 \
-#	| output_formatting
+cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
+	grep --color=always -A 5 -i "^$FUNC_NAME" 2>&1 \
+	| output_formatting
 
 time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 		--function $EUF_ENTRYPOINT \
@@ -35,5 +35,7 @@ time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 
 rm -f $OUTFILE
 
-# Arbitrary return code to signify a failed verification
+# Arbitrary return codes to signify a failed verification (54)
+# and a lack of VCCs (53)
+grep -q "Generated 0 VCC" $cbmc_output && exit 53
 grep -q "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54

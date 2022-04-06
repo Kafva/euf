@@ -30,7 +30,7 @@ from cparser.change_set import add_rename_changes_based_on_blame, \
 from cparser.impact_set import get_call_sites_from_file, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
-        compile_db_fail_msg
+        check_ccdb_fail
 from cparser.enumerate_globals import write_rename_files
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
@@ -52,9 +52,12 @@ if __name__ == '__main__':
     )
     parser.add_argument("--config", metavar="json", type=str, required=True,
         default="", help=f"JSON file containing a custom Config object to use")
+    parser.add_argument("--diff", action='store_true', default=False,
+        help='Print the diff between the files in the change set and exit')
 
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)
+    CONFIG.SHOW_DIFFS = args.diff # Always override config file option
     CONFIG.SETX = str(CONFIG.VERBOSITY >= 2).lower()
     if CONFIG.VERBOSITY >= 2:
         pprint(CONFIG)
@@ -195,13 +198,13 @@ if __name__ == '__main__':
         DEP_DB_OLD: cindex.CompilationDatabase  = \
             cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_OLD)
     except cindex.CompilationDatabaseError as e:
-        compile_db_fail_msg(DEP_SOURCE_ROOT_OLD)
+        print_err(f"Failed to parse {DEP_SOURCE_ROOT_OLD}/compile_commands.json")
         sys.exit(-1)
     try:
         DEP_DB_NEW: cindex.CompilationDatabase  = \
                 cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_NEW)
     except cindex.CompilationDatabaseError as e:
-        compile_db_fail_msg(DEP_SOURCE_ROOT_NEW)
+        print_err(f"Failed to parse {DEP_SOURCE_ROOT_NEW}/compile_commands.json")
         sys.exit(-1)
 
     # Extract compile flags for each file that was changed
@@ -219,7 +222,7 @@ if __name__ == '__main__':
     try:
         MAIN_DB = cindex.CompilationDatabase.fromDirectory(CONFIG.PROJECT_DIR)
     except cindex.CompilationDatabaseError as e:
-        compile_db_fail_msg(CONFIG.PROJECT_DIR)
+        check_ccdb_fail(CONFIG.PROJECT_DIR)
         sys.exit(-1)
 
     PROJECT_SOURCE_FILES = [ SourceFile(
@@ -321,6 +324,7 @@ if __name__ == '__main__':
 
                     if not run_harness(change, script_env, identity_driver, func_name, quiet=False):
                         fail_msg = f"Identity verification failed: {func_name}"
+                        continue
                     else:
                         print_success(f"Identity verification successful: {func_name}")
 

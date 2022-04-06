@@ -16,7 +16,13 @@
     "expat/examples/.*"
   ],
 
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 0", 
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
+
+  "CUSTOM_HEADERS": {
+    "xmlparse.c": [
+      "~/Repos/euf/expat/include/xmlparse.h"
+    ]
+  },
 
   "SHOW_DIFFS": false,
 
