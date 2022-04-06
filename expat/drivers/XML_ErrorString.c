@@ -1,26 +1,6 @@
 // Note: The return type of XML_ErrorString is constant pointer
 // We should be able to autogen for cases of this type
-
-// Required!
-//#include "expat.h" // Has the decleration for types 
-									   // and the new version of XML_ErrorString
-
-//#include <stddef.h>
-//#include <string.h> /* memset(), memcpy() */
-//#include <assert.h>
-//#include <limits.h> /* UINT_MAX */
-//#include <stdio.h>  /* fprintf */
-//#include <stdlib.h> /* getenv, rand_s */
-//#include <stdint.h> /* uintptr_t */
-//
-//#include "ascii.h"
-//#include "expat.h"
-//#include "siphash.h"
-//#include "internal.h"
-//#include "xmltok.h"
-//#include "xmlrole.h"
 #include <stdlib.h>
-
 
 #include "ascii.h"
 #include "expat.h"
@@ -28,7 +8,6 @@
 #include "internal.h"
 #include "xmltok.h"
 #include "xmlrole.h"
-//#include "expat_external.h"
 
 
 const XML_LChar *XMLCALL

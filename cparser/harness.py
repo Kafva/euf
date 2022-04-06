@@ -28,6 +28,11 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
         if not inc.is_input_file:
             hdr_path = inc.include.name
             if hdr_path.startswith("/usr/include/"):
+                # Skip headers under specified paths
+                if any([ hdr_path.startswith(f"/usr/include/{skip_header}") \
+                        for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
+                    continue
+
                 usr_includes.append(
                     hdr_path.removeprefix("/usr/include/")
                 )
@@ -103,7 +108,7 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tu
         # in includes[0] but this set includes some headers which should not
         # be included directly. FIXME: Blacklist headers that should be skipped
         # to avoid the need for STD_HEADERS
-        for header in CONFIG.STD_HEADERS:
+        for header in includes[0]:
             f.write(f"#include <{header}>\n")
 
         f.write("\n")

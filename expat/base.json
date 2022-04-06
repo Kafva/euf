@@ -11,10 +11,6 @@
     "expat/lib"
   ],
   
-  "STD_HEADERS": [
-      "stdlib.h"
-  ],
-	
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
     "expat/examples/.*"

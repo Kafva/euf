@@ -73,17 +73,6 @@ class Config:
     RENAME_TXT: str = "/tmp/rename.txt"
     SUFFIX_ENV_FLAG: str = "USE_SUFFIX"
 
-    # Any headers that should be copied into '.out' for the
-    # driver to work
-    CP_HEADERS: list[str] = field(default_factory=list)
-
-    # List of copied headers which need to be included
-    # in the harness
-    INCLUDE_HEADERS: list[str] = field(default_factory=list)
-
-    # Headers to be included with <...>
-    STD_HEADERS: list[str] = field(default_factory=list)
-
     # Maps function names to filepaths of drivers
     DRIVERS: dict[str,str] = field(default_factory=dict)
 
@@ -99,6 +88,10 @@ class Config:
 
     # List of include paths used by the old version of the dependency
     DEP_INCLUDE_PATHS: list[str] = field(default_factory=list)
+
+    # System header paths to skip over for the #include directives
+    # of the driver
+    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])
 
     # Show diffs of files in change set and exit
     SHOW_DIFFS: bool = False

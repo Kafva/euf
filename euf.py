@@ -275,8 +275,6 @@ if __name__ == '__main__':
         # Copy any required headers into the include
         # directory of the driver
         os.makedirs(CONFIG.OUTDIR, exist_ok=True)
-        for header in CONFIG.CP_HEADERS:
-            shutil.copy(f"{DEPENDENCY_NEW}/{header}", CONFIG.OUTDIR)
 
         script_env = CONFIG.get_script_env()
         script_env.update({
