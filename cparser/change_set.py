@@ -8,6 +8,7 @@ from cparser import CONFIG, DependencyFunction, CursorPair, \
         DependencyFunctionChange, SourceDiff, SourceFile
 from cparser.util import get_column_counts, get_path_relative_to, print_err, print_info
 
+
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
     '''
@@ -221,7 +222,7 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
         # lines originates from each file in the blame output
         file_origins = get_column_counts(blame_output, 1) # type: ignore
 
-        # If the file origin dict only contains two entries and the distrubtion
+        # If the file origin dict only contains two entries and the distribution
         # is between 50/50 and RENAME_RATIO/(1-RENAME_RATIO) we assume that the file has been renamed
         if len(file_origins) == 2:
 

@@ -10,12 +10,9 @@
 	"UNWIND": 10,
 	"OBJECT_BITS": 12,
 	
-	"CP_HEADERS": [
-			"expat/lib/expat.h",
-			"expat/lib/expat_external.h"
-	],
-  "INCLUDE_HEADERS": [
-			"expat/lib/expat.h"
+
+  "DEP_INCLUDE_PATHS": [
+    "expat/lib"
   ],
   "STD_HEADERS": [
       "stdlib.h"
@@ -25,6 +22,8 @@
 			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
 			"CFLAGS": "-O2 -fvisibility=default"
 	},
+
+  "SHOW_DIFFS": false,
 
 	"REVERSE_MAPPING": true,
 	"VERBOSITY": 2,

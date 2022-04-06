@@ -9,8 +9,8 @@ COMMIT_NEW=c16300f0bc4318f31f9e27eb2702ddbffe086fea
 
 # rand
 # 2016 -> 2019
-COMMIT_NEW=ab89ae73
-COMMIT_OLD=322ca04c
+#COMMIT_NEW=ab89ae73
+#COMMIT_OLD=322ca04c
 
 
 die(){ echo -e "$1" >&2 ; exit 1; }

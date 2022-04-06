@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
-from cparser.harness import create_harness, run_harness
+from cparser.harness import create_harness, run_harness, get_includes_for_tu
 from cparser.util import flatten, flatten_dict, print_err, print_fail, print_info, print_stage, print_success
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file
@@ -140,6 +140,13 @@ if __name__ == '__main__':
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
                 for d in DEP_SOURCE_DIFFS ]) + "\n")
 
+    if CONFIG.SHOW_DIFFS:
+        for d in DEP_SOURCE_DIFFS:
+            subprocess.run(["git", "diff", "--no-index",
+                f"{DEPENDENCY_OLD}/{d.old_path}",
+                f"{DEPENDENCY_NEW}/{d.new_path}" ])
+        sys.exit(0)
+
     # Filter out any files that are in excluded paths
     # The paths are provided as python regex
     for diff in DEP_SOURCE_DIFFS[:]:
@@ -226,6 +233,7 @@ if __name__ == '__main__':
         print_stage("Change set")
 
     CHANGED_FUNCTIONS: list[DependencyFunctionChange] = []
+    TU_INCLUDES = {}
 
     # Look through the old and new version of each delta
     # using NPROC parallel processes and save
@@ -255,7 +263,6 @@ if __name__ == '__main__':
         if CONFIG.VERBOSITY >= 1:
             print_stage("Reduction")
 
-        # If expat has fewer than 449 something is wrong
         write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
 
         # Compile the old and new version of the dependency as a set of 
@@ -284,6 +291,13 @@ if __name__ == '__main__':
 
         driver = ""
 
+        # Retrieve a list of the headers that each TU uses
+        # We will need to include these in the driver
+        # for types etc. to be defined
+        for diff in DEP_SOURCE_DIFFS:
+            TU_INCLUDES[diff.old_path] = \
+                get_includes_for_tu(diff, DEPENDENCY_OLD)
+
         for change in CHANGED_FUNCTIONS:
 
             if CONFIG.USE_PROVIDED_DRIVER:
@@ -301,7 +315,9 @@ if __name__ == '__main__':
                 if not func_name in CONFIG.DRIVERS:
                     # Begin by generating an identity driver and verify that it
                     # passes as equivalent
-                    (identity_driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=True)
+                    (identity_driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, \
+                            TU_INCLUDES[change.old.filepath] , identity=True)
+
                     fail_msg = f"Failed to generate driver: {msg}"
 
                     if not os.path.exists(identity_driver):
@@ -314,7 +330,8 @@ if __name__ == '__main__':
                         print_success(f"Identity verification successful: {func_name}")
 
                         # Generate the actual harness
-                        (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=False)
+                        (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, \
+                                TU_INCLUDES[change.old.filepath], identity=False)
                         fail_msg = f"Failed to generate driver: {msg}"
                 else:
                     driver = CONFIG.DRIVERS[func_name]

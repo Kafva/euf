@@ -97,6 +97,11 @@ class Config:
     # Functions for which no CBMC analysis should be attempted
     IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
 
+    # List of include paths used by the old version of the dependency
+    DEP_INCLUDE_PATHS: list[str] = field(default_factory=list)
+
+    # Show diffs of files in change set and exit
+    SHOW_DIFFS: bool = False
 
     # - - - Property setters
     def _parse_path(self, value) -> str:

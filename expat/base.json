@@ -6,15 +6,15 @@
 
 	"UNWIND": 10,
 	"OBJECT_BITS": 12,
-	
-	"CP_HEADERS": [
-			"expat/lib/expat.h",
-			"expat/lib/expat_external.h"
-	],
-  "INCLUDE_HEADERS": [
-			"expat/lib/expat.h"
+  
+  "DEP_INCLUDE_PATHS": [
+    "expat/lib"
   ],
   
+  "STD_HEADERS": [
+      "stdlib.h"
+  ],
+	
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
     "expat/examples/.*"

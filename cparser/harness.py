@@ -1,8 +1,51 @@
 import os, subprocess, sys, traceback
-from cparser import BASE_DIR, CONFIG, DependencyFunctionChange
+import shutil
+
+from clang import cindex
+from cparser import BASE_DIR, CONFIG, DependencyFunctionChange, SourceDiff
 from cparser.util import print_err, print_info
 
-def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bool = False) -> tuple[str,str]:
+def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
+    '''
+    Return a set of all the headers that are included into the TU 
+    that corresponds to the given diff split into headers under /usr/inlcude
+    and project specific headers.
+    The usr headers will be included with <...> in drivers and the others
+    will be included using "...", these files will be autaomtaically copied into the
+    OUTDIR directory which is on the include path of the driver
+
+    Note that the order of includes matter so we want to use a list
+    '''
+    tu_old = cindex.TranslationUnit.from_source(
+            f"{old_root_dir}/{diff.old_path}",
+            args = diff.old_compile_args
+    )
+    usr_includes = []
+    project_includes = []
+
+
+    for inc in tu_old.get_includes():
+        if not inc.is_input_file:
+            hdr_path = inc.include.name
+            if hdr_path.startswith("/usr/include/"):
+                usr_includes.append(
+                    hdr_path.removeprefix("/usr/include/")
+                )
+            else:
+                shutil.copy(hdr_path,
+                        f"{CONFIG.OUTDIR}/{os.path.basename(hdr_path)}"
+                    )
+                hdr_path = hdr_path.removeprefix(old_root_dir+"/")
+                for include_path in CONFIG.DEP_INCLUDE_PATHS:
+                    hdr_path = hdr_path.strip("/").removeprefix(include_path) \
+                        .strip("/")
+
+                project_includes.append(hdr_path)
+
+
+    return (usr_includes, project_includes)
+
+def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tuple[list[str],list[str]],  identity: bool = False) -> tuple[str,str]:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -52,10 +95,20 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
 
     # Write the harness
     with open(harness_path, mode='w', encoding='utf8') as f:
+        # Debug information
+        f.write(f"// {change}\n")
+
         # Include directives
+        # We have a list of all the <...> headers needed by the current TU
+        # in includes[0] but this set includes some headers which should not
+        # be included directly. FIXME: Blacklist headers that should be skipped
+        # to avoid the need for STD_HEADERS
         for header in CONFIG.STD_HEADERS:
             f.write(f"#include <{header}>\n")
-        for header in CONFIG.INCLUDE_HEADERS:
+
+        f.write("\n")
+
+        for header in includes[1]:
             f.write(f"#include \"{os.path.basename(header)}\"\n")
 
         # Decleration of the old version of the function
