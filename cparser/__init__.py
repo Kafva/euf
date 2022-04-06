@@ -90,6 +90,14 @@ class Config:
     # Override to only use a specific (provided) driver for CBMC
     USE_PROVIDED_DRIVER: bool = False
 
+    # Paths to exclude from all analysis (requires a '*'
+    # to match all files under a directory)
+    EXCLUDE_REGEXES: list[str] = field(default_factory=list)
+
+    # Functions for which no CBMC analysis should be attempted
+    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
+
+
     # - - - Property setters
     def _parse_path(self, value) -> str:
         if value != "":

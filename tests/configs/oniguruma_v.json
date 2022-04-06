@@ -12,6 +12,11 @@
 			"src/oniguruma.h"
 	],
 
+  "EXCLUDE_REGEXES": [
+    "sample/.*",
+    "testu.c"
+  ],
+
   "DRIVERS": {
       "new_size": "~/Repos/euf/tests/drivers/st_newsize_driver.c"
   },

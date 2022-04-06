@@ -140,6 +140,19 @@ if __name__ == '__main__':
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
                 for d in DEP_SOURCE_DIFFS ]) + "\n")
 
+    # Filter out any files that are in excluded paths
+    # The paths are provided as python regex
+    for diff in DEP_SOURCE_DIFFS[:]:
+        for exclude_regex in CONFIG.EXCLUDE_REGEXES:
+            try:
+                if re.search(rf"{exclude_regex}", diff.old_path):
+                    DEP_SOURCE_DIFFS.remove(diff)
+                    break
+            except re.error:
+                print_err(f"Invalid regex provided: {exclude_regex}")
+                traceback.print_exc()
+                sys.exit(-1)
+
     # Update the project root in case the source code and .git
     # folder are not both at the root of the project
     dep_source_root = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
@@ -270,6 +283,11 @@ if __name__ == '__main__':
             driver = ""
 
             for change in CHANGED_FUNCTIONS:
+                func_name = change.old.ident.spelling
+
+                if func_name in CONFIG.IGNORE_FUNCTIONS:
+                    continue
+
                 if CONFIG.USE_PROVIDED_DRIVER:
                     driver = next(iter(CONFIG.DRIVERS.values()))
                     func_name = next(iter(CONFIG.DRIVERS.keys()))
@@ -279,7 +297,6 @@ if __name__ == '__main__':
                     # we will need a minimal program that invokes both versions of the changed 
                     # function and then performs an assertion on all affected outputs
                     #
-                    func_name = change.old.ident.spelling
 
                     # If no explicit driver was passed, attempt to generate one
                     if not change.old.ident.spelling in CONFIG.DRIVERS:
@@ -289,7 +306,7 @@ if __name__ == '__main__':
                         fail_msg = f"Failed to generate driver: {msg}"
 
                         if not os.path.exists(identity_driver):
-                            print_fail(f"[{change.old}] {fail_msg}")
+                            print_fail(f"{change.old} {fail_msg}")
                             continue
 
                         if not run_harness(change, script_env, identity_driver, func_name, quiet=True):

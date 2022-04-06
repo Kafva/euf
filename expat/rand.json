@@ -9,6 +9,14 @@
 
 	"UNWIND": 10,
 	"OBJECT_BITS": 12,
+  "EXCLUDE_REGEXES": [
+    "expat/tests/.*",
+    "expat/examples/.*"
+  ],
+
+  "IGNORE_FUNCTIONS": [
+    "main"
+  ],
 	
 	"CP_HEADERS": [
 			"expat/lib/expat.h",
