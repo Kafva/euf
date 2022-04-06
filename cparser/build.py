@@ -202,7 +202,7 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
                 else:
                     if os.path.exists(f"{dep_source_dir}/configure"):
                         subprocess.run([
-                            "./configure", "--host", "none-none-none", #"--no-verify"
+                            "./configure", "--host", "none-none-none"
                             ],
                             stdout = out, stderr = out,
                             cwd = dep_source_dir, env = script_env

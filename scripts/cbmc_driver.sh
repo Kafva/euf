@@ -17,7 +17,7 @@ rm -f $OUTFILE
 
 goto-cc -DCBMC -I $OUTDIR \
 	$NEW_LIB $OLD_LIB $DRIVER \
- 	-o $OUTFILE
+ 	-o $OUTFILE || exit $?
 
 # If we use '--drop-unused-functions' we lose pretty much
 # all functions (at least according to --list-goto-functions)

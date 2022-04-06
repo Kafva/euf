@@ -239,6 +239,9 @@ if __name__ == '__main__':
                 ),
                 DEP_SOURCE_DIFFS
             ))
+            CHANGED_FUNCTIONS = list(filter(lambda f: \
+                    not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
+                CHANGED_FUNCTIONS[:]))
 
             if CONFIG.VERBOSITY >= 1:
                 pprint(CHANGED_FUNCTIONS)
@@ -249,95 +252,88 @@ if __name__ == '__main__':
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
-        try:
-            if CONFIG.VERBOSITY >= 1:
-                print_stage("Reduction")
+        if CONFIG.VERBOSITY >= 1:
+            print_stage("Reduction")
 
-            # If expat has fewer than 449 something is wrong
-            write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
+        # If expat has fewer than 449 something is wrong
+        write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
 
-            # Compile the old and new version of the dependency as a set of 
-            # goto-bin files
-            if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW, False)) == "":
-                sys.exit(-1)
-            if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD, True)) == "":
-                sys.exit(-1)
+        # Compile the old and new version of the dependency as a set of 
+        # goto-bin files
+        if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW, False)) == "":
+            sys.exit(-1)
+        if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD, True)) == "":
+            sys.exit(-1)
 
-            # Copy any required headers into the include
-            # directory of the driver
-            os.makedirs(CONFIG.OUTDIR, exist_ok=True)
-            for header in CONFIG.CP_HEADERS:
-                shutil.copy(f"{DEPENDENCY_NEW}/{header}", CONFIG.OUTDIR)
+        # Copy any required headers into the include
+        # directory of the driver
+        os.makedirs(CONFIG.OUTDIR, exist_ok=True)
+        for header in CONFIG.CP_HEADERS:
+            shutil.copy(f"{DEPENDENCY_NEW}/{header}", CONFIG.OUTDIR)
 
-            script_env = CONFIG.get_script_env()
-            script_env.update({
-                'NEW_LIB': new_lib,
-                'OLD_LIB': old_lib,
-                'OUTDIR': CONFIG.OUTDIR,
-                'OUTFILE': CONFIG.CBMC_OUTFILE,
-                'EUF_ENTRYPOINT': CONFIG.EUF_ENTRYPOINT,
-                'UNWIND': str(CONFIG.UNWIND),
-                'OBJECT_BITS': str(CONFIG.OBJECT_BITS)
-            })
+        script_env = CONFIG.get_script_env()
+        script_env.update({
+            'NEW_LIB': new_lib,
+            'OLD_LIB': old_lib,
+            'OUTDIR': CONFIG.OUTDIR,
+            'OUTFILE': CONFIG.CBMC_OUTFILE,
+            'EUF_ENTRYPOINT': CONFIG.EUF_ENTRYPOINT,
+            'UNWIND': str(CONFIG.UNWIND),
+            'OBJECT_BITS': str(CONFIG.OBJECT_BITS)
+        })
 
-            driver = ""
+        driver = ""
 
-            for change in CHANGED_FUNCTIONS:
+        for change in CHANGED_FUNCTIONS:
+
+            if CONFIG.USE_PROVIDED_DRIVER:
+                driver = next(iter(CONFIG.DRIVERS.values()))
+                func_name = next(iter(CONFIG.DRIVERS.keys()))
+            else:
+                # - - - Harness generation - - - #
+                # Regardless of which back-end we use to check equivalance, 
+                # we will need a minimal program that invokes both versions of the changed 
+                # function and then performs an assertion on all affected outputs
+                #
+                # If no explicit driver was passed, attempt to generate one
                 func_name = change.old.ident.spelling
 
-                if func_name in CONFIG.IGNORE_FUNCTIONS:
-                    continue
+                if not func_name in CONFIG.DRIVERS:
+                    # Begin by generating an identity driver and verify that it
+                    # passes as equivalent
+                    (identity_driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=True)
+                    fail_msg = f"Failed to generate driver: {msg}"
 
-                if CONFIG.USE_PROVIDED_DRIVER:
-                    driver = next(iter(CONFIG.DRIVERS.values()))
-                    func_name = next(iter(CONFIG.DRIVERS.keys()))
-                else:
-                    # - - - Harness generation - - - #
-                    # Regardless of which back-end we use to check equivalance, 
-                    # we will need a minimal program that invokes both versions of the changed 
-                    # function and then performs an assertion on all affected outputs
-                    #
-
-                    # If no explicit driver was passed, attempt to generate one
-                    if not change.old.ident.spelling in CONFIG.DRIVERS:
-                        # Begin by generating an identity driver and verify that it
-                        # passes as equivalent
-                        (identity_driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=True)
-                        fail_msg = f"Failed to generate driver: {msg}"
-
-                        if not os.path.exists(identity_driver):
-                            print_fail(f"{change.old} {fail_msg}")
-                            continue
-
-                        if not run_harness(change, script_env, identity_driver, func_name, quiet=True):
-                            fail_msg = f"Identity verification failed: {func_name}"
-                        else:
-                            print_success(f"Identity verification successful: {func_name}")
-
-                            # Generate the actual harness
-                            (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=False)
-                            fail_msg = f"Failed to generate driver: {msg}"
-                    else:
-                        driver = CONFIG.DRIVERS[change.old.ident.spelling]
-                        fail_msg = f"Missing driver: '{driver}'"
-
-
-                    if not os.path.exists(driver):
-                        print_fail(f"{change.old}: {fail_msg}")
+                    if not os.path.exists(identity_driver):
+                        print_fail(f"{change.old} {fail_msg}")
                         continue
 
-                if not run_harness(change, script_env, driver, func_name, quiet = CONFIG.VERBOSITY<=1):
-                    print_info(f"[{func_name}] CBMC equivalance check \033[1;31mFAILURE\033[0m")
+                    if not run_harness(change, script_env, identity_driver, func_name, quiet=False):
+                        fail_msg = f"Identity verification failed: {func_name}"
+                    else:
+                        print_success(f"Identity verification successful: {func_name}")
+
+                        # Generate the actual harness
+                        (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, identity=False)
+                        fail_msg = f"Failed to generate driver: {msg}"
                 else:
-                    print_info(f"[{func_name}] CBMC equivalance check \033[1;32mSUCCESS\033[0m")
-                    CHANGED_FUNCTIONS.remove(change)
+                    driver = CONFIG.DRIVERS[func_name]
+                    fail_msg = f"Missing driver: '{driver}'"
 
 
-                if CONFIG.USE_PROVIDED_DRIVER:
-                    break # tmp
+                if not os.path.exists(driver):
+                    print_fail(f"{change.old}: {fail_msg}")
+                    continue
 
-        except KeyboardInterrupt:
-            sys.exit(-1)
+            if not run_harness(change, script_env, driver, func_name, quiet = CONFIG.VERBOSITY<=1):
+                print_info(f"{func_name}: CBMC equivalance check \033[1;31mFAILURE\033[0m")
+            else:
+                print_info(f"{func_name}: CBMC equivalance check \033[1;32mSUCCESS\033[0m")
+                CHANGED_FUNCTIONS.remove(change)
+
+
+            if CONFIG.USE_PROVIDED_DRIVER:
+                break # tmp
 
     if CONFIG.SKIP_IMPACT:  sys.exit(0)
 

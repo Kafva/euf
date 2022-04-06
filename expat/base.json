@@ -1,6 +1,4 @@
 {
-	"COMMIT_OLD": "bbdfcfef4747d2d66e81c19f4a55e29e291aa171",
-	"COMMIT_NEW": "c16300f0bc4318f31f9e27eb2702ddbffe086fea",
 	"PROJECT_DIR": "~/Repos/jabberd-2.7.0",
 	"DEPENDENCY_DIR": "~/Repos/libexpat",
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
@@ -15,6 +13,15 @@
 	],
   "INCLUDE_HEADERS": [
 			"expat/lib/expat.h"
+  ],
+  
+  "EXCLUDE_REGEXES": [
+    "expat/tests/.*",
+    "expat/examples/.*"
+  ],
+
+  "IGNORE_FUNCTIONS": [
+    "main"
   ],
 
 	"BUILD_ENV": {

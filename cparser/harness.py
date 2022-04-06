@@ -1,6 +1,6 @@
 import os, subprocess, sys, traceback
 from cparser import BASE_DIR, CONFIG, DependencyFunctionChange
-from cparser.util import print_info
+from cparser.util import print_err, print_info
 
 def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bool = False) -> tuple[str,str]:
     '''
@@ -40,7 +40,6 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
         # The return-type has not changed
         if change.old.ident != change.new.ident:
             return ("", f"Different return type: a/{change.old.ident.type_spelling} -> b/{change.old.ident.type_spelling}")
-
 
     harness_dir = f"{dep_path}/{CONFIG.HARNESS_DIR}"
     if not os.path.exists(harness_dir):
@@ -86,24 +85,29 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, identity: bo
         # The initialisation procedure is done per function argument and the
         # type of argument dictates how the initialization is done
         arg_string = ""
-        for arg in change.old.arguments:
-            if not arg.is_ptr:
-                # For non-pointer types we only need to create one variable
-                # since the original value will not be modified and thus
-                # will not need to be verified
-                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
-                arg_string += f"{arg.spelling}, "
 
-            else:
-                # We cannot auto-generate harnesses for 
-                # functions that require void pointers
-                if arg.type_spelling == "void*":
+        if change.old.ident.type_spelling == "void":
+            failed_generation = "True"
+            fail_msg = "Cannot verify function with a 'void' return value"
+        else:
+            for arg in change.old.arguments:
+                if not arg.is_ptr:
+                    # For non-pointer types we only need to create one variable
+                    # since the original value will not be modified and thus
+                    # will not need to be verified
+                    f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                    arg_string += f"{arg.spelling}, "
+
+                else:
+                    # We cannot auto-generate harnesses for 
+                    # functions that require void pointers
+                    if arg.type_spelling == "void*":
+                        failed_generation = True
+                        fail_msg = f"Function requires a 'void*' argument: {arg.spelling}"
+                        break
+
                     failed_generation = True
-                    fail_msg = f"Function requires a 'void*' argument: {arg.spelling}"
-                    break
-
-                failed_generation = True
-                fail_msg = f"Unable to initialise argument of type: {arg.typing}"
+                    fail_msg = f"Unable to initialise argument of type: {arg.typing}"
                 break
 
         if not failed_generation:
@@ -147,7 +151,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     out = subprocess.DEVNULL if quiet else sys.stderr
 
-    if CONFIG.VERBOSITY >= 3:
+    if CONFIG.VERBOSITY >= 2:
         print_info(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
     return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
         env = script_env, stdout = out, stderr = out, cwd = BASE_DIR
@@ -163,4 +167,8 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         case _:
         # ERROR
             traceback.print_exc()
+            if not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
+                print_err(f"An error occured during goto-cc compilation of {driver}")
+            else:
+                print_err(f"An error occured during the analysis of {driver}")
             sys.exit(return_code)
