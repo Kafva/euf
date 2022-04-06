@@ -1,5 +1,8 @@
 import sys, os
+from datetime import datetime
 from typing import Set
+
+from cparser import CONFIG
 
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
@@ -61,9 +64,6 @@ def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[s
 
     return list(column_stats.items())
 
-def get_path_relative_to(path: str, base: str) -> str:
-    return path.removeprefix(base).removeprefix("/")
-
 def unique_only(li: list) -> list:
     uniq = []
     for item in li:
@@ -71,19 +71,19 @@ def unique_only(li: list) -> list:
             uniq.append(item)
     return uniq
 
-def compact_path(path: str) -> str:
-    out = ""
-    for name in path.split("/"):
-        if len(name) >= 2 and not name[0].isalnum():
-            out += "/" + name[:2]
-        elif len(name) > 0:
-            out += "/" + name[0]
-
-    return out
-
 def find(name, path) -> str:
     for root, _, files in os.walk(path):
         if name in files:
             return os.path.join(root, name)
     return ""
+
+def time_start(msg: str) -> datetime:
+    if CONFIG.VERBOSITY >= 1:
+        print_info(msg)
+    return datetime.now()
+
+def time_end(msg: str, start_time: datetime) -> None:
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"{msg}: {datetime.now() - start_time}")
+        start_time = datetime.now()
 

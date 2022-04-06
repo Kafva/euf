@@ -1,10 +1,9 @@
 import os, traceback
-from datetime import datetime
 from clang import cindex
 from typing import Set
 from git.repo import Repo
 
-from cparser.util import print_err, print_info
+from cparser.util import print_err, time_start, time_end
 from cparser import CONFIG, IdentifierLocation
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
@@ -125,12 +124,3 @@ def get_source_files(dep_path: str) -> list[str]:
     return list(filter(lambda f:
         f.endswith(".c") or f.endswith(".h"), repo_files))
 
-def time_start(msg: str) -> datetime:
-    if CONFIG.VERBOSITY >= 1:
-        print_info(msg)
-    return datetime.now()
-
-def time_end(msg: str, start_time: datetime) -> None:
-    if CONFIG.VERBOSITY >= 1:
-        print_info(f"{msg}: {datetime.now() - start_time}")
-        start_time = datetime.now()

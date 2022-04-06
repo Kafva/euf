@@ -2,14 +2,14 @@
 die(){ echo -e "\033[31m!>\033[0m $1" >&2 ; exit 1; }
 output_formatting(){
 	esc=$(printf "\033[")
-	sed "/^file/d; /^Unwinding/d;
+	sed "/^file/d; /^Unwinding/d; /^Not unwinding/d; /^aborting/d
 		s/ SUCCESS$/${esc}1;32m SUCCESS${esc}0m/;
 		s/ FAILURE/${esc}1;31m FAILURE${esc}0m/;
 		"
 }
-[[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$UNWIND" 		|| 
+[[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$CBMC_OPTS_STR"    ||
 	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
-	 -z "$FUNC_NAME"  || -z "$OBJECT_BITS" 	|| -z "$OUTFILE"
+	 -z "$FUNC_NAME"  || -z "$OUTFILE"
 ]] && die "Missing environment variable(s)"
 
 cbmc_output=$(mktemp)
@@ -21,14 +21,11 @@ goto-cc -DCBMC -I $OUTDIR \
 
 # If we use '--drop-unused-functions' we lose pretty much
 # all functions (at least according to --list-goto-functions)
-CBMC_OPTS=(
-	--unwind $UNWIND
-	--object-bits $OBJECT_BITS
-)
+IFS=', ' read -r -a CBMC_OPTS <<< "$CBMC_OPTS_STR"
 
-cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
-	grep --color=always -A 25 -i "^$FUNC_NAME" 2>&1 \
-	| output_formatting
+#cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
+#	grep --color=always -A 25 -i "^$FUNC_NAME" 2>&1 \
+#	| output_formatting
 
 time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 		--function $EUF_ENTRYPOINT \
@@ -36,6 +33,7 @@ time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
     | output_formatting | tee $cbmc_output
 
 
+rm -f $OUTFILE
 
 # Arbitrary return code to signify a failed verification
 grep -q "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54

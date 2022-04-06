@@ -2,12 +2,24 @@ import sys, os, json
 from pathlib import Path
 from dataclasses import dataclass, field
 from clang import cindex
-from cparser.util import compact_path, get_path_relative_to
 
 # Enable importing from the root directory inside the module
 sys.path.append('../')
 
 BASE_DIR = str(Path(__file__).parent.parent.absolute())
+
+def get_path_relative_to(path: str, base: str) -> str:
+    return path.removeprefix(base).removeprefix("/")
+
+def compact_path(path: str) -> str:
+    out = ""
+    for name in path.split("/"):
+        if len(name) >= 2 and not name[0].isalnum():
+            out += "/" + name[:2]
+        elif len(name) > 0:
+            out += "/" + name[0]
+
+    return out
 
 @dataclass
 class Config:
@@ -20,8 +32,10 @@ class Config:
 
     VERBOSITY: int = 0
     NPROC: int = 5
-    UNWIND: int = 1
-    OBJECT_BITS: int = 12
+
+    # - - - CBMC - - -
+    CBMC_OPTS_STR: str = "--object-bits 12 --unwind 10"
+
     FULL: bool = False
     FORCE_RECOMPILE: bool = False
     SKIP_BLAME: bool = False

@@ -15,7 +15,6 @@ remove equivalent entries based on CBMC analysis
 all locations were functions from the change set are called
 '''
 import argparse, re, sys, os, traceback, multiprocessing, subprocess
-import shutil
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -283,8 +282,7 @@ if __name__ == '__main__':
             'OUTDIR': CONFIG.OUTDIR,
             'OUTFILE': CONFIG.CBMC_OUTFILE,
             'EUF_ENTRYPOINT': CONFIG.EUF_ENTRYPOINT,
-            'UNWIND': str(CONFIG.UNWIND),
-            'OBJECT_BITS': str(CONFIG.OBJECT_BITS)
+            'CBMC_OPTS_STR': CONFIG.CBMC_OPTS_STR
         })
 
         driver = ""
@@ -297,7 +295,6 @@ if __name__ == '__main__':
                 get_includes_for_tu(diff, DEPENDENCY_OLD)
 
         for change in CHANGED_FUNCTIONS:
-
             if CONFIG.USE_PROVIDED_DRIVER:
                 driver = next(iter(CONFIG.DRIVERS.values()))
                 func_name = next(iter(CONFIG.DRIVERS.keys()))

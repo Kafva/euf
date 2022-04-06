@@ -1,9 +1,10 @@
+from datetime import datetime
 import os, subprocess, sys, traceback
 import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, DependencyFunctionChange, SourceDiff
-from cparser.util import print_err, print_info
+from cparser.util import print_err, time_end, time_start
 
 def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
     '''
@@ -23,12 +24,11 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
     usr_includes = []
     project_includes = []
 
-
     for inc in tu_old.get_includes():
         if not inc.is_input_file:
             hdr_path = inc.include.name
             if hdr_path.startswith("/usr/include/"):
-                # Skip headers under specified paths
+                # Skip system headers under certain specified paths
                 if any([ hdr_path.startswith(f"/usr/include/{skip_header}") \
                         for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
                     continue
@@ -46,7 +46,6 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
                         .strip("/")
 
                 project_includes.append(hdr_path)
-
 
     return (usr_includes, project_includes)
 
@@ -103,11 +102,7 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tu
         # Debug information
         f.write(f"// {change}\n")
 
-        # Include directives
-        # We have a list of all the <...> headers needed by the current TU
-        # in includes[0] but this set includes some headers which should not
-        # be included directly. FIXME: Blacklist headers that should be skipped
-        # to avoid the need for STD_HEADERS
+        # Include directives (order matters)
         for header in includes[0]:
             f.write(f"#include <{header}>\n")
 
@@ -156,17 +151,19 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tu
                     f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
                     arg_string += f"{arg.spelling}, "
 
-                else:
+                elif arg.type_spelling == "void*":
                     # We cannot auto-generate harnesses for 
                     # functions that require void pointers
-                    if arg.type_spelling == "void*":
-                        failed_generation = True
-                        fail_msg = f"Function requires a 'void*' argument: {arg.spelling}"
-                        break
-
                     failed_generation = True
-                    fail_msg = f"Unable to initialise argument of type: {arg.typing}"
-                break
+                    fail_msg = f"Function requires a 'void*' argument: {arg.spelling}"
+                    break
+                else:
+                    f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                    arg_string += f"{arg.spelling}, "
+
+                    #failed_generation = True
+                    #fail_msg = f"Unable to initialise argument of type: {arg.type_spelling}"
+                    #break
 
         if not failed_generation:
             arg_string = arg_string.removesuffix(", ")
@@ -209,11 +206,21 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     out = subprocess.DEVNULL if quiet else sys.stderr
 
-    if CONFIG.VERBOSITY >= 2:
-        print_info(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
-    return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
-        env = script_env, stdout = out, stderr = out, cwd = BASE_DIR
-    ).returncode
+    time_start(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
+    if driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c"):
+        print("\033[34m========\033[0m Identity verification \033[34m========\033[0m")
+
+    start = datetime.now()
+
+    try:
+        return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
+            env = script_env, stdout = out, stderr = out, cwd = BASE_DIR
+        ).returncode
+    except KeyboardInterrupt:
+        time_end(f"\n\nCancelled execution for {os.path.basename(driver)}",  start)
+        return False
+
+    time_end(f"Finished CBMC analysis for {os.path.basename(driver)}",  start)
 
     match return_code:
         case 0:
