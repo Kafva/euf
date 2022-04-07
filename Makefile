@@ -1,30 +1,35 @@
+#== Demo examples ==#
+
+# Basic example of EUF
 basic:
-	-git diff --no-index ~/.cache/euf/matrix-d85085cb/src/matrix.c ~/.cache/euf/matrix-867b6581/src/matrix.c
+	./euf.py --config tests/configs/basic.json --diff	
 	./euf.py --config tests/configs/basic.json	
 
+# Basic example of CBMC
 bmc:
+	bat ./tests/drivers/example.c
 	cbmc ./tests/drivers/example.c --unwind 5 -DCBMC --object-bits 12 --function euf_main --property euf_main.assertion.1
 
+
+# Analysis of a specific function which has a influential change
+xml:
+	-git diff --color=always  --no-index \
+		~/.cache/euf/libexpat-811c41e3/expat/lib/xmlparse.c \
+		~/.cache/euf/libexpat-b1d03960/expat/lib/xmlparse.c \
+		| grep -A 15 --color=always  "XML_ErrorString("
+	@read
+	./expat/test_harness.sh expat/cases/811c41_b1d039.json XML_ErrorString
+
+# Analysis of a specific function which has a equivalent (based on return value) change
+entr:
+	-git diff --color=always  --no-index \
+		~/.cache/euf/libexpat-10d34296/expat/lib/xmlparse.c \
+		~/.cache/euf/libexpat-f178826b/expat/lib/xmlparse.c \
+		| grep -A 15 --color=always  "ENTROPY_DEBUG("
+	@read
+	./expat/test_harness.sh expat/cases/10d34296_f178826b.json ENTROPY_DEBUG
+
+
+# Example run on another project without CBMC
 onig:
 	./euf.py --config tests/configs/oniguruma.json
-
-onig_v:
-	./euf.py --config tests/configs/oniguruma_v.json
-
-onig_cbmc:
-	make -C cbmc example
-
-#head -n24 expat/drivers/XML_ErrorString.c | bat --language c --style full
-xml_cbmc:
-	-git diff --color=always  --no-index ~/.cache/euf/libexpat-c16300f0/expat/lib/xmlparse.c ~/.cache/euf/libexpat-bbdfcfef/expat/lib/xmlparse.c 
-	./run.sh XML_ErrorString
-
-
-xml_gen:
-	git diff --color=always  --no-index ~/.cache/euf/libexpat-811c41e3/expat/lib/xmlparse.c ~/.cache/euf/libexpat-b1d03960/expat/lib/xmlparse.c | grep -A 15 --color=always  "XML_ErrorString("
-	./euf.py --config expat/gen.json
-
-# Harnesses:  ~/.cache/euf/libexpat-322ca04c/expat/.harnesses
-xml_rand:
-	./euf.py --config expat/rand.json
-

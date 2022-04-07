@@ -5,16 +5,14 @@ The function names are set in this file and the commits are specifeid using
 an existing config file (usually one from .rand)
 '''
 die(){ echo -e "$1" >&2 ; exit 1; }
-usage="usage: $(basename $0) <cfg.json>"
+usage="usage: $(basename $0) <cfg.json> <functions...>"
 BASE_DIR=~/Repos/euf
 
 [ -z "$1" ] && die "$usage"
 
-FUNCTIONS=(
-  lookup
-)
+for func_name in $@; do
 
-for func_name in ${FUNCTIONS[@]}; do
+[ -f "$func_name" ] && continue
 
 cat << EOF > /tmp/$func_name.json
 {
