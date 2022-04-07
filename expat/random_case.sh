@@ -51,7 +51,8 @@ echo "=== $DATE_OLD -> $DATE_NEW ==="
 cat << EOF > /tmp/random.json
 {
   "COMMIT_OLD": "$COMMIT_OLD",
-  "COMMIT_NEW": "$COMMIT_NEW"
+  "COMMIT_NEW": "$COMMIT_NEW",
+  "QUIET_BUILD": true
 }
 EOF
 

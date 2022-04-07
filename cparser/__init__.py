@@ -75,12 +75,12 @@ class Config:
     SHOW_FUNCTIONS: bool = False
 
     # - - - Building - - -
-    # Enviroment varaibles to set when running `./configure`
-    # during ccdb generation and goto-bin compliation
+    # Environment variables to set when running `./configure`
+    # during ccdb generation and goto-bin compilation
     # This will usually involve setting CFLAGS and/or CPPFLAGS to override
     # specific default values set in AM_CFLAGS and AM_CPPFLAGS 
     #
-    # It is not neccessary to pass `-fvisibility=default` to access
+    # It is not necessary to pass `-fvisibility=default` to access
     # all functions, the CBMC fork is configured to make functions
     # accessible outside of their TU
     BUILD_ENV: dict[str,str] = field(default_factory=dict)
@@ -95,6 +95,10 @@ class Config:
     # System header paths to skip over for the #include directives
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])
+
+    # Set to True to echo out all information during the build process
+    # of the ccdb and the goto libs
+    QUIET_BUILD: bool = True
 
     # Some projects will declare types inside source files rather
     # than in header files. If these types are needed as arguments to a

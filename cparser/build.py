@@ -15,7 +15,7 @@ def get_bear_version(path: str) -> int:
     prefix_len = len("bear ")
     return int(out.stdout[prefix_len])
 
-def run_autoreconf(path: str) -> bool:
+def run_autoreconf(path: str, out) -> bool:
     script_env = os.environ.copy()
 
     if os.path.exists(f"{path}/configure.ac") or \
@@ -23,7 +23,7 @@ def run_autoreconf(path: str) -> bool:
         try:
             print_info(f"{path}: Running autoreconf -vfi...")
             (subprocess.run([ "autoreconf", "-vfi" ],
-                cwd = path, stdout = sys.stderr,
+                cwd = path, stdout = out, stderr = out,
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
@@ -35,7 +35,7 @@ def run_autoreconf(path: str) -> bool:
 
     return True
 
-def run_if_present(path:str, filename: str) -> bool:
+def run_if_present(path:str, filename: str, out) -> bool:
     script_env = os.environ.copy()
     args = ""
 
@@ -48,7 +48,7 @@ def run_if_present(path:str, filename: str) -> bool:
         try:
             print_info(f"{path}: Running ./{filename}{args}...")
             (subprocess.run([ f"./{filename}" ] + args.split(' '),
-                cwd = path, stdout = sys.stderr,
+                cwd = path, stdout = out, stderr = out,
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
@@ -80,14 +80,16 @@ def autogen_compile_db(source_path: str) -> bool:
     if has_valid_compile_db(source_path):
         return True
 
+    out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
+
     # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
     # needs to be manually invoked to create configure
     if not os.path.exists(f"{source_path}/configure"):
-        run_autoreconf(source_path)
+        run_autoreconf(source_path, out)
 
     # 1. Configure the project according to ./configure if applicable
-    run_if_present(source_path, "configure")
-    run_if_present(source_path, "Configure")
+    if not run_if_present(source_path, "configure", out):
+        run_if_present(source_path, "Configure", out)
 
     # 3. Run 'make' with 'bear'
     if os.path.exists(f"{source_path}/Makefile"):
@@ -103,8 +105,8 @@ def autogen_compile_db(source_path: str) -> bool:
             elif version <= 2:
                 del cmd[1]
 
-            print(cmd)
-            (subprocess.run(cmd, cwd = source_path, stdout = sys.stderr
+            print("!> " + ' '.join(cmd))
+            (subprocess.run(cmd, cwd = source_path, stdout = out, stderr = out
             )).check_returncode()
         except subprocess.CalledProcessError:
             return check_ccdb_fail(source_path)
@@ -124,7 +126,6 @@ def check_ccdb_fail(path: str) -> bool:
     else:
         print_err(f"An error occured but {path}/compile_commands.json was created")
         return True
-
 
 def create_worktree(target: str, commit: Commit, repo: Repo) -> bool:
     if not os.path.exists(target):
@@ -166,10 +167,7 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
     Returns the path to the built library or an empty string on failure
     '''
     script_env = CONFIG.get_script_env()
-    if CONFIG.VERBOSITY >= 0:
-        out = sys.stderr
-    else:
-        out = subprocess.DEVNULL
+    out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
     if os.path.exists(f"{dep_source_dir}/configure") or \
          os.path.exists(f"{dep_source_dir}/Makefile") or \

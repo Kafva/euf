@@ -10,7 +10,6 @@ bmc:
 	bat ./tests/drivers/example.c
 	cbmc ./tests/drivers/example.c --unwind 5 -DCBMC --object-bits 12 --function euf_main --property euf_main.assertion.1
 
-
 # Analysis of a specific function which has a influential change
 xml:
 	@FILE=xmlparse.c \
