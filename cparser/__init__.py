@@ -1,3 +1,4 @@
+from enum import Enum
 import re
 import sys, os, json
 from pathlib import Path
@@ -22,6 +23,17 @@ def compact_path(path: str) -> str:
 
     return out
 
+class AnalysisResult(Enum):
+    # SUCCESS verification: equivalent change
+    SUCCESS = 0
+    ERROR = 1
+    INTERRUPT = 51
+    TIMEOUT = 52
+    # "SUCCESS": No verification conditions generated
+    NO_VCCS = 53
+    # FAILED verification: non-equivalent change
+    FAILURE = 54
+
 @dataclass
 class Config:
     _PROJECT_DIR: str = ""
@@ -45,6 +57,7 @@ class Config:
     FORCE_RECOMPILE: bool = False
     SKIP_BLAME: bool = False
     SKIP_IMPACT: bool = False
+    ENABLE_RESULT_LOG: bool = False
 
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
 
@@ -79,6 +92,7 @@ class Config:
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     HARNESS_DIR: str = ".harnesses"
     OUTDIR: str = f"{BASE_DIR}/.out"
+    RESULTS_DIR: str = f"{BASE_DIR}/results"
     CBMC_SCRIPT: str = f"{BASE_DIR}/scripts/cbmc_driver.sh"
     RENAME_CSV: str = "/tmp/rename.csv"
     CBMC_OUTFILE: str = "runner"
@@ -269,26 +283,30 @@ class Identifier:
         Built-in typedefs like size_t do not get resolved properly
         and we resolve them by looking in the actual source file
         '''
-        with open(str(cursor.location.file), mode='r', encoding='utf8') as f:
-            lines = f.readlines()
+        try:
+            with open(str(cursor.location.file), mode='r', encoding='utf8') as f:
+                lines = f.readlines()
 
-            # Get the line of the identifier
-            line_offset = cursor.location.line-1
-            line = lines[line_offset]
+                # Get the line of the identifier
+                line_offset = cursor.location.line-1
+                line = lines[line_offset]
 
-            # Retrieve the text before the identifier on the same line
-            before_ident = line[:cursor.location.column-1]
+                # Retrieve the text before the identifier on the same line
+                before_ident = line[:cursor.location.column-1]
 
-            # We assume that there are no more than 5 newlines
-            # between the identifier and the type specifier
-            low = max(line_offset-4,0)
-            high = max(line_offset-1,0)
-            before_ident = ' '.join(lines[low:high]) \
-                    + before_ident
-            before_ident = before_ident.replace('\n', ' ')
+                # We assume that there are no more than 5 newlines
+                # between the identifier and the type specifier
+                low = max(line_offset-4,0)
+                high = max(line_offset-1,0)
+                before_ident = ' '.join(lines[low:high]) \
+                        + before_ident
+                before_ident = before_ident.replace('\n', ' ')
 
-            if (match := re.match(r".*,\s*([_0-9a-zA-Z]+)\s*$", before_ident)):
-                type_spelling = match.group(1)
+                if (match := re.match(r".*,\s*([_0-9a-zA-Z]+)\s*$", before_ident)):
+                    type_spelling = match.group(1)
+        except UnicodeDecodeError:
+            # Oniguruma has some source files with exotic encodings
+            pass
 
         return type_spelling
 
@@ -330,10 +348,6 @@ class DependencyFunction:
 
     @classmethod
     def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
-        # Only create objects from function prototypes
-        assert(str(cursor.type.kind).endswith("FUNCTIONPROTO"))
-        assert(not cursor.type.is_const_qualified() and  not cursor.result_type.is_const_qualified())
-
         return cls(
             filepath    = get_path_relative_to(
                 str(cursor.location.file), root_dir
@@ -428,6 +442,10 @@ class DependencyFunctionChange:
         for trans_call in self.invokes_changed_functions:
             out += f"\n\t{trans_call}"
         return out
+
+    def to_csv(self) -> str:
+        return f"{self.direct_change};{self.old.filepath};{self.old.ident.spelling};{self.old.line};{self.old.col};" + \
+                f"{self.new.filepath};{self.new.ident.spelling};{self.new.line};{self.new.col}"
 
     def __repr__(self):
         return self.detail()

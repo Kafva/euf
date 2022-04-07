@@ -86,6 +86,13 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
             current_enclosing
         )
 
+def log_impact_set(call_sites: list[ProjectInvocation]) -> None:
+    '''
+    For complteness,
+    '''
+    if CONFIG.ENABLE_RESULT_LOG:
+        pass
+
 def pretty_print_impact_by_proj(call_sites: list[ProjectInvocation]) -> None:
     '''
     Print each impact site as its own header with a list of dependency change
@@ -116,7 +123,6 @@ def pretty_print_impact_by_dep(call_sites: list[ProjectInvocation]) -> None:
     Print each dependency change as its own header with a list of impact sites 
     in our project beneath it
     '''
-
 
     # Create a dictonary that maps a DependencyFunctionChange to a list of
     # affected call sites in our project

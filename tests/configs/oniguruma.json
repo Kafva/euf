@@ -4,26 +4,24 @@
 	"PROJECT_DIR": "~/Repos/jq",
 	"DEPENDENCY_DIR": "~/Repos/oniguruma",
 	"DEPLIB_NAME": "libonig.a",
+  
+  "DEP_INCLUDE_PATHS": [
+    "."
+  ],
 
-	"UNWIND": 10,
-	"OBJECT_BITS": 12,
-	
-	"CP_HEADERS": [
-			"src/oniguruma.h"
-	],
-	"INCLUDE_HEADERS": [
-			"src/oniguruma.h"
-	],
-
-  "DRIVERS": {
-      "new_size": "~/Repos/euf/tests/drivers/st_newsize_driver.c"
-  },
+  "EXCLUDE_REGEXES": [
+    "sample/.*",
+    "testu.c"
+  ],
+  
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
+  "CBMC_TIMEOUT": 10,
+  "ENABLE_RESULT_LOG": true,
 
 	"REVERSE_MAPPING": false,
-	"VERBOSITY": 0,
+	"VERBOSITY": 2,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": false,
 	"FULL": false
 }
-  

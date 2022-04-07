@@ -253,3 +253,10 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
                             old_compile_args = []
                 ))
 
+def log_changed_functions(changed_functions: list[DependencyFunctionChange], filename: str):
+    if CONFIG.ENABLE_RESULT_LOG:
+        with open(filename, mode='w', encoding='utf8') as f:
+            f.write("direct_change;old_filepath;old_name;old_line;old_col;new_filepath;new_name;new_line;new_col\n")
+            for change in changed_functions:
+                f.write(f"{change.to_csv()}\n")
+

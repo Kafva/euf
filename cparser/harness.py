@@ -3,7 +3,7 @@ import os, subprocess, sys
 import shutil
 
 from clang import cindex
-from cparser import BASE_DIR, CONFIG, DependencyFunctionChange, SourceDiff
+from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunctionChange, SourceDiff
 from cparser.util import print_err, print_stage, time_end, time_start
 
 def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
@@ -221,10 +221,28 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
     else:
         return (harness_path, "")
 
+def log_harness(filename: str,
+        func_name: str,
+        identity: bool,
+        result: AnalysisResult,
+        start_time: datetime,
+        driver: str,
+        change: DependencyFunctionChange) -> None:
+    if CONFIG.ENABLE_RESULT_LOG:
+        if not os.path.exists(filename):
+            f = open(filename, mode='w', encoding='utf8')
+            f.write("func_name;identity;result;runtime;driver;old_src;new_src\n")
+        else:
+            f = open(filename, mode='a', encoding='utf8')
+
+        runtime = datetime.now() - start_time
+        f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.filepath};{change.new.filepath}\n")
+        f.close()
+
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
-        driver: str, func_name: str, quiet: bool) -> bool:
+        driver: str, func_name: str, log_file: str, quiet: bool) -> bool:
     ''' 
-    Returns True if the harness assertion in the harness
+    Returns True if the assertion in the harness
     was successful
     '''
     script_env.update({
@@ -233,9 +251,10 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     })
 
     out = subprocess.DEVNULL if quiet else sys.stderr
+    identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
     time_start(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
-    if driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c"):
+    if identity:
         print_stage("Identity verification")
 
     start = datetime.now()
@@ -248,30 +267,29 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         ).returncode
     except KeyboardInterrupt:
         print("\n")
+        log_harness(log_file,func_name,identity,AnalysisResult.INTERRUPT,start,driver,change)
         time_end(f"Cancelled execution for {driver_name}",  start)
         return False
     except subprocess.TimeoutExpired:
+        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,start,driver,change)
         time_end(f"Execution timed-out for {driver_name}",  start)
         return False
 
-
     time_end(f"Finished CBMC analysis for {driver_name}",  start)
 
-    match return_code:
-        case 0:
-            return True
-        # SUCCESS verification: equivalent change
-        case 53:
-        # "SUCCESS": No verification conditions generated
-            print_err(f"No verification conditions generated for: {driver}")
-            return False
-        case 54:
-        # FAILED verification: non-equivalent change
-            return False
-        case _:
-        # ERROR
+    if return_code == AnalysisResult.ERROR.value or \
+        not return_code in map(lambda a: a.value, AnalysisResult):
             if not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
                 print_err(f"An error occured during goto-cc compilation of {driver}")
             else:
                 print_err(f"An error occured during the analysis of {driver}")
-            sys.exit(return_code)
+            #sys.exit(return_code)
+    elif return_code == AnalysisResult.NO_VCCS.value:
+        print_err(f"No verification conditions generated for: {driver}")
+
+    log_harness(log_file,func_name,identity,AnalysisResult(return_code),start,driver,change)
+
+    return return_code == AnalysisResult.SUCCESS.value
+
+
+

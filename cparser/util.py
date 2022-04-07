@@ -87,3 +87,6 @@ def time_end(msg: str, start_time: datetime) -> None:
         print_info(f"{msg}: {datetime.now() - start_time}")
         start_time = datetime.now()
 
+def mkdir_p(path: str):
+    if not os.path.exists(path):
+        os.mkdir(path)

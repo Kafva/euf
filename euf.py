@@ -24,14 +24,15 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.harness import create_harness, run_harness, get_includes_for_tu
-from cparser.util import flatten, flatten_dict, print_err, print_fail, print_info, print_stage, print_success
+from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_fail, print_info, print_stage, print_success
 from cparser.change_set import add_rename_changes_based_on_blame, \
-        get_changed_functions_from_diff, get_transative_changes_from_file
+        get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         check_ccdb_fail
 from cparser.enumerate_globals import write_rename_files
+
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
@@ -62,8 +63,8 @@ if __name__ == '__main__':
     if CONFIG.VERBOSITY >= 2:
         pprint(CONFIG)
 
-    if not os.path.exists(CONFIG.EUF_CACHE):
-        os.mkdir(CONFIG.EUF_CACHE)
+    mkdir_p(CONFIG.EUF_CACHE)
+    mkdir_p(CONFIG.RESULTS_DIR)
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
@@ -234,6 +235,11 @@ if __name__ == '__main__':
     if CONFIG.VERBOSITY >= 2:
         print_stage("Change set")
 
+    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}"
+
+    if CONFIG.ENABLE_RESULT_LOG:
+        mkdir_p(LOG_DIR)
+
     CHANGED_FUNCTIONS: list[DependencyFunctionChange] = []
     TU_INCLUDES = {}
 
@@ -259,6 +265,7 @@ if __name__ == '__main__':
         traceback.print_exc()
         sys.exit(-1)
 
+    log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/change_set.csv")
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
@@ -289,6 +296,7 @@ if __name__ == '__main__':
         })
 
         driver = ""
+        log_file = f"{LOG_DIR}/cbmc.csv"
 
         # Retrieve a list of the headers that each TU uses
         # We will need to include these in the driver
@@ -328,7 +336,7 @@ if __name__ == '__main__':
                         continue
 
                     if not run_harness(change, script_env, identity_driver, func_name, \
-                            quiet=CONFIG.SILENT_IDENTITY_VERIFICATION):
+                            log_file, quiet=CONFIG.SILENT_IDENTITY_VERIFICATION):
                         fail_msg = f"Identity verification failed: {func_name}"
                         continue
                     else:
@@ -347,7 +355,7 @@ if __name__ == '__main__':
                     print_fail(f"{change.old}: {fail_msg}")
                     continue
 
-            if not run_harness(change, script_env, driver, func_name, quiet = CONFIG.VERBOSITY<=1):
+            if not run_harness(change, script_env, driver, func_name, log_file, quiet = CONFIG.VERBOSITY<=1):
                 print_info(f"{func_name}: CBMC equivalance check \033[1;31mFAILURE\033[0m")
             else:
                 print_info(f"{func_name}: CBMC equivalance check \033[1;32mSUCCESS\033[0m")
@@ -356,6 +364,8 @@ if __name__ == '__main__':
 
             if CONFIG.USE_PROVIDED_DRIVER:
                 break # tmp
+
+        log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/reduced_set.csv")
 
     if CONFIG.SKIP_IMPACT:  sys.exit(0)
 
@@ -416,6 +426,7 @@ if __name__ == '__main__':
             traceback.print_exc()
             sys.exit(-1)
 
+    log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/trans_change_set.csv")
 
     if CONFIG.VERBOSITY >= 2:
         print_stage("Complete set")
