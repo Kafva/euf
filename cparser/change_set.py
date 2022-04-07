@@ -141,8 +141,20 @@ def get_transative_changes_from_file(source_file: SourceFile, dep_root_dir:str,
     changed_functions: list[DependencyFunctionChange]) -> dict[DependencyFunction,list[str]]:
     '''
     Go through the complete AST of the provided (new) file and save 
-    any transative calls
-    
+    any transative calls.
+
+    If a changed function is called from the old version, and the call is removed
+    in the new version, the function in question will have had a direct change and
+    will already be in the change set.
+
+    If a changed function is called from the new version but not the old version, 
+    the function will similarly already be part of the change set. In these instances
+    the callee will be considered affected by both a direct AND an indirect change.
+
+    By enumerating changed function calls in the new version, we catch all indirect
+    changes were both the old and new version call a function +
+    instances were only the new version makes a call.
+
     key: 'enclosing_function'
     value: [ called_functions ]
     '''

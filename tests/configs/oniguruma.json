@@ -11,6 +11,7 @@
 
   "EXCLUDE_REGEXES": [
     "sample/.*",
+    "test/.*",
     "testu.c"
   ],
   

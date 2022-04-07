@@ -33,6 +33,30 @@ from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         check_ccdb_fail
 from cparser.enumerate_globals import write_rename_files
 
+def filter_out_excluded(items: list, path_arr: list[str]) -> list:
+    '''
+    Filter out any files that are in excluded paths
+    The paths are provided as python regex
+    '''
+    filtered = []
+
+    for item,path in zip(items,path_arr):
+        exclude = False
+
+        for exclude_regex in CONFIG.EXCLUDE_REGEXES:
+            try:
+                if re.search(rf"{exclude_regex}", path):
+                    exclude = True
+                    break
+            except re.error:
+                print_err(f"Invalid regex provided: {exclude_regex}")
+                traceback.print_exc()
+                sys.exit(-1)
+
+        if not exclude:
+            filtered.append(item)
+
+    return filtered
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
     filepath: str) -> list[str]:
@@ -150,18 +174,8 @@ if __name__ == '__main__':
                 f"{DEPENDENCY_NEW}/{d.new_path}" ])
         sys.exit(0)
 
-    # Filter out any files that are in excluded paths
-    # The paths are provided as python regex
-    for diff in DEP_SOURCE_DIFFS[:]:
-        for exclude_regex in CONFIG.EXCLUDE_REGEXES:
-            try:
-                if re.search(rf"{exclude_regex}", diff.old_path):
-                    DEP_SOURCE_DIFFS.remove(diff)
-                    break
-            except re.error:
-                print_err(f"Invalid regex provided: {exclude_regex}")
-                traceback.print_exc()
-                sys.exit(-1)
+    DEP_SOURCE_DIFFS = filter_out_excluded(DEP_SOURCE_DIFFS, \
+            [ d.old_path for d in DEP_SOURCE_DIFFS ] )
 
     # Update the project root in case the source code and .git
     # folder are not both at the root of the project
@@ -388,6 +402,9 @@ if __name__ == '__main__':
         new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
     ) for filepath in DEP_SOURCE_FILES ]
 
+    DEP_SOURCE_FILES = filter_out_excluded(DEP_SOURCE_FILES, \
+            [ f.new_path for f in DEP_SOURCE_FILES  ])
+
     if CONFIG.VERBOSITY >= 1:
         print_stage("Transitive change set")
     TRANSATIVE_CHANGED_FUNCTIONS = {}
@@ -410,7 +427,7 @@ if __name__ == '__main__':
             for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
                 try:
                     # Add calls to a function that already has been identified as changed
-                    if (idx := list(map(lambda cfn: cfn.new,  CHANGED_FUNCTIONS)).index(key)):
+                    if (idx := [ c.new for c in CHANGED_FUNCTIONS ].index(key)):
                         CHANGED_FUNCTIONS[idx].invokes_changed_functions.extend(calls)
                 except ValueError:
                     # Add a new function (with an indirect change) to the changed set
