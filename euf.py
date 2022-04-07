@@ -83,7 +83,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)
     CONFIG.SHOW_DIFFS = args.diff # Ignored if given in config file
-    CONFIG.SETX = str(CONFIG.VERBOSITY >= 2).lower()
     if CONFIG.VERBOSITY >= 2:
         pprint(CONFIG)
 
@@ -319,7 +318,7 @@ if __name__ == '__main__':
             TU_INCLUDES[diff.old_path] = \
                 get_includes_for_tu(diff, DEPENDENCY_OLD)
 
-        for change in CHANGED_FUNCTIONS:
+        for i,change in enumerate(CHANGED_FUNCTIONS):
             func_name = change.old.ident.spelling
 
             if CONFIG.ONLY_ANALYZE != "" and \
@@ -350,7 +349,8 @@ if __name__ == '__main__':
                         continue
 
                     if not run_harness(change, script_env, identity_driver, func_name, \
-                            log_file, quiet=CONFIG.SILENT_IDENTITY_VERIFICATION):
+                            log_file, i+1, len(CHANGED_FUNCTIONS), \
+                            quiet=CONFIG.SILENT_IDENTITY_VERIFICATION):
                         fail_msg = f"Identity verification failed: {func_name}"
                         continue
                     else:
@@ -369,7 +369,8 @@ if __name__ == '__main__':
                     print_fail(f"{change.old}: {fail_msg}")
                     continue
 
-            if not run_harness(change, script_env, driver, func_name, log_file, quiet = CONFIG.VERBOSITY<=1):
+            if not run_harness(change, script_env, driver, func_name, log_file, \
+                    i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.VERBOSITY<=1):
                 print_info(f"{func_name}: CBMC equivalance check \033[1;31mFAILURE\033[0m")
             else:
                 print_info(f"{func_name}: CBMC equivalance check \033[1;32mSUCCESS\033[0m")

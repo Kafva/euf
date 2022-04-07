@@ -7,6 +7,9 @@ from cparser import CONFIG
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
 
+def print_warn(msg: str):
+    print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
+
 def print_stage(msg: str):
     print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ", file=sys.stderr)
 
@@ -82,9 +85,13 @@ def time_start(msg: str) -> datetime:
         print_info(msg)
     return datetime.now()
 
-def time_end(msg: str, start_time: datetime) -> None:
+def time_end(msg: str, start_time: datetime, warn:bool = False) -> None:
     if CONFIG.VERBOSITY >= 1:
-        print_info(f"{msg}: {datetime.now() - start_time}")
+        txt = f"{msg}: {datetime.now() - start_time}"
+        if warn:
+            print_warn(txt)
+        else:
+            print_info(txt)
         start_time = datetime.now()
 
 def mkdir_p(path: str):

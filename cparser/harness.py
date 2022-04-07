@@ -1,10 +1,10 @@
 from datetime import datetime
-import os, subprocess, sys
+import os, subprocess, sys, signal
 import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunctionChange, SourceDiff
-from cparser.util import print_err, print_stage, time_end, time_start
+from cparser.util import print_err, time_end, time_start
 
 def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
     '''
@@ -240,7 +240,7 @@ def log_harness(filename: str,
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
-        driver: str, func_name: str, log_file: str, quiet: bool) -> bool:
+        driver: str, func_name: str, log_file: str, current: int, total: int, quiet: bool) -> bool:
     ''' 
     Returns True if the assertion in the harness
     was successful
@@ -253,24 +253,30 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     out = subprocess.DEVNULL if quiet else sys.stderr
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
-    time_start(f"{'(ID)' if identity else ''} Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
+    time_start(f"{'(ID)' if identity else ''} Starting CBMC analysis for {change.old}: {os.path.basename(driver)} ({current}/{total})")
 
     start = datetime.now()
     driver_name = os.path.basename(driver)
 
     try:
-        return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
+        p = subprocess.Popen([ CONFIG.CBMC_SCRIPT ],
             env = script_env, stdout = out, stderr = out, cwd = BASE_DIR,
-            timeout = CONFIG.CBMC_TIMEOUT
-        ).returncode
+            start_new_session = True
+        )
+        p.wait(timeout=CONFIG.CBMC_TIMEOUT)
+        return_code = p.returncode
     except KeyboardInterrupt:
-        print("\n")
+        os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
+
         log_harness(log_file,func_name,identity,AnalysisResult.INTERRUPT,start,driver,change)
-        time_end(f"Cancelled execution for {driver_name}",  start)
+        print("\n")
+        time_end(f"Cancelled execution for {driver_name}",  start, warn=True)
         return False
     except subprocess.TimeoutExpired:
+        os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
+
         log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,start,driver,change)
-        time_end(f"Execution timed-out for {driver_name}",  start)
+        time_end(f"Execution timed-out for {driver_name}",  start, warn=True)
         return False
 
     time_end(f"Finished CBMC analysis for {driver_name}",  start)
@@ -289,6 +295,3 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     log_harness(log_file,func_name,identity,AnalysisResult(return_code),start,driver,change)
 
     return return_code == AnalysisResult.SUCCESS.value
-
-
-
