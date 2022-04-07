@@ -12,14 +12,20 @@
     "expat/tests/.*",
     "expat/examples/.*"
   ],
-
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
-
+  
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
       "~/Repos/euf/expat/include/xmlparse.h"
     ]
   },
+
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
+  "CBMC_TIMEOUT": 7,
+
+  "ENABLE_RESULT_LOG": true,
+  "DIE_ON_ERROR": true,
+  "SILENT_IDENTITY_VERIFICATION": false,
+  "SHOW_FUNCTIONS": false,
 
 	"REVERSE_MAPPING": true,
 	"VERBOSITY": 2,

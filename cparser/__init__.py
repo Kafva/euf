@@ -24,8 +24,7 @@ def compact_path(path: str) -> str:
     return out
 
 class AnalysisResult(Enum):
-    # SUCCESS verification: equivalent change
-    SUCCESS = 0
+    SUCCESS = 0 # SUCCESS verification: equivalent change
     ERROR = 1
     INTERRUPT = 51
     TIMEOUT = 52
@@ -36,6 +35,7 @@ class AnalysisResult(Enum):
 
 @dataclass
 class Config:
+    # - - - General - - -
     _PROJECT_DIR: str = ""
     _DEPENDENCY_DIR: str = ""
     _DEP_SOURCE_ROOT: str = ""
@@ -43,28 +43,38 @@ class Config:
     COMMIT_NEW: str = ""
     COMMIT_OLD: str = ""
 
-    VERBOSITY: int = 0
+    TRANSATIVE_PASSES: int = 1
     NPROC: int = 5
+    LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
+
+    # Paths to exclude from all analysis (requires a '*'
+    # to match all files under a directory)
+    EXCLUDE_REGEXES: list[str] = field(default_factory=list)
+
+    # Impact set output format
+    REVERSE_MAPPING: bool = False
+
+    # Show diffs of files in change set and exit
+    SHOW_DIFFS: bool = False
+
+    # - - - Verbosity  - - -
+    VERBOSITY: int = 0
 
     # Name of a specific function to limit analysis during debugging
     ONLY_ANALYZE: str = ""
     SILENT_IDENTITY_VERIFICATION: bool = True
 
-    # - - - CBMC - - -
-    CBMC_OPTS_STR: str = "--object-bits 12 --unwind 10"
-
-    FULL: bool = False
-    FORCE_RECOMPILE: bool = False
     SKIP_BLAME: bool = False
     SKIP_IMPACT: bool = False
     ENABLE_RESULT_LOG: bool = False
 
-    LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
+    # Functions for which no CBMC analysis should be attempted
+    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
 
-    _GOTO_BUILD_SCRIPT: str = ""
-    _CCDB_BUILD_SCRIPT: str = ""
-    REVERSE_MAPPING: bool = False
+    # Show part of the goto functions before running CBMC analysis
+    SHOW_FUNCTIONS: bool = False
 
+    # - - - Building - - -
     # Enviroment varaibles to set when running `./configure`
     # during ccdb generation and goto-bin compliation
     # This will usually involve setting CFLAGS and/or CPPFLAGS to override
@@ -74,16 +84,49 @@ class Config:
     # all functions, the CBMC fork is configured to make functions
     # accessible outside of their TU
     BUILD_ENV: dict[str,str] = field(default_factory=dict)
+    FORCE_RECOMPILE: bool = False
 
-    # Toggles echoing of scripts
-    SETX: str = "false"
+    _GOTO_BUILD_SCRIPT: str = ""
+    _CCDB_BUILD_SCRIPT: str = ""
+
+    # List of include paths used by the old version of the dependency
+    DEP_INCLUDE_PATHS: list[str] = field(default_factory=list)
+
+    # System header paths to skip over for the #include directives
+    # of the driver
+    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])
+
+    # Some projects will declare types inside source files rather
+    # than in header files. If these types are needed as arguments to a
+    # function in a driver we need some way of including them
+    # Currently, we simply provide the option of giving a custom header
+    # with the neccessary definitions to resolve this
+    #
+    # Format:
+    #   src_file: [
+    #       "custom.h"
+    #    ]
+    CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
+
+    # - - - CBMC - - -
+    FULL: bool = False # False to skip all CBMC analysis
+    CBMC_OPTS_STR: str = "--object-bits 12 --unwind 10"
+    DIE_ON_ERROR: bool = False
+
+    # The timeout (seconds) before killing CBMC analysis
+    CBMC_TIMEOUT: int = 60
+
+    # Maps function names to filepaths of drivers
+    DRIVERS: dict[str,str] = field(default_factory=dict)
+
+    # Override to only use a specific (provided) driver for CBMC
+    USE_PROVIDED_DRIVER: bool = False
 
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio
     # [0.5,RENAME_RATIO_LOW]
     RENAME_RATIO_LOW: float = .3
-    TRANSATIVE_PASSES: int = 1
 
     # Only used during ccdb generation
     TARGET_TRIPLET: str = "x86_64-unknown-linux"
@@ -106,47 +149,6 @@ class Config:
     RENAME_TXT: str = "/tmp/rename.txt"
     SUFFIX_ENV_FLAG: str = "USE_SUFFIX"
 
-    # Show part of the goto functions before running CBMC analysis
-    SHOW_FUNCTIONS: bool = False
-
-    # The timeout (seconds) before killing CBMC analysis
-    CBMC_TIMEOUT: int = 60
-
-    # Maps function names to filepaths of drivers
-    DRIVERS: dict[str,str] = field(default_factory=dict)
-
-    # Override to only use a specific (provided) driver for CBMC
-    USE_PROVIDED_DRIVER: bool = False
-
-    # Paths to exclude from all analysis (requires a '*'
-    # to match all files under a directory)
-    EXCLUDE_REGEXES: list[str] = field(default_factory=list)
-
-    # Functions for which no CBMC analysis should be attempted
-    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
-
-    # List of include paths used by the old version of the dependency
-    DEP_INCLUDE_PATHS: list[str] = field(default_factory=list)
-
-    # System header paths to skip over for the #include directives
-    # of the driver
-    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])
-
-    # Some projects will declare types inside source files rather
-    # than in header files. If these types are needed as arguments to a
-    # function in a driver we need some way of including them
-    # Currently, we simply provide the option of giving a custom header
-    # with the neccessary definitions to resolve this
-    #
-    # Format:
-    #   src_file: [
-    #       "custom.h"
-    #    ]
-    CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
-
-    # Show diffs of files in change set and exit
-    SHOW_DIFFS: bool = False
-
     # - - - Property setters
     def _parse_path(self, value) -> str:
         if value != "":
@@ -165,7 +167,6 @@ class Config:
             'DEP_SOURCE_ROOT': self.DEP_SOURCE_ROOT,
             'SUFFIX': self.SUFFIX,
             'PROJECT_DIR': self.PROJECT_DIR,
-            'SETX': self.SETX,
             'DEPLIB_NAME': self.DEPLIB_NAME,
             'SHOW_FUNCTIONS': str(self.SHOW_FUNCTIONS).lower()
         })

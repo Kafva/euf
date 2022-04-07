@@ -253,9 +253,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     out = subprocess.DEVNULL if quiet else sys.stderr
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
-    time_start(f"Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
-    if identity:
-        print_stage("Identity verification")
+    time_start(f"{'(ID)' if identity else ''} Starting CBMC analysis for {change.old}: {os.path.basename(driver)}")
 
     start = datetime.now()
     driver_name = os.path.basename(driver)
@@ -283,7 +281,8 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
                 print_err(f"An error occured during goto-cc compilation of {driver}")
             else:
                 print_err(f"An error occured during the analysis of {driver}")
-            #sys.exit(return_code)
+            if CONFIG.DIE_ON_ERROR:
+                sys.exit(return_code)
     elif return_code == AnalysisResult.NO_VCCS.value:
         print_err(f"No verification conditions generated for: {driver}")
 
