@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.harness import create_harness, run_harness, get_includes_for_tu
-from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_fail, print_info, print_stage, print_success
+from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_fail, print_info, print_stage, print_success, rm_f
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, \
@@ -310,6 +310,7 @@ if __name__ == '__main__':
 
         driver = ""
         log_file = f"{LOG_DIR}/cbmc.csv"
+        rm_f(log_file)
 
         # Retrieve a list of the headers that each TU uses
         # We will need to include these in the driver

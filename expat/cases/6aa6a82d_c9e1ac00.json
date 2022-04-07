@@ -1,0 +1,32 @@
+{
+  "PROJECT_DIR": "~/Repos/jabberd-2.7.0",
+  "DEPENDENCY_DIR": "~/Repos/libexpat",
+  "DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
+  "DEPLIB_NAME": "libexpat.a",
+  "DEP_INCLUDE_PATHS": [
+    "expat/lib"
+  ],
+  "EXCLUDE_REGEXES": [
+    "expat/tests/.*",
+    "expat/examples/.*"
+  ],
+  "CUSTOM_HEADERS": {
+    "xmlparse.c": [
+      "~/Repos/euf/expat/include/xmlparse.h"
+    ]
+  },
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
+  "CBMC_TIMEOUT": 7,
+  "ENABLE_RESULT_LOG": true,
+  "DIE_ON_ERROR": true,
+  "SILENT_IDENTITY_VERIFICATION": true,
+  "SHOW_FUNCTIONS": false,
+  "REVERSE_MAPPING": true,
+  "VERBOSITY": 2,
+  "NPROC": 12,
+  "SKIP_BLAME": false,
+  "SKIP_IMPACT": false,
+  "FULL": true,
+  "COMMIT_OLD": "6aa6a82d2407ca7ba221299d378cb3803d2cf519",
+  "COMMIT_NEW": "c9e1ac00c6347e86c9ceac5f0a5c840b4de8f7ee"
+}

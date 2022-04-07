@@ -97,3 +97,8 @@ def time_end(msg: str, start_time: datetime, warn:bool = False) -> None:
 def mkdir_p(path: str):
     if not os.path.exists(path):
         os.mkdir(path)
+
+def rm_f(path: str):
+    if os.path.exists(path):
+        os.remove(path)
+

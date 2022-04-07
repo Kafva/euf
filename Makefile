@@ -1,4 +1,4 @@
-#== Demo examples ==#
+#== Examples ==#
 
 # Basic example of EUF
 basic:
@@ -13,22 +13,19 @@ bmc:
 
 # Analysis of a specific function which has a influential change
 xml:
-	-git diff --color=always  --no-index \
-		~/.cache/euf/libexpat-811c41e3/expat/lib/xmlparse.c \
-		~/.cache/euf/libexpat-b1d03960/expat/lib/xmlparse.c \
-		| grep -A 15 --color=always  "XML_ErrorString("
-	@read
+	@FILE=xmlparse.c \
+	SHOW_DIFF=1 \
 	./expat/test_harness.sh expat/cases/811c41_b1d039.json XML_ErrorString
 
 # Analysis of a specific function which has a equivalent (based on return value) change
 entr:
-	-git diff --color=always  --no-index \
-		~/.cache/euf/libexpat-10d34296/expat/lib/xmlparse.c \
-		~/.cache/euf/libexpat-f178826b/expat/lib/xmlparse.c \
-		| grep -A 15 --color=always  "ENTROPY_DEBUG("
-	@read
+	@FILE=xmlparse.c \
+	SHOW_DIFF=1 \
 	./expat/test_harness.sh expat/cases/10d34296_f178826b.json ENTROPY_DEBUG
 
+empty:
+	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json --diff
+	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json
 
 # Example run on another project without CBMC
 onig:
