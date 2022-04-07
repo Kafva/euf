@@ -1,5 +1,5 @@
 from datetime import datetime
-import os, subprocess, sys, traceback
+import os, subprocess, sys
 import shutil
 
 from clang import cindex
@@ -49,7 +49,8 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
 
     return (usr_includes, project_includes)
 
-def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tuple[list[str],list[str]],  identity: bool = False) -> tuple[str,str]:
+def create_harness(change: DependencyFunctionChange, dep_path: str,
+        includes: tuple[list[str],list[str]],  identity: bool = False) -> tuple[str,str]:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -125,7 +126,21 @@ def create_harness(change: DependencyFunctionChange, dep_path: str, includes: tu
 
 
         # Decleration of the old version of the function
-        f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n\n")
+        f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};")
+
+        # Decleration for the new version of the function
+        #
+        # In some cases the function will already be declared in of the headers
+        # but providing a second decleration in the driver does
+        # not cause issues
+        #
+        # NOTE: if the function is declared as 'static' in one of the included
+        # headers we will not be able to access it a warning akin to
+        #
+        # **** WARNING: no body for function <...>
+        #
+        # will show up during the cbmc analysis if this occurs
+        f.write(f"\n{change.new.prototype_string()};\n\n")
 
         # Entrypoint function
         f.write(f"void {CONFIG.EUF_ENTRYPOINT}() {{\n{INDENT}#ifdef CBMC\n")
@@ -228,14 +243,17 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     try:
         return_code = subprocess.run([ CONFIG.CBMC_SCRIPT ],
-            env = script_env, stdout = out, stderr = out, cwd = BASE_DIR
+            env = script_env, stdout = out, stderr = out, cwd = BASE_DIR,
+            timeout = CONFIG.CBMC_TIMEOUT
         ).returncode
     except KeyboardInterrupt:
         print("\n")
         time_end(f"Cancelled execution for {driver_name}",  start)
-        #if os.path.exists(driver):
-        #    os.remove(driver)
         return False
+    except subprocess.TimeoutExpired:
+        time_end(f"Execution timed-out for {driver_name}",  start)
+        return False
+
 
     time_end(f"Finished CBMC analysis for {driver_name}",  start)
 

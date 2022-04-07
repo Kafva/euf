@@ -9,7 +9,7 @@ output_formatting(){
 }
 [[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$CBMC_OPTS_STR"    ||
 	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
-	 -z "$FUNC_NAME"  || -z "$OUTFILE"
+	 -z "$FUNC_NAME"  || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"
 ]] && die "Missing environment variable(s)"
 
 cbmc_output=$(mktemp)
@@ -23,9 +23,11 @@ goto-cc -DCBMC -I $OUTDIR \
 # all functions (at least according to --list-goto-functions)
 IFS=', ' read -r -a CBMC_OPTS <<< "$CBMC_OPTS_STR"
 
-cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
-	grep --color=always -A 5 -i "^$FUNC_NAME" 2>&1 \
-	| output_formatting
+if $SHOW_FUNCTIONS; then
+  cbmc ${CBMC_OPTS[@]} --show-goto-functions $OUTFILE 2>&1 |
+    grep --color=always -A 5 -i "^$FUNC_NAME" 2>&1 \
+    | output_formatting
+fi
 
 time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 		--function $EUF_ENTRYPOINT \
@@ -37,5 +39,5 @@ rm -f $OUTFILE
 
 # Arbitrary return codes to signify a failed verification (54)
 # and a lack of VCCs (53)
-grep -q "Generated 0 VCC" $cbmc_output && exit 53
+grep -q "0 remaining after simplification" $cbmc_output && exit 53
 grep -q "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54

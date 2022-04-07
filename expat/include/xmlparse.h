@@ -184,9 +184,9 @@ typedef struct {
   const XML_Memory_Handling_Suite *mem;
 } HASH_TABLE;
 
-static size_t keylen(KEY s);
+ size_t keylen(KEY s);
 
-static void copy_salt_to_sipkey(XML_Parser parser, struct sipkey *key);
+ void copy_salt_to_sipkey(XML_Parser parser, struct sipkey *key);
 
 /* For probing (after a collision) we need a step size relative prime
    to the hash table size, which is a power of 2. We use double-hashing,
@@ -375,130 +375,131 @@ typedef enum XML_Error PTRCALL Processor(XML_Parser parser, const char *start,
                                          const char *end, const char **endPtr);
 
 
-static Processor prologProcessor;
-static Processor prologInitProcessor;
-static Processor contentProcessor;
-static Processor cdataSectionProcessor;
+ Processor prologProcessor;
+ Processor prologInitProcessor;
+ Processor contentProcessor;
+ Processor cdataSectionProcessor;
 #ifdef XML_DTD
-static Processor ignoreSectionProcessor;
-static Processor externalParEntProcessor;
-static Processor externalParEntInitProcessor;
-static Processor entityValueProcessor;
-static Processor entityValueInitProcessor;
+ Processor ignoreSectionProcessor;
+ Processor externalParEntProcessor;
+ Processor externalParEntInitProcessor;
+ Processor entityValueProcessor;
+ Processor entityValueInitProcessor;
 #endif /* XML_DTD */
-static Processor epilogProcessor;
-static Processor errorProcessor;
-static Processor externalEntityInitProcessor;
-static Processor externalEntityInitProcessor2;
-static Processor externalEntityInitProcessor3;
-static Processor externalEntityContentProcessor;
-static Processor internalEntityProcessor;
+ Processor epilogProcessor;
+ Processor errorProcessor;
+ Processor externalEntityInitProcessor;
+ Processor externalEntityInitProcessor2;
+ Processor externalEntityInitProcessor3;
+ Processor externalEntityContentProcessor;
+ Processor internalEntityProcessor;
 
-static enum XML_Error handleUnknownEncoding(XML_Parser parser,
+ enum XML_Error handleUnknownEncoding(XML_Parser parser,
                                             const XML_Char *encodingName);
-static enum XML_Error processXmlDecl(XML_Parser parser, int isGeneralTextEntity,
+ enum XML_Error processXmlDecl(XML_Parser parser, int isGeneralTextEntity,
                                      const char *s, const char *next);
-static enum XML_Error initializeEncoding(XML_Parser parser);
-static enum XML_Error doProlog(XML_Parser parser, const ENCODING *enc,
+ enum XML_Error initializeEncoding(XML_Parser parser);
+ enum XML_Error doProlog(XML_Parser parser, const ENCODING *enc,
                                const char *s, const char *end, int tok,
                                const char *next, const char **nextPtr,
                                XML_Bool haveMore);
-static enum XML_Error processInternalEntity(XML_Parser parser, ENTITY *entity,
+ enum XML_Error processInternalEntity(XML_Parser parser, ENTITY *entity,
                                             XML_Bool betweenDecl);
-static enum XML_Error doContent(XML_Parser parser, int startTagLevel,
+ enum XML_Error doContent(XML_Parser parser, int startTagLevel,
                                 const ENCODING *enc, const char *start,
                                 const char *end, const char **endPtr,
                                 XML_Bool haveMore);
-static enum XML_Error doCdataSection(XML_Parser parser, const ENCODING *,
+ enum XML_Error doCdataSection(XML_Parser parser, const ENCODING *,
                                      const char **startPtr, const char *end,
                                      const char **nextPtr, XML_Bool haveMore);
 #ifdef XML_DTD
-static enum XML_Error doIgnoreSection(XML_Parser parser, const ENCODING *,
+ enum XML_Error doIgnoreSection(XML_Parser parser, const ENCODING *,
                                       const char **startPtr, const char *end,
                                       const char **nextPtr, XML_Bool haveMore);
 #endif /* XML_DTD */
 
-static void freeBindings(XML_Parser parser, BINDING *bindings);
-static enum XML_Error storeAtts(XML_Parser parser, const ENCODING *,
+ void freeBindings(XML_Parser parser, BINDING *bindings);
+ enum XML_Error storeAtts(XML_Parser parser, const ENCODING *,
                                 const char *s, TAG_NAME *tagNamePtr,
                                 BINDING **bindingsPtr);
-static enum XML_Error addBinding(XML_Parser parser, PREFIX *prefix,
+ enum XML_Error addBinding(XML_Parser parser, PREFIX *prefix,
                                  const ATTRIBUTE_ID *attId, const XML_Char *uri,
                                  BINDING **bindingsPtr);
-static int defineAttribute(ELEMENT_TYPE *type, ATTRIBUTE_ID *, XML_Bool isCdata,
+ int defineAttribute(ELEMENT_TYPE *type, ATTRIBUTE_ID *, XML_Bool isCdata,
                            XML_Bool isId, const XML_Char *dfltValue,
                            XML_Parser parser);
-static enum XML_Error storeAttributeValue(XML_Parser parser, const ENCODING *,
+ enum XML_Error storeAttributeValue(XML_Parser parser, const ENCODING *,
                                           XML_Bool isCdata, const char *,
                                           const char *, STRING_POOL *);
-static enum XML_Error appendAttributeValue(XML_Parser parser, const ENCODING *,
+ enum XML_Error appendAttributeValue(XML_Parser parser, const ENCODING *,
                                            XML_Bool isCdata, const char *,
                                            const char *, STRING_POOL *);
-static ATTRIBUTE_ID *getAttributeId(XML_Parser parser, const ENCODING *enc,
-                                    const char *start, const char *end);
-static int setElementTypePrefix(XML_Parser parser, ELEMENT_TYPE *);
-static enum XML_Error storeEntityValue(XML_Parser parser, const ENCODING *enc,
-                                       const char *start, const char *end);
-static int reportProcessingInstruction(XML_Parser parser, const ENCODING *enc,
-                                       const char *start, const char *end);
-static int reportComment(XML_Parser parser, const ENCODING *enc,
-                         const char *start, const char *end);
-static void reportDefault(XML_Parser parser, const ENCODING *enc,
-                          const char *start, const char *end);
 
-static const XML_Char *getContext(XML_Parser parser);
-static XML_Bool setContext(XML_Parser parser, const XML_Char *context);
-
-static void FASTCALL normalizePublicId(XML_Char *s);
-
-static DTD *dtdCreate(const XML_Memory_Handling_Suite *ms);
-/* do not call if m_parentParser != NULL */
-static void dtdReset(DTD *p, const XML_Memory_Handling_Suite *ms);
-static void dtdDestroy(DTD *p, XML_Bool isDocEntity,
-                       const XML_Memory_Handling_Suite *ms);
-static int dtdCopy(XML_Parser oldParser, DTD *newDtd, const DTD *oldDtd,
-                   const XML_Memory_Handling_Suite *ms);
-static int copyEntityTable(XML_Parser oldParser, HASH_TABLE *, STRING_POOL *,
-                           const HASH_TABLE *);
-static NAMED *lookup(XML_Parser parser, HASH_TABLE *table, KEY name,
-                     size_t createSize);
-static void FASTCALL hashTableInit(HASH_TABLE *,
-                                   const XML_Memory_Handling_Suite *ms);
-static void FASTCALL hashTableClear(HASH_TABLE *);
-static void FASTCALL hashTableDestroy(HASH_TABLE *);
-static void FASTCALL hashTableIterInit(HASH_TABLE_ITER *, const HASH_TABLE *);
-static NAMED *FASTCALL hashTableIterNext(HASH_TABLE_ITER *);
-
-static void FASTCALL poolInit(STRING_POOL *,
-                              const XML_Memory_Handling_Suite *ms);
-static void FASTCALL poolClear(STRING_POOL *);
-static void FASTCALL poolDestroy(STRING_POOL *);
-static XML_Char *poolAppend(STRING_POOL *pool, const ENCODING *enc,
-                            const char *ptr, const char *end);
-static XML_Char *poolStoreString(STRING_POOL *pool, const ENCODING *enc,
-                                 const char *ptr, const char *end);
-static XML_Bool FASTCALL poolGrow(STRING_POOL *pool);
-static const XML_Char *FASTCALL poolCopyString(STRING_POOL *pool,
-                                               const XML_Char *s);
-static const XML_Char *poolCopyStringN(STRING_POOL *pool, const XML_Char *s,
-                                       int n);
-static const XML_Char *FASTCALL poolAppendString(STRING_POOL *pool,
-                                                 const XML_Char *s);
-
-static int FASTCALL nextScaffoldPart(XML_Parser parser);
-static XML_Content *build_model(XML_Parser parser);
-static ELEMENT_TYPE *getElementType(XML_Parser parser, const ENCODING *enc,
-                                    const char *ptr, const char *end);
-
-static XML_Char *copyString(const XML_Char *s,
-                            const XML_Memory_Handling_Suite *memsuite);
-
-static unsigned long generate_hash_secret_salt(XML_Parser parser);
-static XML_Bool startParsing(XML_Parser parser);
-
-static XML_Parser parserCreate(const XML_Char *encodingName,
-                               const XML_Memory_Handling_Suite *memsuite,
-                               const XML_Char *nameSep, DTD *dtd);
-
-static void parserInit(XML_Parser parser, const XML_Char *encodingName);
-
+// ATTRIBUTE_ID *getAttributeId(XML_Parser parser, const ENCODING *enc,
+//                                    const char *start, const char *end);
+// int setElementTypePrefix(XML_Parser parser, ELEMENT_TYPE *);
+// enum XML_Error storeEntityValue(XML_Parser parser, const ENCODING *enc,
+//                                       const char *start, const char *end);
+// int reportProcessingInstruction(XML_Parser parser, const ENCODING *enc,
+//                                       const char *start, const char *end);
+// int reportComment(XML_Parser parser, const ENCODING *enc,
+//                         const char *start, const char *end);
+// void reportDefault(XML_Parser parser, const ENCODING *enc,
+//                          const char *start, const char *end);
+//
+// const XML_Char *getContext(XML_Parser parser);
+// XML_Bool setContext(XML_Parser parser, const XML_Char *context);
+//
+// void FASTCALL normalizePublicId(XML_Char *s);
+//
+// DTD *dtdCreate(const XML_Memory_Handling_Suite *ms);
+///* do not call if m_parentParser != NULL */
+// void dtdReset(DTD *p, const XML_Memory_Handling_Suite *ms);
+// void dtdDestroy(DTD *p, XML_Bool isDocEntity,
+//                       const XML_Memory_Handling_Suite *ms);
+// int dtdCopy(XML_Parser oldParser, DTD *newDtd, const DTD *oldDtd,
+//                   const XML_Memory_Handling_Suite *ms);
+// int copyEntityTable(XML_Parser oldParser, HASH_TABLE *, STRING_POOL *,
+//                           const HASH_TABLE *);
+// NAMED *lookup(XML_Parser parser, HASH_TABLE *table, KEY name,
+//                     size_t createSize);
+// void FASTCALL hashTableInit(HASH_TABLE *,
+//                                   const XML_Memory_Handling_Suite *ms);
+// void FASTCALL hashTableClear(HASH_TABLE *);
+// void FASTCALL hashTableDestroy(HASH_TABLE *);
+// void FASTCALL hashTableIterInit(HASH_TABLE_ITER *, const HASH_TABLE *);
+// NAMED *FASTCALL hashTableIterNext(HASH_TABLE_ITER *);
+//
+// void FASTCALL poolInit(STRING_POOL *,
+//                              const XML_Memory_Handling_Suite *ms);
+// void FASTCALL poolClear(STRING_POOL *);
+// void FASTCALL poolDestroy(STRING_POOL *);
+// XML_Char *poolAppend(STRING_POOL *pool, const ENCODING *enc,
+//                            const char *ptr, const char *end);
+// XML_Char *poolStoreString(STRING_POOL *pool, const ENCODING *enc,
+//                                 const char *ptr, const char *end);
+// XML_Bool FASTCALL poolGrow(STRING_POOL *pool);
+// const XML_Char *FASTCALL poolCopyString(STRING_POOL *pool,
+//                                               const XML_Char *s);
+// const XML_Char *poolCopyStringN(STRING_POOL *pool, const XML_Char *s,
+//                                       int n);
+// const XML_Char *FASTCALL poolAppendString(STRING_POOL *pool,
+//                                                 const XML_Char *s);
+//
+// int FASTCALL nextScaffoldPart(XML_Parser parser);
+// XML_Content *build_model(XML_Parser parser);
+// ELEMENT_TYPE *getElementType(XML_Parser parser, const ENCODING *enc,
+//                                    const char *ptr, const char *end);
+//
+// XML_Char *copyString(const XML_Char *s,
+//                            const XML_Memory_Handling_Suite *memsuite);
+//
+// unsigned long generate_hash_secret_salt(XML_Parser parser);
+// XML_Bool startParsing(XML_Parser parser);
+//
+// XML_Parser parserCreate(const XML_Char *encodingName,
+//                               const XML_Memory_Handling_Suite *memsuite,
+//                               const XML_Char *nameSep, DTD *dtd);
+//
+// void parserInit(XML_Parser parser, const XML_Char *encodingName);
+//

@@ -1,3 +1,4 @@
+import re
 import sys, os, json
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -32,6 +33,10 @@ class Config:
 
     VERBOSITY: int = 0
     NPROC: int = 5
+
+    # Name of a specific function to limit analysis during debugging
+    ONLY_ANALYZE: str = ""
+    SILENT_IDENTITY_VERIFICATION: bool = True
 
     # - - - CBMC - - -
     CBMC_OPTS_STR: str = "--object-bits 12 --unwind 10"
@@ -87,6 +92,12 @@ class Config:
     RENAME_TXT: str = "/tmp/rename.txt"
     SUFFIX_ENV_FLAG: str = "USE_SUFFIX"
 
+    # Show part of the goto functions before running CBMC analysis
+    SHOW_FUNCTIONS: bool = False
+
+    # The timeout (seconds) before killing CBMC analysis
+    CBMC_TIMEOUT: int = 60
+
     # Maps function names to filepaths of drivers
     DRIVERS: dict[str,str] = field(default_factory=dict)
 
@@ -141,7 +152,8 @@ class Config:
             'SUFFIX': self.SUFFIX,
             'PROJECT_DIR': self.PROJECT_DIR,
             'SETX': self.SETX,
-            'DEPLIB_NAME': self.DEPLIB_NAME
+            'DEPLIB_NAME': self.DEPLIB_NAME,
+            'SHOW_FUNCTIONS': str(self.SHOW_FUNCTIONS).lower()
         })
 
         return script_env
@@ -197,7 +209,6 @@ class Identifier:
     spelling: str
     type_spelling: str # Includes a '*' if the ident is a ptr
 
-
     # The type is a string conversions from `cindex.TypeKind`
     # If the object refers to a function, the type reflects the return type
     typing: str
@@ -239,6 +250,9 @@ class Identifier:
             is_const = type_obj.is_const_qualified()
             is_ptr = False
 
+        if re.search(r"^int\**", type_spelling):
+            type_spelling = cls.get_type_from_text(cursor, type_spelling)
+
         return cls(
             spelling = cursor.spelling,
             typing = typing,
@@ -247,6 +261,36 @@ class Identifier:
             is_const = is_const,
             is_function = is_function
         )
+
+    @classmethod
+    def get_type_from_text(cls, cursor: cindex.Cursor, type_spelling: str) -> str:
+        '''
+        ~~~ Hack ~~~
+        Built-in typedefs like size_t do not get resolved properly
+        and we resolve them by looking in the actual source file
+        '''
+        with open(str(cursor.location.file), mode='r', encoding='utf8') as f:
+            lines = f.readlines()
+
+            # Get the line of the identifier
+            line_offset = cursor.location.line-1
+            line = lines[line_offset]
+
+            # Retrieve the text before the identifier on the same line
+            before_ident = line[:cursor.location.column-1]
+
+            # We assume that there are no more than 5 newlines
+            # between the identifier and the type specifier
+            low = max(line_offset-4,0)
+            high = max(line_offset-1,0)
+            before_ident = ' '.join(lines[low:high]) \
+                    + before_ident
+            before_ident = before_ident.replace('\n', ' ')
+
+            if (match := re.match(r".*,\s*([_0-9a-zA-Z]+)\s*$", before_ident)):
+                type_spelling = match.group(1)
+
+        return type_spelling
 
     @classmethod
     def empty(cls):

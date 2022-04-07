@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)
-    CONFIG.SHOW_DIFFS = args.diff # Always override config file option
+    CONFIG.SHOW_DIFFS = args.diff # Ignored if given in config file
     CONFIG.SETX = str(CONFIG.VERBOSITY >= 2).lower()
     if CONFIG.VERBOSITY >= 2:
         pprint(CONFIG)
@@ -298,6 +298,12 @@ if __name__ == '__main__':
                 get_includes_for_tu(diff, DEPENDENCY_OLD)
 
         for change in CHANGED_FUNCTIONS:
+            func_name = change.old.ident.spelling
+
+            if CONFIG.ONLY_ANALYZE != "" and \
+                    CONFIG.ONLY_ANALYZE != func_name:
+                continue
+
             if CONFIG.USE_PROVIDED_DRIVER:
                 driver = next(iter(CONFIG.DRIVERS.values()))
                 func_name = next(iter(CONFIG.DRIVERS.keys()))
@@ -308,7 +314,6 @@ if __name__ == '__main__':
                 # function and then performs an assertion on all affected outputs
                 #
                 # If no explicit driver was passed, attempt to generate one
-                func_name = change.old.ident.spelling
 
                 if not func_name in CONFIG.DRIVERS:
                     # Begin by generating an identity driver and verify that it
@@ -322,7 +327,8 @@ if __name__ == '__main__':
                         print_fail(f"{change.old} {fail_msg}")
                         continue
 
-                    if not run_harness(change, script_env, identity_driver, func_name, quiet=False):
+                    if not run_harness(change, script_env, identity_driver, func_name, \
+                            quiet=CONFIG.SILENT_IDENTITY_VERIFICATION):
                         fail_msg = f"Identity verification failed: {func_name}"
                         continue
                     else:

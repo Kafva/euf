@@ -4,26 +4,22 @@
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
 	"DEPLIB_NAME": "libexpat.a",
 
-	"UNWIND": 10,
-	"OBJECT_BITS": 12,
-  
   "DEP_INCLUDE_PATHS": [
     "expat/lib"
   ],
-  
+	
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
     "expat/examples/.*"
   ],
 
-  "IGNORE_FUNCTIONS": [
-    "main"
-  ],
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
 
-	"BUILD_ENV": {
-			"CPPFLAGS": "-DXML_ENABLE_VISIBILITY=0",
-			"CFLAGS": "-O2 -fvisibility=default"
-	},
+  "CUSTOM_HEADERS": {
+    "xmlparse.c": [
+      "~/Repos/euf/expat/include/xmlparse.h"
+    ]
+  },
 
 	"REVERSE_MAPPING": true,
 	"VERBOSITY": 2,
