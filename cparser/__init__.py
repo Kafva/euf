@@ -475,6 +475,10 @@ class ProjectInvocation:
     def invocation(self):
         return f"{self.filepath}:{self.line}:{self.col}:{self.enclosing_name}()"
 
+    def to_csv(self):
+        return f"{self.filepath};{self.enclosing_name};{self.line};{self.col};{self.function.direct_change};" + \
+               f"{self.function.old.filepath};{self.function.old.ident.spelling};{self.function.old.line};{self.function.old.col}"
+
     def detail(self):
         return f"call to {self.function}\nat {self.invocation()}"
 

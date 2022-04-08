@@ -1,3 +1,5 @@
+import dataclasses
+import json
 import traceback
 from typing import Set
 from clang import cindex
@@ -86,12 +88,25 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
             current_enclosing
         )
 
-def log_impact_set(call_sites: list[ProjectInvocation]) -> None:
+def log_impact_set(call_sites: list[ProjectInvocation], filename: str) -> None:
     '''
-    For complteness, we will log 
+    A full record of the impact set will 
+    be recoreded as a JSON dump of the ProjectInvocation list
+
+    We would not benefit from making two different CSV logging schemes (with reversed mappings)
+    since every line would still need an impact site and a change site
     '''
     if CONFIG.ENABLE_RESULT_LOG:
-        pass
+        with open(filename, mode='w', encoding='utf8') as f:
+            # Each ProjectInvocation only contains one DependencyFunctionChange object
+            # so we can log the source of the change with the impact site
+            # What functions cause an indirect change is not recorded in the CSV format
+            f.write("impact_site;impacted_func;line;col;change_src;changed_func;line;col\n")
+            for invocation in call_sites:
+                f.write(f"{invocation.to_csv()}\n")
+
+        with open(f"{filename.removesuffix('.csv')}.json", mode='w', encoding='utf8') as f:
+            json.dump([ dataclasses.asdict(c) for c in call_sites ], f)
 
 def pretty_print_impact_by_proj(call_sites: list[ProjectInvocation]) -> None:
     '''

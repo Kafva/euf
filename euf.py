@@ -27,7 +27,7 @@ from cparser.harness import create_harness, run_harness, get_includes_for_tu
 from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
-from cparser.impact_set import get_call_sites_from_file, \
+from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
         check_ccdb_fail
@@ -446,6 +446,8 @@ if __name__ == '__main__':
                     pretty_print_impact_by_dep(CALL_SITES)
                 else:
                     pretty_print_impact_by_proj(CALL_SITES)
+            if CONFIG.ENABLE_RESULT_LOG:
+                log_impact_set(CALL_SITES, f"{LOG_DIR}/impact_set.csv")
     except Exception as e:
         traceback.print_exc()
         sys.exit(-1)
