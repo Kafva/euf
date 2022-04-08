@@ -65,7 +65,7 @@ class Config:
 
     SKIP_BLAME: bool = False
     SKIP_IMPACT: bool = False
-    ENABLE_RESULT_LOG: bool = False
+    ENABLE_RESULT_LOG: bool = True
 
     # Functions for which no CBMC analysis should be attempted
     IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
@@ -122,8 +122,9 @@ class Config:
     # Maps function names to filepaths of drivers
     DRIVERS: dict[str,str] = field(default_factory=dict)
 
-    # Override to only use a specific (provided) driver for CBMC
-    # USE_PROVIDED_DRIVER: bool = False
+    # Do not generate a new driver if one already exists under .harnesses
+    # allows for manual modifications and custom drivers to be provided
+    USE_EXISTING_DRIVERS: bool = False
 
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds

@@ -25,6 +25,7 @@
   "DIE_ON_ERROR": false,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
+  "USE_EXISTING_DRIVERS": false,
 
 
 	"REVERSE_MAPPING": true,

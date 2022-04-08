@@ -308,9 +308,11 @@ if __name__ == '__main__':
             'CBMC_OPTS_STR': CONFIG.CBMC_OPTS_STR
         })
 
-        driver = ""
         log_file = f"{LOG_DIR}/cbmc.csv"
         rm_f(log_file)
+
+        harness_dir = f"{DEP_SOURCE_ROOT_OLD}/{CONFIG.HARNESS_DIR}"
+        mkdir_p(harness_dir)
 
         # Retrieve a list of the headers that each TU uses
         # We will need to include these in the driver
@@ -328,26 +330,32 @@ if __name__ == '__main__':
 
             # - - - Harness generation - - - #
             # Begin by generating an identity driver and verify that it
-            # passes as equivalent
-            identity_driver = create_harness(change, DEP_SOURCE_ROOT_OLD, \
-                    TU_INCLUDES[change.old.filepath] , identity=True)
+            # passes as equivalent, then generate the actual driver and check if the
+            # change is considered equivalent
+            harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
 
-            if identity_driver == "": # Generation failed
-                continue
+            if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
+                pass # Use existing driver
+            elif not create_harness(change, harness_path, \
+                    TU_INCLUDES[change.old.filepath], identity=True):
+                continue # Generation failed
 
             # Run the identity harness
-            success = run_harness(change, script_env, identity_driver, func_name, \
-                    log_file, i+1, len(CHANGED_FUNCTIONS), \
-                    quiet=CONFIG.SILENT_IDENTITY_VERIFICATION)
+            if run_harness(change, script_env, harness_path, func_name, \
+                log_file, i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
 
-            if success:
-                # Generate the actual harness
-                driver = create_harness(change, DEP_SOURCE_ROOT_OLD, \
-                    TU_INCLUDES[change.old.filepath], identity=False)
+                harness_path = f"{harness_dir}/{change.old.ident.spelling}.c"
 
-                # Remove the change from the change set if the equivalance check passes
-                if run_harness(change, script_env, driver, func_name, log_file, \
+                if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
+                    pass # Use existing driver
+                elif not create_harness(change, harness_path, \
+                        TU_INCLUDES[change.old.filepath], identity=False):
+                    continue # Generation failed
+
+                # Run the actual harness
+                if run_harness(change, script_env, harness_path, func_name, log_file, \
                         i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.VERBOSITY<=1):
+                    # Remove the change from the change set if the equivalance check passes
                     CHANGED_FUNCTIONS.remove(change)
 
         log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/reduced_set.csv")

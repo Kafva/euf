@@ -49,8 +49,8 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
 
     return (usr_includes, project_includes)
 
-def create_harness(change: DependencyFunctionChange, dep_path: str,
-        includes: tuple[list[str],list[str]],  identity: bool = False) -> str:
+def create_harness(change: DependencyFunctionChange, harness_path: str,
+        includes: tuple[list[str],list[str]],  identity: bool = False) -> bool:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -64,12 +64,9 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
     "a/" side --> OLD
     "b/" side --> NEW
 
-    Returns the path to the harness on success, otherwise an empty string
-
     If "identity" is set, the comparsion will be made with the old version
     and itself, creating a seperate harness file with the suffix _id
     '''
-    harness_path = ""
 
     # ~~Basic assumptions for harness generation~~
     # The number-of arugments and their types have not changed
@@ -78,22 +75,17 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
         if (old_cnt := len(change.old.arguments)) != \
             (new_cnt := len(change.new.arguments)):
             print_err(f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt}")
-            return ""
+            return False
 
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
                 print_err(f"Different argument types: a/{a1} -> b/{a2}")
-                return ""
+                return False
 
         # The return-type has not changed
         if change.old.ident != change.new.ident:
             print_err(f"Different return type: a/{change.old.ident.type_spelling} -> b/{change.old.ident.type_spelling}")
-            return ""
-
-    harness_dir = f"{dep_path}/{CONFIG.HARNESS_DIR}"
-    if not os.path.exists(harness_dir):
-        os.mkdir(harness_dir)
-    harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS if identity else ''}.c"
+            return False
 
     INDENT=CONFIG.INDENT
     failed_generation = False
@@ -127,21 +119,24 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
 
 
         # Decleration of the old version of the function
-        f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};")
+        f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n")
 
-        # Decleration for the new version of the function
-        #
-        # In some cases the function will already be declared in of the headers
-        # but providing a second decleration in the driver does
-        # not cause issues
-        #
-        # NOTE: if the function is declared as 'static' in one of the included
-        # headers we will not be able to access it a warning akin to
-        #
-        # **** WARNING: no body for function <...>
-        #
-        # will show up during the cbmc analysis if this occurs
-        f.write(f"\n{change.new.prototype_string()};\n\n")
+        if not identity:
+            # Decleration for the new version of the function
+            #
+            # In some cases the function will already be declared in of the headers
+            # but providing a second decleration in the driver does
+            # not cause issues
+            #
+            # NOTE: if the function is declared as 'static' in one of the included
+            # headers we will not be able to access it a warning akin to
+            #
+            # **** WARNING: no body for function <...>
+            #
+            # will show up during the cbmc analysis if this occurs
+            f.write(f"{change.new.prototype_string()};\n")
+
+        f.write("\n")
 
         # Entrypoint function
         f.write(f"void {CONFIG.EUF_ENTRYPOINT}() {{\n{INDENT}#ifdef CBMC\n")
@@ -215,9 +210,9 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
     if failed_generation:
         os.remove(harness_path)
         print_err(fail_msg)
-        return ""
+        return False
     else:
-        return harness_path
+        return True
 
 def log_harness(filename: str,
         func_name: str,
