@@ -18,7 +18,6 @@ def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocatio
     ''' 
     Extract the names of all top level declerations (variables and functions) 
     excluding those defined externally under /usr/include
-    
     '''
     global_decls: Set[IdentifierLocation] = set()
 

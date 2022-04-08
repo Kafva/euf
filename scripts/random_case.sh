@@ -17,11 +17,17 @@ CMTS=/tmp/commits
 #NOT_BEFORE=$(date -d "2017-01-01" '+%s')
 #NOT_AFTER=$(date -d "2017-06-25" '+%s')
 
-BASE_CONF=./expat/base.json
-DEP_DIR=~/Repos/libexpat
-LIBNAME=libexpat
+BASE_CONF=./tests/configs/usb.json
+DEP_DIR=~/Repos/libusb
+LIBNAME=libusb
 NOT_BEFORE=$(date -d "2020-01-01" '+%s')
 NOT_AFTER=$(date -d "2077-01-01" '+%s')
+
+#BASE_CONF=./expat/base.json
+#DEP_DIR=~/Repos/libexpat
+#LIBNAME=libexpat
+#NOT_BEFORE=$(date -d "2020-01-01" '+%s')
+#NOT_AFTER=$(date -d "2077-01-01" '+%s')
 
 pushd $DEP_DIR
 git log | awk "/^commit/{print \$2}" > $CMTS

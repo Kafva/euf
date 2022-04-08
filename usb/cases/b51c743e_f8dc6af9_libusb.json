@@ -1,0 +1,25 @@
+{
+  "PROJECT_DIR": "~/Repos/libcups",
+  "DEPENDENCY_DIR": "~/Repos/libusb",
+  "DEPLIB_NAME": "libusb-1.0.a",
+  "DEP_INCLUDE_PATHS": [
+    "libusb/libusb"
+  ],
+  "EXCLUDE_REGEXES": [],
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
+  "CBMC_TIMEOUT": 7,
+  "ENABLE_RESULT_LOG": false,
+  "DIE_ON_ERROR": true,
+  "SILENT_IDENTITY_VERIFICATION": false,
+  "SHOW_FUNCTIONS": false,
+  "USE_EXISTING_DRIVERS": false,
+  "REVERSE_MAPPING": true,
+  "VERBOSITY": 1,
+  "NPROC": 6,
+  "SKIP_BLAME": false,
+  "SKIP_IMPACT": false,
+  "FULL": false,
+  "COMMIT_OLD": "b51c743e4210756a98f4f60c69a34745e4b27a55",
+  "COMMIT_NEW": "f8dc6af91607d5d2202c47b3b62e107df9197184",
+  "QUIET_BUILD": true
+}
