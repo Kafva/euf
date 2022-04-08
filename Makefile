@@ -46,6 +46,10 @@ empty:
 	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json --diff
 	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json
 
+rand:
+	./euf.py --config .rand/0d21b17b_9288cd54_libexpat.json
+	
+
 # Example run on another project without CBMC
 onig:
 	./euf.py --config tests/configs/oniguruma.json
