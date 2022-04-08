@@ -7,8 +7,15 @@ helpStr=""
 CMTS=/tmp/commits
 LOW_LIMIT=$(date -d "2020-01-01" '+%s')
 
+#BASE_CONF=./tests/configs/onig_base.json
+#DEP_DIR=~/Repos/oniguruma
+#LIBNAME=libonig
 
-pushd ~/Repos/libexpat
+BASE_CONF=./expat/base.json
+DEP_DIR=~/Repos/libexpat
+LIBNAME=libexpat
+
+pushd $DEP_DIR
 git log | awk "/^commit/{print \$2}" > $CMTS
 
 get_pair(){
@@ -61,12 +68,12 @@ popd
 mkdir -p .rand
 
 # Save the config if we want to run it agian
-cat <(jq -s '.[0] * .[1]' ./expat/base.json /tmp/random.json) > \
-  .rand/${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
+cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > \
+  .rand/${COMMIT_OLD::8}_${COMMIT_NEW::8}_$LIBNAME.json
 
 sleep 2
 
 ./euf.py --config \
-	<(jq -s '.[0] * .[1]' ./expat/base.json /tmp/random.json)
+	<(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)
 
 
