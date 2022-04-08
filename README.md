@@ -10,9 +10,9 @@ source ./venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
-Invoke with a JSON config file, see examples under `./expat`
+Invoke with a JSON config file
 ```bash
-./euf.py --config expat/base.json
+./euf.py --config tests/configs/basic.json
 ```
 
 ## CBMC fork
