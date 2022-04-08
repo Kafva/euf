@@ -62,6 +62,7 @@ class Config:
     # Name of a specific function to limit analysis during debugging
     ONLY_ANALYZE: str = ""
     SILENT_IDENTITY_VERIFICATION: bool = True
+    SILENT_VERIFICATION: bool = False
 
     SKIP_BLAME: bool = False
     SKIP_IMPACT: bool = False

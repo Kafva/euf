@@ -5,18 +5,28 @@
 	"PROJECT_DIR": "~/Repos/main",
 	"DEPENDENCY_DIR": "~/Repos/matrix",
 	"DEPLIB_NAME": "libmatrix.a",
+  
+  "DEP_INCLUDE_PATHS": [
+    "include"
+  ],
 
- 	"DRIVERS": {
-	  "matrix_init": "./tests/drivers/matrix_init_driver.c"
-	},
-  "USE_PROVIDED_DRIVER": true,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 14", 
+  "CBMC_TIMEOUT": 14,
+  
 
+  "ENABLE_RESULT_LOG": true,
+  "SHOW_FUNCTIONS": false,
+  "DIE_ON_ERROR": true,
+  "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_VERIFICATION": true,
+  "USE_EXISTING_DRIVERS": true,
+
+  "QUIET_BUILD": false,
 	"VERBOSITY": 1,
 	"NPROC": 1,
 	"SKIP_BLAME": false,
-	"UNWIND": 10,
 	"SKIP_IMPACT": false,
 	"FULL": true,
-	"FORCE_RECOMPILE": true
+	"FORCE_RECOMPILE": false
 }
 

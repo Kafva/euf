@@ -314,6 +314,8 @@ if __name__ == '__main__':
         harness_dir = f"{DEP_SOURCE_ROOT_OLD}/{CONFIG.HARNESS_DIR}"
         mkdir_p(harness_dir)
 
+        total = len(CHANGED_FUNCTIONS)
+
         # Retrieve a list of the headers that each TU uses
         # We will need to include these in the driver
         # for types etc. to be defined
@@ -321,7 +323,7 @@ if __name__ == '__main__':
             TU_INCLUDES[diff.old_path] = \
                 get_includes_for_tu(diff, DEPENDENCY_OLD)
 
-        for i,change in enumerate(CHANGED_FUNCTIONS):
+        for i,change in enumerate(CHANGED_FUNCTIONS[:]):
             func_name = change.old.ident.spelling
 
             if CONFIG.ONLY_ANALYZE != "" and \
@@ -342,7 +344,7 @@ if __name__ == '__main__':
 
             # Run the identity harness
             if run_harness(change, script_env, harness_path, func_name, \
-                log_file, i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
+                log_file, i+1, total, quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
 
                 harness_path = f"{harness_dir}/{change.old.ident.spelling}.c"
 
@@ -354,11 +356,12 @@ if __name__ == '__main__':
 
                 # Run the actual harness
                 if run_harness(change, script_env, harness_path, func_name, log_file, \
-                        i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.VERBOSITY<=1):
+                        i+1, total, quiet = CONFIG.SILENT_VERIFICATION):
                     # Remove the change from the change set if the equivalance check passes
                     CHANGED_FUNCTIONS.remove(change)
 
         log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/reduced_set.csv")
+        print_info(f"Change set reduction: {total} -> {len(CHANGED_FUNCTIONS)}")
 
     if CONFIG.SKIP_IMPACT:  sys.exit(0)
 
@@ -447,7 +450,7 @@ if __name__ == '__main__':
                 PROJECT_SOURCE_FILES
             ))
 
-            if CONFIG.VERBOSITY >= 2:
+            if CONFIG.VERBOSITY >= 2 or len(CALL_SITES) == 0:
                 pprint(CALL_SITES)
             else:
                 if CONFIG.REVERSE_MAPPING:

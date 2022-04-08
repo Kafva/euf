@@ -1,4 +1,3 @@
-#include "cprover_builtin_headers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -7,10 +6,6 @@
 
 int matrix_sum(int* m, int rows, int columns);
 int matrix_sum_old_b026324c6904b2a(int* m, int rows, int columns);
-
-// extern int* nondet_int_pointer();
-extern int  nondet_int();
-
 
 int* m_init(int rows, int columns){
 	int* matrix = malloc(sizeof(int)*rows*columns);
@@ -23,10 +18,7 @@ int* m_init(int rows, int columns){
 }
 
 
-int main(int argc, char* argv[]){
-	//int* m1 = nondet_int_pointer();
-	//int* m2 = nondet_int_pointer();
-	
+void euf_main(){
 	int* m1 = m_init(DIM,DIM);
 	int* m2 = m_init(DIM,DIM);
 

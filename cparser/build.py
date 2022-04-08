@@ -183,7 +183,7 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
 
             # Remove any other extranous files
             Repo(dep_dir).git.clean( # type: ignore
-                "-df", "--exclude=compile_commands.json"
+                "-df", "--exclude=compile_commands.json", f"--exclude={CONFIG.HARNESS_DIR}"
             )
 
             # 2. Run `./configure` and `make` with goto-cc
