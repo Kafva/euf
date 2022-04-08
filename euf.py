@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.harness import create_harness, run_harness, get_includes_for_tu
-from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_fail, print_info, print_stage, print_success, rm_f
+from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, \
@@ -248,7 +248,7 @@ if __name__ == '__main__':
     if CONFIG.VERBOSITY >= 2:
         print_stage("Change set")
 
-    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}"
+    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}_{CONFIG.DEPLIB_NAME.removesuffix('.a')}"
 
     if CONFIG.ENABLE_RESULT_LOG:
         mkdir_p(LOG_DIR)
@@ -326,60 +326,29 @@ if __name__ == '__main__':
                     CONFIG.ONLY_ANALYZE != func_name:
                 continue
 
-            if CONFIG.USE_PROVIDED_DRIVER:
-                driver = next(iter(CONFIG.DRIVERS.values()))
-                func_name = next(iter(CONFIG.DRIVERS.keys()))
-            else:
-                # - - - Harness generation - - - #
-                # Regardless of which back-end we use to check equivalance, 
-                # we will need a minimal program that invokes both versions of the changed 
-                # function and then performs an assertion on all affected outputs
-                #
-                # If no explicit driver was passed, attempt to generate one
+            # - - - Harness generation - - - #
+            # Begin by generating an identity driver and verify that it
+            # passes as equivalent
+            identity_driver = create_harness(change, DEP_SOURCE_ROOT_OLD, \
+                    TU_INCLUDES[change.old.filepath] , identity=True)
 
-                if not func_name in CONFIG.DRIVERS:
-                    # Begin by generating an identity driver and verify that it
-                    # passes as equivalent
-                    (identity_driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, \
-                            TU_INCLUDES[change.old.filepath] , identity=True)
+            if identity_driver == "": # Generation failed
+                continue
 
-                    fail_msg = f"Failed to generate driver: {msg}"
+            # Run the identity harness
+            success = run_harness(change, script_env, identity_driver, func_name, \
+                    log_file, i+1, len(CHANGED_FUNCTIONS), \
+                    quiet=CONFIG.SILENT_IDENTITY_VERIFICATION)
 
-                    if not os.path.exists(identity_driver):
-                        print_fail(f"{change.old} {fail_msg}")
-                        continue
+            if success:
+                # Generate the actual harness
+                driver = create_harness(change, DEP_SOURCE_ROOT_OLD, \
+                    TU_INCLUDES[change.old.filepath], identity=False)
 
-                    if not run_harness(change, script_env, identity_driver, func_name, \
-                            log_file, i+1, len(CHANGED_FUNCTIONS), \
-                            quiet=CONFIG.SILENT_IDENTITY_VERIFICATION):
-                        fail_msg = f"Identity verification failed: {func_name}"
-                        continue
-                    else:
-                        print_success(f"Identity verification successful: {func_name}")
-
-                        # Generate the actual harness
-                        (driver,msg) = create_harness(change, DEP_SOURCE_ROOT_OLD, \
-                                TU_INCLUDES[change.old.filepath], identity=False)
-                        fail_msg = f"Failed to generate driver: {msg}"
-                else:
-                    driver = CONFIG.DRIVERS[func_name]
-                    fail_msg = f"Missing driver: '{driver}'"
-
-
-                if not os.path.exists(driver):
-                    print_fail(f"{change.old}: {fail_msg}")
-                    continue
-
-            if not run_harness(change, script_env, driver, func_name, log_file, \
-                    i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.VERBOSITY<=1):
-                print_info(f"{func_name}: CBMC equivalance check \033[1;31mFAILURE\033[0m")
-            else:
-                print_info(f"{func_name}: CBMC equivalance check \033[1;32mSUCCESS\033[0m")
-                CHANGED_FUNCTIONS.remove(change)
-
-
-            if CONFIG.USE_PROVIDED_DRIVER:
-                break # tmp
+                # Remove the change from the change set if the equivalance check passes
+                if run_harness(change, script_env, driver, func_name, log_file, \
+                        i+1, len(CHANGED_FUNCTIONS), quiet = CONFIG.VERBOSITY<=1):
+                    CHANGED_FUNCTIONS.remove(change)
 
         log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/reduced_set.csv")
 

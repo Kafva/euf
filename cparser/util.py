@@ -2,7 +2,7 @@ import sys, os
 from datetime import datetime
 from typing import Set
 
-from cparser import CONFIG
+from cparser import CONFIG, AnalysisResult
 
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
@@ -85,13 +85,26 @@ def time_start(msg: str) -> datetime:
         print_info(msg)
     return datetime.now()
 
-def time_end(msg: str, start_time: datetime, warn:bool = False) -> None:
+def print_result(msg: str, result = AnalysisResult.NONE) -> None:
+    match result:
+        case AnalysisResult.SUCCESS:
+            print_success(msg)
+        case AnalysisResult.FAILURE:
+            print_fail(msg)
+        case AnalysisResult.NO_VCCS:
+            print_fail(msg)
+        case AnalysisResult.TIMEOUT:
+            print_warn(msg)
+        case AnalysisResult.INTERRUPT:
+            print_warn(msg)
+        case AnalysisResult.ERROR:
+            print_err(msg)
+        case _:
+            print_info(msg)
+
+def time_end(msg: str, start_time: datetime, result: AnalysisResult = AnalysisResult.NONE) -> None:
     if CONFIG.VERBOSITY >= 1:
-        txt = f"{msg}: {datetime.now() - start_time}"
-        if warn:
-            print_warn(txt)
-        else:
-            print_info(txt)
+        print_result(f"{msg}: {datetime.now() - start_time}", result)
         start_time = datetime.now()
 
 def mkdir_p(path: str):

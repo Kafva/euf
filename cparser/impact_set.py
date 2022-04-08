@@ -88,7 +88,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 
 def log_impact_set(call_sites: list[ProjectInvocation]) -> None:
     '''
-    For complteness,
+    For complteness, we will log 
     '''
     if CONFIG.ENABLE_RESULT_LOG:
         pass

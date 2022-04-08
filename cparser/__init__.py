@@ -28,10 +28,9 @@ class AnalysisResult(Enum):
     ERROR = 1
     INTERRUPT = 51
     TIMEOUT = 52
-    # "SUCCESS": No verification conditions generated
-    NO_VCCS = 53
-    # FAILED verification: non-equivalent change
-    FAILURE = 54
+    NO_VCCS = 53 # "SUCCESS": No verification conditions generated
+    FAILURE = 54 # FAILED verification: non-equivalent change
+    NONE = 255 # Basecase used in `print_result`
 
 @dataclass
 class Config:
@@ -104,7 +103,7 @@ class Config:
     # than in header files. If these types are needed as arguments to a
     # function in a driver we need some way of including them
     # Currently, we simply provide the option of giving a custom header
-    # with the neccessary definitions to resolve this
+    # with the necessary definitions to resolve this
     #
     # Format:
     #   src_file: [
@@ -124,7 +123,7 @@ class Config:
     DRIVERS: dict[str,str] = field(default_factory=dict)
 
     # Override to only use a specific (provided) driver for CBMC
-    USE_PROVIDED_DRIVER: bool = False
+    # USE_PROVIDED_DRIVER: bool = False
 
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds

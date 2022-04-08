@@ -50,7 +50,7 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
     return (usr_includes, project_includes)
 
 def create_harness(change: DependencyFunctionChange, dep_path: str,
-        includes: tuple[list[str],list[str]],  identity: bool = False) -> tuple[str,str]:
+        includes: tuple[list[str],list[str]],  identity: bool = False) -> str:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -64,9 +64,7 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
     "a/" side --> OLD
     "b/" side --> NEW
 
-    Returns a tuple with the path to the harness and 
-    an empty string on success, otherwise an error message is 
-    given at the second index
+    Returns the path to the harness on success, otherwise an empty string
 
     If "identity" is set, the comparsion will be made with the old version
     and itself, creating a seperate harness file with the suffix _id
@@ -79,15 +77,18 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
     if not identity:
         if (old_cnt := len(change.old.arguments)) != \
             (new_cnt := len(change.new.arguments)):
-            return ("", f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt}")
+            print_err(f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt}")
+            return ""
 
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
-                return ("", f"Different argument types: a/{a1} -> b/{a2}")
+                print_err(f"Different argument types: a/{a1} -> b/{a2}")
+                return ""
 
         # The return-type has not changed
         if change.old.ident != change.new.ident:
-            return ("", f"Different return type: a/{change.old.ident.type_spelling} -> b/{change.old.ident.type_spelling}")
+            print_err(f"Different return type: a/{change.old.ident.type_spelling} -> b/{change.old.ident.type_spelling}")
+            return ""
 
     harness_dir = f"{dep_path}/{CONFIG.HARNESS_DIR}"
     if not os.path.exists(harness_dir):
@@ -169,7 +170,7 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
 
         if change.old.ident.type_spelling == "void":
             failed_generation = "True"
-            fail_msg = "Cannot verify function with a 'void' return value"
+            fail_msg = f"Cannot verify function with a 'void' return value: {change.old.ident.spelling}()"
         else:
             for arg in change.old.arguments:
                 if not arg.is_ptr:
@@ -183,15 +184,11 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
                     # We cannot auto-generate harnesses for 
                     # functions that require void pointers
                     failed_generation = True
-                    fail_msg = f"Function requires a 'void*' argument: {arg.spelling}"
+                    fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old.ident.spelling}()"
                     break
                 else:
                     f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
                     arg_string += f"{arg.spelling}, "
-
-                    #failed_generation = True
-                    #fail_msg = f"Unable to initialise argument of type: {arg.type_spelling}"
-                    #break
 
         if not failed_generation:
             arg_string = arg_string.removesuffix(", ")
@@ -217,9 +214,10 @@ def create_harness(change: DependencyFunctionChange, dep_path: str,
 
     if failed_generation:
         os.remove(harness_path)
-        return ("", fail_msg)
+        print_err(fail_msg)
+        return ""
     else:
-        return (harness_path, "")
+        return harness_path
 
 def log_harness(filename: str,
         func_name: str,
@@ -253,7 +251,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     out = subprocess.DEVNULL if quiet else sys.stderr
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
-    time_start(f"{'(ID)' if identity else ''} Starting CBMC analysis for {change.old}: {os.path.basename(driver)} ({current}/{total})")
+    time_start(f"{'(ID) ' if identity else ''}Starting CBMC analysis for {change.old}: {os.path.basename(driver)} ({current}/{total})")
 
     start = datetime.now()
     driver_name = os.path.basename(driver)
@@ -270,28 +268,35 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
         log_harness(log_file,func_name,identity,AnalysisResult.INTERRUPT,start,driver,change)
         print("\n")
-        time_end(f"Cancelled execution for {driver_name}",  start, warn=True)
+        time_end(f"Cancelled execution for {driver_name}",  start, AnalysisResult.INTERRUPT)
         return False
     except subprocess.TimeoutExpired:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
         log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,start,driver,change)
-        time_end(f"Execution timed-out for {driver_name}",  start, warn=True)
+        time_end(f"Execution timed-out for {driver_name}",  start, AnalysisResult.TIMEOUT)
         return False
 
-    time_end(f"Finished CBMC analysis for {driver_name}",  start)
-
-    if return_code == AnalysisResult.ERROR.value or \
-        not return_code in map(lambda a: a.value, AnalysisResult):
+    match return_code:
+        case AnalysisResult.NO_VCCS.value:
+            msg = f"No verification conditions generated for: {driver}"
+        case AnalysisResult.FAILURE.value:
+            msg = f"Identity verification failed: {func_name}" if identity else \
+                    f"Verification failed: {func_name}"
+        case AnalysisResult.SUCCESS.value:
+            msg = f"Identity verification successful: {func_name}" if identity else \
+                    f"Verification successful: {func_name}"
+        case _:
             if not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
-                print_err(f"An error occured during goto-cc compilation of {driver}")
+                msg = f"An error occured during goto-cc compilation of {driver}"
             else:
-                print_err(f"An error occured during the analysis of {driver}")
+                msg = f"An error occured during the analysis of {driver}"
             if CONFIG.DIE_ON_ERROR:
+                print_err(msg)
                 sys.exit(return_code)
-    elif return_code == AnalysisResult.NO_VCCS.value:
-        print_err(f"No verification conditions generated for: {driver}")
 
     log_harness(log_file,func_name,identity,AnalysisResult(return_code),start,driver,change)
+
+    time_end(msg,  start, AnalysisResult(return_code))
 
     return return_code == AnalysisResult.SUCCESS.value
