@@ -5,15 +5,23 @@ helpStr=""
 
 #----------------------------#
 CMTS=/tmp/commits
-LOW_LIMIT=$(date -d "2020-01-01" '+%s')
 
+
+# Oniguruma fails after ~ e8bd631e: Mon Jun 26 12:53:19 2017 +0900
+#
+# We also need to watch out for changes to structs...
+# This seems to be near un-avoidable with oniguruma...
 #BASE_CONF=./tests/configs/onig_base.json
 #DEP_DIR=~/Repos/oniguruma
 #LIBNAME=libonig
+#NOT_BEFORE=$(date -d "2017-01-01" '+%s')
+#NOT_AFTER=$(date -d "2017-06-25" '+%s')
 
 BASE_CONF=./expat/base.json
 DEP_DIR=~/Repos/libexpat
 LIBNAME=libexpat
+NOT_BEFORE=$(date -d "2020-01-01" '+%s')
+NOT_AFTER=$(date -d "2077-01-01" '+%s')
 
 pushd $DEP_DIR
 git log | awk "/^commit/{print \$2}" > $CMTS
@@ -32,7 +40,8 @@ get_pair(){
 
 get_pair
 
-while [[ $LOW_LIMIT -ge $epoch1 || $LOW_LIMIT -ge $epoch2 ]]; do
+while [[ $epoch1 -lt $NOT_BEFORE  || $epoch2 -lt $NOT_BEFORE  ||
+         $epoch1 -gt $NOT_AFTER   || $epoch2 -gt $NOT_AFTER ]]; do
   get_pair
 done
 
@@ -71,7 +80,7 @@ mkdir -p .rand
 cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > \
   .rand/${COMMIT_OLD::8}_${COMMIT_NEW::8}_$LIBNAME.json
 
-sleep 2
+printf "Press any key to start...";read
 
 ./euf.py --config \
 	<(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)
