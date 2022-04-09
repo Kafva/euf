@@ -1,0 +1,20 @@
+{
+  "configurations": {
+    "basic: Launch": {
+      "adapter": "debugpy",
+      "filetypes": [ "python" ],
+      "configuration": {
+        "name": "basic: Launch",
+        "type": "python",
+        "request": "launch",
+        "cwd": ".",
+        "python": "/usr/bin/python3",
+        "stopOnEntry": true,
+        "console": "externalTerminal",
+        "debugOptions": [],
+        "program": "./euf.py",
+        "args": [ "--config", "expat/cases/6aa6a82d_c9e1ac00.json" ]
+      }
+    }
+  }
+}
