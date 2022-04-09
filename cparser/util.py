@@ -4,6 +4,12 @@ from typing import Set
 
 from cparser import CONFIG, AnalysisResult
 
+def wait_on_cr():
+    while CONFIG.PAUSES:
+        print("\033[32m\033[0m ", end='', file = sys.stderr, flush = True)
+        if sys.stdin.readline() == "\n":
+            break
+
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
 

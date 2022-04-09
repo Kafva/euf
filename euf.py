@@ -24,7 +24,7 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.harness import create_harness, run_harness, get_includes_for_tu
-from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f
+from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
@@ -165,6 +165,7 @@ if __name__ == '__main__':
         print_stage("Git Diff")
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
                 for d in DEP_SOURCE_DIFFS ]) + "\n")
+        wait_on_cr()
 
     if CONFIG.SHOW_DIFFS:
         for d in DEP_SOURCE_DIFFS:
@@ -248,7 +249,7 @@ if __name__ == '__main__':
     if CONFIG.VERBOSITY >= 2:
         print_stage("Change set")
 
-    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}_{CONFIG.DEPLIB_NAME.removesuffix('.a')}"
+    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}_{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}"
 
     if CONFIG.ENABLE_RESULT_LOG:
         mkdir_p(LOG_DIR)
@@ -278,6 +279,7 @@ if __name__ == '__main__':
         traceback.print_exc()
         sys.exit(-1)
 
+    wait_on_cr()
     log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/change_set.csv")
 
     # - - - Reduction of change set - - - #
@@ -389,6 +391,7 @@ if __name__ == '__main__':
 
     if CONFIG.VERBOSITY >= 1:
         print_stage("Transitive change set")
+        wait_on_cr()
     TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(DEPENDENCY_NEW)
 
@@ -435,6 +438,7 @@ if __name__ == '__main__':
     # - - - Impact set - - - #
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
+        wait_on_cr()
     CALL_SITES: list[ProjectInvocation]      = []
 
     os.chdir(CONFIG.PROJECT_DIR)

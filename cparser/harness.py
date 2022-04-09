@@ -4,7 +4,7 @@ import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunctionChange, SourceDiff
-from cparser.util import print_err, time_end, time_start
+from cparser.util import print_err, time_end, time_start, wait_on_cr
 
 def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
     '''
@@ -96,6 +96,9 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # Debug information
         f.write(f"// {change}\n")
 
+        # ifdef to prevent linting warnings
+        f.write("#ifdef CBMC\n")
+
         # System include directives
         for header in includes[0]:
             f.write(f"#include <{header}>\n")
@@ -139,7 +142,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         f.write("\n")
 
         # Entrypoint function
-        f.write(f"void {CONFIG.EUF_ENTRYPOINT}() {{\n{INDENT}#ifdef CBMC\n")
+        f.write(f"void {CONFIG.EUF_ENTRYPOINT}() {{\n")
 
         # Contracts:
         #   https://github.com/diffblue/cbmc/blob/develop/doc/cprover-manual/contracts-history-variables.md
@@ -205,7 +208,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
 
             # Enclose driver function
-            f.write(f"\n{INDENT}#endif\n}}\n")
+            f.write(f"\n{INDENT}\n}}\n#endif")
 
     if failed_generation:
         os.remove(harness_path)
@@ -247,9 +250,15 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
     time_start(f"{'(ID) ' if identity else ''}Starting CBMC analysis for {change.old}: {os.path.basename(driver)} ({current}/{total})")
+    wait_on_cr()
 
     start = datetime.now()
     driver_name = os.path.basename(driver)
+
+    if CONFIG.CBMC_TIMEOUT <= 0:
+        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,start,driver,change)
+        time_end(f"Execution timed-out for {driver_name}",  start, AnalysisResult.TIMEOUT)
+        return False
 
     try:
         p = subprocess.Popen([ CONFIG.CBMC_SCRIPT ],

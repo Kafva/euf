@@ -22,6 +22,7 @@
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
   "CBMC_TIMEOUT": 7,
 
+  "PAUSES": false,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
   "SILENT_IDENTITY_VERIFICATION": true,
@@ -29,7 +30,7 @@
   "USE_EXISTING_DRIVERS": false,
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 2,
+	"VERBOSITY": 1,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,

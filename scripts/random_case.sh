@@ -6,28 +6,34 @@ helpStr=""
 #----------------------------#
 CMTS=/tmp/commits
 
+case "$1" in
+  libusb)
+    BASE_CONF=./tests/configs/usb.json
+    DEP_DIR=~/Repos/libusb
+    LIBNAME=libusb
+    NOT_BEFORE=$(date -d "2020-01-01" '+%s')
+    NOT_AFTER=$(date -d "2077-01-01" '+%s')
+  ;;
+  libonig)
+    # Oniguruma fails after ~ e8bd631e: Mon Jun 26 12:53:19 2017 +0900
+    #
+    # We also need to watch out for changes to structs...
+    # This seems to be near un-avoidable with oniguruma...
+    BASE_CONF=./tests/configs/onig_base.json
+    DEP_DIR=~/Repos/oniguruma
+    LIBNAME=libonig
+    NOT_BEFORE=$(date -d "2017-01-01" '+%s')
+    NOT_AFTER=$(date -d "2017-06-25" '+%s')
+  ;;
+  *)
+    BASE_CONF=./expat/base.json
+    DEP_DIR=~/Repos/libexpat
+    LIBNAME=libexpat
+    NOT_BEFORE=$(date -d "2020-01-01" '+%s')
+    NOT_AFTER=$(date -d "2077-01-01" '+%s')
+  ;;
+esac
 
-# Oniguruma fails after ~ e8bd631e: Mon Jun 26 12:53:19 2017 +0900
-#
-# We also need to watch out for changes to structs...
-# This seems to be near un-avoidable with oniguruma...
-#BASE_CONF=./tests/configs/onig_base.json
-#DEP_DIR=~/Repos/oniguruma
-#LIBNAME=libonig
-#NOT_BEFORE=$(date -d "2017-01-01" '+%s')
-#NOT_AFTER=$(date -d "2017-06-25" '+%s')
-
-BASE_CONF=./tests/configs/usb.json
-DEP_DIR=~/Repos/libusb
-LIBNAME=libusb
-NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-NOT_AFTER=$(date -d "2077-01-01" '+%s')
-
-#BASE_CONF=./expat/base.json
-#DEP_DIR=~/Repos/libexpat
-#LIBNAME=libexpat
-#NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-#NOT_AFTER=$(date -d "2077-01-01" '+%s')
 
 pushd $DEP_DIR
 git log | awk "/^commit/{print \$2}" > $CMTS
@@ -84,7 +90,7 @@ mkdir -p .rand
 
 # Save the config if we want to run it agian
 cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > \
-  .rand/${COMMIT_OLD::8}_${COMMIT_NEW::8}_$LIBNAME.json
+  .rand/$LIBNAME_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
 
 printf "Press any key to start...";read
 

@@ -1,6 +1,5 @@
+import sys, os, json, re
 from enum import Enum
-import re
-import sys, os, json
 from pathlib import Path
 from dataclasses import dataclass, field
 from clang import cindex
@@ -58,6 +57,9 @@ class Config:
 
     # - - - Verbosity  - - -
     VERBOSITY: int = 0
+
+    # Wait for <Enter> to be pressed before continuing at each stage
+    PAUSES: bool = False
 
     # Name of a specific function to limit analysis during debugging
     ONLY_ANALYZE: str = ""
