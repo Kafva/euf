@@ -90,7 +90,7 @@ mkdir -p .rand
 
 # Save the config if we want to run it agian
 cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > \
-  .rand/$LIBNAME_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
+  .rand/${LIBNAME}_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
 
 printf "Press any key to start...";read
 

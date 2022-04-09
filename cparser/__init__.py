@@ -114,6 +114,11 @@ class Config:
     #    ]
     CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
 
+    # Expat has certain headers which work more like macro definitions
+    # If we include these headers like normal headers we get syntax
+    # errors and it is therefore neccessary to blacklist them
+    BLACKLISTED_HEADERS: list[str] = field(default_factory=list)
+
     # - - - CBMC - - -
     FULL: bool = False # False to skip all CBMC analysis
     CBMC_OPTS_STR: str = "--object-bits 12 --unwind 10"

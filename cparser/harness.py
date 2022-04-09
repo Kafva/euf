@@ -6,7 +6,8 @@ from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunctionChange, SourceDiff
 from cparser.util import print_err, time_end, time_start, wait_on_cr
 
-def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],list[str]]:
+def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
+        tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
     Return a set of all the headers that are included into the TU 
     that corresponds to the given diff split into headers under /usr/inlcude
@@ -16,6 +17,12 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
     OUTDIR directory which is on the include path of the driver
 
     Note that the order of includes matter so we want to use a list
+
+    libexpat has certain "_impl" source files which are included by other files
+    and lack any include statements of their own.
+
+    We give the _impl files the same includes as the first file that
+    included them (provided that they lack includes of their own)
     '''
     tu_old = cindex.TranslationUnit.from_source(
             f"{old_root_dir}/{diff.old_path}",
@@ -23,31 +30,49 @@ def get_includes_for_tu(diff: SourceDiff, old_root_dir: str) -> tuple[list[str],
     )
     usr_includes = []
     project_includes = []
+    included_c_files = []
 
     for inc in tu_old.get_includes():
-        if not inc.is_input_file:
-            hdr_path = inc.include.name
-            if hdr_path.startswith("/usr/include/"):
-                # Skip system headers under certain specified paths
-                if any([ hdr_path.startswith(f"/usr/include/{skip_header}") \
-                        for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
-                    continue
+        hdr_path = inc.include.name
 
+        # Record if any .c files are included
+        if hdr_path.endswith(".c"):
+            trimmed = hdr_path.removeprefix(old_root_dir).strip('/')
+            included_c_files.append(trimmed)
+            continue
+
+        if hdr_path.startswith("/usr/include/"):
+            # Skip system headers under certain specified paths
+            if any([ hdr_path.startswith(f"/usr/include/{skip_header}") \
+                    for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
+                continue
+
+            if not hdr_path in usr_includes:
                 usr_includes.append(
                     hdr_path.removeprefix("/usr/include/")
                 )
-            else:
-                shutil.copy(hdr_path,
-                        f"{CONFIG.OUTDIR}/{os.path.basename(hdr_path)}"
-                    )
-                hdr_path = hdr_path.removeprefix(old_root_dir+"/")
-                for include_path in CONFIG.DEP_INCLUDE_PATHS:
-                    hdr_path = hdr_path.strip("/").removeprefix(include_path) \
-                        .strip("/")
+        else:
+            shutil.copy(hdr_path,
+                    f"{CONFIG.OUTDIR}/{os.path.basename(hdr_path)}"
+                )
+            hdr_path = hdr_path.removeprefix(old_root_dir+"/")
+            for include_path in CONFIG.DEP_INCLUDE_PATHS:
+                hdr_path = hdr_path.strip("/").removeprefix(include_path) \
+                    .strip("/")
 
-                project_includes.append(hdr_path)
+                if os.path.basename(hdr_path) in CONFIG.BLACKLISTED_HEADERS:
+                    continue
 
-    return (usr_includes, project_includes)
+                if not hdr_path in project_includes:
+                    project_includes.append(hdr_path)
+
+    # Add all of the headers from the current TU to the C files
+    # that it includes
+    for c_file in included_c_files:
+        tu_includes[c_file]    = (usr_includes, project_includes)
+
+    if len(usr_includes) > 0 or len(project_includes) > 0:
+        tu_includes[diff.old_path] = (usr_includes, project_includes)
 
 def create_harness(change: DependencyFunctionChange, harness_path: str,
         includes: tuple[list[str],list[str]],  identity: bool = False) -> bool:
@@ -168,7 +193,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         if change.old.ident.type_spelling == "void":
             failed_generation = "True"
-            fail_msg = f"Cannot verify function with a 'void' return value: {change.old.ident.spelling}()"
+            fail_msg = f"Cannot verify function with a 'void' return value: {change.old}"
         else:
             for arg in change.old.arguments:
                 if not arg.is_ptr:
@@ -182,7 +207,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                     # We cannot auto-generate harnesses for 
                     # functions that require void pointers
                     failed_generation = True
-                    fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old.ident.spelling}()"
+                    fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old}"
                     break
                 else:
                     f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
@@ -208,7 +233,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
 
             # Enclose driver function
-            f.write(f"\n{INDENT}\n}}\n#endif")
+            f.write(f"\n{INDENT}\n}}\n#endif\n")
 
     if failed_generation:
         os.remove(harness_path)

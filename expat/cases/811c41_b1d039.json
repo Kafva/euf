@@ -18,6 +18,12 @@
       "~/Repos/euf/expat/include/xmlparse.h"
     ]
   },
+  "BLACKLISTED_HEADERS": [
+    "asciitab.h",
+    "utf8tab.h",
+    "iasciitab.h",
+    "latin1tab.h"
+  ],
 
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
   "CBMC_TIMEOUT": 10,

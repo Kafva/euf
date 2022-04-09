@@ -23,7 +23,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
-from cparser.harness import create_harness, run_harness, get_includes_for_tu
+from cparser.harness import create_harness, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     "A 'compile_commands.json' database must be generated for both the project and the dependency."
     )
     parser.add_argument("--config", metavar="json", type=str, required=True,
-        default="", help=f"JSON file containing a custom Config object to use")
+        default="", help="JSON file containing a custom Config object to use")
     parser.add_argument("--diff", action='store_true', default=False,
         help='Print the diff between the files in the change set and exit')
 
@@ -249,7 +249,8 @@ if __name__ == '__main__':
     if CONFIG.VERBOSITY >= 2:
         print_stage("Change set")
 
-    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}_{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}"
+    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}"+\
+        f"_{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}"
 
     if CONFIG.ENABLE_RESULT_LOG:
         mkdir_p(LOG_DIR)
@@ -322,8 +323,7 @@ if __name__ == '__main__':
         # We will need to include these in the driver
         # for types etc. to be defined
         for diff in DEP_SOURCE_DIFFS:
-            TU_INCLUDES[diff.old_path] = \
-                get_includes_for_tu(diff, DEPENDENCY_OLD)
+            add_includes_from_tu(diff, DEPENDENCY_OLD, TU_INCLUDES)
 
         for i,change in enumerate(CHANGED_FUNCTIONS[:]):
             func_name = change.old.ident.spelling

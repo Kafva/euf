@@ -21,9 +21,9 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "PAUSES": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
-  "CBMC_TIMEOUT": 0,
+  "CBMC_TIMEOUT": 7,
+  "PAUSES": false,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
   "SILENT_IDENTITY_VERIFICATION": true,
@@ -35,7 +35,7 @@
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,
   "FULL": true,
-  "COMMIT_OLD": "0d21b17b2cb08ba8b202abf7ebe6af95d20d4d73",
-  "COMMIT_NEW": "9288cd5474bf6d3d0c037c247f9581d5e4df5097",
+  "COMMIT_OLD": "90ed5777a6e447f0d4ed34a6a293c99069123bcb",
+  "COMMIT_NEW": "ef31c8681eeae39ce23e4efd4cf718ae23403b79",
   "QUIET_BUILD": true
 }
