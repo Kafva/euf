@@ -414,7 +414,6 @@ class DependencyFunction:
         Ensure that the arguments and return value of the provided argument
         match that of the current function object
         '''
-
         if self.ident != other.ident:
             return False
 

@@ -1,3 +1,4 @@
+.pytest-cache
 results
 .rand
 out
