@@ -171,7 +171,6 @@ def get_transative_changes_from_file(source_file: SourceFile, dep_root_dir:str,
     )
     return transative_function_calls
 
-
 def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
     changed_functions: list[DependencyFunctionChange],
     transative_function_calls: dict[DependencyFunction,list[str]],

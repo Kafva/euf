@@ -18,10 +18,9 @@ def test_dir_has_elf_binary():
     assert( dir_has_magic_file(REPO_PATH) )
     assert( not dir_has_magic_file(f"{expanduser('~')}/.ssh") )
 
-
 def test_transative_changes():
     ''' Verifies that the transative change set is not empty for a known case '''
-    CONFIG.update_from_file(f"{TEST_DIR}/configs/oniguruma.json")
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/onig_trans_test.json")
     run()
     assert(filecmp.cmp(
         f"{RESULT_DIR}/libonig_7ed8_e8bd/trans_change_set.csv", \

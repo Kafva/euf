@@ -56,9 +56,7 @@ onig:
 
 #== Testing ==#
 trans:
-	./euf.py --config tests/configs/oniguruma.json
-
-
+	./euf.py --config tests/configs/onig_trans_test.json
 
 # Test state space generation
 state:

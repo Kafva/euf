@@ -9,6 +9,9 @@ sys.path.append('../')
 
 BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
+def print_warn(msg: str):
+    print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
+
 def get_path_relative_to(path: str, base: str) -> str:
     return path.removeprefix(base).removeprefix("/")
 
@@ -257,8 +260,25 @@ class Identifier:
         return fmt
 
     @classmethod
-    def translate_cindex_typing(cls, typing: cindex.Type) -> str:
-        return str(typing.kind).removeprefix("TypeKind.").lower()
+    def get_type_data(cls, clang_type: cindex.Type) -> tuple[str,str]:
+        '''
+        To determine if a function is being called with the same types of arguments
+        as those specified in the prototype we need to resolve all typedefs into
+        their canoncial representation. This infers that the declarations created
+        inside harnesses may look slightly different from those in the original source code
+        This should not be an issue though since the "parent" type resolves in the same way
+
+        Some types are not properly resolved, for these we fallback to the current value
+        '''
+        if re.search(r"unnamed at", clang_type.get_canonical().spelling):
+            canonical = clang_type
+        else:
+            canonical = clang_type.get_canonical()
+
+        typing = str(canonical.kind).removeprefix("TypeKind.").lower()
+        type_spelling = canonical.spelling.removeprefix("const ")
+
+        return (typing,type_spelling)
 
     def is_function(self):
         return self.is_decl or self.is_call
@@ -284,15 +304,11 @@ class Identifier:
 
         if result_pointee_type.spelling != "":
             # Pointer return type
-            typing = cls.translate_cindex_typing(result_pointee_type)
-            type_spelling = str(result_pointee_type.spelling) \
-                .removeprefix("const ")
+            (typing, type_spelling) = cls.get_type_data(result_pointee_type)
             is_const = result_pointee_type.is_const_qualified()
             is_ptr = True
         else:
-            typing = cls.translate_cindex_typing(type_obj)
-            type_spelling = str(type_obj.spelling) \
-                    .removeprefix("const ")
+            (typing, type_spelling) = cls.get_type_data(type_obj)
             is_const = type_obj.is_const_qualified()
             is_ptr = False
 
@@ -398,12 +414,17 @@ class DependencyFunction:
         Ensure that the arguments and return value of the provided argument
         match that of the current function object
         '''
+
         if self.ident != other.ident:
             return False
 
-        if not all(self_arg == other_arg for self_arg,other_arg in \
-                zip(self.arguments,other.arguments)):
-            return False
+        for self_arg,other_arg in zip(self.arguments,other.arguments):
+            if self_arg != other_arg:
+                print_warn(
+                    f"Incompatible type passed to {self}:\n\t" + \
+                    f"{other_arg.type_spelling} instead of {self_arg.type_spelling}"
+                )
+                return False
 
         return True
 

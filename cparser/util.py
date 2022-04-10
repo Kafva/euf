@@ -2,7 +2,7 @@ import sys, os
 from datetime import datetime
 from typing import Set
 
-from cparser import CONFIG, AnalysisResult
+from cparser import CONFIG, AnalysisResult, print_warn
 
 def wait_on_cr():
     while CONFIG.PAUSES:
@@ -12,9 +12,6 @@ def wait_on_cr():
 
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
-
-def print_warn(msg: str):
-    print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
 
 def print_stage(msg: str):
     print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ", file=sys.stderr)
