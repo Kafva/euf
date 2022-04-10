@@ -117,7 +117,10 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         # The return-type has not changed
         if change.old.ident != change.new.ident:
-            print_err(f"Different return type: a/{change.old.ident.type_spelling} -> b/{change.old.ident.type_spelling}")
+            print_err(
+                f"Different return type: a/{change.old.ident.type_spelling} " + \
+                f"-> b/{change.old.ident.type_spelling}"
+            )
             return False
 
     INDENT=CONFIG.INDENT
@@ -233,8 +236,9 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             f.write(f"{INDENT}{ret_type} ret_old = ")
             f.write(f"{change.old.ident.spelling}{CONFIG.SUFFIX}({arg_string});\n")
 
+            suffix = CONFIG.SUFFIX if identity else ''
             f.write(f"{INDENT}{ret_type} ret = ")
-            f.write(f"{change.new.ident.spelling}{CONFIG.SUFFIX if identity else ''}({arg_string});\n\n")
+            f.write(f"{change.new.ident.spelling}{suffix}({arg_string});\n\n")
 
             # 4. Postconditions
             #   Verify equivalance with one or more assertions
