@@ -23,7 +23,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
-from cparser.harness import create_harness, run_harness, add_includes_from_tu
+from cparser.harness import create_harness, get_state_space, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
@@ -71,21 +71,7 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
     else:
         raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=
-    "A 'compile_commands.json' database must be generated for both the project and the dependency."
-    )
-    parser.add_argument("--config", metavar="json", type=str, required=True,
-        default="", help="JSON file containing a custom Config object to use")
-    parser.add_argument("--diff", action='store_true', default=False,
-        help='Print the diff between the files in the change set and exit')
-
-    args = parser.parse_args()
-    CONFIG.update_from_file(args.config)
-    CONFIG.SHOW_DIFFS = args.diff # Ignored if given in config file
-    if CONFIG.VERBOSITY >= 2:
-        pprint(CONFIG)
-
+def run():
     mkdir_p(CONFIG.EUF_CACHE)
     mkdir_p(CONFIG.RESULTS_DIR)
 
@@ -99,7 +85,7 @@ if __name__ == '__main__':
     # - - - Dependency - - - #
     DEP_REPO = Repo(CONFIG.DEPENDENCY_DIR)
     try:
-        HEAD_BRANCH = DEP_REPO.active_branch
+        _ = DEP_REPO.active_branch
     except TypeError as e:
         print_err(f"Unable to read current branch name for {CONFIG.DEPENDENCY_DIR}\n{e}")
         sys.exit(1)
@@ -301,6 +287,12 @@ if __name__ == '__main__':
         # directory of the driver
         os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
+        # Attempt to derive valid input parameters for each changed function based on invocations
+        # in the old and new version of the dependency as well as the main project
+        for change in CHANGED_FUNCTIONS:
+            get_state_space(change)
+
+
         script_env = CONFIG.get_script_env()
         script_env.update({
             'NEW_LIB': new_lib,
@@ -467,5 +459,22 @@ if __name__ == '__main__':
         traceback.print_exc()
         sys.exit(-1)
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=
+    "A 'compile_commands.json' database must be generated for both the project and the dependency."
+    )
+    parser.add_argument("--config", metavar="json", type=str, required=True,
+        default="", help="JSON file containing a custom Config object to use")
+    parser.add_argument("--diff", action='store_true', default=False,
+        help='Print the diff between the files in the change set and exit')
+
+    args = parser.parse_args()
+    CONFIG.update_from_file(args.config)
+    CONFIG.SHOW_DIFFS = args.diff # Ignored if given in config file
+    if CONFIG.VERBOSITY >= 2:
+        pprint(CONFIG)
+
+    run()
 
     sys.exit(0)
+

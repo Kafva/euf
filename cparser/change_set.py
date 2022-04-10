@@ -171,6 +171,7 @@ def get_transative_changes_from_file(source_file: SourceFile, dep_root_dir:str,
     )
     return transative_function_calls
 
+
 def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
     changed_functions: list[DependencyFunctionChange],
     transative_function_calls: dict[DependencyFunction,list[str]],
@@ -188,24 +189,14 @@ def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
         (dep_func := next(filter(lambda fn: \
         fn.new.ident.spelling == cursor.spelling, changed_functions), None \
     )):
-        # Ensure that arguments and return value also match the changed entity
-        # NOTE: This omits transative changes were function prototypes
-        # have been changed.
-        matching = True
+        # Ensure that return type and arguments of the call
+        # match the prototype in the change set
+        called = DependencyFunction.new_from_cursor(dep_root_dir, cursor)
 
-        func_args_main_types = [ str(child.type.kind) \
-                for child in cursor.get_arguments() ]
-
-        if len(func_args_main_types) != len(dep_func.new.arguments):
-            matching = False
-        else:
-            for fn_arg_dep, fn_arg_main_type in \
-                    zip(dep_func.new.arguments, func_args_main_types):
-                if fn_arg_dep.typing != fn_arg_main_type:
-                    matching = False
-                    break
-
-        if matching:
+        if dep_func.new.eq(called) and \
+           current_function.ident.spelling != cursor.spelling:
+            # If the enclosing function is calling itself we do not
+            # record it as being 'indirectly affected'
             key = current_function
             if not key in transative_function_calls:
                 transative_function_calls[key] = []

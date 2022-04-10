@@ -6,6 +6,14 @@ from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunctionChange, SourceDiff
 from cparser.util import print_err, time_end, time_start, wait_on_cr
 
+def get_state_space(change: DependencyFunctionChange):
+    '''
+    To allow for assumptions during the harness generation with CBMC
+    we record what values each paramter to a function can take in the
+    original program versions and the main project
+    '''
+    pass
+
 def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''

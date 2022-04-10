@@ -52,3 +52,15 @@ rand:
 # Example run on another project without CBMC
 onig:
 	./euf.py --config tests/configs/oniguruma.json
+
+
+#== Testing ==#
+trans:
+	./euf.py --config tests/configs/oniguruma.json
+
+
+
+# Test state space generation
+state:
+	@FILE=xmlparse.c \
+	./expat/test_harness.sh expat/cases/2020_2022.json XML_ExternalEntityParserCreate

@@ -243,35 +243,54 @@ class Identifier:
     # If set, the identifier is a pointer to the specified type
     is_ptr: bool = False
     is_const: bool = False
-    is_function: bool = False
+    is_decl: bool = False
+    is_call: bool = False
 
     def __repr__(self, paranthesis: bool = True):
         constant = 'const ' if self.is_const else ''
-        func = '()' if self.is_function and paranthesis else ''
+        func = '()' if self.is_function() and paranthesis else ''
         return f"{constant}{self.type_spelling} {self.spelling}{func}"
+
+    def dump(self, header:bool = False) -> str:
+        fmt =  "is_const;is_ptr;is_decl;is_call;typing;type_spelling;spelling\n" if header else ''
+        fmt += f"{self.is_const};{self.is_ptr};{self.is_decl};{self.is_call};{self.typing};{self.type_spelling};{self.spelling}"
+        return fmt
+
+    @classmethod
+    def translate_cindex_typing(cls, typing: cindex.Type) -> str:
+        return str(typing.kind).removeprefix("TypeKind.").lower()
+
+    def is_function(self):
+        return self.is_decl or self.is_call
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor):
-        is_function = str(cursor.type.kind).endswith("FUNCTIONPROTO")
+        '''
+        FUNCTIONPROTO is set for DECL_REF_EXPR and FUNCTION_DECL nodes,
+        note that it is not set for 'CALL_EXPR' nodes
+        '''
+        is_decl = str(cursor.type.kind).endswith("FUNCTIONPROTO")
+        is_call = str(cursor.kind).endswith("CALL_EXPR")
 
         # For functions we are intrested in the `.result_type`, this value
         # is empty for function arguments which instead 
         # have their typing in `.type`
-        type_obj = cursor.result_type if is_function else cursor.type
+        #
+        # Note that this is NOT true for call expressions, these
+        # have type values directly in cursor.type
+        type_obj = cursor.result_type if is_decl else cursor.type
 
         result_pointee_type = type_obj.get_pointee()
 
         if result_pointee_type.spelling != "":
             # Pointer return type
-            typing = str(result_pointee_type.kind) \
-                    .removeprefix("TypeKind.").lower()
+            typing = cls.translate_cindex_typing(result_pointee_type)
             type_spelling = str(result_pointee_type.spelling) \
                 .removeprefix("const ")
             is_const = result_pointee_type.is_const_qualified()
             is_ptr = True
         else:
-            typing = str(type_obj.kind) \
-                    .removeprefix("TypeKind.").lower()
+            typing = cls.translate_cindex_typing(type_obj)
             type_spelling = str(type_obj.spelling) \
                     .removeprefix("const ")
             is_const = type_obj.is_const_qualified()
@@ -286,7 +305,8 @@ class Identifier:
             type_spelling = type_spelling + ('*' if is_ptr else ''),
             is_ptr = is_ptr,
             is_const = is_const,
-            is_function = is_function
+            is_decl = is_decl,
+            is_call = is_call
         )
 
     @classmethod
@@ -334,11 +354,11 @@ class Identifier:
     def __eq__(self, other) -> bool:
         ''' 
         Does not consider nodes which only differ in spelling
-        as different
+        as different. Function calls and function decls are also considered the same
         '''
         return self.type_spelling == other.type_spelling and \
                self.typing == other.typing and self.is_ptr == other.is_ptr and \
-               self.is_function == other.is_function and \
+               self.is_function() == other.is_function() and \
                self.is_const == other.is_const
 
 @dataclass(init=True)
@@ -372,6 +392,20 @@ class DependencyFunction:
             line = cursor.location.line,
             col = cursor.location.column
         )
+
+    def eq(self, other) -> bool:
+        '''
+        Ensure that the arguments and return value of the provided argument
+        match that of the current function object
+        '''
+        if self.ident != other.ident:
+            return False
+
+        if not all(self_arg == other_arg for self_arg,other_arg in \
+                zip(self.arguments,other.arguments)):
+            return False
+
+        return True
 
     @classmethod
     def empty(cls):
@@ -421,7 +455,6 @@ class DependencyFunctionChange:
             new = DependencyFunction.new_from_cursor(new_root, new_cursor),
             invokes_changed_functions = []
         )
-
 
     def detail(self, pretty: bool = False, brief: bool = False):
         if pretty:
