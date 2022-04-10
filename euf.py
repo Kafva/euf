@@ -134,7 +134,6 @@ def run():
     if not create_worktree(DEPENDENCY_NEW, COMMIT_NEW, DEP_REPO): sys.exit(-1)
     if not create_worktree(DEPENDENCY_OLD, COMMIT_OLD, DEP_REPO): sys.exit(-1)
 
-    OLD_DEP_REPO = Repo(DEPENDENCY_OLD)
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
 
     if not CONFIG.SKIP_BLAME:
@@ -389,6 +388,10 @@ def run():
 
     for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
+            #for source_file in DEP_SOURCE_FILES:
+            #    get_transative_changes_from_file(source_file,DEP_SOURCE_ROOT_NEW,CHANGED_FUNCTIONS)
+            #exit(0)
+
             with multiprocessing.Pool(CONFIG.NPROC) as p:
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
@@ -442,7 +445,8 @@ def run():
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             CALL_SITES = flatten(p.map(
                 partial(get_call_sites_from_file,
-                changed_functions = set(CHANGED_FUNCTIONS)),
+                    changed_functions = set(CHANGED_FUNCTIONS)
+                ),
                 PROJECT_SOURCE_FILES
             ))
 

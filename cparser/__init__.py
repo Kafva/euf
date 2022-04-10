@@ -36,7 +36,7 @@ class AnalysisResult(Enum):
 
 @dataclass
 class Config:
-    # - - - General - - -
+    ''' - - - General - - - '''
     _PROJECT_DIR: str = ""
     _DEPENDENCY_DIR: str = ""
     _DEP_SOURCE_ROOT: str = ""
@@ -78,6 +78,11 @@ class Config:
 
     # Show part of the goto functions before running CBMC analysis
     SHOW_FUNCTIONS: bool = False
+
+    # Generate warnings when inconsistent parameter usage is detected
+    # based on the type field of clang AST nodes
+    # This usually produces a lot of FPs e.g. char_s != char_u
+    STRICT_TYPECHECKS: bool = False
 
     # - - - Building - - -
     # Environment variables to set when running `./configure`
@@ -145,6 +150,8 @@ class Config:
 
     # Only used during ccdb generation
     TARGET_TRIPLET: str = "x86_64-unknown-linux"
+
+    UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
@@ -239,24 +246,26 @@ class Identifier:
     spelling: str
     type_spelling: str # Includes a '*' if the ident is a ptr
 
-    # The type is a string conversions from `cindex.TypeKind`
+    # Derived from the string conversion of the clang type value
+    # after 'TypeKind.' in lower case.
     # If the object refers to a function, the type reflects the return type
     typing: str
+
+    # Set for nodes that corresponds to function reference
+    is_function: bool = False
 
     # If set, the identifier is a pointer to the specified type
     is_ptr: bool = False
     is_const: bool = False
-    is_decl: bool = False
-    is_call: bool = False
 
     def __repr__(self, paranthesis: bool = True):
         constant = 'const ' if self.is_const else ''
-        func = '()' if self.is_function() and paranthesis else ''
+        func = '()' if self.is_function and paranthesis else ''
         return f"{constant}{self.type_spelling} {self.spelling}{func}"
 
     def dump(self, header:bool = False) -> str:
-        fmt =  "is_const;is_ptr;is_decl;is_call;typing;type_spelling;spelling\n" if header else ''
-        fmt += f"{self.is_const};{self.is_ptr};{self.is_decl};{self.is_call};{self.typing};{self.type_spelling};{self.spelling}"
+        fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
+        fmt += f"{self.is_const};{self.is_ptr};{self.is_function};{self.typing};{self.type_spelling};{self.spelling}"
         return fmt
 
     @classmethod
@@ -270,7 +279,7 @@ class Identifier:
 
         Some types are not properly resolved, for these we fallback to the current value
         '''
-        if re.search(r"unnamed at", clang_type.get_canonical().spelling):
+        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, clang_type.get_canonical().spelling):
             canonical = clang_type
         else:
             canonical = clang_type.get_canonical()
@@ -280,8 +289,31 @@ class Identifier:
 
         return (typing,type_spelling)
 
-    def is_function(self):
-        return self.is_decl or self.is_call
+    @classmethod
+    def get_underlying_args(cls,cursor: cindex.Cursor, level:int):
+
+        for child in cursor.get_arguments():
+            print("  "*level, child.type.kind, child.kind, child.spelling,
+                    child.type.get_pointee().spelling,
+                    child.type.get_pointee().kind,
+            )
+            cls.get_underlying_args(child, level+1)
+
+        return cursor
+
+    @classmethod
+    def get_underlying_node(cls,cursor: cindex.Cursor, level:int):
+
+        for child in cursor.get_children():
+            print("  "*level, child.type.kind, child.kind, child.spelling,
+                    child.type.get_pointee().spelling,
+                    child.type.get_pointee().kind,
+            )
+            cls.get_underlying_args(child, level)
+            cls.get_underlying_node(child, level+1)
+
+        return cursor
+
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor):
@@ -292,12 +324,24 @@ class Identifier:
         is_decl = str(cursor.type.kind).endswith("FUNCTIONPROTO")
         is_call = str(cursor.kind).endswith("CALL_EXPR")
 
+        # Dependent experssions e.g. the second argument in
+        #   hashTableIterInit(&iter, &(p->elementTypes));
+        # do not have a 'spelling' value, we need to traverse down
+        # these nodes until we find a node with a name (the actual argument)
+        #
+        # In the situation above we can only resolve the type of 'p'...
+        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, cursor.type.get_canonical().spelling):
+            pass
+            #print("!> Dependent")
+            #cls.get_underlying_node(cursor,1)
+            #cls.get_underlying_args(cursor,1)
+
         # For functions we are intrested in the `.result_type`, this value
         # is empty for function arguments which instead 
         # have their typing in `.type`
         #
-        # Note that this is NOT true for call expressions, these
-        # have type values directly in cursor.type
+        # Note that this also applies for call expressions, these
+        # have type values directly in cursor.type and not the result_type
         type_obj = cursor.result_type if is_decl else cursor.type
 
         result_pointee_type = type_obj.get_pointee()
@@ -321,8 +365,7 @@ class Identifier:
             type_spelling = type_spelling + ('*' if is_ptr else ''),
             is_ptr = is_ptr,
             is_const = is_const,
-            is_decl = is_decl,
-            is_call = is_call
+            is_function = (is_decl or is_call)
         )
 
     @classmethod
@@ -367,14 +410,68 @@ class Identifier:
             type_spelling=""
         )
 
+    def eq_report(self,other, return_value:bool, check_function:bool) -> bool:
+        '''
+        When type-checking paramters against arguments we do not want to
+        to check the function field since e.g. `foo( bar() )` is valid
+        provided that the return value is correct (even though 
+        it is a function unlike the param ident)
+        '''
+        same = "\033[32m✓\033[0m"
+        differ = "\033[31mX\033[0m"
+
+        if not check_function:
+            # Ensure that the function param check cannot fail
+            tmp = self.is_function
+            self.is_function = other.is_function
+
+        report = [
+            f"type_spelling: {self.type_spelling} {other.type_spelling} " + \
+                    (same if self.type_spelling == other.type_spelling else differ),
+            f"typing: {self.typing} {other.typing} " + \
+                    (same if self.typing == other.typing else differ),
+            f"is_ptr: {self.is_ptr} {other.is_ptr}: " + \
+                    (same if self.is_ptr == other.is_ptr else differ),
+            f"is_const: {self.is_const} {other.is_const} " + \
+                    (same if self.is_const == other.is_const else differ),
+            f"is_function: {self.is_function} {other.is_function} " + \
+                    (same if self.is_function == other.is_function else differ)
+        ]
+
+
+        if not (ret := self == other):
+            print_warn(
+                "Incompatible types " + \
+                ("(return value)" if return_value else "(parameter)") + \
+                f" '{self.spelling}' - '{other.spelling}'\n  " + '\n  '.join(report)
+            )
+
+
+        if not check_function:
+            self.is_function = tmp # type: ignore
+        return ret
+
+
     def __eq__(self, other) -> bool:
         ''' 
         Does not consider nodes which only differ in spelling
         as different. Function calls and function decls are also considered the same
+
+        Unresolved nodes with a 'dependent type' are considered equal to everything
+        unless we are using STRICT_TYPECHECKS
         '''
-        return self.type_spelling == other.type_spelling and \
-               self.typing == other.typing and self.is_ptr == other.is_ptr and \
-               self.is_function() == other.is_function() and \
+        typing_check = True
+        if CONFIG.STRICT_TYPECHECKS:
+            typing_check = self.typing == other.typing
+
+        elif re.search(CONFIG.UNRESOLVED_NODES_REGEX, self.type_spelling) or \
+             re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
+                return True
+
+        return typing_check and \
+               self.type_spelling == other.type_spelling and \
+               self.is_ptr == other.is_ptr and \
+               self.is_function == other.is_function and \
                self.is_const == other.is_const
 
 @dataclass(init=True)
@@ -411,18 +508,16 @@ class DependencyFunction:
 
     def eq(self, other) -> bool:
         '''
-        Ensure that the arguments and return value of the provided argument
-        match that of the current function object
+        Ensure that the arguments and return value of the provided function
+        match that of the current function object. Does not check the filepath
         '''
-        if self.ident != other.ident:
+        if not self.ident.eq_report(other.ident, return_value=True, check_function=True):
+            print(f"{self}\n{other}\n")
             return False
 
         for self_arg,other_arg in zip(self.arguments,other.arguments):
-            if self_arg != other_arg:
-                print_warn(
-                    f"Incompatible type passed to {self}:\n\t" + \
-                    f"{other_arg.type_spelling} instead of {self_arg.type_spelling}"
-                )
+            if not self_arg.eq_report(other_arg, return_value=False, check_function=False):
+                print(f"{self}\n{other}\n")
                 return False
 
         return True
