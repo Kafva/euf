@@ -154,7 +154,9 @@ def run():
 
     if CONFIG.SHOW_DIFFS:
         for d in DEP_SOURCE_DIFFS:
-            subprocess.run(["git", "diff", "--no-index",
+            subprocess.run(["git", # Force pager for every file
+                "-c", "core.pager=less -+F -c",
+                "diff", "--no-index", "--color=always",
                 f"{DEPENDENCY_OLD}/{d.old_path}",
                 f"{DEPENDENCY_NEW}/{d.new_path}" ])
         sys.exit(0)
