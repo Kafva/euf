@@ -304,6 +304,7 @@ def run():
 
         # Attempt to derive valid input parameters for each changed function based on invocations
         # in the old and new version of the dependency as well as the main project
+        # TODO: We do this with an external clang plugin instead
         #for source_file in DEP_SOURCE_FILES:
         #    get_state_space(CHANGED_FUNCTIONS, DEP_SOURCE_ROOT_OLD, source_file)
         #exit(0)
