@@ -146,7 +146,7 @@ def run():
 
         add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
 
-    if CONFIG.VERBOSITY >= 1:
+    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
         print_stage("Git Diff")
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
                 for d in DEP_SOURCE_DIFFS ]) + "\n")
@@ -231,7 +231,7 @@ def run():
     ) for filepath in PROJECT_SOURCE_FILES ]
 
     # - - - Change set - - - #
-    if CONFIG.VERBOSITY >= 2:
+    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
         print_stage("Change set")
 
     LOG_DIR = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}"+\
@@ -259,7 +259,7 @@ def run():
                     not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
                 CHANGED_FUNCTIONS[:]))
 
-            if CONFIG.VERBOSITY >= 1:
+            if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
                 pprint(CHANGED_FUNCTIONS)
     except Exception:
         traceback.print_exc()

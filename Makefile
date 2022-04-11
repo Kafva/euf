@@ -36,6 +36,10 @@ xml:
 	SHOW_DIFF=1 \
 	./expat/test_harness.sh expat/cases/811c41_b1d039.json XML_ErrorString
 
+# Full analysis of the same case
+xml_full:
+	./euf.py --config expat/cases/811c41_b1d039.json 
+
 # Analysis of a specific function which has a equivalent (based on return value) change
 entr:
 	@FILE=xmlparse.c \

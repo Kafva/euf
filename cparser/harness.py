@@ -245,7 +245,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
 
             # Enclose driver function
-            f.write(f"\n{INDENT}\n}}\n#endif\n")
+            f.write(f"\n}}\n#endif\n")
 
     if failed_generation:
         os.remove(harness_path)

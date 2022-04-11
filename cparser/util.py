@@ -5,7 +5,7 @@ from typing import Set
 from cparser import CONFIG, AnalysisResult, print_warn
 
 def wait_on_cr():
-    while CONFIG.PAUSES:
+    while CONFIG.PAUSES and not CONFIG.SHOW_DIFFS:
         print("\033[32m\033[0m ", end='', file = sys.stderr, flush = True)
         if sys.stdin.readline() == "\n":
             break
