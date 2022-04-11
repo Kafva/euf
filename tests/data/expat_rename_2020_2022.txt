@@ -1,8 +1,8 @@
+XML_ExternalEntityParserCreate
 lookup
 XML_GetCurrentColumnNumber
 XML_ProcessFile
 processStream
-XML_ExternalEntityParserCreate
 normal_predefinedEntityName
 XML_SetStartDoctypeDeclHandler
 element4
