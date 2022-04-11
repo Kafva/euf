@@ -41,8 +41,6 @@ def get_state_space_from_cursor(dep_root_dir: str, cursor: cindex.Cursor,
     for child in cursor.get_children():
         get_state_space_from_cursor(dep_root_dir, child, changed_functions)
 
-
-
 def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
