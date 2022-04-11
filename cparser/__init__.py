@@ -303,7 +303,6 @@ class Identifier:
 
     @classmethod
     def get_underlying_node(cls,cursor: cindex.Cursor, level:int):
-
         for child in cursor.get_children():
             print("  "*level, child.type.kind, child.kind, child.spelling,
                     child.type.get_pointee().spelling,
@@ -313,7 +312,6 @@ class Identifier:
             cls.get_underlying_node(child, level+1)
 
         return cursor
-
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor):
@@ -331,10 +329,10 @@ class Identifier:
         #
         # In the situation above we can only resolve the type of 'p'...
         if re.search(CONFIG.UNRESOLVED_NODES_REGEX, cursor.type.get_canonical().spelling):
-            pass
             #print("!> Dependent")
             #cls.get_underlying_node(cursor,1)
             #cls.get_underlying_args(cursor,1)
+            pass
 
         # For functions we are intrested in the `.result_type`, this value
         # is empty for function arguments which instead 
@@ -438,7 +436,6 @@ class Identifier:
                     (same if self.is_function == other.is_function else differ)
         ]
 
-
         if not (ret := self == other):
             print_warn(
                 "Incompatible types " + \
@@ -446,11 +443,9 @@ class Identifier:
                 f" '{self.spelling}' - '{other.spelling}'\n  " + '\n  '.join(report)
             )
 
-
         if not check_function:
             self.is_function = tmp # type: ignore
         return ret
-
 
     def __eq__(self, other) -> bool:
         ''' 

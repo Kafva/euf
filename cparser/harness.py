@@ -3,16 +3,45 @@ import os, subprocess, sys, signal
 import shutil
 
 from clang import cindex
-from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunctionChange, SourceDiff
+from cparser import BASE_DIR, CONFIG, AnalysisResult, DependencyFunction, \
+        DependencyFunctionChange, SourceDiff, SourceFile
 from cparser.util import print_err, time_end, time_start, wait_on_cr
 
-def get_state_space(change: DependencyFunctionChange):
+def get_state_space(changed_functions: list[DependencyFunctionChange], \
+        dep_root_dir: str, source_file: SourceFile):
     '''
     To allow for assumptions during the harness generation with CBMC
     we record what values each paramter to a function can take in the
     original program versions and the main project
+
+    The libclang bindings are somewhat less consistent than a real clang plugin for this
+    task.
     '''
-    pass
+    translation_unit: cindex.TranslationUnit  = \
+            cindex.TranslationUnit.from_source(
+            source_file.new_path, args = source_file.new_compile_args
+    )
+    cursor: cindex.Cursor       = translation_unit.cursor
+
+    get_state_space_from_cursor(dep_root_dir, cursor, changed_functions)
+
+def get_state_space_from_cursor(dep_root_dir: str, cursor: cindex.Cursor,
+    changed_functions: list[DependencyFunctionChange]) -> None:
+    '''
+    Look for calls to functions in the change-set and record what values the parameters
+    it is given have.
+    '''
+    if str(cursor.kind).endswith("CALL_EXPR") and \
+        (_ := next(filter(lambda fn: \
+        fn.new.ident.spelling == cursor.spelling, changed_functions), None \
+    )):
+        called = DependencyFunction.new_from_cursor(dep_root_dir, cursor)
+        print("=>", called.ident.spelling, called.arguments )
+
+    for child in cursor.get_children():
+        get_state_space_from_cursor(dep_root_dir, child, changed_functions)
+
+
 
 def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:

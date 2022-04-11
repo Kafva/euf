@@ -270,6 +270,20 @@ def run():
     wait_on_cr()
     log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/change_set.csv")
 
+    # Create a list of all files from the dependency
+    # used for transative call analysis and state space estimation
+    DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
+        [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
+    )
+
+    DEP_SOURCE_FILES = [ SourceFile(
+        new_path = filepath, # type: ignore
+        new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
+    ) for filepath in DEP_SOURCE_FILES ]
+
+    DEP_SOURCE_FILES = filter_out_excluded(DEP_SOURCE_FILES, \
+            [ f.new_path for f in DEP_SOURCE_FILES  ])
+
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
         if CONFIG.VERBOSITY >= 1:
@@ -290,8 +304,9 @@ def run():
 
         # Attempt to derive valid input parameters for each changed function based on invocations
         # in the old and new version of the dependency as well as the main project
-        for change in CHANGED_FUNCTIONS:
-            get_state_space(change)
+        #for source_file in DEP_SOURCE_FILES:
+        #    get_state_space(CHANGED_FUNCTIONS, DEP_SOURCE_ROOT_OLD, source_file)
+        #exit(0)
 
 
         script_env = CONFIG.get_script_env()
@@ -370,17 +385,6 @@ def run():
     # We do not want to use CBMC analysis for transitive function calls
     #
     # We only need to look through the files in the new version
-    DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
-        [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
-    )
-
-    DEP_SOURCE_FILES = [ SourceFile(
-        new_path = filepath, # type: ignore
-        new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
-    ) for filepath in DEP_SOURCE_FILES ]
-
-    DEP_SOURCE_FILES = filter_out_excluded(DEP_SOURCE_FILES, \
-            [ f.new_path for f in DEP_SOURCE_FILES  ])
 
     if CONFIG.VERBOSITY >= 1:
         print_stage("Transitive change set")
