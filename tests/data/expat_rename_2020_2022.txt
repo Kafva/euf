@@ -1,8 +1,10 @@
+XML_SetBase
 XML_ExternalEntityParserCreate
-lookup
-XML_GetCurrentColumnNumber
-XML_ProcessFile
+poolStoreString
 processStream
+XML_GetCurrentColumnNumber
+lookup
+XML_ProcessFile
 normal_predefinedEntityName
 XML_SetStartDoctypeDeclHandler
 element4
@@ -173,7 +175,6 @@ tcase_free
 attlist7
 storeRawNames
 little2_prologTok
-poolStoreString
 XML_SetElementHandler
 doctype2
 gather_time_entropy
@@ -414,7 +415,6 @@ poolClear
 hashTableDestroy
 normal_nameLength
 big2_scanAtts
-XML_SetBase
 attlist6
 XML_SetExternalEntityRefHandler
 CharData_Init
