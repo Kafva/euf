@@ -1,9 +1,9 @@
+lookup
 XML_ExternalEntityParserCreate
 XML_SetBase
 poolStoreString
 processStream
 XML_GetCurrentColumnNumber
-lookup
 XML_ProcessFile
 normal_predefinedEntityName
 XML_SetStartDoctypeDeclHandler
