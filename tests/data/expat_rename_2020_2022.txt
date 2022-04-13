@@ -1,5 +1,5 @@
-XML_SetBase
 XML_ExternalEntityParserCreate
+XML_SetBase
 poolStoreString
 processStream
 XML_GetCurrentColumnNumber
