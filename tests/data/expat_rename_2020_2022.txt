@@ -1,3 +1,5 @@
+doContent
+initScan
 lookup
 XML_ExternalEntityParserCreate
 XML_SetBase
@@ -24,7 +26,6 @@ declClose
 contentProcessor
 XML_GetCurrentLineNumber
 little2_scanComment
-initScan
 tracking_free
 latin1_toUtf8
 XML_SetEndCdataSectionHandler
@@ -92,7 +93,6 @@ XML_SetNotationDeclHandler
 XML_ParseBuffer
 notation2
 sip24_update
-doContent
 reportError
 attlist0
 utf8_isNmstrt3
