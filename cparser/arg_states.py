@@ -10,9 +10,9 @@ For this to work we need to create a union of all the ccmd flags for each direct
 1. Split up the dep dir into subdirs (including top level)
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
-
-import subprocess, re, sys, json
-from cparser import CONFIG, SubDirTU
+import subprocess, re, sys, json, os
+from cparser import CONFIG, FunctionState, SubDirTU
+from cparser.util import print_err
 
 def get_isystem_flags(source_file: str, dep_path: str) -> list:
     '''
@@ -43,7 +43,6 @@ def get_isystem_flags(source_file: str, dep_path: str) -> list:
             add_next = False
 
     return out
-
 
 def get_subdir_tus(target_dir: str) -> dict[str,SubDirTU]:
     '''
@@ -94,3 +93,46 @@ def call_arg_states_plugin(target_dir: str, subdir: str, subdir_tu: SubDirTU,
     #print(f"({subdir})> \n", ' '.join(cmd))
     subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out, env = script_env)
 
+def join_arg_states_result() -> dict[str,FunctionState]:
+    '''
+    The argStates clang plugin will produce one output file per TU for each CHANGED_FUNCTION
+    (provided that the function in question was actually called in the TU) on the format
+    <function_name>_<filename>.json:
+
+        {
+          "function_name": {
+            "param_a": [],
+            "param_b": [],
+          }
+        }
+
+    If the same function is called from several files (in different subdirs), we need to combine
+    these json objects into one. NOTE that an empty array means that the parameter was determined to be
+    nondet(). The combined json will thus only have the union of fields if neither one is empty
+    '''
+
+    arg_states: dict[str,FunctionState] = {}
+
+    for state_file in os.listdir(CONFIG.ARG_STATES_OUTDIR):
+        try:
+            function_name = re.search(r"(.*)_[^_]+\.json$", state_file).group(1) # type: ignore
+        except TypeError:
+            print_err(f"Invalid output file format: {state_file}")
+            continue
+
+        with open( f"{CONFIG.ARG_STATES_OUTDIR}/{state_file}", mode='r', encoding='utf8') as f:
+            json_arg_states = json.load(f)
+            try:
+                for param in json_arg_states[function_name]:
+                    values = set(json_arg_states[function_name][param])
+
+                    if not function_name in arg_states:
+                        arg_states[function_name] = FunctionState()
+
+                    arg_states[function_name].add_state_values(param, values)
+
+            except KeyError:
+                print_err(f"Missing key: {function_name} in {state_file}")
+                continue
+
+    return arg_states

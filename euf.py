@@ -27,6 +27,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
+from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
@@ -291,7 +292,6 @@ def run():
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
-
         write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
 
         # Compile the old and new version of the dependency as a set of 
@@ -306,17 +306,24 @@ def run():
         os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
         if CONFIG.VERBOSITY >= 1:
-            print_stage("Assumption derivation")
+            print_stage("Argument state space enumeration")
 
-        # Attempt to derive valid input parameters for each changed function based on invocations
+        # Derive valid input parameters for each changed function based on invocations
         # in the old and new version of the dependency as well as the main project
         # This process is performed using an external clang plugin
-        #for source_file in DEP_SOURCE_FILES:
-        #    get_state_space(CHANGED_FUNCTIONS, DEP_SOURCE_ROOT_OLD, source_file)
-        #exit(0)
+        for subdir, subdir_tu in get_subdir_tus(DEP_SOURCE_ROOT_OLD).items():
+            for change in CHANGED_FUNCTIONS:
+                call_arg_states_plugin(DEP_SOURCE_ROOT_OLD, subdir, subdir_tu, change.old.ident.spelling, quiet=True)
+
+        ARG_STATES = join_arg_states_result()
+
+        # TODO: Write __assume
+        #pprint(ARG_STATES)
+        #exit()
+
 
         if CONFIG.VERBOSITY >= 1:
-            print_stage("Reduction")
+            print_stage("CBMC analysis")
 
         script_env = CONFIG.get_script_env()
         script_env.update({

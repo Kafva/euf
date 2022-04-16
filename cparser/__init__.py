@@ -714,4 +714,26 @@ class SubDirTU:
         self.files.add(tu['file'])
         self.ccdb_args |= set(tu['arguments'][1:-3])
 
+@dataclass(init=True)
+class FunctionState:
+    ''' The value for a parameter will be '[]' or False if its nondet '''
+    parameters: dict[str,set|bool] = field(default_factory=dict)
 
+    def add_state_values(self, param, values):
+        '''
+        The parameter will be an integer if the declaration has it unamed
+        '''
+        if not param in self.parameters:
+            self.parameters[param] = set() # defaults to nondet() 
+
+        if len(values) == 0: # nondet() parameter
+            self.parameters[param] = False
+        elif self.parameters[param] != False:
+            '''
+            det() parameter: Checks that no previous 
+            insertion had a nondet() state
+            If the current state is det(), 
+            join the current set of states with those
+            provided in 'values'
+            '''
+            self.parameters[param] |= values

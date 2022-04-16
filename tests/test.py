@@ -1,7 +1,7 @@
 import filecmp, os
 from os.path import expanduser
 from cparser import BASE_DIR, CONFIG
-from cparser.arg_states import get_subdir_tus
+from cparser.arg_states import get_subdir_tus, join_arg_states_result
 
 from cparser.util import flatten
 from cparser.build import dir_has_magic_file
@@ -46,3 +46,5 @@ def test_get_source_subdirs():
                 set( [USB_PATH] )
         )
 
+def test_join_arg_states_result():
+    assert(join_arg_states_result()!=dict()) # Not a proper test
