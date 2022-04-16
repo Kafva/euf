@@ -715,7 +715,6 @@ class SubDirTU:
         self.files.add(tu['file'])
         self.ccdb_args |= set(tu['arguments'][1:-3])
 
-
 @dataclass(init=True)
 class StateParam:
     name: str = ""

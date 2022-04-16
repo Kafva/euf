@@ -4,7 +4,7 @@ import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, \
-        DependencyFunctionChange, FunctionState, SourceDiff, arg_states
+        DependencyFunctionChange, FunctionState, SourceDiff
 from cparser.util import print_err, time_end, time_start, wait_on_cr
 
 def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
@@ -218,20 +218,27 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                     f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
                     arg_string += f"{arg.spelling}, "
 
-
-        f.write("\n")
-        # Create assumptions for any arguments that were identified as only being
-        # called with deterministic values
-        #for arg,idx in enumerate(change.old.arguments):
-        #    if values and values != []: # The 'value' will be false or '[]' for nondet() parameters
-        #        f.write(f"__CPROVER_assume(  );\n")
-
-
         if not failed_generation:
             arg_string = arg_string.removesuffix(", ")
 
             # 2. Preconditions
-            # Any __assume statements about the input that we need to incorporate
+            # Create assumptions for any arguments that were identified as only being
+            # called with deterministic values
+            f.write("\n")
+            for idx,param in enumerate(function_state.parameters):
+                if not param.nondet and len(param.states) > 0:
+                    arg_name = change.old.arguments[idx].spelling
+                    f.write(f"{INDENT}__CPROVER_assume(\n")
+
+                    out_string = ""
+                    for state in param.states:
+                        state_val  = state if str(state).isnumeric() else f"\"{state}\""
+                        out_string += f"{INDENT}{INDENT}{arg_name} == {state_val} ||\n"
+
+                    out_string = out_string.removesuffix(" ||\n")
+
+                    f.write(f"{out_string}\n{INDENT});\n")
+            f.write("\n")
 
             # 3. Call the functions under verification
             ret_type = change.old.ident.type_spelling
