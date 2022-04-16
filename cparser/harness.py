@@ -4,7 +4,7 @@ import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, \
-        DependencyFunctionChange, SourceDiff
+        DependencyFunctionChange, FunctionState, SourceDiff, arg_states
 from cparser.util import print_err, time_end, time_start, wait_on_cr
 
 def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
@@ -76,7 +76,7 @@ def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
         tu_includes[diff.old_path] = (usr_includes, project_includes)
 
 def create_harness(change: DependencyFunctionChange, harness_path: str,
-        includes: tuple[list[str],list[str]],  identity: bool = False) -> bool:
+        includes: tuple[list[str],list[str]], function_state: FunctionState, identity: bool = False) -> bool:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -214,8 +214,18 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                     fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old}"
                     break
                 else:
+                    # Argument initialisation
                     f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
                     arg_string += f"{arg.spelling}, "
+
+
+        f.write("\n")
+        # Create assumptions for any arguments that were identified as only being
+        # called with deterministic values
+        #for arg,idx in enumerate(change.old.arguments):
+        #    if values and values != []: # The 'value' will be false or '[]' for nondet() parameters
+        #        f.write(f"__CPROVER_assume(  );\n")
+
 
         if not failed_generation:
             arg_string = arg_string.removesuffix(", ")

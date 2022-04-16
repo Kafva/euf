@@ -1,7 +1,7 @@
+XML_ExternalEntityParserCreate
 appendAttributeValue
 lookup
 processInternalEntity
-XML_ExternalEntityParserCreate
 resolveSystemId
 doContent
 XML_Parse

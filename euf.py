@@ -29,7 +29,7 @@ from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, run_harness, add_includes_from_tu
-from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, wait_on_cr
+from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, time_end, time_start, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
@@ -292,6 +292,9 @@ def run():
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
+        if CONFIG.VERBOSITY >= 1:
+            print_stage("Reduction")
+
         write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
 
         # Compile the old and new version of the dependency as a set of 
@@ -305,25 +308,17 @@ def run():
         # directory of the driver
         os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
-        if CONFIG.VERBOSITY >= 1:
-            print_stage("Argument state space enumeration")
-
         # Derive valid input parameters for each changed function based on invocations
         # in the old and new version of the dependency as well as the main project
         # This process is performed using an external clang plugin
+        start = time_start("Inspecting call sites...")
+
         for subdir, subdir_tu in get_subdir_tus(DEP_SOURCE_ROOT_OLD).items():
             for change in CHANGED_FUNCTIONS:
                 call_arg_states_plugin(DEP_SOURCE_ROOT_OLD, subdir, subdir_tu, change.old.ident.spelling, quiet=True)
 
         ARG_STATES = join_arg_states_result()
-
-        # TODO: Write __assume
-        #pprint(ARG_STATES)
-        #exit()
-
-
-        if CONFIG.VERBOSITY >= 1:
-            print_stage("CBMC analysis")
+        time_end("State space analysis", start)
 
         script_env = CONFIG.get_script_env()
         script_env.update({
@@ -361,11 +356,12 @@ def run():
             # passes as equivalent, then generate the actual driver and check if the
             # change is considered equivalent
             harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
+            function_state = ARG_STATES[change.old.ident.spelling]
 
             if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                 pass # Use existing driver
             elif not create_harness(change, harness_path, \
-                    TU_INCLUDES[change.old.filepath], identity=True):
+                    TU_INCLUDES[change.old.filepath], function_state, identity=True):
                 continue # Generation failed
 
             # Run the identity harness
@@ -377,7 +373,7 @@ def run():
                 if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                     pass # Use existing driver
                 elif not create_harness(change, harness_path, \
-                        TU_INCLUDES[change.old.filepath], identity=False):
+                        TU_INCLUDES[change.old.filepath], function_state, identity=False):
                     continue # Generation failed
 
                 # Run the actual harness

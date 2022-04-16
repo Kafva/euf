@@ -123,13 +123,14 @@ def join_arg_states_result() -> dict[str,FunctionState]:
         with open( f"{CONFIG.ARG_STATES_OUTDIR}/{state_file}", mode='r', encoding='utf8') as f:
             json_arg_states = json.load(f)
             try:
-                for param in json_arg_states[function_name]:
-                    values = set(json_arg_states[function_name][param])
+                for idx,param_name in enumerate(json_arg_states[function_name]):
+                    values = set(json_arg_states[function_name][param_name])
 
                     if not function_name in arg_states:
                         arg_states[function_name] = FunctionState()
 
-                    arg_states[function_name].add_state_values(param, values)
+                    # The parameters are guaranteed to be in order
+                    arg_states[function_name].add_state_values(param_name, idx, values)
 
             except KeyError:
                 print_err(f"Missing key: {function_name} in {state_file}")

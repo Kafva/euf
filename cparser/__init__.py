@@ -493,6 +493,7 @@ class DependencyFunction:
     ident: Identifier # Function name and return type
     displayname: str # Includes the full prototype string
     filepath: str
+    # Note: the arguments must be in correct order within the list
     arguments: list[Identifier]
     line: int
     col: int
@@ -714,26 +715,40 @@ class SubDirTU:
         self.files.add(tu['file'])
         self.ccdb_args |= set(tu['arguments'][1:-3])
 
+
+@dataclass(init=True)
+class StateParam:
+    name: str = ""
+    nondet: bool = False # Must be explicitly set
+    states: set = field(default_factory=set)
+
 @dataclass(init=True)
 class FunctionState:
-    ''' The value for a parameter will be '[]' or False if its nondet '''
-    parameters: dict[str,set|bool] = field(default_factory=dict)
+    ''' 
+    The value for a parameter will be '[]' or False if its nondet 
+    Each item in the parameters array is on the form
+        [0]:    { <param name>, <states>,  <det> }
+    We use a list rather than a dict since the argument order is important
+    '''
+    parameters: list[StateParam] = field(default_factory=list)
 
-    def add_state_values(self, param, values):
+    def add_state_values(self, param_name:str, idx: int, values: set) -> None:
         '''
         The parameter will be an integer if the declaration has it unamed
         '''
-        if not param in self.parameters:
-            self.parameters[param] = set() # defaults to nondet() 
+
+        # Add entries to ensure that we can insert the current param
+        # at the correct index
+        while len(self.parameters) <= idx:
+            self.parameters.append(StateParam()) # defaults to nondet() 
+
+        # Skip setting the name if its a placeholder set by the clang plugin
+        if not param_name.isnumeric():
+            self.parameters[idx].name = param_name
 
         if len(values) == 0: # nondet() parameter
-            self.parameters[param] = False
-        elif self.parameters[param] != False:
-            '''
-            det() parameter: Checks that no previous 
-            insertion had a nondet() state
-            If the current state is det(), 
-            join the current set of states with those
-            provided in 'values'
-            '''
-            self.parameters[param] |= values
+            self.parameters[idx].nondet = True
+        elif not self.parameters[idx].nondet:
+            # det() parameter: join the current set of states with those
+            # provided in 'values'
+            self.parameters[idx].states |= values

@@ -1,7 +1,7 @@
 import filecmp, os
 from os.path import expanduser
 from cparser import BASE_DIR, CONFIG
-from cparser.arg_states import get_subdir_tus, join_arg_states_result
+from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 
 from cparser.util import flatten
 from cparser.build import dir_has_magic_file
@@ -9,6 +9,7 @@ from euf import run
 
 REPO_PATH = f"{expanduser('~')}/Repos/jq"
 EXPAT_PATH = f"{expanduser('~')}/Repos/libexpat/expat"
+EXPAT_OLD_PATH = f"{expanduser('~')}/.cache/euf/libexpat-90ed5777/expat"
 USB_PATH = f"{expanduser('~')}/.cache/euf/libusb-385eaafb/libusb"
 TEST_DIR =  f"{BASE_DIR}/tests"
 RESULT_DIR = f"{BASE_DIR}/results"
@@ -47,4 +48,12 @@ def test_get_source_subdirs():
         )
 
 def test_join_arg_states_result():
-    assert(join_arg_states_result()!=dict()) # Not a proper test
+
+    function_name = "usage"
+
+    if os.path.exists(EXPAT_OLD_PATH):
+        for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_PATH).items():
+            call_arg_states_plugin(EXPAT_OLD_PATH, subdir, subdir_tu, function_name, quiet=True)
+
+    result = join_arg_states_result()
+    assert( result[function_name].parameters[1].states == set([0,1,2]) )
