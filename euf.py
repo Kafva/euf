@@ -25,7 +25,7 @@ from clang import cindex
 from git.repo import Repo
 from git.objects.commit import Commit
 
-from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, \
+from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, run_harness, add_includes_from_tu
@@ -315,7 +315,9 @@ def run():
 
         for subdir, subdir_tu in get_subdir_tus(DEP_SOURCE_ROOT_OLD).items():
             for change in CHANGED_FUNCTIONS:
-                call_arg_states_plugin(DEP_SOURCE_ROOT_OLD, subdir, subdir_tu, change.old.ident.spelling, quiet=True)
+                call_arg_states_plugin(DEP_SOURCE_ROOT_OLD, subdir, subdir_tu,
+                    change.old.ident.spelling, quiet=True
+                )
 
         ARG_STATES = join_arg_states_result()
         time_end("State space analysis", start)
@@ -356,12 +358,16 @@ def run():
             # passes as equivalent, then generate the actual driver and check if the
             # change is considered equivalent
             harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
-            function_state = ARG_STATES[change.old.ident.spelling]
+            function_state = ARG_STATES[func_name] if func_name in ARG_STATES \
+                    else FunctionState()
+            tu_includes = TU_INCLUDES[change.old.filepath] if \
+                        change.old.filepath in TU_INCLUDES else \
+                        ([],[])
 
             if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                 pass # Use existing driver
             elif not create_harness(change, harness_path, \
-                    TU_INCLUDES[change.old.filepath], function_state, identity=True):
+                    tu_includes, function_state, identity=True):
                 continue # Generation failed
 
             # Run the identity harness
@@ -373,7 +379,7 @@ def run():
                 if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                     pass # Use existing driver
                 elif not create_harness(change, harness_path, \
-                        TU_INCLUDES[change.old.filepath], function_state, identity=False):
+                        tu_includes, function_state, identity=False):
                     continue # Generation failed
 
                 # Run the actual harness

@@ -21,7 +21,7 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "PAUSES": true,
+  "PAUSES": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 0,
   "ENABLE_RESULT_LOG": true,

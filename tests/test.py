@@ -48,7 +48,6 @@ def test_get_source_subdirs():
         )
 
 def test_join_arg_states_result():
-
     function_name = "usage"
 
     if os.path.exists(EXPAT_OLD_PATH):

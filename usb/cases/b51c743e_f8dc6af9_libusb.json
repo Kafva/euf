@@ -5,7 +5,10 @@
   "DEP_INCLUDE_PATHS": [
     "libusb/libusb"
   ],
-  "EXCLUDE_REGEXES": [],
+  "EXCLUDE_REGEXES": [
+    "examples/.*",
+    "tests/.*"
+  ],
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 7,
   "ENABLE_RESULT_LOG": false,

@@ -114,26 +114,22 @@ def join_arg_states_result() -> dict[str,FunctionState]:
     arg_states: dict[str,FunctionState] = {}
 
     for state_file in os.listdir(CONFIG.ARG_STATES_OUTDIR):
-        try:
-            function_name = re.search(r"(.*)_[^_]+\.json$", state_file).group(1) # type: ignore
-        except TypeError:
-            print_err(f"Invalid output file format: {state_file}")
-            continue
 
         with open( f"{CONFIG.ARG_STATES_OUTDIR}/{state_file}", mode='r', encoding='utf8') as f:
-            json_arg_states = json.load(f)
+            (function_name, params) = next(iter(json.load(f).items()))
             try:
-                for idx,param_name in enumerate(json_arg_states[function_name]):
-                    values = set(json_arg_states[function_name][param_name])
+                idx=0
+                for param_name,values in params.items():
 
                     if not function_name in arg_states:
                         arg_states[function_name] = FunctionState()
 
                     # The parameters are guaranteed to be in order
-                    arg_states[function_name].add_state_values(param_name, idx, values)
+                    arg_states[function_name].add_state_values(param_name, idx, set(values))
+                    idx+=1
 
-            except KeyError:
-                print_err(f"Missing key: {function_name} in {state_file}")
+            except IndexError:
+                print_err(f"Empty state file: {state_file}")
                 continue
 
     return arg_states

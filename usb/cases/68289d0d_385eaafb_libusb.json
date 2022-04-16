@@ -6,7 +6,8 @@
     "libusb/libusb"
   ],
   "EXCLUDE_REGEXES": [
-    "examples/.*"
+    "examples/.*",
+    "tests/.*"
   ],
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 7,
@@ -20,7 +21,7 @@
   "NPROC": 6,
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": false,
+  "FULL": true,
   "COMMIT_OLD": "68289d0d038b42e177d50fec9e26b8175d302627",
   "COMMIT_NEW": "385eaafba1b79eebcb65087c86744c492262573f",
   "QUIET_BUILD": true
