@@ -166,6 +166,16 @@ class Config:
     IDENTITY_HARNESS: str = "_id"
     INDENT: str = " "*2
 
+    # Compilation flag patterns to exclude from invocations of 
+    # clang-plugins/ArgStates
+    ARG_STATES_COMPILE_FLAG_BLACKLIST = ["-g", "-c", r"-f.*", r"-W.*"]
+    ARG_STATS_SO=f"{BASE_DIR}/clang-plugins/build/lib/libArgStates.so"
+
+    # !! DO NOT CHANGE, hardcoded in clang plugin !!
+    ARG_STATES_OUT_DIR_ENV = "ARG_STATES_OUT_DIR"
+    ARG_STATES_DEBUG_ENV = "DEBUG_AST"
+    ARG_STATES_OUTDIR = f"{BASE_DIR}/.states"
+
     # !! DO NOT CHANGE, hardcoded in CBMC fork !!
     SUFFIX: str = "_old_b026324c6904b2a"
     RENAME_TXT: str = "/tmp/rename.txt"
@@ -690,3 +700,18 @@ class IdentifierLocation:
 
     def __hash__(self):
         return hash(str(self.line)+str(self.column)+str(self.filepath)+self.name)
+
+@dataclass(init=True)
+class SubDirTU:
+    files: set[str] = field(default_factory=set)
+    ccdb_args: set[str] = field(default_factory=set)
+
+    def add_from_tu(self, tu: dict):
+        ''' 
+        The TU argument corresponds to one entry from a compile_commands.json
+        Note the use of [1:-3] to skip over the cc and output files
+        '''
+        self.files.add(tu['file'])
+        self.ccdb_args |= set(tu['arguments'][1:-3])
+
+

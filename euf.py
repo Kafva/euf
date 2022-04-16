@@ -9,6 +9,10 @@ the base change-set
 4. Perform a configurable number of passes where we add functions that
 are transativly changed, i.e. functions that call a function that 
 has been changed
+5. Inspect all calls in the dependency to the changed functions and
+save 'state sets' for each parameter. The state set will contain all
+constant values that the given parameter can be assigned during program
+execution or be set as empty if the parameter recieves nondet() assignemnts
 5. Analyze each of the objects in the base change-set and 
 remove equivalent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
@@ -74,6 +78,7 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
 def run():
     mkdir_p(CONFIG.EUF_CACHE)
     mkdir_p(CONFIG.RESULTS_DIR)
+    mkdir_p(CONFIG.ARG_STATES_OUTDIR)
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
@@ -286,8 +291,6 @@ def run():
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
-        if CONFIG.VERBOSITY >= 1:
-            print_stage("Reduction")
 
         write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
 
@@ -302,13 +305,18 @@ def run():
         # directory of the driver
         os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
+        if CONFIG.VERBOSITY >= 1:
+            print_stage("Assumption derivation")
+
         # Attempt to derive valid input parameters for each changed function based on invocations
         # in the old and new version of the dependency as well as the main project
-        # TODO: We do this with an external clang plugin instead
+        # This process is performed using an external clang plugin
         #for source_file in DEP_SOURCE_FILES:
         #    get_state_space(CHANGED_FUNCTIONS, DEP_SOURCE_ROOT_OLD, source_file)
         #exit(0)
 
+        if CONFIG.VERBOSITY >= 1:
+            print_stage("Reduction")
 
         script_env = CONFIG.get_script_env()
         script_env.update({
