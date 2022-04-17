@@ -11,8 +11,8 @@ For this to work we need to create a union of all the ccmd flags for each direct
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
 import subprocess, re, sys, json, os
-from cparser import CONFIG, FunctionState, SubDirTU
-from cparser.util import print_err
+from cparser import CONFIG, FunctionState, SubDirTU, matches_excluded, print_warn, print_err
+from cparser.util import print_info
 
 def get_isystem_flags(source_file: str, dep_path: str) -> list:
     '''
@@ -44,18 +44,26 @@ def get_isystem_flags(source_file: str, dep_path: str) -> list:
 
     return out
 
-def get_subdir_tus(target_dir: str) -> dict[str,SubDirTU]:
+def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU]:
     '''
     Return a dict on the form { "subdir_path": subdir_tu }
     using a compile_commands.json as input. The ccdb_args array will
     contain the union of all compilation flags used for files in a subdir
     '''
     src_subdirs = dict()
-    with open(f"{target_dir}/compile_commands.json", mode = 'r', encoding='utf8') as f:
+    with open(f"{target_source_dir}/compile_commands.json", mode = 'r', encoding='utf8') as f:
         ccdb = json.load(f)
 
         for tu in ccdb:
+            # The exclude regex is given on the form "src/sub/.*"
+            to_match = tu['directory']\
+                .removeprefix(target_dir).removeprefix("/") + "/"
+
+            if matches_excluded(to_match):
+                continue
+
             key = tu['directory'].rstrip("/")
+
             if not key in src_subdirs:
                 subdir_tu = SubDirTU()
                 subdir_tu.add_from_tu(tu)
@@ -65,17 +73,22 @@ def get_subdir_tus(target_dir: str) -> dict[str,SubDirTU]:
 
     return src_subdirs
 
-def call_arg_states_plugin(symbol_name: str, target_dir: str, subdir: str,
+def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir: str,
     subdir_tu: SubDirTU, quiet:bool = True) -> None:
     '''
     Some of the ccdb arguments are not comptabile with the -cc1 frontend and need to
-    be filtered out
+    be filtered out.
+
+    Different output directories can be provided to allow for non-overlapping filenames
+    when analysing old/new versions of a dependency
     '''
     blacklist = r"|".join(CONFIG.ARG_STATES_COMPILE_FLAG_BLACKLIST)
     ccdb_filtered  = filter(lambda a: not re.match(blacklist, a), subdir_tu.ccdb_args)
 
     script_env = CONFIG.get_script_env()
-    script_env.update({ CONFIG.ARG_STATES_OUT_DIR_ENV: CONFIG.ARG_STATES_OUTDIR })
+    script_env.update({
+        CONFIG.ARG_STATES_OUT_DIR_ENV: outdir
+    })
     if quiet:
         out = subprocess.DEVNULL
     else:
@@ -93,7 +106,7 @@ def call_arg_states_plugin(symbol_name: str, target_dir: str, subdir: str,
     #print(f"({subdir})> \n", ' '.join(cmd))
     subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out, env = script_env)
 
-def join_arg_states_result() -> dict[str,FunctionState]:
+def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
     The argStates clang plugin will produce one output file per TU for each CHANGED_FUNCTION
     (provided that the function in question was actually called in the TU) on the format
@@ -109,27 +122,54 @@ def join_arg_states_result() -> dict[str,FunctionState]:
     If the same function is called from several files (in different subdirs), we need to combine
     these json objects into one. NOTE that an empty array means that the parameter was determined to be
     nondet(). The combined json will thus only have the union of fields if neither one is empty
+
+    We limit the analysis to explicitly specified subdirectories to avoid issues when analysing
+    multiple projects
     '''
 
     arg_states: dict[str,FunctionState] = {}
 
-    for state_file in os.listdir(CONFIG.ARG_STATES_OUTDIR):
+    for state_dir in subdir_names:
+        dirpath = f"{CONFIG.ARG_STATES_OUTDIR}/{state_dir}"
+        if not os.path.isdir(dirpath):
+            print_warn(f"Missing {state_dir}")
+            continue
 
-        with open( f"{CONFIG.ARG_STATES_OUTDIR}/{state_file}", mode='r', encoding='utf8') as f:
-            (function_name, params) = next(iter(json.load(f).items()))
-            try:
-                idx=0
-                for param_name,values in params.items():
+        for state_file in os.listdir(dirpath):
+            filepath = f"{dirpath}/{state_file}"
 
-                    if not function_name in arg_states:
-                        arg_states[function_name] = FunctionState()
+            with open(filepath, mode='r', encoding='utf8') as f:
+                (function_name, params) = next(iter(json.load(f).items()))
+                try:
+                    idx=0
+                    for param_name,values in params.items():
 
-                    # The parameters are guaranteed to be in order
-                    arg_states[function_name].add_state_values(param_name, idx, set(values))
-                    idx+=1
+                        if not function_name in arg_states:
+                            arg_states[function_name] = FunctionState()
 
-            except IndexError:
-                print_err(f"Empty state file: {state_file}")
+                        # The parameters are guaranteed to be in order
+                        arg_states[function_name].add_state_values(param_name, idx, set(values))
+                        idx+=1
+
+                except IndexError:
+                    print_err(f"Empty state file: {filepath}")
                 continue
+
+    if CONFIG.VERBOSITY >= 3:
+        # Show all parameters that were identified to have a
+        # limited state space
+        state_dirs = ' '.join(subdir_names)
+
+        print_info(f"State space ({state_dirs}):")
+        INDENT = CONFIG.INDENT
+
+        for func_name,func_state in arg_states.items():
+            if any([ not p.nondet for p in func_state.parameters ]):
+                print(f"{func_name}()")
+
+            for idx,param in enumerate(func_state.parameters):
+                if not param.nondet:
+                    print(f"\033[32m!>\033[0m{INDENT}{idx}.{param.name} = ", end='')
+                    print(param.states)
 
     return arg_states

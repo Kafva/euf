@@ -1,4 +1,4 @@
-import sys, os, json, re
+import sys, os, json, re, traceback
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -12,6 +12,9 @@ BASE_DIR = str(Path(__file__).parent.parent.absolute())
 def print_warn(msg: str):
     print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
 
+def print_err(msg: str):
+    print("\033[31m!>\033[0m " +  msg, file=sys.stderr)
+
 def get_path_relative_to(path: str, base: str) -> str:
     return path.removeprefix(base).removeprefix("/")
 
@@ -24,6 +27,17 @@ def compact_path(path: str) -> str:
             out += "/" + name[0]
 
     return out
+
+def matches_excluded(string: str) -> bool:
+    for exclude_regex in CONFIG.EXCLUDE_REGEXES:
+        try:
+            if re.search(rf"{exclude_regex}", string):
+                return True
+        except re.error:
+            print_err(f"Invalid regex provided: {exclude_regex}")
+            traceback.print_exc()
+            sys.exit(-1)
+    return False
 
 class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
@@ -728,6 +742,8 @@ class FunctionState:
     Each item in the parameters array is on the form
         [0]:    { <param name>, <states>,  <det> }
     We use a list rather than a dict since the argument order is important
+
+    The actual function name will be the key of dict mapped to this object
     '''
     parameters: list[StateParam] = field(default_factory=list)
 

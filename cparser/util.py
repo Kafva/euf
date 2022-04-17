@@ -2,7 +2,7 @@ import sys, os
 from datetime import datetime
 from typing import Set
 
-from cparser import CONFIG, AnalysisResult, print_warn
+from cparser import CONFIG, AnalysisResult, print_warn, print_err
 
 def wait_on_cr():
     while CONFIG.PAUSES and not CONFIG.SHOW_DIFFS:
@@ -21,9 +21,6 @@ def print_success(msg: str):
 
 def print_fail(msg: str):
     print("[\033[31mX\033[0m] " +  msg, file=sys.stderr)
-
-def print_err(msg: str):
-    print("\033[31m!>\033[0m " +  msg, file=sys.stderr)
 
 def flatten_dict(list_of_dicts: list[dict] ) -> dict:
     flat = {}
@@ -118,3 +115,9 @@ def rm_f(path: str):
     if os.path.exists(path):
         os.remove(path)
 
+def remove_files_in(path: str):
+    if os.path.isdir(path):
+        for file in os.listdir(path):
+            filepath = f"{path}/{file}"
+            if os.path.isfile(filepath):
+                os.remove(filepath)

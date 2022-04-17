@@ -3,8 +3,8 @@ from clang import cindex
 from typing import Set
 from git.repo import Repo
 
-from cparser.util import print_err, time_start, time_end
-from cparser import CONFIG, IdentifierLocation
+from cparser.util import time_start, time_end
+from cparser import CONFIG, IdentifierLocation, print_err
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
     for child in cursor.get_children():

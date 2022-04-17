@@ -5,8 +5,8 @@ from git.diff import Diff
 from git.repo.base import Repo
 
 from cparser import CONFIG, DependencyFunction, CursorPair, \
-        DependencyFunctionChange, SourceDiff, SourceFile, get_path_relative_to
-from cparser.util import get_column_counts, print_err, print_info
+        DependencyFunctionChange, SourceDiff, SourceFile, get_path_relative_to, print_err
+from cparser.util import get_column_counts, print_info
 
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,

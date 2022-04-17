@@ -26,10 +26,10 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR
+    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, run_harness, add_includes_from_tu
-from cparser.util import flatten, flatten_dict, mkdir_p, print_err, print_info, print_stage, rm_f, time_end, time_start, wait_on_cr
+from cparser.util import flatten, flatten_dict, mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
@@ -46,19 +46,7 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     filtered = []
 
     for item,path in zip(items,path_arr):
-        exclude = False
-
-        for exclude_regex in CONFIG.EXCLUDE_REGEXES:
-            try:
-                if re.search(rf"{exclude_regex}", path):
-                    exclude = True
-                    break
-            except re.error:
-                print_err(f"Invalid regex provided: {exclude_regex}")
-                traceback.print_exc()
-                sys.exit(-1)
-
-        if not exclude:
+        if not matches_excluded(path):
             filtered.append(item)
 
     return filtered
@@ -75,6 +63,32 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
         return compile_args[1:-1]
     else:
         raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
+
+def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir: str):
+    target_name = os.path.basename(target_dir)
+
+    start = time_start(f"Inspecting call sites ({target_name})...")
+    outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{target_name}"
+    mkdir_p(outdir)
+    remove_files_in(outdir)
+    subdir_tus = get_subdir_tus(target_source_dir, target_dir)
+    if CONFIG.VERBOSITY >= 2:
+        print_info("Subdirectories: ")
+        print([ p.removeprefix(f"{target_source_dir}/") for p in subdir_tus.keys()])
+
+    with multiprocessing.Pool(CONFIG.NPROC) as p:
+        for subdir, subdir_tu in subdir_tus.items():
+            # Run parallel processes for different symbols
+            p.map(partial(call_arg_states_plugin,
+                outdir = outdir,
+                target_dir = target_source_dir,
+                subdir = subdir,
+                subdir_tu = subdir_tu,
+                quiet = True),
+                symbols
+            )
+
+    time_end(f"State space analysis ({target_name})", start)
 
 def run():
     mkdir_p(CONFIG.EUF_CACHE)
@@ -308,26 +322,32 @@ def run():
         # directory of the driver
         os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
+        # - - - State space - - - #
         # Derive valid input parameters for each changed function based on invocations
         # in the old and new version of the dependency as well as the main project
         # This process is performed using an external clang plugin
-        start = time_start("Inspecting call sites...")
+        #
+        # FIXME: If the main project has an internal function with the same name as a function
+        # in the change set these will not be differentiated and likely cause params
+        # to be set as nondet when they could potentially be det.
+        remove_files_in(CONFIG.ARG_STATES_OUTDIR)
 
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
+        changed_symbols = []
+        for c in CHANGED_FUNCTIONS:
+            # Exclude functions without a return value
+            # since we are not going to analyze these
+            if c.old.ident.type_spelling != "void":
+                changed_symbols.append(c.old.ident.spelling)
 
-            for subdir, subdir_tu in get_subdir_tus(DEP_SOURCE_ROOT_OLD).items():
+        state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
+        state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
+        state_space_analysis(changed_symbols, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR)
 
-                # Run parallel processes for different symbols
-                p.map(partial(call_arg_states_plugin,
-                    target_dir = DEP_SOURCE_ROOT_OLD,
-                    subdir = subdir,
-                    subdir_tu = subdir_tu,
-                    quiet = True),
-                    [ c.old.ident.spelling for c in CHANGED_FUNCTIONS ]
-                )
-
-        ARG_STATES = join_arg_states_result()
-        time_end("State space analysis", start)
+        # Join the results from each analysis
+        old_name    = os.path.basename(DEPENDENCY_OLD)
+        new_name    = os.path.basename(DEPENDENCY_NEW)
+        proj_name   = os.path.basename(CONFIG.PROJECT_DIR)
+        ARG_STATES  = join_arg_states_result([ old_name, new_name, proj_name ])
 
         script_env = CONFIG.get_script_env()
         script_env.update({
@@ -419,10 +439,6 @@ def run():
 
     for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
-            #for source_file in DEP_SOURCE_FILES:
-            #    get_transative_changes_from_file(source_file,DEP_SOURCE_ROOT_NEW,CHANGED_FUNCTIONS)
-            #exit(0)
-
             with multiprocessing.Pool(CONFIG.NPROC) as p:
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,

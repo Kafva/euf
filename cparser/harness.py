@@ -4,8 +4,8 @@ import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, \
-        DependencyFunctionChange, FunctionState, SourceDiff
-from cparser.util import print_err, time_end, time_start, wait_on_cr
+        DependencyFunctionChange, FunctionState, SourceDiff, print_err
+from cparser.util import time_end, time_start, wait_on_cr
 
 def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
