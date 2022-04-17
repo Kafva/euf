@@ -65,8 +65,8 @@ def get_subdir_tus(target_dir: str) -> dict[str,SubDirTU]:
 
     return src_subdirs
 
-def call_arg_states_plugin(target_dir: str, subdir: str, subdir_tu: SubDirTU,
-        symbol_name: str, quiet:bool = True) -> None:
+def call_arg_states_plugin(symbol_name: str, target_dir: str, subdir: str,
+    subdir_tu: SubDirTU, quiet:bool = True) -> None:
     '''
     Some of the ccdb arguments are not comptabile with the -cc1 frontend and need to
     be filtered out

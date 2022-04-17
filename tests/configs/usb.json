@@ -1,5 +1,4 @@
 {
-
 	"PROJECT_DIR": "~/Repos/libcups",
 	"DEPENDENCY_DIR": "~/Repos/libusb",
 	"DEPLIB_NAME": "libusb-1.0.a",
@@ -9,7 +8,8 @@
   ],
 	
   "EXCLUDE_REGEXES": [
-    "examples/.*"
+    "examples/.*",
+    "tests/.*"
   ],
   
 
@@ -23,8 +23,8 @@
   "USE_EXISTING_DRIVERS": false,
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 0,
-	"NPROC": 6,
+	"VERBOSITY": 2,
+	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,
 	"FULL": true

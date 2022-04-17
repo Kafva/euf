@@ -313,10 +313,17 @@ def run():
         # This process is performed using an external clang plugin
         start = time_start("Inspecting call sites...")
 
-        for subdir, subdir_tu in get_subdir_tus(DEP_SOURCE_ROOT_OLD).items():
-            for change in CHANGED_FUNCTIONS:
-                call_arg_states_plugin(DEP_SOURCE_ROOT_OLD, subdir, subdir_tu,
-                    change.old.ident.spelling, quiet=True
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
+
+            for subdir, subdir_tu in get_subdir_tus(DEP_SOURCE_ROOT_OLD).items():
+
+                # Run parallel processes for different symbols
+                p.map(partial(call_arg_states_plugin,
+                    target_dir = DEP_SOURCE_ROOT_OLD,
+                    subdir = subdir,
+                    subdir_tu = subdir_tu,
+                    quiet = True),
+                    [ c.old.ident.spelling for c in CHANGED_FUNCTIONS ]
                 )
 
         ARG_STATES = join_arg_states_result()
