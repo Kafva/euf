@@ -27,7 +27,7 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "FORCE_RECOMPILE": false,
+  "FORCE_RECOMPILE": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
   "CBMC_TIMEOUT": 3,
   "PAUSES": false,
@@ -39,7 +39,7 @@
 
 
 	"REVERSE_MAPPING": true,
-	"VERBOSITY": 1,
+	"VERBOSITY": 3,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,

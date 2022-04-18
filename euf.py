@@ -341,7 +341,7 @@ def run():
 
         state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
         state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
-        state_space_analysis(changed_symbols, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR)
+        #state_space_analysis(changed_symbols, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO
 
         # Join the results from each analysis
         old_name    = os.path.basename(DEPENDENCY_OLD)

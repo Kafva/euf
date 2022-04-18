@@ -177,6 +177,9 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
         if dir_has_magic_file(dep_source_dir) or CONFIG.FORCE_RECOMPILE or \
             not find(CONFIG.DEPLIB_NAME, dep_dir):
 
+            if CONFIG.VERBOSITY > 0:
+                print_info(f"Building GOTO bin library: {dep_dir}")
+
             # 1. Clean the project from ELF binaries
             if not make_clean(dep_source_dir, script_env, out):
                 return ""
