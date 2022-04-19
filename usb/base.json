@@ -8,6 +8,8 @@
     ]
   },
   "EXCLUDE_REGEXES": [
+    "Xcode/.*",
+    "msvc/.*",
     "examples/.*",
     "tests/.*",
     "libusb/os/darwin*",
@@ -16,10 +18,11 @@
     "libusb/os/freebsd*",
     "libusb/os/netbsd*",
     "libusb/os/openbsd*",
-    "libusb/os/sunos*"
+    "libusb/os/sunos*",
+    "libusb/os/threads_windows.h"
   ],
   "FORCE_RECOMPILE": true,
-  "SHOW_FUNCTIONS": true,
+  "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 7,
   "ENABLE_RESULT_LOG": true,
@@ -32,7 +35,6 @@
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,
   "FULL": true,
-  "COMMIT_OLD": "11cc9952823fbb47b7596aec30a205f68f3a8062",
-  "COMMIT_NEW": "cca8852dc9e463d86f9d4cf5a85269173c808fc9",
   "QUIET_BUILD": true
 }
+

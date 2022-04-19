@@ -8,7 +8,7 @@ CMTS=/tmp/commits
 
 case "$1" in
   libusb)
-    BASE_CONF=./tests/configs/usb.json
+    BASE_CONF=./usb/base.json
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
@@ -92,7 +92,12 @@ mkdir -p .rand
 cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > \
   .rand/${LIBNAME}_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
 
-printf "Press any key to start...";read
+printf "Press enter to start...";
+while :; do
+  read ans
+  printf "$ans" | grep -q q && exit
+  [ "$ans" = "" ] && break
+done
 
 ./euf.py --config \
 	<(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)

@@ -19,13 +19,14 @@ def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocatio
     excluding those defined externally under /usr/include
     '''
     global_decls: Set[IdentifierLocation] = set()
+        #    child.is_definition() and
 
     for child in cursor.get_children():
         if  str(child.kind).endswith("FUNCTION_DECL") and \
             child.is_definition() and \
             not str(child.location.file).startswith("/usr/include"):
         #if (str(child.kind).endswith("FUNCTION_DECL") or \
-        #    str(child.kind).endswith("VAR_DECL") ) and \
+        #    str(child.kind).endswith("VAR_DECL")) and \
         #    child.is_definition() and \
         #    not str(child.location.file).startswith("/usr/include"):
                 global_decls.add(
@@ -112,3 +113,7 @@ def write_rename_files(dep_path: str, ccdb: cindex.CompilationDatabase,):
     with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
         for identifier in global_identifiers:
             f.write(f"{identifier.name}\n")
+
+        ## HACKS: TODO config ##
+        f.write("usbi_backend\n")
+        f.write("usbi_os_backend\n")

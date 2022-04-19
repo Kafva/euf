@@ -169,7 +169,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                     header_name = header
 
                 f.write(f"#include \"{header_name}\"")
-            f.write("\n")
+            f.write("\n\n")
 
         f.write("\n")
 
