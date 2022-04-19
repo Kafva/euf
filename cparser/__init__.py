@@ -269,7 +269,6 @@ class Config:
             if key in dct:
                 setattr(self, key, val) # Respects .setters
 
-global CONFIG
 CONFIG = Config()
 
 @dataclass(init=True)

@@ -1,10 +1,11 @@
-import filecmp, os
+import filecmp, os, json
 from os.path import expanduser
+import shutil
 from cparser import BASE_DIR, CONFIG
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 
 from cparser.util import flatten, mkdir_p
-from cparser.build import dir_has_magic_file
+from cparser.build import dir_has_magic_file, patch_ccdb_with_headers
 from euf import run
 
 TEST_DIR =  f"{BASE_DIR}/tests"
@@ -68,3 +69,14 @@ def test_join_arg_states_result():
     result = join_arg_states_result( [ EXPAT_OLD_NAME ] )
     # If one includes the lib/tests/ path the expected set increases to [0,1,2]
     assert( result[function_name].parameters[1].states == set([0,2]) )
+
+def test_compdb():
+    shutil.copy(f"{TEST_DIR}/expected/jq_compile_base.json",  f"{REPO_PATH}/compile_commands.json") # Setup
+
+    assert(patch_ccdb_with_headers(REPO_PATH))
+
+    # Check that no 'command' entries remain
+    with open(f"{REPO_PATH}/compile_commands.json", mode='r', encoding='utf8') as f:
+        ccdb = json.load(f)
+        assert( not any( [ 'command' in entry for entry in ccdb  ] ) )
+

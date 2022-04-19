@@ -1,4 +1,4 @@
-import shutil, subprocess, os, sys, multiprocessing, traceback, re
+import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
 from git.exc import GitCommandError
 from git.objects.commit import Commit
 from git.repo.base import Repo
@@ -9,7 +9,7 @@ from cparser import CONFIG, print_err
 def get_bear_version(path: str) -> int:
     if shutil.which("bear") is None:
         print_err("Missing 'bear' executable")
-        check_ccdb_fail(path)
+        check_ccdb_error(path)
         return -1
     out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
     prefix_len = len("bear ")
@@ -27,31 +27,9 @@ def run_autoreconf(path: str, out) -> bool:
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
-            check_ccdb_fail(path)
-            return False
+            check_ccdb_error(path)
     else:
         print_err(f"Missing autoconf files")
-        return False
-
-    return True
-
-def run_if_present(path:str, filename: str, out) -> bool:
-    script_env = os.environ.copy()
-
-    if filename.lower() == "configure":
-        script_env.update(CONFIG.BUILD_ENV)
-
-    if os.path.exists(f"{path}/{filename}"):
-        try:
-            print_info(f"{path}: Running ./{filename}...")
-            (subprocess.run([ f"./{filename}" ],
-                cwd = path, stdout = out, stderr = out,
-                env = script_env
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            return check_ccdb_fail(path)
-    else:
-        print_err(f"Not found: '{path}/{filename}'")
         return False
 
     return True
@@ -103,7 +81,7 @@ def autogen_compile_db(source_path: str) -> bool:
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
-            return check_ccdb_fail(source_path)
+            check_ccdb_error(source_path)
 
     # 3. Run 'make' with 'bear'
     if os.path.exists(f"{source_path}/Makefile"):
@@ -115,7 +93,8 @@ def autogen_compile_db(source_path: str) -> bool:
             version = get_bear_version(source_path)
 
             if version <= 0:
-                return check_ccdb_fail(source_path)
+                print_err("Unknown version or non-existent 'bear' executable")
+                return False
             elif version <= 2:
                 del cmd[1]
 
@@ -123,12 +102,50 @@ def autogen_compile_db(source_path: str) -> bool:
             (subprocess.run(cmd, cwd = source_path, stdout = out, stderr = out
             )).check_returncode()
         except subprocess.CalledProcessError:
-            return check_ccdb_fail(source_path)
+            check_ccdb_error(source_path)
+
+    # 4. Run 'compdb' to insert entries for '.h' files into the database
+    patch_ccdb_with_headers(source_path)
 
     return has_valid_compile_db(source_path)
 
-def check_ccdb_fail(path: str) -> bool:
-    ''' Returns True if the ccdb actually exists '''
+def patch_ccdb_with_headers(source_path: str) -> bool:
+    '''
+    For some reason... compdb uses a single command string instead of the
+    standard arguments array, we need to convert this to maintain
+    compatibility with the rest of EUF
+    '''
+    if CONFIG.VERBOSITY >= 1:
+        print_info("Running compdb...")
+    try:
+        p = subprocess.Popen([ "compdb", "-p", ".", "list" ],
+            stdout = subprocess.PIPE, stderr = subprocess.DEVNULL,
+            cwd = source_path
+        )
+        json_output = json.load(p.stdout) # type: ignore
+        header_entries = []
+
+        for json_entry in json_output:
+            if json_entry['file'].endswith(".h"):
+                json_entry["arguments"] = json_entry['command'].split(' ')
+                del json_entry['command']
+                header_entries.append(json_entry)
+    except:
+        print_err("Failed to patch ccdb with compdb")
+        return False
+
+    current_db = {}
+    with open(f"{source_path}/compile_commands.json", mode = 'r', encoding='utf8') as f:
+        current_db = json.load(f)
+        current_db.extend(header_entries)
+
+    with open(f"{source_path}/compile_commands.json", mode = 'w', encoding='utf8') as f:
+        json.dump(current_db,f, ensure_ascii=True, indent=4, sort_keys=True)
+
+    return True
+
+def check_ccdb_error(path: str) -> None:
+    ''' Exits the program if the ccdb is empty or does not exist '''
     backtrace = traceback.format_exc()
     if not has_valid_compile_db(path):
         if not re.match("^NoneType: None$", backtrace):
@@ -136,10 +153,9 @@ def check_ccdb_fail(path: str) -> bool:
         print_err(f"Failed to parse or create {path}/compile_commands.json\n" +
         "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
         "Consult the documentation for your particular dependency for additional build instructions.")
-        return False
+        sys.exit(-1)
     else:
         print_err(f"An error occured but {path}/compile_commands.json was created")
-        return True
 
 def create_worktree(target: str, commit: Commit, repo: Repo) -> bool:
     if not os.path.exists(target):

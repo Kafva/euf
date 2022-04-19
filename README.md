@@ -8,6 +8,8 @@ apt-get install python3.9 python3.9-venv bear clang llvm-12 -y
 python3.9 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
+
+pip3 install --user compdb
 ```
 
 Invoke with a JSON config file

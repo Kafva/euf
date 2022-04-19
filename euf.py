@@ -29,13 +29,14 @@ from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, Functi
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err, print_warn
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
-from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
+from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
+        print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
 from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
-        check_ccdb_fail
+        check_ccdb_error
 from cparser.enumerate_globals import write_rename_files
 
 def filter_out_excluded(items: list, path_arr: list[str]) -> list:
@@ -244,8 +245,7 @@ def run():
     try:
         MAIN_DB = cindex.CompilationDatabase.fromDirectory(CONFIG.PROJECT_DIR)
     except cindex.CompilationDatabaseError as e:
-        check_ccdb_fail(CONFIG.PROJECT_DIR)
-        sys.exit(-1)
+        check_ccdb_error(CONFIG.PROJECT_DIR)
 
     PROJECT_SOURCE_FILES = [ SourceFile(
         new_path = filepath, # type: ignore
