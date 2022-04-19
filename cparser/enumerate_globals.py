@@ -1,7 +1,6 @@
 import os, traceback
 from clang import cindex
 from typing import Set
-from git.repo import Repo
 
 from cparser.util import time_start, time_end
 from cparser import CONFIG, IdentifierLocation, print_err
@@ -113,13 +112,3 @@ def write_rename_files(dep_path: str, ccdb: cindex.CompilationDatabase,):
     with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
         for identifier in global_identifiers:
             f.write(f"{identifier.name}\n")
-
-def get_source_files(dep_path: str) -> list[str]:
-    ''' Generate a list of all source files in the given repo '''
-    repo_files: list[str] = map(lambda f: f"{dep_path}/{f}",
-            Repo(dep_path).git.ls_tree(                  # type: ignore
-            "-r", "HEAD", "--name-only").splitlines())   # type: ignore
-
-    return list(filter(lambda f:
-        f.endswith(".c") or f.endswith(".h"), repo_files))
-

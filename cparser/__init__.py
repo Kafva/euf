@@ -113,9 +113,6 @@ class Config:
     _GOTO_BUILD_SCRIPT: str = ""
     _CCDB_BUILD_SCRIPT: str = ""
 
-    # List of include paths used by the old version of the dependency
-    DEP_INCLUDE_PATHS: list[str] = field(default_factory=list)
-
     # System header paths to skip over for the #include directives
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])

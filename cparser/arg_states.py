@@ -132,7 +132,7 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     for state_dir in subdir_names:
         dirpath = f"{CONFIG.ARG_STATES_OUTDIR}/{state_dir}"
         if not os.path.isdir(dirpath):
-            print_warn(f"Missing {state_dir}")
+            print_warn(f"Missing state directory: {state_dir}")
             continue
 
         for state_file in os.listdir(dirpath):

@@ -4,10 +4,6 @@
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
 	"DEPLIB_NAME": "libexpat.a",
 
-  "DEP_INCLUDE_PATHS": [
-    "expat/lib"
-  ],
-	
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
     "expat/examples/.*"

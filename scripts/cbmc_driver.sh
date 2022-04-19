@@ -9,13 +9,17 @@ output_formatting(){
 }
 [[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$CBMC_OPTS_STR"    ||
 	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
-	 -z "$FUNC_NAME"  || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"
+	 -z "$FUNC_NAME"  || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
+   -z "$DEP_I_FLAGS"
 ]] && die "Missing environment variable(s)"
 
 cbmc_output=$(mktemp)
 rm -f $OUTFILE
 
-goto-cc -DCBMC -I $OUTDIR \
+# DEP_I_FLAGS contains a the include paths from the NEW version
+# of the dependency (with -I flags) that is being analyzed
+
+goto-cc -DCBMC -I $OUTDIR  $DEP_I_FLAGS \
 	$NEW_LIB $OLD_LIB $DRIVER \
  	-o $OUTFILE || exit $?
 

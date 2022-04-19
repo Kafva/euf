@@ -28,7 +28,7 @@ from git.objects.commit import Commit
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
-from cparser.harness import create_harness, run_harness, add_includes_from_tu
+from cparser.harness import create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
@@ -72,7 +72,7 @@ def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir:
     mkdir_p(outdir)
     remove_files_in(outdir)
     subdir_tus = get_subdir_tus(target_source_dir, target_dir)
-    if CONFIG.VERBOSITY >= 2:
+    if CONFIG.VERBOSITY >= 3:
         print_info("Subdirectories: ")
         print([ p.removeprefix(f"{target_source_dir}/") for p in subdir_tus.keys()])
 
@@ -341,7 +341,7 @@ def run():
 
         state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
         state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
-        #state_space_analysis(changed_symbols, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO
+        #state_space_analysis(changed_symbols, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO: takes to long
 
         # Join the results from each analysis
         old_name    = os.path.basename(DEPENDENCY_OLD)
@@ -370,14 +370,16 @@ def run():
         # Retrieve a list of the headers that each TU uses
         # We will need to include these in the driver
         # for types etc. to be defined
+        IFLAGS = get_I_flags_from_tu(DEP_SOURCE_DIFFS, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD)
+
         for diff in DEP_SOURCE_DIFFS:
-            add_includes_from_tu(diff, DEPENDENCY_OLD, TU_INCLUDES)
+            add_includes_from_tu(diff, DEPENDENCY_OLD, IFLAGS, TU_INCLUDES)
 
         for i,change in enumerate(CHANGED_FUNCTIONS[:]):
             func_name = change.old.ident.spelling
 
             if CONFIG.ONLY_ANALYZE != "" and \
-                    CONFIG.ONLY_ANALYZE != func_name:
+               CONFIG.ONLY_ANALYZE != func_name:
                 continue
 
             # - - - Harness generation - - - #
@@ -390,16 +392,18 @@ def run():
             tu_includes = TU_INCLUDES[change.old.filepath] if \
                         change.old.filepath in TU_INCLUDES else \
                         ([],[])
+            i_flags     = ' '.join(IFLAGS[change.old.filepath]).strip()
 
             if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                 pass # Use existing driver
             elif not create_harness(change, harness_path, \
-                    tu_includes, function_state, identity=True):
+                 tu_includes, function_state, identity=True):
                 continue # Generation failed
 
             # Run the identity harness
             if run_harness(change, script_env, harness_path, func_name, \
-                log_file, i+1, total, quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
+               log_file, i+1, total, i_flags, \
+               quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
 
                 harness_path = f"{harness_dir}/{change.old.ident.spelling}.c"
 
@@ -411,7 +415,7 @@ def run():
 
                 # Run the actual harness
                 if run_harness(change, script_env, harness_path, func_name, log_file, \
-                        i+1, total, quiet = CONFIG.SILENT_VERIFICATION):
+                   i+1, total, i_flags, quiet = CONFIG.SILENT_VERIFICATION):
                     # Remove the change from the change set if the equivalance check passes
                     CHANGED_FUNCTIONS.remove(change)
 

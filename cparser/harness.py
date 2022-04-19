@@ -1,5 +1,5 @@
 from datetime import datetime
-import os, subprocess, sys, signal
+import os, subprocess, sys, signal, json
 import shutil
 
 from clang import cindex
@@ -7,15 +7,36 @@ from cparser import BASE_DIR, CONFIG, AnalysisResult, \
         DependencyFunctionChange, FunctionState, SourceDiff, print_err
 from cparser.util import time_end, time_start, wait_on_cr
 
-def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
+
+def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str ) -> dict[str,set[str]]:
+    '''
+    Return a dict with paths (prepended with -I) to the directories
+    which need to be available with '-I' during goto-cc compilation for each TU
+    '''
+    base_paths = { d.new_path: set()   for d in diffs }
+    new_names =  [ d.new_path for d in diffs ]
+
+    with open(f"{old_src_dir}/compile_commands.json", mode='r', encoding='utf8') as f:
+        for tu in json.load(f):
+            basename = tu['file'].removeprefix(old_dir.rstrip("/")+"/")
+            if basename in new_names:
+                for arg in tu['arguments']:
+                    if arg.startswith("-I"):
+                        # Add the include path as an absolute path
+                        base_paths[basename].add(f"-I{tu['directory']}/{arg[2:]}")
+
+    return base_paths
+
+
+def add_includes_from_tu(diff: SourceDiff, old_dir: str, iflags: dict[str,set[str]],
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
-    Return a set of all the headers that are included into the TU 
+    Adds the set of all the headers that are included into the TU to the provided object
     that corresponds to the given diff split into headers under /usr/inlcude
     and project specific headers.
     The usr headers will be included with <...> in drivers and the others
-    will be included using "...", these files will be autaomtaically copied into the
-    OUTDIR directory which is on the include path of the driver
+    will be included using "...", these files will be included using
+    the basepath to the dependency which is on the include path of the driver
 
     Note that the order of includes matter so we want to use a list
 
@@ -26,19 +47,20 @@ def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
     included them (provided that they lack includes of their own)
     '''
     tu_old = cindex.TranslationUnit.from_source(
-            f"{old_root_dir}/{diff.old_path}",
+            f"{old_dir}/{diff.old_path}",
             args = diff.old_compile_args
     )
     usr_includes = []
     project_includes = []
     included_c_files = []
+    base_include_paths = [ f[2:] for f in iflags ]
 
     for inc in tu_old.get_includes():
         hdr_path = inc.include.name
 
         # Record if any .c files are included
         if hdr_path.endswith(".c"):
-            trimmed = hdr_path.removeprefix(old_root_dir).strip('/')
+            trimmed = hdr_path.removeprefix(old_dir).strip('/')
             included_c_files.append(trimmed)
             continue
 
@@ -53,14 +75,10 @@ def add_includes_from_tu(diff: SourceDiff, old_root_dir: str,
                     hdr_path.removeprefix("/usr/include/")
                 )
         else:
-            shutil.copy(hdr_path,
-                    f"{CONFIG.OUTDIR}/{os.path.basename(hdr_path)}"
-                )
-            hdr_path = hdr_path.removeprefix(old_root_dir+"/")
-            for include_path in CONFIG.DEP_INCLUDE_PATHS:
+            hdr_path = hdr_path.removeprefix(old_dir+"/")
+            for include_path in base_include_paths:
                 hdr_path = hdr_path.strip("/").removeprefix(include_path) \
                     .strip("/")
-
                 if os.path.basename(hdr_path) in CONFIG.BLACKLISTED_HEADERS:
                     continue
 
@@ -283,14 +301,16 @@ def log_harness(filename: str,
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
-        driver: str, func_name: str, log_file: str, current: int, total: int, quiet: bool) -> bool:
-    ''' 
+        driver: str, func_name: str, log_file: str, current: int, total: int,
+        dep_i_flags:str, quiet: bool) -> bool:
+    '''
     Returns True if the assertion in the harness
     was successful
     '''
     script_env.update({
         'DRIVER': driver,
         'FUNC_NAME': func_name,
+        'DEP_I_FLAGS': dep_i_flags
     })
 
     out = subprocess.DEVNULL if quiet else sys.stderr

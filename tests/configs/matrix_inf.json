@@ -1,32 +1,22 @@
 {
-	"COMMIT_OLD": "d85085cb4f92eefd237fd069a7a7111ec1e431c4",
-	"COMMIT_NEW": "8b39495d97efed354e93b68ed4be795d461b1258",
-
-	"PROJECT_DIR": "~/Repos/main",
-	"DEPENDENCY_DIR": "~/Repos/matrix",
-	"DEPLIB_NAME": "libmatrix.a",
-  
-  "DEP_INCLUDE_PATHS": [
-    "include"
-  ],
-
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 14", 
+  "COMMIT_OLD": "d85085cb4f92eefd237fd069a7a7111ec1e431c4",
+  "COMMIT_NEW": "8b39495d97efed354e93b68ed4be795d461b1258",
+  "PROJECT_DIR": "~/Repos/main",
+  "DEPENDENCY_DIR": "~/Repos/matrix",
+  "DEPLIB_NAME": "libmatrix.a",
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 14",
   "CBMC_TIMEOUT": 14,
-  
   "ENABLE_RESULT_LOG": true,
   "SHOW_FUNCTIONS": false,
   "DIE_ON_ERROR": true,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "USE_EXISTING_DRIVERS": true,
-
   "QUIET_BUILD": false,
-	"VERBOSITY": 1,
-	"NPROC": 1,
-	"SKIP_BLAME": false,
-	"SKIP_IMPACT": false,
-	"FULL": true,
-	"FORCE_RECOMPILE": false
+  "VERBOSITY": 1,
+  "NPROC": 1,
+  "SKIP_BLAME": false,
+  "SKIP_IMPACT": false,
+  "FULL": true,
+  "FORCE_RECOMPILE": false
 }
-
-
