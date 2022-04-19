@@ -26,7 +26,7 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err
+    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err, print_warn
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
@@ -73,7 +73,7 @@ def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir:
     remove_files_in(outdir)
     subdir_tus = get_subdir_tus(target_source_dir, target_dir)
     if CONFIG.VERBOSITY >= 3:
-        print_info("Subdirectories: ")
+        print("Subdirectories to analyze: ", end='')
         print([ p.removeprefix(f"{target_source_dir}/") for p in subdir_tus.keys()])
 
     with multiprocessing.Pool(CONFIG.NPROC) as p:
@@ -373,19 +373,23 @@ def run():
         IFLAGS = get_I_flags_from_tu(DEP_SOURCE_DIFFS, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD)
 
         for diff in DEP_SOURCE_DIFFS:
-            add_includes_from_tu(diff, DEPENDENCY_OLD, IFLAGS, TU_INCLUDES)
+            add_includes_from_tu(diff, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD, IFLAGS, TU_INCLUDES)
 
         for i,change in enumerate(CHANGED_FUNCTIONS[:]):
+            # - - - Harness generation - - - #
+            # Begin by generating an identity driver and verify that it
+            # passes as equivalent, then generate the actual driver and check if the
+            # change is considered equivalent
             func_name = change.old.ident.spelling
 
             if CONFIG.ONLY_ANALYZE != "" and \
                CONFIG.ONLY_ANALYZE != func_name:
                 continue
 
-            # - - - Harness generation - - - #
-            # Begin by generating an identity driver and verify that it
-            # passes as equivalent, then generate the actual driver and check if the
-            # change is considered equivalent
+            if not change.old.filepath in IFLAGS or len(IFLAGS[change.old.filepath]) == 0:
+                print_warn(f"Skipping {func_name}() due to missing compilation instructions for {change.old.filepath}")
+                continue
+
             harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
             function_state = ARG_STATES[func_name] if func_name in ARG_STATES \
                     else FunctionState()

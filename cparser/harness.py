@@ -7,7 +7,6 @@ from cparser import BASE_DIR, CONFIG, AnalysisResult, \
         DependencyFunctionChange, FunctionState, SourceDiff, print_err
 from cparser.util import time_end, time_start, wait_on_cr
 
-
 def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str ) -> dict[str,set[str]]:
     '''
     Return a dict with paths (prepended with -I) to the directories
@@ -27,8 +26,7 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str )
 
     return base_paths
 
-
-def add_includes_from_tu(diff: SourceDiff, old_dir: str, iflags: dict[str,set[str]],
+def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags: dict[str,set[str]],
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
     Adds the set of all the headers that are included into the TU to the provided object
@@ -75,7 +73,7 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, iflags: dict[str,set[st
                     hdr_path.removeprefix("/usr/include/")
                 )
         else:
-            hdr_path = hdr_path.removeprefix(old_dir+"/")
+            hdr_path = hdr_path.removeprefix(old_src_dir+"/")
             for include_path in base_include_paths:
                 hdr_path = hdr_path.strip("/").removeprefix(include_path) \
                     .strip("/")
@@ -154,7 +152,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         # Project include directives
         for header in includes[1]:
-            f.write(f"#include \"{os.path.basename(header)}\"\n")
+            f.write(f"#include \"{header}\"\n")
 
         # Any custom include directives for the specific file
         filename = os.path.basename(change.old.filepath)

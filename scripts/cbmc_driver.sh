@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-die(){ echo -e "\033[31m!>\033[0m $1" >&2 ; exit 1; }
+die(){ 
+  echo -e "\033[31m!>\033[0m $1" >&2
+  env | grep --color=never -oE "[_a-zA-Z0-9]+=$"
+  exit 1
+}
 output_formatting(){
 	esc=$(printf "\033[")
 	sed "/^file/d; /^Unwinding/d; /^Not unwinding/d; /^aborting/d
@@ -11,7 +15,7 @@ output_formatting(){
 	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
 	 -z "$FUNC_NAME"  || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
    -z "$DEP_I_FLAGS"
-]] && die "Missing environment variable(s)"
+]] && die "Missing environment variable(s): The following not set:"
 
 cbmc_output=$(mktemp)
 rm -f $OUTFILE

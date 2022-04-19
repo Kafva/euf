@@ -37,17 +37,14 @@ def run_autoreconf(path: str, out) -> bool:
 
 def run_if_present(path:str, filename: str, out) -> bool:
     script_env = os.environ.copy()
-    args = ""
 
     if filename.lower() == "configure":
         script_env.update(CONFIG.BUILD_ENV)
-        # Only required for __really__ old versions of expat
-        #args = f" --target {CONFIG.TARGET_TRIPLET}"
 
     if os.path.exists(f"{path}/{filename}"):
         try:
-            print_info(f"{path}: Running ./{filename}{args}...")
-            (subprocess.run([ f"./{filename}" ] + args.split(' '),
+            print_info(f"{path}: Running ./{filename}...")
+            (subprocess.run([ f"./{filename}" ],
                 cwd = path, stdout = out, stderr = out,
                 env = script_env
             )).check_returncode()

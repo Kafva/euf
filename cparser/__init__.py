@@ -204,7 +204,7 @@ class Config:
         All custom shell scripts invoked by EUF will 
         have (at least) these values available
         '''
-        script_env = os.environ.copy()
+        script_env = os.environ.copy() # This is neccessary for clang
         script_env.update({
             'DEPENDENCY_DIR': self.DEPENDENCY_DIR,
             'DEP_SOURCE_ROOT': self.DEP_SOURCE_ROOT,
