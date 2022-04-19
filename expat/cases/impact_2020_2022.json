@@ -5,7 +5,8 @@
   "DEPLIB_NAME": "libexpat.a",
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
-    "expat/examples/.*"
+    "expat/examples/.*",
+    "expat/fuzz/.*"
   ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [

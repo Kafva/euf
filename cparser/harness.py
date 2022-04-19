@@ -85,8 +85,11 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags
 
     # Add all of the headers from the current TU to the C files
     # that it includes
+    #
+    # Also add the include flags from the 'parent'
     for c_file in included_c_files:
         tu_includes[c_file]    = (usr_includes, project_includes)
+        iflags[c_file]         = iflags[diff.old_path]
 
     if len(usr_includes) > 0 or len(project_includes) > 0:
         tu_includes[diff.old_path] = (usr_includes, project_includes)
@@ -150,21 +153,29 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         f.write("\n")
 
-        # Project include directives
-        for header in includes[1]:
-            f.write(f"#include \"{header}\"\n")
-
         # Any custom include directives for the specific file
+        # Note that these are included _before_ standard project includes
         filename = os.path.basename(change.old.filepath)
         if filename in CONFIG.CUSTOM_HEADERS:
             f.write("\n")
             for header in CONFIG.CUSTOM_HEADERS[filename]:
                 header = os.path.expanduser(header)
-                header_name = os.path.basename(header)
-                shutil.copy(header, f"{CONFIG.OUTDIR}/{header_name}")
+                if header.startswith("/") and os.path.isfile(header):
+                    # The header is a custom header that should be copied to .out
+                    header_name = os.path.basename(header)
+                    shutil.copy(header, f"{CONFIG.OUTDIR}/{header_name}")
+                else:
+                    # The header references an internal file in the project
+                    header_name = header
+
                 f.write(f"#include \"{header_name}\"")
             f.write("\n")
 
+        f.write("\n")
+
+        # Project include directives
+        for header in includes[1]:
+            f.write(f"#include \"{header}\"\n")
 
         # Decleration of the old version of the function
         f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n")

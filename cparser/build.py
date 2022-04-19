@@ -84,9 +84,26 @@ def autogen_compile_db(source_path: str) -> bool:
     if not os.path.exists(f"{source_path}/configure"):
         run_autoreconf(source_path, out)
 
+    conf_script = None
+    if os.path.exists(f"{source_path}/configure"):
+        conf_script = f"{source_path}/configure"
+    elif os.path.exists(f"{source_path}/Configure"):
+        conf_script = f"{source_path}/Configure"
+
     # 1. Configure the project according to ./configure if applicable
-    if not run_if_present(source_path, "configure", out):
-        run_if_present(source_path, "Configure", out)
+    # CC=goto-cc should NOT be set when generating the ccdb since this
+    # can cause platform specific definitions to be omitted
+    if conf_script:
+        script_env = CONFIG.get_script_env()
+        script_env.update(CONFIG.BUILD_ENV)
+        try:
+            print_info(f"{source_path}: Running {conf_script}...")
+            (subprocess.run([ conf_script ],
+                cwd = source_path, stdout = out, stderr = out,
+                env = script_env
+            )).check_returncode()
+        except subprocess.CalledProcessError:
+            return check_ccdb_fail(source_path)
 
     # 3. Run 'make' with 'bear'
     if os.path.exists(f"{source_path}/Makefile"):

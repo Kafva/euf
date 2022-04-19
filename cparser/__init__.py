@@ -129,8 +129,18 @@ class Config:
     #
     # Format:
     #   src_file: [
-    #       "custom.h"
+    #       "/path/to/custom.h"
     #    ]
+    #
+    # If libclang fails to include a header that a TU actually uses,
+    # a header entry can be provided in this array on the form
+    #
+    #   src_file: [
+    #      "exact_include_directive" 
+    #   ]
+    #
+    # EUF will differentiate between the two cases based on if the
+    # the value is existant file or not
     CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
 
     # Expat has certain headers which work more like macro definitions
