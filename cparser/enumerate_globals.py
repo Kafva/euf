@@ -2,7 +2,7 @@ import os, traceback
 from clang import cindex
 from typing import Set
 
-from cparser.util import time_start, time_end
+from cparser.util import has_allowed_suffix, time_start, time_end
 from cparser import CONFIG, IdentifierLocation, print_err
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
@@ -57,7 +57,7 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> S
             filepath = ccmds.filename
 
             # Skip files in other formats, e.g. asm
-            if (not filepath.endswith(".c")) and (not filepath.endswith(".h")):
+            if not has_allowed_suffix(filepath):
                 continue
 
             if not filepath.startswith(basepath):

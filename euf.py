@@ -29,7 +29,7 @@ from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, Functi
     ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err, print_warn
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
-from cparser.util import flatten, flatten_dict, mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
+from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
@@ -132,7 +132,7 @@ def run():
     # change has occurred at the same time as a move operation:
     #   e.g. `foo.c -> src/foo.c`
     COMMIT_DIFF = filter(lambda d: \
-                str(d.a_path).endswith(".c") and \
+                has_allowed_suffix(d.a_path) and \
                 re.match("M|R", d.change_type),
         COMMIT_OLD.diff(COMMIT_NEW)
     )
@@ -159,7 +159,7 @@ def run():
     if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
         ADDED_DIFF = list(filter(lambda d: \
-                    str(d.a_path).endswith(".c") and \
+                    has_allowed_suffix(d.a_path) and
                     'A' == d.change_type,
             COMMIT_OLD.diff(COMMIT_NEW)
         ))
@@ -237,7 +237,7 @@ def run():
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
     main_repo = Repo(CONFIG.PROJECT_DIR)
-    PROJECT_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
+    PROJECT_SOURCE_FILES = filter(lambda p: has_allowed_suffix(p),
         [ e.path for e in main_repo.tree().traverse() ] # type: ignore
     )
 
@@ -292,7 +292,7 @@ def run():
 
     # Create a list of all files from the dependency
     # used for transative call analysis and state space estimation
-    DEP_SOURCE_FILES = filter(lambda p: str(p).endswith(".c"),
+    DEP_SOURCE_FILES = filter(lambda p: has_allowed_suffix(p),
         [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
     )
 

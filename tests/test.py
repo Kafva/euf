@@ -63,8 +63,8 @@ def test_join_arg_states_result():
 
     if os.path.exists(EXPAT_OLD_PATH):
         for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH, EXPAT_OLD_PATH).items():
-            print(subdir)
             call_arg_states_plugin(function_name, outdir, EXPAT_OLD_SRC_PATH, subdir, subdir_tu, quiet=True)
 
     result = join_arg_states_result( [ EXPAT_OLD_NAME ] )
-    assert( result[function_name].parameters[1].states == set([0,1,2]) )
+    # If one includes the lib/tests/ path the expected set increases to [0,1,2]
+    assert( result[function_name].parameters[1].states == set([0,2]) )

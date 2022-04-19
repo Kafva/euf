@@ -169,6 +169,9 @@ class Config:
     # [0.5,RENAME_RATIO_LOW]
     RENAME_RATIO_LOW: float = .3
 
+    # Only files with these suffixes are considered during analysis
+    SUFFIX_WHITELIST = [".c", ".h"]
+
     # Only used during ccdb generation
     TARGET_TRIPLET: str = "x86_64-unknown-linux"
 

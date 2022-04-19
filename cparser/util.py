@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, re
 from datetime import datetime
 from typing import Set
 
@@ -114,6 +114,10 @@ def mkdir_p(path: str):
 def rm_f(path: str):
     if os.path.exists(path):
         os.remove(path)
+
+def has_allowed_suffix(string) -> bool:
+    suffixes = "|".join(CONFIG.SUFFIX_WHITELIST).strip("|").replace(".", "\\.")
+    return re.match(rf".*({suffixes})$", string) != None
 
 def remove_files_in(path: str):
     if os.path.isdir(path):
