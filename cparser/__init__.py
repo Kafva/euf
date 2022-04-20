@@ -40,13 +40,22 @@ def matches_excluded(string: str) -> bool:
     return False
 
 class AnalysisResult(Enum):
-    SUCCESS = 0 # SUCCESS verification: equivalent change
+    # SUCCESS verification: equivalent change
+    SUCCESS = 0
     ERROR = 1
     INTERRUPT = 51
     TIMEOUT = 52
-    NO_VCCS = 53 # "SUCCESS": No verification conditions generated
-    FAILURE = 54 # FAILED verification: non-equivalent change
-    NO_BODY = 55 # Inconclusive: One or both of the functions to test lacks a body
+    # "SUCCESS": No verification conditions generated
+    NO_VCCS = 53
+    # FAILED verification: non-equivalent change
+    FAILURE = 54
+    # Inconclusive: One or both of the functions to test lacks a body
+    NO_BODY = 55
+    # Occurs if a struct has a different number of fields in the old/new update
+    STRUCT_CNT_CONFLICT = 63
+    # Occurs if a struct has a different types for fields in the old/new update
+    STRUCT_TYPE_CONFLICT = 64
+
     # Failed pre-analysis checks
     VOID_RET = 56
     VOID_ARG = 57
@@ -54,7 +63,8 @@ class AnalysisResult(Enum):
     DIFF_RET = 59
     DIFF_ARG_CNT = 60
     DIFF_ARG_TYPE = 61
-    MISSING_COMPILE = 62 # Occurs if the TU the function lies in does not have a IFLAGS entry
+    # Occurs if the TU the function lies in does not have a IFLAGS entry
+    MISSING_COMPILE = 62
     NONE = 255 # Basecase used in `print_result`
 
 @dataclass
@@ -101,7 +111,8 @@ class Config:
 
     # Name of a specific function to limit analysis during debugging
     ONLY_ANALYZE: str = ""
-    SILENT_IDENTITY_VERIFICATION: bool = True
+
+    SILENT_IDENTITY_VERIFICATION: bool = False
     SILENT_VERIFICATION: bool = False
 
     SKIP_BLAME: bool = False

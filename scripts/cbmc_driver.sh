@@ -11,9 +11,9 @@ output_formatting(){
 		s/ FAILURE/${esc}1;31m FAILURE${esc}0m/;
 		"
 }
-[[ -z "$OUTDIR" 		|| -z "$DRIVER"  			|| -z "$CBMC_OPTS_STR"    ||
-	 -z "$NEW_LIB"  	|| -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
-	 -z "$FUNC_NAME"  || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
+[[ -z "$OUTDIR" 		 || -z "$DRIVER"  			|| -z "$CBMC_OPTS_STR"    ||
+	 -z "$NEW_LIB"  	 || -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
+	 -z "$FUNC_NAME"   || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
    -z "$DEP_I_FLAGS"
 ]] && die "Missing environment variable(s): The following not set:"
 
@@ -25,7 +25,14 @@ rm -f $OUTFILE
 
 goto-cc -DCBMC -I $OUTDIR  $DEP_I_FLAGS \
 	$NEW_LIB $OLD_LIB $DRIVER \
- 	-o $OUTFILE || exit $?
+ 	-o $OUTFILE 2>&1 | tee $cbmc_output
+
+retval=${PIPESTATUS[0]}
+
+# Print compilation errors if SHOW_ERRORS is set
+grep -qE "names of member [0-9]+ differ"  $cbmc_output && retval=64
+grep -q  "number of members is different" $cbmc_output && retval=63
+[ $retval != 0 ] && exit $retval
 
 # If we use '--drop-unused-functions' we lose pretty much
 # all functions (at least according to --list-goto-functions)
@@ -45,11 +52,9 @@ time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 
 rm -f $OUTFILE
 
-# Arbitrary return codes to signify: 
-# * failed verification (54)
-# * lack of VCCs (53)
-# * lack of body for the function being tested (55)
-grep -q "no body for function ${FUNC_NAME}$" $cbmc_output && exit 55
-grep -q "no body for function ${FUNC_NAME}_old_b026324c6904b2a$" $cbmc_output && exit 55
-grep -q "0 remaining after simplification" $cbmc_output && exit 53
-grep -q "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54
+# Arbitrary return codes to signify different errors, 
+# see cparser/__init__.py
+grep -q  "no body for function ${FUNC_NAME}$" $cbmc_output && exit 55
+grep -q  "no body for function ${FUNC_NAME}_old_b026324c6904b2a$" $cbmc_output && exit 55
+grep -q  "0 remaining after simplification" $cbmc_output && exit 53
+grep -q  "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54

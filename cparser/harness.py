@@ -313,12 +313,12 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         f.write(f"\n}}\n#endif\n")
 
 def log_harness(filename: str,
-        func_name: str,
-        identity: bool|None,
-        result: AnalysisResult,
-        start_time: datetime|None,
-        driver: str,
-        change: DependencyFunctionChange) -> None:
+    func_name: str,
+    identity: bool|None,
+    result: AnalysisResult,
+    start_time: datetime|None,
+    driver: str,
+    change: DependencyFunctionChange) -> None:
     '''
     We allow None as a parameter for cases where pre-analysis checks fail
     '''
@@ -335,8 +335,8 @@ def log_harness(filename: str,
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
-        driver: str, func_name: str, log_file: str, current: int, total: int,
-        dep_i_flags:str, quiet: bool) -> bool:
+    driver: str, func_name: str, log_file: str, current: int, total: int,
+    dep_i_flags:str, quiet: bool) -> bool:
     '''
     Returns True if the assertion in the harness
     was successful
@@ -383,6 +383,10 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         return False
 
     match return_code:
+        case AnalysisResult.STRUCT_CNT_CONFLICT.value:
+            msg = f"Differing member count in one or more structs"
+        case AnalysisResult.STRUCT_TYPE_CONFLICT.value:
+            msg = f"Type conflict in one or more structs"
         case AnalysisResult.NO_BODY.value:
             msg = f"No body available for {func_name}"
         case AnalysisResult.NO_VCCS.value:

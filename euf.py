@@ -403,7 +403,6 @@ def run():
                 create_harness(change, harness_path, tu_includes,
                     function_state, identity=True
                 )
-
             # Run the identity harness
             if run_harness(change, script_env, harness_path, func_name, \
                log_file, i+1, total, i_flags, \
@@ -417,7 +416,6 @@ def run():
                     create_harness(change, harness_path, tu_includes,
                         function_state, identity=False
                     )
-
                 # Run the actual harness
                 if run_harness(change, script_env, harness_path, func_name, log_file, \
                    i+1, total, i_flags, quiet = CONFIG.SILENT_VERIFICATION):

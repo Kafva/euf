@@ -95,6 +95,10 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
             print_fail(msg)
         case AnalysisResult.NO_BODY:
             print_fail(msg)
+        case AnalysisResult.STRUCT_CNT_CONFLICT:
+            print_err(msg)
+        case AnalysisResult.STRUCT_TYPE_CONFLICT:
+            print_err(msg)
         case AnalysisResult.ERROR:
             print_err(msg)
         case AnalysisResult.NONE:
