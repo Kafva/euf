@@ -40,8 +40,7 @@ def matches_excluded(string: str) -> bool:
     return False
 
 class AnalysisResult(Enum):
-    # SUCCESS verification: equivalent change
-    SUCCESS = 0
+    SUCCESS = 0 # SUCCESS verification: equivalent change
     ERROR = 1
     INTERRUPT = 51
     TIMEOUT = 52

@@ -70,7 +70,6 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
     else:
         return True
 
-
 def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str ) -> dict[str,set[str]]:
     '''
     Return a dict with paths (prepended with -I) to the directories

@@ -46,6 +46,9 @@
   "CUSTOM_HEADERS": {
     "regcomp.c": [
       "~/Repos/euf/onig/include/regcomp.h"
+    ],
+    "regparse.c": [
+      "~/Repos/euf/onig/include/regparse2.h"
     ]
   },
 
