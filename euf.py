@@ -178,6 +178,7 @@ def run():
             subprocess.run(["git", # Force pager for every file
                 "-c", "core.pager=less -+F -c",
                 "diff", "--no-index", "--color=always",
+                "--function-context",
                 f"{DEPENDENCY_OLD}/{d.old_path}",
                 f"{DEPENDENCY_NEW}/{d.new_path}" ])
         sys.exit(0)

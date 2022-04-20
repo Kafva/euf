@@ -43,7 +43,15 @@
     "sample/.*",
     "test/.*"
   ],
-  "FORCE_RECOMPILE": true,
+  "CUSTOM_HEADERS": {
+    "regcomp.c": [
+      "~/Repos/euf/onig/include/regcomp.h"
+    ],
+    "regparse.c": [
+      "~/Repos/euf/onig/include/regparse2.h"
+    ]
+  },
+  "FORCE_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 7,

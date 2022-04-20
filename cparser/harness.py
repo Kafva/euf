@@ -258,21 +258,53 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         # The initialisation procedure is done per function argument and the
         # type of argument dictates how the initialization is done
+        arg_string_old = ""
         arg_string = ""
+        SUFFIX = CONFIG.SUFFIX
+        unequal_inputs = False
 
         # Note that all checks for e.g. void params are done before calling create_harness()
         for arg in change.old.arguments:
-            if not arg.is_ptr:
+
+            # If the function takes a paramter whose type has been renamed, 
+            #   e.g. OnigEncodingTypeST or usbi_os_backend
+            # we cannot perform any meaningful verification unless we are able
+            # to initialise each seperate field and create assumptions for each one
+            # that the _old and regular objects are equal in every way except their
+            # function_ptr fields (TODO)
+            #
+            # For now, we just initalise both as nondet(), meaning that a passing equivalance
+            # check would infer a pass for all (unrelated) possible values of the parameter.
+            # A SUCCESS result for this limited harness would still be sound but it would
+            # need to produce the same output regardless of what values the input has
+            # (since it is no longer synced between the calls)
+            base_type = arg.type_spelling.removeprefix("struct").strip(' *')
+
+            if base_type in CONFIG.EXPLICIT_RENAME:
+                unequal_inputs = True
+
+                type_str = arg.explicitly_renamed_type()
+                f.write(f"{INDENT}{type_str} {arg.spelling}{SUFFIX};\n"  )
+
+                arg_string_old += f"{arg.spelling}{SUFFIX}, "
+
+                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                arg_string += f"{arg.spelling}, "
+
+            elif not arg.is_ptr:
                 # For non-pointer types we only need to create one variable
                 # since the original value will not be modified and thus
                 # will not need to be verified
                 f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                arg_string_old += f"{arg.spelling}, "
                 arg_string += f"{arg.spelling}, "
             else:
                 # Argument initialisation
                 f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                arg_string_old += f"{arg.spelling}, "
                 arg_string += f"{arg.spelling}, "
 
+        arg_string_old = arg_string_old.removesuffix(", ")
         arg_string = arg_string.removesuffix(", ")
 
         # 2. Preconditions
@@ -297,12 +329,18 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # 3. Call the functions under verification
         ret_type = change.old.ident.type_spelling
 
-        f.write(f"{INDENT}{ret_type} ret_old = ")
-        f.write(f"{change.old.ident.spelling}{CONFIG.SUFFIX}({arg_string});\n")
+        if unequal_inputs and not identity:
+            f.write(f"{INDENT}// Unequal input comparsion\n")
 
-        suffix = CONFIG.SUFFIX if identity else ''
+        f.write(f"{INDENT}{ret_type} ret_old = ")
+        f.write(f"{change.old.ident.spelling}{SUFFIX}({arg_string_old});\n")
+
         f.write(f"{INDENT}{ret_type} ret = ")
-        f.write(f"{change.new.ident.spelling}{suffix}({arg_string});\n\n")
+        if identity:
+            f.write(f"{change.new.ident.spelling}{SUFFIX}({arg_string_old});\n\n")
+        else:
+            f.write(f"{change.new.ident.spelling}({arg_string});\n\n")
+
 
         # 4. Postconditions
         #   Verify equivalance with one or more assertions
@@ -349,7 +387,10 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     out = subprocess.PIPE if quiet else sys.stderr
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
-    time_start(f"{'(ID) ' if identity else ''}Starting CBMC analysis for {change.old}: {os.path.basename(driver)} ({current}/{total})")
+    id_str = '(ID) ' if identity else ''
+    time_start(f"{id_str}Starting CBMC analysis for {change.old}: " +
+               f"{os.path.basename(driver)} ({current}/{total})"
+    )
     wait_on_cr()
 
     start = datetime.now()
@@ -370,7 +411,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         p.wait(timeout=CONFIG.CBMC_TIMEOUT)
 
         if quiet:
-            output = p.stdout.read().decode('ascii')  # type: ignore
+            output = p.stdout.read().decode('utf8')  # type: ignore
         return_code = p.returncode
 
     except KeyboardInterrupt:

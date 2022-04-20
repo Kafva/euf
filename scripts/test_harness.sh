@@ -18,11 +18,7 @@ for func_name in $@; do
 
 cat << EOF > /tmp/$func_name.json
 {
-  "ONLY_ANALYZE": "$func_name",
-  "SILENT_IDENTITY_VERIFICATION": false,
-  "SKIP_IMPACT": true,
-  "SHOW_FUNCTIONS": false,
-  "DIE_ON_ERROR": true
+  "ONLY_ANALYZE": "$func_name"
 }
 EOF
 

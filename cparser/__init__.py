@@ -122,6 +122,7 @@ class Config:
     IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
 
     # Show part of the goto functions before running CBMC analysis
+    # ** NOTE: Overriden by SILENT_VERIFICATION **
     SHOW_FUNCTIONS: bool = False
 
     # Generate warnings when inconsistent parameter usage is detected
@@ -323,10 +324,34 @@ class Identifier:
     is_ptr: bool = False
     is_const: bool = False
 
-    def __repr__(self, paranthesis: bool = True):
+
+    def explicitly_renamed_type(self) -> str:
+        '''
+        Add a SUFFIX to type names that are explicitly renamed
+        through config options
+        '''
+        base_type = self.type_spelling.removeprefix("struct").strip(' *')
+
+        if base_type in CONFIG.EXPLICIT_RENAME:
+            struct = "struct " if self.type_spelling.startswith("struct") else ''
+            type_str = f"{struct}{base_type}{CONFIG.SUFFIX}"
+
+            if self.type_spelling.endswith("*"):
+                type_str = f"{type_str}*"
+        else:
+            type_str = self.type_spelling
+
+        return type_str
+
+
+    def __repr__(self, paranthesis: bool = True, explicit_type:str = ""):
         constant = 'const ' if self.is_const else ''
         func = '()' if self.is_function and paranthesis else ''
-        return f"{constant}{self.type_spelling} {self.spelling}{func}"
+
+        # Allow for a custom type string when we need to add suffixes
+        type_str = explicit_type if explicit_type != "" else self.type_spelling
+
+        return f"{constant}{type_str} {self.spelling}{func}"
 
     def dump(self, header:bool = False) -> str:
         fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
@@ -600,7 +625,10 @@ class DependencyFunction:
     def prototype_string(self, suffix: str = "") -> str:
         out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
         for arg in self.arguments:
-            out += f"{arg}, "
+            if suffix != "":
+                out += f"{arg.explicitly_renamed_type()}, "
+            else:
+                out += f"{arg}, "
 
         return out.removesuffix(", ") + ")"
 
