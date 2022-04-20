@@ -109,11 +109,13 @@ def write_rename_files(dep_path: str, ccdb: cindex.CompilationDatabase,):
         for identifier in global_identifiers:
             f.write(f"{identifier.to_csv()}\n")
 
+        for identifier in CONFIG.EXPLICIT_RENAME:
+            f.write(f";{identifier};;\n")
+
     # Used by CBMC when invoked with 'USE_SUFFIX'
     with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
         for identifier in global_identifiers:
             f.write(f"{identifier.name}\n")
 
-        ## HACKS: TODO config ##
-        f.write("usbi_backend\n")
-        f.write("usbi_os_backend\n")
+        for identifier in CONFIG.EXPLICIT_RENAME:
+            f.write(f"{identifier}\n")

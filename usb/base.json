@@ -2,8 +2,19 @@
   "PROJECT_DIR": "~/Repos/libcups",
   "DEPENDENCY_DIR": "~/Repos/libusb",
   "DEPLIB_NAME": "libusb-1.0.a",
+
+  "EXPLICIT_RENAME": [
+    "usbi_os_backend",
+    "usbi_backend"
+  ],
   "CUSTOM_HEADERS": {
     "linux_usbfs.c": [
+      "libusb/libusbi.h"
+    ],
+    "linux_netlink.c": [
+      "libusb/libusbi.h"
+    ],
+    "linux_udev.c": [
       "libusb/libusbi.h"
     ]
   },

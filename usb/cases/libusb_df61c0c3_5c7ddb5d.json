@@ -2,8 +2,18 @@
   "PROJECT_DIR": "~/Repos/libcups",
   "DEPENDENCY_DIR": "~/Repos/libusb",
   "DEPLIB_NAME": "libusb-1.0.a",
+  "EXPLICIT_RENAME": [
+    "usbi_os_backend",
+    "usbi_backend"
+  ],
   "CUSTOM_HEADERS": {
     "linux_usbfs.c": [
+      "libusb/libusbi.h"
+    ],
+    "linux_netlink.c": [
+      "libusb/libusbi.h"
+    ],
+    "linux_udev.c": [
       "libusb/libusbi.h"
     ]
   },
@@ -12,22 +22,23 @@
     "msvc/.*",
     "examples/.*",
     "tests/.*",
-    "libusb/os/darwin.*",
-    "libusb/os/windows.*",
-    "libusb/os/haiku.*",
-    "libusb/os/freebsd.*",
-    "libusb/os/netbsd.*",
-    "libusb/os/openbsd.*",
-    "libusb/os/sunos.*",
+    "libusb/os/darwin*",
+    "libusb/os/windows*",
+    "libusb/os/haiku*",
+    "libusb/os/freebsd*",
+    "libusb/os/netbsd*",
+    "libusb/os/openbsd*",
+    "libusb/os/sunos*",
     "libusb/os/threads_windows.h"
   ],
-  "FORCE_RECOMPILE": true,
+  "FORCE_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 7,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
-  "SILENT_IDENTITY_VERIFICATION": false,
+  "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_VERIFICATION": false,
   "USE_EXISTING_DRIVERS": false,
   "REVERSE_MAPPING": true,
   "VERBOSITY": 2,
@@ -35,9 +46,7 @@
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,
   "FULL": true,
-  "COMMIT_OLD": "6baa3239baf6d2b3a910ba720f63e7edcc0e2740",
-  "COMMIT_NEW": "c3deb6dd6440fd467ce12965742f2d7a228b3bbe",
-  "QUIET_BUILD": true
+  "QUIET_BUILD": true,
+  "COMMIT_OLD": "df61c0c3a3de070c7f7a714ef8758a248bf97263",
+  "COMMIT_NEW": "5c7ddb5ddf1fe1d9f8c68e7deefe3bd53e1e3e8c"
 }
-
-

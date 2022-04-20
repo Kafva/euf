@@ -4,8 +4,72 @@ import shutil
 
 from clang import cindex
 from cparser import BASE_DIR, CONFIG, AnalysisResult, \
-        DependencyFunctionChange, FunctionState, SourceDiff, print_err
-from cparser.util import time_end, time_start, wait_on_cr
+        DependencyFunctionChange, FunctionState, SourceDiff
+from cparser.util import print_result, time_end, time_start, wait_on_cr, print_err
+
+
+def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
+        logfile: str= "", quiet:bool = False) -> bool:
+    '''
+    If a change passes this function, it should be possible 
+    to create a harness for it.
+    '''
+    func_name = change.old.ident.spelling
+    result = AnalysisResult.SUCCESS
+    fail_msg = ""
+
+    # There exists compilation instructions for the TU the function is defined in
+    if not change.old.filepath in iflags or len(iflags[change.old.filepath]) == 0:
+        fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.filepath}"
+        result = AnalysisResult.MISSING_COMPILE
+
+    # The number-of arugments and their types have not changed
+    elif (old_cnt := len(change.old.arguments)) != \
+        (new_cnt := len(change.new.arguments)):
+        fail_msg = f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt} in {change}"
+        result = AnalysisResult.DIFF_ARG_CNT
+
+    # The return-type has not changed
+    elif change.old.ident != change.new.ident:
+        fail_msg = \
+            f"Different return type: a/{change.old.ident.type_spelling} " + \
+            f"-> b/{change.old.ident.type_spelling} in {change}"
+        result = AnalysisResult.DIFF_RET
+
+    # Function does not have a void return value
+    elif change.old.ident.type_spelling == "void":
+        fail_msg = f"Cannot verify function with a 'void' return value: {change.old}"
+        result = AnalysisResult.VOID_RET
+
+    # Function has at least one parameter
+    elif len(change.old.arguments) == 0:
+        fail_msg = f"Cannot verify a function with zero arguments: {change.old}"
+        result = AnalysisResult.NO_ARGS
+    else:
+        # The paramter types have not changed
+        for a1,a2 in zip(change.old.arguments,change.new.arguments):
+            if a1!=a2:
+                fail_msg = f"Different argument types: a/{a1} -> b/{a2} in {change}"
+                result = AnalysisResult.DIFF_ARG_TYPE
+                break
+
+        if result == AnalysisResult.SUCCESS:
+            # We cannot auto-generate harnesses for functions that require void pointers
+            for arg in change.old.arguments:
+                if arg.type_spelling == "void*":
+                    fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old}"
+                    result = AnalysisResult.VOID_ARG
+                    break
+
+    if result != AnalysisResult.SUCCESS:
+        if logfile != "":
+            log_harness(logfile, func_name, None, result, None, "", change)
+        if not quiet:
+            print_result(fail_msg, result)
+        return False
+    else:
+        return True
+
 
 def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str ) -> dict[str,set[str]]:
     '''
@@ -95,7 +159,7 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags
         tu_includes[diff.old_path] = (usr_includes, project_includes)
 
 def create_harness(change: DependencyFunctionChange, harness_path: str,
-        includes: tuple[list[str],list[str]], function_state: FunctionState, identity: bool = False) -> bool:
+        includes: tuple[list[str],list[str]], function_state: FunctionState, identity: bool = False) -> None:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -112,32 +176,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
     If "identity" is set, the comparsion will be made with the old version
     and itself, creating a seperate harness file with the suffix _id
     '''
-
-    # ~~Basic assumptions for harness generation~~
-    # The number-of arugments and their types have not changed
-
-    if not identity:
-        if (old_cnt := len(change.old.arguments)) != \
-            (new_cnt := len(change.new.arguments)):
-            print_err(f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt}")
-            return False
-
-        for a1,a2 in zip(change.old.arguments,change.new.arguments):
-            if a1!=a2:
-                print_err(f"Different argument types: a/{a1} -> b/{a2}")
-                return False
-
-        # The return-type has not changed
-        if change.old.ident != change.new.ident:
-            print_err(
-                f"Different return type: a/{change.old.ident.type_spelling} " + \
-                f"-> b/{change.old.ident.type_spelling}"
-            )
-            return False
-
     INDENT=CONFIG.INDENT
-    failed_generation = False
-    fail_msg = ""
 
     # Write the harness
     with open(harness_path, mode='w', encoding='utf8') as f:
@@ -222,82 +261,67 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # type of argument dictates how the initialization is done
         arg_string = ""
 
-        if change.old.ident.type_spelling == "void":
-            failed_generation = "True"
-            fail_msg = f"Cannot verify function with a 'void' return value: {change.old}"
-        else:
-            for arg in change.old.arguments:
-                if not arg.is_ptr:
-                    # For non-pointer types we only need to create one variable
-                    # since the original value will not be modified and thus
-                    # will not need to be verified
-                    f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
-                    arg_string += f"{arg.spelling}, "
+        # Note that all checks for e.g. void params are done before calling create_harness()
+        for arg in change.old.arguments:
+            if not arg.is_ptr:
+                # For non-pointer types we only need to create one variable
+                # since the original value will not be modified and thus
+                # will not need to be verified
+                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                arg_string += f"{arg.spelling}, "
+            else:
+                # Argument initialisation
+                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                arg_string += f"{arg.spelling}, "
 
-                elif arg.type_spelling == "void*":
-                    # We cannot auto-generate harnesses for 
-                    # functions that require void pointers
-                    failed_generation = True
-                    fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old}"
-                    break
-                else:
-                    # Argument initialisation
-                    f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
-                    arg_string += f"{arg.spelling}, "
+        arg_string = arg_string.removesuffix(", ")
 
-        if not failed_generation:
-            arg_string = arg_string.removesuffix(", ")
+        # 2. Preconditions
+        # Create assumptions for any arguments that were identified as only being
+        # called with deterministic values
+        f.write("\n")
+        for idx,param in enumerate(function_state.parameters):
+            if not param.nondet and len(param.states) > 0:
+                arg_name = change.old.arguments[idx].spelling
+                f.write(f"{INDENT}__CPROVER_assume(\n")
 
-            # 2. Preconditions
-            # Create assumptions for any arguments that were identified as only being
-            # called with deterministic values
-            f.write("\n")
-            for idx,param in enumerate(function_state.parameters):
-                if not param.nondet and len(param.states) > 0:
-                    arg_name = change.old.arguments[idx].spelling
-                    f.write(f"{INDENT}__CPROVER_assume(\n")
+                out_string = ""
+                for state in param.states:
+                    state_val  = state if str(state).isnumeric() else f"\"{state}\""
+                    out_string += f"{INDENT}{INDENT}{arg_name} == {state_val} ||\n"
 
-                    out_string = ""
-                    for state in param.states:
-                        state_val  = state if str(state).isnumeric() else f"\"{state}\""
-                        out_string += f"{INDENT}{INDENT}{arg_name} == {state_val} ||\n"
+                out_string = out_string.removesuffix(" ||\n")
 
-                    out_string = out_string.removesuffix(" ||\n")
+                f.write(f"{out_string}\n{INDENT});\n")
+        f.write("\n")
 
-                    f.write(f"{out_string}\n{INDENT});\n")
-            f.write("\n")
+        # 3. Call the functions under verification
+        ret_type = change.old.ident.type_spelling
 
-            # 3. Call the functions under verification
-            ret_type = change.old.ident.type_spelling
+        f.write(f"{INDENT}{ret_type} ret_old = ")
+        f.write(f"{change.old.ident.spelling}{CONFIG.SUFFIX}({arg_string});\n")
 
-            f.write(f"{INDENT}{ret_type} ret_old = ")
-            f.write(f"{change.old.ident.spelling}{CONFIG.SUFFIX}({arg_string});\n")
+        suffix = CONFIG.SUFFIX if identity else ''
+        f.write(f"{INDENT}{ret_type} ret = ")
+        f.write(f"{change.new.ident.spelling}{suffix}({arg_string});\n\n")
 
-            suffix = CONFIG.SUFFIX if identity else ''
-            f.write(f"{INDENT}{ret_type} ret = ")
-            f.write(f"{change.new.ident.spelling}{suffix}({arg_string});\n\n")
+        # 4. Postconditions
+        #   Verify equivalance with one or more assertions
+        f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
 
-            # 4. Postconditions
-            #   Verify equivalance with one or more assertions
-            f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
-
-            # Enclose driver function
-            f.write(f"\n}}\n#endif\n")
-
-    if failed_generation:
-        os.remove(harness_path)
-        print_err(fail_msg)
-        return False
-    else:
-        return True
+        # Enclose driver function
+        f.write(f"\n}}\n#endif\n")
 
 def log_harness(filename: str,
         func_name: str,
-        identity: bool,
+        identity: bool|None,
         result: AnalysisResult,
-        start_time: datetime,
+        start_time: datetime|None,
         driver: str,
         change: DependencyFunctionChange) -> None:
+    '''
+    We allow None as a parameter for cases where pre-analysis checks fail
+    '''
     if CONFIG.ENABLE_RESULT_LOG:
         if not os.path.exists(filename):
             f = open(filename, mode='w', encoding='utf8')
@@ -305,7 +329,8 @@ def log_harness(filename: str,
         else:
             f = open(filename, mode='a', encoding='utf8')
 
-        runtime = datetime.now() - start_time
+        runtime = datetime.now() - start_time if start_time else ""
+
         f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.filepath};{change.new.filepath}\n")
         f.close()
 
@@ -358,6 +383,8 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         return False
 
     match return_code:
+        case AnalysisResult.NO_BODY.value:
+            msg = f"No body available for {func_name}"
         case AnalysisResult.NO_VCCS.value:
             msg = f"No verification conditions generated for: {driver}"
         case AnalysisResult.FAILURE.value:

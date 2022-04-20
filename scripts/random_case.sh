@@ -12,6 +12,7 @@ case "$1" in
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
+    DISTANCE=$(( 24*60*60 * 7))
     NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
   libonig)
@@ -23,6 +24,7 @@ case "$1" in
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
     NOT_BEFORE=$(date -d "2017-01-01" '+%s')
+    DISTANCE=$(( 24*60*60 * 1000))
     NOT_AFTER=$(date -d "2017-06-25" '+%s')
   ;;
   *)
@@ -30,6 +32,7 @@ case "$1" in
     DEP_DIR=~/Repos/libexpat
     LIBNAME=libexpat
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
+    DISTANCE=$(( 24*60*60 * 1000))
     NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
 esac
@@ -48,12 +51,17 @@ get_pair(){
 
   epoch1=$(date -d "$date1" '+%s')
   epoch2=$(date -d "$date2" '+%s')
+
+  #printf "$epoch1 -- $epoch2\n"
 }
 
 get_pair
 
 while [[ $epoch1 -lt $NOT_BEFORE  || $epoch2 -lt $NOT_BEFORE  ||
-         $epoch1 -gt $NOT_AFTER   || $epoch2 -gt $NOT_AFTER ]]; do
+         $epoch1 -gt $NOT_AFTER   || $epoch2 -gt $NOT_AFTER   ||
+         $((epoch1 - epoch2)) -gt $DISTANCE || 
+         $((epoch2 - epoch1)) -gt $DISTANCE
+      ]]; do
   get_pair
 done
 

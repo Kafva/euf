@@ -155,7 +155,7 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
                     print_err(f"Empty state file: {filepath}")
                 continue
 
-    if CONFIG.VERBOSITY >= 3:
+    if CONFIG.VERBOSITY >= 2:
         # Show all parameters that were identified to have a
         # limited state space
         state_dirs = ' '.join(subdir_names)

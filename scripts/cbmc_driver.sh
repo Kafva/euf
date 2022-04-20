@@ -45,7 +45,11 @@ time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 
 rm -f $OUTFILE
 
-# Arbitrary return codes to signify a failed verification (54)
-# and a lack of VCCs (53)
+# Arbitrary return codes to signify: 
+# * failed verification (54)
+# * lack of VCCs (53)
+# * lack of body for the function being tested (55)
+grep -q "no body for function ${FUNC_NAME}$" $cbmc_output && exit 55
+grep -q "no body for function ${FUNC_NAME}_old_b026324c6904b2a$" $cbmc_output && exit 55
 grep -q "0 remaining after simplification" $cbmc_output && exit 53
 grep -q "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54

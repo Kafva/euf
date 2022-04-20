@@ -93,14 +93,14 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
             print_fail(msg)
         case AnalysisResult.NO_VCCS:
             print_fail(msg)
-        case AnalysisResult.TIMEOUT:
-            print_warn(msg)
-        case AnalysisResult.INTERRUPT:
-            print_warn(msg)
+        case AnalysisResult.NO_BODY:
+            print_fail(msg)
         case AnalysisResult.ERROR:
             print_err(msg)
-        case _:
+        case AnalysisResult.NONE:
             print_info(msg)
+        case _: # Default to warning
+            print_warn(msg)
 
 def time_end(msg: str, start_time: datetime, result: AnalysisResult = AnalysisResult.NONE) -> None:
     if CONFIG.VERBOSITY >= 1:

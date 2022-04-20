@@ -46,6 +46,15 @@ class AnalysisResult(Enum):
     TIMEOUT = 52
     NO_VCCS = 53 # "SUCCESS": No verification conditions generated
     FAILURE = 54 # FAILED verification: non-equivalent change
+    NO_BODY = 55 # Inconclusive: One or both of the functions to test lacks a body
+    # Failed pre-analysis checks
+    VOID_RET = 56
+    VOID_ARG = 57
+    NO_ARGS = 58
+    DIFF_RET = 59
+    DIFF_ARG_CNT = 60
+    DIFF_ARG_TYPE = 61
+    MISSING_COMPILE = 62 # Occurs if the TU the function lies in does not have a IFLAGS entry
     NONE = 255 # Basecase used in `print_result`
 
 @dataclass
@@ -71,6 +80,18 @@ class Config:
 
     # Show diffs of files in change set and exit
     SHOW_DIFFS: bool = False
+
+    # A list of strings that should be explicitly given a 
+    # suffix in the old version of the library
+    #
+    # This is useful in scenarios were e.g. a struct has
+    # function pointer fields (which are renamed), causing
+    # conflicts unless the struct is split into two different 
+    # versions (see usb_os_backend in libusb).
+    #
+    # Note that renaming types is only viable if the type in
+    # in question never appears as a function parameter or return value
+    EXPLICIT_RENAME: list[str] = field(default_factory=list)
 
     # - - - Verbosity  - - -
     VERBOSITY: int = 0

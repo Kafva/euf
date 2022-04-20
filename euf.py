@@ -26,9 +26,9 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err, print_warn
+    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
-from cparser.harness import create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
+from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
         print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
 from cparser.change_set import add_rename_changes_based_on_blame, \
@@ -332,16 +332,23 @@ def run():
         # to be set as nondet when they could potentially be det.
         remove_files_in(CONFIG.ARG_STATES_OUTDIR)
 
-        changed_symbols = []
-        for c in CHANGED_FUNCTIONS:
-            # Exclude functions without a return value
-            # since we are not going to analyze these
-            if c.old.ident.type_spelling != "void":
-                changed_symbols.append(c.old.ident.spelling)
+        log_file = f"{LOG_DIR}/reduce.csv"
+        rm_f(log_file)
 
-        state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
-        state_space_analysis(changed_symbols, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
-        #state_space_analysis(changed_symbols, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO: takes to long
+        # Retrieve a list of the headers that each TU uses
+        # We will need to include these in the driver
+        # for types etc. to be defined
+        IFLAGS = get_I_flags_from_tu(DEP_SOURCE_DIFFS, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD)
+
+        # Exclude functions that we are not going to analyze
+        changes_to_analyze = []
+        for c in CHANGED_FUNCTIONS:
+            if valid_preconds(c,IFLAGS,logfile="",quiet=True):
+                changes_to_analyze.append(c.old.ident.spelling)
+
+        state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
+        state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
+        #state_space_analysis(changes_to_analyze, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO: takes to long
 
         # Join the results from each analysis
         old_name    = os.path.basename(DEPENDENCY_OLD)
@@ -359,18 +366,10 @@ def run():
             'CBMC_OPTS_STR': CONFIG.CBMC_OPTS_STR
         })
 
-        log_file = f"{LOG_DIR}/cbmc.csv"
-        rm_f(log_file)
-
         harness_dir = f"{DEP_SOURCE_ROOT_OLD}/{CONFIG.HARNESS_DIR}"
         mkdir_p(harness_dir)
 
         total = len(CHANGED_FUNCTIONS)
-
-        # Retrieve a list of the headers that each TU uses
-        # We will need to include these in the driver
-        # for types etc. to be defined
-        IFLAGS = get_I_flags_from_tu(DEP_SOURCE_DIFFS, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD)
 
         for diff in DEP_SOURCE_DIFFS:
             add_includes_from_tu(diff, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD, IFLAGS, TU_INCLUDES)
@@ -386,8 +385,8 @@ def run():
                CONFIG.ONLY_ANALYZE != func_name:
                 continue
 
-            if not change.old.filepath in IFLAGS or len(IFLAGS[change.old.filepath]) == 0:
-                print_warn(f"Skipping {func_name}() due to missing compilation instructions for {change.old.filepath}")
+            # Log the reason for why a change could not be verified
+            if not valid_preconds(change, IFLAGS, log_file, quiet=False):
                 continue
 
             harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
@@ -400,9 +399,10 @@ def run():
 
             if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                 pass # Use existing driver
-            elif not create_harness(change, harness_path, \
-                 tu_includes, function_state, identity=True):
-                continue # Generation failed
+            else:
+                create_harness(change, harness_path, tu_includes,
+                    function_state, identity=True
+                )
 
             # Run the identity harness
             if run_harness(change, script_env, harness_path, func_name, \
@@ -413,9 +413,10 @@ def run():
 
                 if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
                     pass # Use existing driver
-                elif not create_harness(change, harness_path, \
-                        tu_includes, function_state, identity=False):
-                    continue # Generation failed
+                else:
+                    create_harness(change, harness_path, tu_includes,
+                        function_state, identity=False
+                    )
 
                 # Run the actual harness
                 if run_harness(change, script_env, harness_path, func_name, log_file, \
