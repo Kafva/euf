@@ -24,7 +24,7 @@ case "$1" in
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
     NOT_BEFORE=$(date -d "2017-01-01" '+%s')
-    DISTANCE=$(( 24*60*60 * 1000))
+    DISTANCE=$(( 24*60*60 * 7))
     NOT_AFTER=$(date -d "2017-06-25" '+%s')
   ;;
   *)
