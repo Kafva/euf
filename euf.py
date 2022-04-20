@@ -347,7 +347,7 @@ def run():
                 changes_to_analyze.append(c.old.ident.spelling)
 
         state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
-        state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
+        #state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
         #state_space_analysis(changes_to_analyze, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO: takes to long
 
         # Join the results from each analysis

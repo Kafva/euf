@@ -113,9 +113,11 @@ def write_rename_files(dep_path: str, ccdb: cindex.CompilationDatabase,):
             f.write(f";{identifier};;\n")
 
     # Used by CBMC when invoked with 'USE_SUFFIX'
-    with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
-        for identifier in global_identifiers:
-            f.write(f"{identifier.name}\n")
+    # In this version we strip out any duplicate occurences of the same name
+    global_names = set([ g.name for g in global_identifiers ])
 
-        for identifier in CONFIG.EXPLICIT_RENAME:
-            f.write(f"{identifier}\n")
+    with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
+        for name in global_names:
+            f.write(f"{name}\n")
+        for name in CONFIG.EXPLICIT_RENAME:
+            f.write(f"{name}\n")

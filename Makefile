@@ -34,7 +34,7 @@ bmc:
 xml:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
-	./expat/test_harness.sh expat/cases/811c41_b1d039.json XML_ErrorString
+	./scripts/test_harness.sh expat/cases/811c41_b1d039.json XML_ErrorString
 
 # Full analysis of the same case
 xml_full:
@@ -44,7 +44,7 @@ xml_full:
 entr:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
-	./expat/test_harness.sh expat/cases/10d34296_f178826b.json ENTROPY_DEBUG
+	./scripts/test_harness.sh expat/cases/10d34296_f178826b.json ENTROPY_DEBUG
 
 empty:
 	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json --diff
@@ -65,4 +65,4 @@ trans:
 # Test state space generation
 state:
 	@FILE=xmlparse.c \
-	./expat/test_harness.sh expat/cases/2020_2022.json XML_ExternalEntityParserCreate
+	./scripts/test_harness.sh expat/cases/2020_2022.json XML_ExternalEntityParserCreate

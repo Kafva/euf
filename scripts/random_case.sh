@@ -20,7 +20,7 @@ case "$1" in
     #
     # We also need to watch out for changes to structs...
     # This seems to be near un-avoidable with oniguruma...
-    BASE_CONF=./tests/configs/onig_base.json
+    BASE_CONF=./onig/base.json
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
     NOT_BEFORE=$(date -d "2017-01-01" '+%s')

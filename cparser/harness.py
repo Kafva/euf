@@ -347,7 +347,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         'DEP_I_FLAGS': dep_i_flags
     })
 
-    out = subprocess.DEVNULL if quiet else sys.stderr
+    out = subprocess.PIPE if quiet else sys.stderr
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
     time_start(f"{'(ID) ' if identity else ''}Starting CBMC analysis for {change.old}: {os.path.basename(driver)} ({current}/{total})")
@@ -361,13 +361,19 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         time_end(f"Execution timed-out for {driver_name}",  start, AnalysisResult.TIMEOUT)
         return False
 
+    output = ""
+
     try:
         p = subprocess.Popen([ CONFIG.CBMC_SCRIPT ],
             env = script_env, stdout = out, stderr = out, cwd = BASE_DIR,
             start_new_session = True
         )
         p.wait(timeout=CONFIG.CBMC_TIMEOUT)
+
+        if quiet:
+            output = p.stdout.read().decode('ascii')  # type: ignore
         return_code = p.returncode
+
     except KeyboardInterrupt:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
@@ -383,10 +389,6 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         return False
 
     match return_code:
-        case AnalysisResult.STRUCT_CNT_CONFLICT.value:
-            msg = f"Differing member count in one or more structs"
-        case AnalysisResult.STRUCT_TYPE_CONFLICT.value:
-            msg = f"Type conflict in one or more structs"
         case AnalysisResult.NO_BODY.value:
             msg = f"No body available for {func_name}"
         case AnalysisResult.NO_VCCS.value:
@@ -398,11 +400,17 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
             msg = f"Identity verification successful: {func_name}" if identity else \
                     f"Verification successful: {func_name}"
         case _:
-            if not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
+            if return_code == AnalysisResult.STRUCT_CNT_CONFLICT.value:
+                msg = f"Differing member count in one or more structs"
+            elif return_code == AnalysisResult.STRUCT_TYPE_CONFLICT.value:
+                msg = f"Type conflict in one or more structs"
+            elif not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
                 msg = f"An error occured during goto-cc compilation of {driver}"
             else:
                 msg = f"An error occured during the analysis of {driver}"
+
             if CONFIG.DIE_ON_ERROR:
+                print(output)
                 print_err(msg)
                 sys.exit(return_code)
 

@@ -154,7 +154,8 @@ class Config:
     QUIET_BUILD: bool = True
 
     # Some projects will declare types inside source files rather
-    # than in header files. If these types are needed as arguments to a
+    # than in header files (libexpat and libonig). 
+    # If these types are needed as arguments to a
     # function in a driver we need some way of including them
     # Currently, we simply provide the option of giving a custom header
     # with the necessary definitions to resolve this
