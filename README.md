@@ -6,20 +6,20 @@
 ```sh
 git clone --recursive https://github.com/Kafva/euf.git
 
-apt-get install python3.9 python3.9-venv bear clang llvm-12 -y
+sudo apt-get install bear clang llvm-12 -y
+make -C clang-plugins all
 
-python3.9 -m venv venv
+sudo apt-get install flex bison make curl patch cmake -y
+make -C cbmc install
+
+# Setup example projects and build python3.10
+sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev
+./scripts/setup.sh
+
+python3.10 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
 
-make -C clang-plugins all
-
-apt-get install flex bison make curl patch cmake -y
-make -C cbmc install
-
-# Download and setup example projects
-apt-get install libidn11-dev libudns-dev libgsasl7-dev
-./scripts/examples_env.sh
 ```
 
 Invoke with a JSON config file
