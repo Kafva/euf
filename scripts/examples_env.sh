@@ -17,7 +17,7 @@ clone_repo michaelrsweet/libcups  ~/Repos/libcups
   ./scripts/get_jabberd2.sh
 
 
-if $(uname -a | grep -i ubuntu); then
+if $(uname -a | grep -iq ubuntu); then
   # Build python3.10 from source
   cd ~/Repos
   sudo apt install wget build-essential libreadline-dev \
