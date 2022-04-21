@@ -42,13 +42,15 @@ fi
 
 if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
   # Build llvm-13 from source
-  cd ~/Repos
-    git clone https://github.com/llvm/llvm-project.git
+  sudo apt-get install cmake clang ninja-build -y
+
+  clone_repo llvm/llvm-project ~/Repos/llvm-project
+
   cd llvm-project
     cmake -S llvm -B ./build -G Ninja -DLLVM_ENABLE_PROJECTS=llvm,clang && 
       ninja -C ./build
 
 fi
 
-# Setup structure needed for pytest
+# Setup structures needed for pytest
 
