@@ -147,7 +147,9 @@ class Config:
 
     # System header paths to skip over for the #include directives
     # of the driver
-    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: ["bits"])
+    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda:
+            ["include/bits", "lib/clang"]
+    )
 
     # Set to True to echo out all information during the build process
     # of the ccdb and the goto libs

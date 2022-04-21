@@ -125,15 +125,16 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags
             included_c_files.append(trimmed)
             continue
 
-        if hdr_path.startswith("/usr/include/"):
+        if hdr_path.startswith("/usr"):
             # Skip system headers under certain specified paths
-            if any([ hdr_path.startswith(f"/usr/include/{skip_header}") \
+            if any([ hdr_path.startswith(f"/usr/{skip_header}") \
                     for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
                 continue
 
             if not hdr_path in usr_includes:
                 usr_includes.append(
                     hdr_path.removeprefix("/usr/include/")
+                        .removeprefix("/usr/lib/")
                 )
         else:
             hdr_path = hdr_path.removeprefix(old_src_dir+"/")
@@ -330,7 +331,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         ret_type = change.old.ident.type_spelling
 
         if unequal_inputs and not identity:
-            f.write(f"{INDENT}// Unequal input comparsion\n")
+            f.write(f"{INDENT}// Unequal input comparsion!\n")
 
         f.write(f"{INDENT}{ret_type} ret_old = ")
         f.write(f"{change.old.ident.spelling}{SUFFIX}({arg_string_old});\n")

@@ -532,7 +532,6 @@ def run():
         traceback.print_exc()
         sys.exit(-1)
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
     "A 'compile_commands.json' database must be generated for both the project and the dependency."

@@ -83,5 +83,3 @@ def test_compdb():
     with open(f"{REPO_PATH}/compile_commands.json", mode='r', encoding='utf8') as f:
         ccdb = json.load(f)
         assert( not any( [ 'command' in entry for entry in ccdb  ] ) )
-
-
