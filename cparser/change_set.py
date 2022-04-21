@@ -1,133 +1,13 @@
 from itertools import zip_longest
-import re
-import subprocess
 
 from clang import cindex
 from git.diff import Diff
 from git.repo.base import Repo
 
 from cparser import CONFIG, DependencyFunction, CursorPair, \
-        DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile, get_path_relative_to, print_err
+        DependencyFunctionChange, SourceDiff, SourceFile, get_path_relative_to, print_err
+from cparser.arg_states import get_isystem_flags
 from cparser.util import get_column_counts, print_info
-
-
-def git_diff_change_set(dep_old: str, dep_new: str,
-    source_diffs: list[SourceDiff],
-    global_identifiers: set[IdentifierLocation]) -> dict[str,list[IdentifierLocation]]:
-    '''
-    1. Determine the line start (maybe thats enough since the next 
-        functions line start is effectivly the end of the previous?) 
-        and line end of functions through srcLocation in clang
-    2. Grep for all +/- in the full diff
-    3. Set changed functions based on if there is a +/- 
-    between their start/end location
-
-    This idea falls apart if the get_global_names() function cannot retrieve
-    all names (which it cant if functions are defined inside of a
-    '#if 0' block)
-
-    For git-blamed files, we can still use this method, 
-    just diff the correct old and new files (i think) 
-    '''
-
-    has_changed = {}
-
-    for d in source_diffs:
-        cmd = ["git", "--no-pager", "diff",
-            "--no-index", "--color=never", "-U9000",
-            f"{dep_old}/{d.old_path}",
-            f"{dep_new}/{d.new_path}" ]
-
-        print(' '.join(cmd))
-
-        p = subprocess.Popen(cmd, stdout = subprocess.PIPE)
-        git_diff_txt = p.stdout.read().decode('utf8') # type: ignore
-
-        '''
-        We have a list of were every function is located in the original file
-        In the diff, these locations will be different based on how many
-        change (-/+) lines are present. Example: 
-
-        foo():164
-        Before line 164:
-            30 (-)
-            20 (+)
-        Observe that every removed (-) line is a line that exists
-        in the original file. We therefore only need to add the lines
-        which start with '+' to reach the new location of a symbol
-            164 + 20
-        '''
-
-        # Extract a list of the function locations in the file
-        # sorted by line number definition
-        globals_in_file = filter(lambda g: \
-                g.filepath == f"{dep_old}/{d.old_path}" or \
-                g.filepath == f"{dep_new}/{d.new_path}",
-                list(global_identifiers)[:])
-
-        globals_in_file = sorted(globals_in_file, key = lambda g: g.line)
-
-        if len(globals_in_file) == 0:
-            continue
-
-        # Every diff starts with 5 lines of context info
-        extra_lines = 3
-        found_change = False
-
-        # Note that there could be several functions with the same name
-        # (but different paramters) so we cannot use a set
-        # of identifier names (since these may not be unique)
-        has_changed[d.old_path] = []
-
-        start_line = globals_in_file[0].line
-        idx=1
-
-        for linenr,line in enumerate(git_diff_txt.splitlines()):
-
-            # Continue to one line AFTER the first function
-            if line.startswith("+"):
-                extra_lines += 1
-            if linenr <= start_line:
-                continue
-
-            if line.startswith("+"):
-                found_change = True
-
-            # This approach will produce FPs when there is code outside of a function 
-            # in between two start lines that has changed.
-            #
-            # A hack to avoid these cases would be to consider lines starting
-            # with '}' (no indents) as the end of a function.
-            # This risks introducing cases where changes are missed
-            #
-            # We will instead accept that fact that certain 'changed'
-            # functions returned from this stage are going to be FPs
-            # (the alternative is to check all of them with AST comp)
-            # If we are lucky, the FPs could be removed 
-            # in the AST comparision...
-            # 
-            if linenr - extra_lines == globals_in_file[idx].line:
-                # Ensure that the captured line actually contains the
-                # name of the next global
-                assert(re.match(rf".*{globals_in_file[idx].name}.*", line))
-
-                # Add the previous global to the change set 
-                # if a +/- occurred in the stream after its start location
-                if found_change:
-                    print(globals_in_file[idx-1], linenr)
-                    has_changed[d.old_path].append(globals_in_file[idx-1])
-
-                # Reset the change detection flag on entering a new function
-                # unless the actual decleration has a change
-                if not line.startswith("+") and not line.startswith("-"):
-                    found_change = False
-
-                idx += 1
-                if idx >= len(globals_in_file): break
-
-
-    return has_changed
-
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
@@ -156,17 +36,32 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     Git-diff could of course miss some functions and that is an accepted limitation of this approach
     '''
 
+
+    # We need each isystem flag to be passed to clang directly
+    # and therefore prefix every argument with -Xclang
+    isystem_flags = get_isystem_flags(diff.old_path,old_root_dir)
+    xclang_flags = []
+    for flag in isystem_flags:
+        xclang_flags.append("-Xclang")
+        xclang_flags.append(flag)
+
+    path_old = f"{old_root_dir}/{diff.old_path}"
     tu_old = cindex.TranslationUnit.from_source(
-            f"{old_root_dir}/{diff.old_path}",
-            args = diff.old_compile_args
+            path_old,
+            args = xclang_flags + diff.old_compile_args
     )
     cursor_old: cindex.Cursor = tu_old.cursor
 
+    path_new = f"{new_root_dir}/{diff.new_path}"
     tu_new = cindex.TranslationUnit.from_source(
-        f"{new_root_dir}/{diff.new_path}",
-        args = diff.new_compile_args
+        path_new,
+        args = xclang_flags + diff.new_compile_args
     )
     cursor_new: cindex.Cursor = tu_new.cursor
+
+
+    print_diag_errors(path_old, tu_old)
+    print_diag_errors(path_new, tu_new)
 
     changed_functions: list[DependencyFunctionChange]       = list()
     cursor_pairs: dict[str,CursorPair]      = {}
@@ -218,8 +113,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
                 if not arg_old: print("(arg) a: NULL", "| b:", arg_new.spelling, arg_new.kind)
                 if not arg_new: print("(arg) a:", arg_old.spelling, arg_old.kind, "| b: NULL")
                 return True
-            if arg_old.kind != arg_new.kind:
-            #if arg_old.spelling != arg_new.spelling:
+            #if arg_old.kind != arg_new.kind:
+            if arg_old.spelling != arg_new.spelling:
                 print("(arg) a:", arg_old.spelling, arg_old.kind, "| b:", arg_new.spelling, arg_new.kind)
                 return True
 
@@ -400,4 +295,11 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange], fil
             f.write("direct_change;old_filepath;old_name;old_line;old_col;new_filepath;new_name;new_line;new_col\n")
             for change in changed_functions:
                 f.write(f"{change.to_csv()}\n")
+
+def print_diag_errors(path:str, tu: cindex.TranslationUnit):
+    if len(tu.diagnostics) > 0:
+        print_err(f"Parse errors for: {path}")
+    for d in tu.diagnostics:
+        print_err(str(d))
+
 

@@ -27,7 +27,7 @@ from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
     ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err
-from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
+from cparser.arg_states import call_arg_states_plugin, get_isystem_flags, get_subdir_tus, join_arg_states_result
 from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
         print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
@@ -135,13 +135,13 @@ def get_ccdbs(dep_source_root_old: str,
     try:
         dep_db_old: cindex.CompilationDatabase  = \
             cindex.CompilationDatabase.fromDirectory(dep_source_root_old)
-    except cindex.CompilationDatabaseError as e:
+    except cindex.CompilationDatabaseError:
         print_err(f"Failed to parse {dep_source_root_old}/compile_commands.json")
         sys.exit(-1)
     try:
         dep_db_new: cindex.CompilationDatabase  = \
                 cindex.CompilationDatabase.fromDirectory(dep_source_root_new)
-    except cindex.CompilationDatabaseError as e:
+    except cindex.CompilationDatabaseError:
         print_err(f"Failed to parse {dep_source_root_new}/compile_commands.json")
         sys.exit(-1)
 
@@ -518,6 +518,7 @@ def run():
     except Exception as e:
         traceback.print_exc()
         sys.exit(-1)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
