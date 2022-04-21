@@ -42,14 +42,16 @@ fi
 if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
   sudo apt-get install cmake clang ninja-build -y
 
-  clone_repo llvm/llvm-project ~/Repos/llvm-project
+  [ -d ~/Repos/llvm-project ] ||
+    git clone -b release/13.x https://github.com/llvm/llvm-project.git ~/Repos/llvm-project
 
   cd ~/Repos/llvm-project
     mkdir -p build
     cmake -S llvm -B ./build -G Ninja \
       -DLLVM_TARGETS_TO_BUILD=host \
-      -DLLVM_ENABLE_PROJECTS="llvm;clang" && 
-      ninja -C ./build
+      -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
+    ninja -C ./build &&
+    cmake --install ./build --prefix "/usr/local"
 fi
 
 # Setup structures needed for pytest
