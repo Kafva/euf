@@ -3,13 +3,13 @@
 # Using `autoreconf` with the git version does not work but building
 # through the release source does...
 
-rm -rf ~/Repos/{jabberd2,jabberd-2.7.0}
+#rm -rf ~/Repos/{jabberd2,jabberd-2.7.0}
 rm -rf /tmp/{jabberd2,jabberd-2.7.0}
 
 curl -L https://github.com/jabberd2/jabberd2/releases/download/jabberd-2.7.0/jabberd-2.7.0.tar.gz | 
 	tar xzf - -C ~/Repos
 
-git clone -b jabberd-2.7.0 git@github.com:jabberd2/jabberd2.git /tmp/jabberd2
+git clone -b jabberd-2.7.0 https://github.com/jabberd2/jabberd2.git /tmp/jabberd2
 
 cd /tmp/jabberd2 && git switch -c main
 mv .git ~/Repos/jabberd-2.7.0
