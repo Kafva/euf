@@ -153,6 +153,11 @@ class Config:
             ["include/bits", "lib/clang"]
     )
 
+    # Extra compile flags to add for every TU in libclang
+    EXTRA_COMPILE_FLAGS = [
+        "-Wno-unused-function"
+    ]
+
     # Set to True to echo out all information during the build process
     # of the ccdb and the goto libs
     QUIET_BUILD: bool = True
@@ -763,12 +768,15 @@ class ProjectInvocation:
 @dataclass(init=True)
 class SourceFile:
     new_path: str
-    new_compile_args: list[str]
+    new_compile_args: list[str] = field(default_factory=list)
+    new_compile_dir: str = ""
 
 @dataclass(init=True)
 class SourceDiff(SourceFile):
-    old_path: str
-    old_compile_args: list[str]
+    old_path: str = ""
+    old_compile_args: list[str] = field(default_factory=list)
+    old_compile_dir: str = ""
+
 
 @dataclass(init=True)
 class CursorPair:

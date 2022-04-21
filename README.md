@@ -19,7 +19,6 @@ sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev
 python3.10 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
-
 ```
 
 Invoke with a JSON config file

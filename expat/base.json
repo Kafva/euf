@@ -6,7 +6,10 @@
 
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
-    "expat/examples/.*"
+    "expat/examples/.*",
+    "expat/.*tab.h",
+    "expat/fuzz/.*",
+    "expat/xmlwf/win32.*"
   ],
   
   "CUSTOM_HEADERS": {

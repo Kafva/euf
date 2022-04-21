@@ -1,3 +1,4 @@
+from pathlib import Path
 import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
 from git.exc import GitCommandError
 from git.repo.base import Repo
@@ -105,6 +106,9 @@ def autogen_compile_db(source_path: str) -> bool:
 
     # 4. Run 'compdb' to insert entries for '.h' files into the database
     patch_ccdb_with_headers(source_path)
+
+    # 5. 'touch config.h' silences libclang errors
+    Path(f"{source_path}/config.h").touch()
 
     return has_valid_compile_db(source_path)
 

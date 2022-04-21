@@ -1,3 +1,4 @@
+import os
 from itertools import zip_longest
 
 from clang import cindex
@@ -97,6 +98,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     '''
 
     path_old = f"{old_root_dir}/{diff.old_path}"
+
+    os.chdir(diff.old_compile_dir)
     tu_old = cindex.TranslationUnit.from_source(
             path_old,
             args = diff.old_compile_args
@@ -104,14 +107,16 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     cursor_old: cindex.Cursor = tu_old.cursor
 
     path_new = f"{new_root_dir}/{diff.new_path}"
+
+    os.chdir(diff.new_compile_dir)
     tu_new = cindex.TranslationUnit.from_source(
         path_new,
         args =  diff.new_compile_args
     )
     cursor_new: cindex.Cursor = tu_new.cursor
 
-    print_diag_errors(path_old, tu_old)
-    print_diag_errors(path_new, tu_new)
+    print_diag_errors(path_old,tu_old)
+    print_diag_errors(path_new,tu_new)
 
     changed_functions: list[DependencyFunctionChange] = list()
     cursor_pairs: dict[str,CursorPair]= {}
@@ -283,10 +288,16 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange], fil
             for change in changed_functions:
                 f.write(f"{change.to_csv()}\n")
 
-def print_diag_errors(path:str, tu: cindex.TranslationUnit):
-    if len(tu.diagnostics) > 0:
-        print_err(f"Parse errors for: {path}")
-    for d in tu.diagnostics:
-        print_err(str(d))
+def print_diag_errors(filepath:str, tu: cindex.TranslationUnit):
+    if CONFIG.VERBOSITY >= 3:
+        for d in tu.diagnostics:
+            print_err(str(d))
+    elif len(tu.diagnostics) > 0:
+        # Header entries from compdb usually generate a lot of errors
+        if not filepath.endswith(".h"):
+            msgs = f", {len(tu.diagnostics)-1} more message(s)" \
+                    if len(tu.diagnostics) > 1 else ''
+            print_err(f"{str(tu.diagnostics[0])}" + msgs)
+
 
 

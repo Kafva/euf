@@ -12,7 +12,7 @@ case "$1" in
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-    DISTANCE=$(( 24*60*60 * 7))
+    DISTANCE=$(( 24*60*60 * 30))
     NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
   libonig)

@@ -25,7 +25,7 @@ from clang import cindex
 from git.repo import Repo
 from git.objects.commit import Commit
 
-from cparser import CONFIG, FALLBACK_LIBCLANG, DependencyFunction, DependencyFunctionChange, FunctionState, \
+from cparser import BASE_DIR, CONFIG, FALLBACK_LIBCLANG, DependencyFunction, DependencyFunctionChange, FunctionState, \
     ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err
 from cparser.arg_states import call_arg_states_plugin, get_isystem_flags, get_subdir_tus, join_arg_states_result
 from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
@@ -53,12 +53,16 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     return filtered
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
-        filepath: str, repo_path: str) -> list[str]:
-    ''' Load the compilation configuration for the particular file
-    and retrieve the compilation arguments '''
+        filepath: str, repo_path: str) -> tuple[str,list[str]]:
+    ''' 
+    Load the compilation configuration for the particular file
+    and retrieve the compilation arguments and the directory that
+    the file should be compiled in 
+    '''
     ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
     if ccmds:
         compile_args                    = list(ccmds[0].arguments)
+        compile_dir                     = str(ccmds[0].directory)
 
         # We need each isystem flag to be passed to clang directly
         # and therefore prefix every argument with -Xclang
@@ -69,7 +73,12 @@ def get_compile_args(compile_db: cindex.CompilationDatabase,
             xclang_flags.append(flag)
 
         # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-        return xclang_flags + compile_args[1:-1]
+        flags = xclang_flags + compile_args[1:-1] + CONFIG.EXTRA_COMPILE_FLAGS
+
+        # Strip away warnings
+        flags = list(filter(lambda f: not f.startswith("-W"), flags))
+
+        return (compile_dir, flags)
     else:
         raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
@@ -125,12 +134,8 @@ def get_source_diffs(commit_old: Commit, commit_new: Commit) -> list[SourceDiff]
             commit_old.diff(commit_new) # type: ignore
     )
 
-    return [ SourceDiff(
-                new_path = d.b_path,
-                old_path = d.a_path,
-                new_compile_args = [],
-                old_compile_args = []
-    ) for d in COMMIT_DIFF ]
+    return [ SourceDiff(new_path = d.b_path, old_path = d.a_path) \
+            for d in COMMIT_DIFF ]
 
 def get_ccdbs(dep_source_root_old: str,
  dep_source_root_new: str) -> tuple[cindex.CompilationDatabase,cindex.CompilationDatabase]:
@@ -233,8 +238,10 @@ def run():
 
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:
-        diff.old_compile_args = get_compile_args(DEP_DB_OLD, diff.old_path, DEPENDENCY_OLD)
-        diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path, DEPENDENCY_NEW)
+        (diff.old_compile_dir, diff.old_compile_args) = \
+                get_compile_args(DEP_DB_OLD, diff.old_path, DEPENDENCY_OLD)
+        (diff.new_compile_dir, diff.new_compile_args) = \
+                get_compile_args(DEP_DB_NEW, diff.new_path, DEPENDENCY_NEW)
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -287,6 +294,8 @@ def run():
     except Exception:
         traceback.print_exc()
         sys.exit(-1)
+
+    os.chdir(BASE_DIR) # cwd changes during compilation
 
     if CONFIG.SHOW_DIFFS:
         for c in CHANGED_FUNCTIONS:

@@ -13,7 +13,6 @@ clone_repo libusb/libusb          ~/Repos/libusb
 clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
 
-
 if ! [ -f ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
   cd ~/Repos/jq
     git submodule update --init --recursive
@@ -21,12 +20,11 @@ if ! [ -f ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
       autoreconf -vfi && ./configure && make -j4
 fi
 
-
 [ -d "$HOME/Repos/jabberd-2.7.0" ] ||
   ./scripts/get_jabberd2.sh
 
+# Build python3.10 from source
 if ! $(which python3.10 &> /dev/null); then
-  # Build python3.10 from source
   sudo apt install wget build-essential libreadline-dev \
     libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev \
     libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
@@ -40,8 +38,8 @@ if ! $(which python3.10 &> /dev/null); then
 fi
 
 
+# Build llvm-13 from source
 if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
-  # Build llvm-13 from source
   sudo apt-get install cmake clang ninja-build -y
 
   clone_repo llvm/llvm-project ~/Repos/llvm-project
@@ -52,7 +50,6 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
       -DLLVM_TARGETS_TO_BUILD=host \
       -DLLVM_ENABLE_PROJECTS="llvm;clang" && 
       ninja -C ./build
-
 fi
 
 # Setup structures needed for pytest
