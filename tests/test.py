@@ -84,3 +84,4 @@ def test_compdb():
         ccdb = json.load(f)
         assert( not any( [ 'command' in entry for entry in ccdb  ] ) )
 
+

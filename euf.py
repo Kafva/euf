@@ -53,15 +53,23 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     return filtered
 
 def get_compile_args(compile_db: cindex.CompilationDatabase,
-    filepath: str) -> list[str]:
+        filepath: str, repo_path: str) -> list[str]:
     ''' Load the compilation configuration for the particular file
     and retrieve the compilation arguments '''
     ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
     if ccmds:
         compile_args                    = list(ccmds[0].arguments)
+
+        # We need each isystem flag to be passed to clang directly
+        # and therefore prefix every argument with -Xclang
+        isystem_flags = get_isystem_flags(filepath,repo_path)
+        xclang_flags = []
+        for flag in isystem_flags:
+            xclang_flags.append("-Xclang")
+            xclang_flags.append(flag)
+
         # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-        # and add the default linker paths
-        return compile_args[1:-1]
+        return xclang_flags + compile_args[1:-1]
     else:
         raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
@@ -234,8 +242,8 @@ def run():
 
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:
-        diff.old_compile_args = get_compile_args(DEP_DB_OLD, diff.old_path)
-        diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path)
+        diff.old_compile_args = get_compile_args(DEP_DB_OLD, diff.old_path, DEPENDENCY_OLD)
+        diff.new_compile_args = get_compile_args(DEP_DB_NEW, diff.new_path, DEPENDENCY_NEW)
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project
@@ -251,7 +259,7 @@ def run():
 
     PROJECT_SOURCE_FILES = [ SourceFile(
         new_path = filepath, # type: ignore
-        new_compile_args = get_compile_args(MAIN_DB, filepath) # type: ignore
+        new_compile_args = get_compile_args(MAIN_DB, filepath, CONFIG.PROJECT_DIR) # type: ignore
     ) for filepath in PROJECT_SOURCE_FILES ]
 
     # - - - Change set - - - #
@@ -300,7 +308,7 @@ def run():
 
     DEP_SOURCE_FILES = [ SourceFile(
         new_path = filepath, # type: ignore
-        new_compile_args = get_compile_args(DEP_DB_NEW, filepath) # type: ignore
+        new_compile_args = get_compile_args(DEP_DB_NEW, filepath, DEPENDENCY_NEW) # type: ignore
     ) for filepath in DEP_SOURCE_FILES ]
 
     DEP_SOURCE_FILES = filter_out_excluded(DEP_SOURCE_FILES, \

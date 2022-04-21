@@ -637,6 +637,23 @@ class DependencyFunction:
                 str(self.line) + str(self.col))
 
 @dataclass(init=True)
+class ASTDivergence:
+    filepath: str = ""
+    line: int = -1
+    column: int = -1
+
+    def __repr__(self) -> str:
+        return f"{self.filepath}:{self.line}:{self.column}"
+
+    @classmethod
+    def new_from_src_loc(cls, loc: cindex.SourceLocation):
+        return cls(
+            filepath = loc.file.name, # type: ignore
+            line = loc.line,
+            column = loc.column
+        )
+
+@dataclass(init=True)
 class DependencyFunctionChange:
     '''
     We pair functions based on the key:
@@ -650,6 +667,11 @@ class DependencyFunctionChange:
     # The line and col references the _new version_ of the dependency
     invokes_changed_functions: list[str]
     direct_change: bool = True
+
+    # The source code location (in the old version)
+    # were divergence in the AST was encountered
+    # This will be unset for indirect changes in the transative pass
+    point_of_divergence: ASTDivergence = ASTDivergence()
 
     @classmethod
     def new_from_cursors(cls, old_root: str, new_root: str,

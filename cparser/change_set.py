@@ -4,10 +4,84 @@ from clang import cindex
 from git.diff import Diff
 from git.repo.base import Repo
 
-from cparser import CONFIG, DependencyFunction, CursorPair, \
+from cparser import CONFIG, ASTDivergence, DependencyFunction, CursorPair, \
         DependencyFunctionChange, SourceDiff, SourceFile, get_path_relative_to, print_err
-from cparser.arg_states import get_isystem_flags
 from cparser.util import get_column_counts, print_info
+
+def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
+    cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
+
+    if len(list(cursor.get_children())) == 0:
+        print_err(f"No data to parse for {cursor.spelling}")
+
+    for child in cursor.get_children():
+        if str(child.kind).endswith("FUNCTION_DECL") and \
+            str(child.type.kind).endswith("FUNCTIONPROTO") and \
+            child.is_definition() and \
+            str(child.location.file).startswith(root_dir):
+            # Note: A TU can #include other C-files, to properly trace
+            # calls in the output we need to store these paths rather than
+            # the path to the main file for each function
+            # Any source file outside the root of the repository is not
+            # processed (e.g. includes from /usr/include)
+
+            # Note: the key in the dict uses the new and old filepath
+            # to ensure that functions in renamed paths still end up in the same pair
+            key = f"{diff.new_path}:{diff.old_path}:{child.spelling}"
+
+            # Add the child to an existing pair or create a new one
+            if not key in cursor_pairs:
+                cursor_pairs[key] = CursorPair()
+
+            if is_new:
+                cursor_pairs[key].new = child
+                cursor_pairs[key].new_path = \
+                    get_path_relative_to(str(child.location.file), root_dir)
+            else:
+                cursor_pairs[key].old = child
+                cursor_pairs[key].old_path = \
+                    get_path_relative_to(str(child.location.file), root_dir)
+
+
+def functions_differ(cursor_old: cindex.Cursor,
+    cursor_new: cindex.Cursor) -> cindex.SourceLocation|None:
+    '''
+    Dependency functions are considered different at this stage if
+    the cursors have a different number of nodes at any level or if the
+    typing of their arguments differ
+
+    For higher verbosity, we return the source location (in the old version) 
+    where the versions diverged. This is useful for reasoning about FPs since
+    functions which do not differ syntaxwise sometimes differ in their AST, e.g.
+    when parameter types to functions change
+    '''
+    for arg_old,arg_new in zip_longest(\
+      cursor_old.get_arguments(), cursor_new.get_arguments()):
+
+        if not arg_old:
+            print("(arg) a: NULL", "| b:", arg_new.spelling, arg_new.kind)
+            return cursor_old.location
+        if not arg_new:
+            print("(arg) a:", arg_old.spelling, arg_old.kind, "| b: NULL")
+            return arg_old.location
+
+        if arg_old.kind != arg_new.kind:
+            print("(arg) a:", arg_old.spelling, arg_old.kind, "| b:", arg_new.spelling, arg_new.kind)
+            return arg_old.location
+
+    for child_old,child_new in \
+     zip_longest(cursor_old.get_children(), cursor_new.get_children()):
+
+        if not child_old:
+            print("(child) a: NULL", "| b:", child_new.spelling, child_new.kind)
+            return cursor_old.location
+        if not child_new:
+            print("(child) a:", child_old.spelling, child_old.kind, "| b: NULL")
+            return child_old.location
+
+        if src_loc := functions_differ(child_old,child_new):
+            print("(child) a:", child_old.spelling, child_old.kind, "| b:", child_new.spelling, child_new.kind)
+            return src_loc
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     old_root_dir: str) -> list[DependencyFunctionChange]:
@@ -29,109 +103,30 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     the functions that have changed. TODO: Determining which pointer arguments change
     would be very useful, we might be able to do this through analyzing the function body
 
-    Since we consider the Git-Diff as our base change set, we only check the differences
-    in functions that have changed according to --function-context in git diff. Including all
-    functions has a non-neglibale chance of introducing FPs, see src/regcomp.c:5721:1:onig_is_code_in_cc
-
-    Git-diff could of course miss some functions and that is an accepted limitation of this approach
     '''
-
-
-    # We need each isystem flag to be passed to clang directly
-    # and therefore prefix every argument with -Xclang
-    isystem_flags = get_isystem_flags(diff.old_path,old_root_dir)
-    xclang_flags = []
-    for flag in isystem_flags:
-        xclang_flags.append("-Xclang")
-        xclang_flags.append(flag)
 
     path_old = f"{old_root_dir}/{diff.old_path}"
     tu_old = cindex.TranslationUnit.from_source(
             path_old,
-            args = xclang_flags + diff.old_compile_args
+            args = diff.old_compile_args
     )
     cursor_old: cindex.Cursor = tu_old.cursor
 
     path_new = f"{new_root_dir}/{diff.new_path}"
     tu_new = cindex.TranslationUnit.from_source(
         path_new,
-        args = xclang_flags + diff.new_compile_args
+        args =  diff.new_compile_args
     )
     cursor_new: cindex.Cursor = tu_new.cursor
-
 
     print_diag_errors(path_old, tu_old)
     print_diag_errors(path_new, tu_new)
 
-    changed_functions: list[DependencyFunctionChange]       = list()
-    cursor_pairs: dict[str,CursorPair]      = {}
+    changed_functions: list[DependencyFunctionChange] = list()
+    cursor_pairs: dict[str,CursorPair]= {}
 
-    def extract_function_decls_to_pairs(cursor: cindex.Cursor,
-        cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
-
-        if len(list(cursor.get_children())) == 0:
-            print_err(f"No data to parse for {cursor.spelling}")
-
-        for child in cursor.get_children():
-            if str(child.kind).endswith("FUNCTION_DECL") and \
-                str(child.type.kind).endswith("FUNCTIONPROTO") and \
-                child.is_definition() and \
-                str(child.location.file).startswith(root_dir):
-                # Note: A TU can #include other C-files, to properly trace
-                # calls in the output we need to store these paths rather than
-                # the path to the main file for each function
-                # Any source file outside the root of the repository is not
-                # processed (e.g. includes from /usr/include)
-
-                # Note: the key in the dict uses the new and old filepath
-                # to ensure that functions in renamed paths still end up in the same pair
-                key = f"{diff.new_path}:{diff.old_path}:{child.spelling}"
-
-                # Add the child to an existing pair or create a new one
-                if not key in cursor_pairs:
-                    cursor_pairs[key] = CursorPair()
-
-                if is_new:
-                    cursor_pairs[key].new = child
-                    cursor_pairs[key].new_path = \
-                        get_path_relative_to(str(child.location.file), root_dir)
-                else:
-                    cursor_pairs[key].old = child
-                    cursor_pairs[key].old_path = \
-                        get_path_relative_to(str(child.location.file), root_dir)
-
-    def functions_differ(cursor_old: cindex.Cursor,
-        cursor_new: cindex.Cursor) -> bool:
-        '''
-        Dependency functions are considered different at this stage if
-        the cursors have a different number of nodes at any level or if the
-        typing of their arguments differ
-        '''
-        for arg_old,arg_new in zip_longest(\
-                cursor_old.get_arguments(), cursor_new.get_arguments()):
-            if not arg_old or not arg_new:
-                if not arg_old: print("(arg) a: NULL", "| b:", arg_new.spelling, arg_new.kind)
-                if not arg_new: print("(arg) a:", arg_old.spelling, arg_old.kind, "| b: NULL")
-                return True
-            #if arg_old.kind != arg_new.kind:
-            if arg_old.spelling != arg_new.spelling:
-                print("(arg) a:", arg_old.spelling, arg_old.kind, "| b:", arg_new.spelling, arg_new.kind)
-                return True
-
-        for child_old,child_new in \
-            zip_longest(cursor_old.get_children(), cursor_new.get_children()):
-            if not child_old or not child_new:
-                if not child_old: print("(child) a: NULL", "| b:", child_new.spelling, child_new.kind)
-                if not child_new: print("(child) a:", child_old.spelling, child_old.kind, "| b: NULL")
-                return True
-            if functions_differ(child_old,child_new):
-                print("(child) a:", child_old.spelling, child_old.kind, "| b:", child_new.spelling, child_new.kind)
-                return True
-
-        return False
-
-    extract_function_decls_to_pairs(cursor_old, cursor_pairs, old_root_dir, is_new=False)
-    extract_function_decls_to_pairs(cursor_new, cursor_pairs, new_root_dir, is_new=True)
+    extract_function_decls_to_pairs(diff, cursor_old, cursor_pairs, old_root_dir, is_new=False)
+    extract_function_decls_to_pairs(diff, cursor_new, cursor_pairs, new_root_dir, is_new=True)
 
     # If the function pairs differ based on AST traversal,
     # add them to the list of changed_functions.
@@ -159,12 +154,13 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
         )
 
 
-        if cursor_old_fn.spelling != "onig_is_code_in_cc": continue
-        print_info(f"Comparing: a/{cursor_old_fn.spelling} b/{cursor_new_fn.spelling}")
-
-        if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
+        if src_loc := functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
             if CONFIG.VERBOSITY >= 3:
                 print(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
+
+            function_change.point_of_divergence = \
+                ASTDivergence.new_from_src_loc(src_loc) # type: ignore
+
             changed_functions.append(function_change)
         elif CONFIG.VERBOSITY >= 3:
             print(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
