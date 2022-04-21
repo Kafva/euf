@@ -6,8 +6,11 @@
 ```sh
 git clone --recursive https://github.com/Kafva/euf.git
 
-apt-get install python3.9 bear clang llvm-12 -y
-pip3 install --user -r requirements.txt
+apt-get install python3.9 python3.9-venv bear clang llvm-12 -y
+
+python3.9 -m venv venv
+source ./venv/bin/activate
+pip3 install -r requirements.txt
 
 make -C clang-plugins all
 
@@ -20,8 +23,8 @@ apt-get install libidn11-dev libudns-dev libgsasl7-dev
 ```
 
 Invoke with a JSON config file
-```sh
-./euf.py --config tests/configs/basic.json
+```
+(venv) ./euf.py --config tests/configs/basic.json
 ```
 
 ## CBMC fork
