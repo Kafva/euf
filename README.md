@@ -4,7 +4,7 @@
 
 ## Ubuntu installation
 ```sh
-git clone --recursive git://github.com/Kafva/euf.git
+git clone --recursive https://github.com/Kafva/euf.git
 
 apt-get install python3.9 bear clang llvm-12 -y
 pip3 install --user -r requirements.txt
@@ -15,7 +15,7 @@ apt-get install flex bison make curl patch cmake -y
 make -C cbmc install
 
 # Download and setup example projects
-apt-get install libidn11-dev
+apt-get install libidn11-dev libudns-dev libgsasl7-dev
 ./scripts/examples_env.sh
 ```
 

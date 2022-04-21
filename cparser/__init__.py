@@ -9,6 +9,8 @@ sys.path.append('../')
 
 BASE_DIR = str(Path(__file__).parent.parent.absolute())
 
+FALLBACK_LIBCLANG = "/usr/lib/llvm-12/lib/libclang.so.1"
+
 def print_warn(msg: str):
     print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
 

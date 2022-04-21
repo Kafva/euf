@@ -25,7 +25,7 @@ from clang import cindex
 from git.repo import Repo
 from git.objects.commit import Commit
 
-from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
+from cparser import CONFIG, FALLBACK_LIBCLANG, DependencyFunction, DependencyFunctionChange, FunctionState, \
     ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err
 from cparser.arg_states import call_arg_states_plugin, get_isystem_flags, get_subdir_tus, join_arg_states_result
 from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
@@ -162,10 +162,13 @@ def run():
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
-        print_err(f"Missing path to libclang: {CONFIG.LIBCLANG}")
-        sys.exit(1)
-    else:
-        cindex.Config.set_library_file(CONFIG.LIBCLANG)
+        if not os.path.exists(FALLBACK_LIBCLANG):
+            print_err(f"Missing path to libclang: {CONFIG.LIBCLANG}")
+            sys.exit(1)
+        else:
+            CONFIG.LIBCLANG = FALLBACK_LIBCLANG
+
+    cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
     DEP_REPO = Repo(CONFIG.DEPENDENCY_DIR)
     DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
