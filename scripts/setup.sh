@@ -40,7 +40,7 @@ if ! $(which python3.10 &> /dev/null); then
 fi
 
 
-if ! $(clang --version | grep -q "version: 13"); then
+if ! $(clang --version 2>/dev/null | grep -q "version: 13"); then
   # Build llvm-13 from source
   cd ~/Repos
     git clone https://github.com/llvm/llvm-project.git
