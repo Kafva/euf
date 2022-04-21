@@ -1,6 +1,5 @@
 import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
 from git.exc import GitCommandError
-from git.objects.commit import Commit
 from git.repo.base import Repo
 
 from cparser.util import print_info, find
@@ -157,14 +156,14 @@ def check_ccdb_error(path: str) -> None:
     else:
         print_err(f"An error occured but {path}/compile_commands.json was created")
 
-def create_worktree(target: str, commit: Commit, repo: Repo) -> bool:
+def create_worktree(target: str, commit: str, repo: Repo) -> bool:
     if not os.path.exists(target):
         print_info(f"Creating worktree at {target}")
         # git checkout COMMIT_NEW.hexsha
         # git checkout -b euf-abcdefghi
         # git worktree add -b euf-abcdefghi /tmp/openssl euf-abcdefghi
         try:
-            repo.git.worktree("add", "-b", f"euf-{commit.hexsha[:8]}", target, commit.hexsha) # type: ignore
+            repo.git.worktree("add", "-b", f"euf-{commit[:8]}", target, commit) # type: ignore
         except GitCommandError:
             traceback.print_exc()
             return False

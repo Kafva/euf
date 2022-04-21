@@ -26,7 +26,7 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import CONFIG, DependencyFunction, DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile, BASE_DIR, matches_excluded, print_err
+    ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err
 from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
@@ -91,6 +91,62 @@ def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir:
 
     time_end(f"State space analysis ({target_name})", start)
 
+def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
+    commit_old: Commit = None # type: ignore
+    commit_new: Commit = None # type: ignore
+
+    for commit in dep_repo.iter_commits():
+        if commit.hexsha.startswith(CONFIG.COMMIT_NEW):
+            commit_new: Commit = commit
+        elif commit.hexsha.startswith(CONFIG.COMMIT_OLD):
+            commit_old: Commit = commit
+
+    if not commit_old:
+        print(f"Unable to find old commit: {CONFIG.COMMIT_OLD}")
+        sys.exit(-1)
+    if not commit_new:
+        print(f"Unable to find new commit: {CONFIG.COMMIT_NEW}")
+        sys.exit(-1)
+
+    return (commit_old,commit_new)
+
+def get_source_diffs(commit_old: Commit, commit_new: Commit) -> list[SourceDiff]:
+    COMMIT_DIFF = filter(lambda d: \
+                has_allowed_suffix(d.a_path) and \
+                re.match("M|R", d.change_type),
+            commit_old.diff(commit_new) # type: ignore
+    )
+
+    return [ SourceDiff(
+                new_path = d.b_path,
+                old_path = d.a_path,
+                new_compile_args = [],
+                old_compile_args = []
+    ) for d in COMMIT_DIFF ]
+
+def get_ccdbs(dep_source_root_old: str,
+ dep_source_root_new: str) -> tuple[cindex.CompilationDatabase,cindex.CompilationDatabase]:
+    if not autogen_compile_db(dep_source_root_old): sys.exit(-1)
+    if not autogen_compile_db(dep_source_root_new): sys.exit(-1)
+    if not autogen_compile_db(CONFIG.PROJECT_DIR): sys.exit(-1)
+
+    # For the AST dump to contain a resolved view of the symbols
+    # we need to provide the correct compile commands
+    try:
+        dep_db_old: cindex.CompilationDatabase  = \
+            cindex.CompilationDatabase.fromDirectory(dep_source_root_old)
+    except cindex.CompilationDatabaseError as e:
+        print_err(f"Failed to parse {dep_source_root_old}/compile_commands.json")
+        sys.exit(-1)
+    try:
+        dep_db_new: cindex.CompilationDatabase  = \
+                cindex.CompilationDatabase.fromDirectory(dep_source_root_new)
+    except cindex.CompilationDatabaseError as e:
+        print_err(f"Failed to parse {dep_source_root_new}/compile_commands.json")
+        sys.exit(-1)
+
+    return (dep_db_old, dep_db_new)
+
 def run():
     mkdir_p(CONFIG.EUF_CACHE)
     mkdir_p(CONFIG.RESULTS_DIR)
@@ -103,57 +159,47 @@ def run():
     else:
         cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
-    # - - - Dependency - - - #
     DEP_REPO = Repo(CONFIG.DEPENDENCY_DIR)
+    DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
+    DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_NEW[:8]}"
+    DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_OLD[:8]}"
+
     try:
         _ = DEP_REPO.active_branch
     except TypeError as e:
         print_err(f"Unable to read current branch name for {CONFIG.DEPENDENCY_DIR}\n{e}")
         sys.exit(1)
 
+    # - - - Git diff - - - #
     # Find the objects that correspond to the old and new commit
-    COMMIT_OLD: Commit = None # type: ignore
-    COMMIT_NEW: Commit = None # type: ignore
-
-    for commit in DEP_REPO.iter_commits():
-        if commit.hexsha.startswith(CONFIG.COMMIT_NEW):
-            COMMIT_NEW: Commit = commit
-        elif commit.hexsha.startswith(CONFIG.COMMIT_OLD):
-            COMMIT_OLD: Commit = commit
-
-    if not COMMIT_OLD:
-        print(f"Unable to find old commit: {CONFIG.COMMIT_OLD}")
-        sys.exit(-1)
-    if not COMMIT_NEW:
-        print(f"Unable to find new commit: {CONFIG.COMMIT_NEW}")
-        sys.exit(-1)
+    (COMMIT_OLD, COMMIT_NEW) = get_commits(DEP_REPO)
 
     # Only include modified (M) and renamed (R) '.c' files
     # Renamed files still provide us with context information when a
     # change has occurred at the same time as a move operation:
     #   e.g. `foo.c -> src/foo.c`
-    COMMIT_DIFF = filter(lambda d: \
-                has_allowed_suffix(d.a_path) and \
-                re.match("M|R", d.change_type),
-        COMMIT_OLD.diff(COMMIT_NEW)
-    )
+    DEP_SOURCE_DIFFS = get_source_diffs(COMMIT_OLD, COMMIT_NEW)
 
-    DEP_SOURCE_DIFFS = [ SourceDiff(
-                new_path = d.b_path,
-                old_path = d.a_path,
-                new_compile_args = [],
-                old_compile_args = []
-    ) for d in COMMIT_DIFF ]
+    DEP_SOURCE_DIFFS = filter_out_excluded(DEP_SOURCE_DIFFS, \
+            [ d.old_path for d in DEP_SOURCE_DIFFS ] )
 
-    DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
-    DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_NEW.hexsha[:8]}"
-    DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{COMMIT_OLD.hexsha[:8]}"
+    if CONFIG.SHOW_DIFFS:
+        for d in DEP_SOURCE_DIFFS:
+            cmd = ["git", # Force pager for every file
+                "-c", "core.pager=less -+F -c",
+                "diff", "--no-index", "--color=always",
+                "--function-context",
+                f"{DEPENDENCY_OLD}/{d.old_path}",
+                f"{DEPENDENCY_NEW}/{d.new_path}" ]
+            print(' '.join(cmd))
+            subprocess.run(cmd)
+        sys.exit(0)
 
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(DEPENDENCY_NEW, COMMIT_NEW, DEP_REPO): sys.exit(-1)
-    if not create_worktree(DEPENDENCY_OLD, COMMIT_OLD, DEP_REPO): sys.exit(-1)
+    if not create_worktree(DEPENDENCY_NEW, CONFIG.COMMIT_NEW, DEP_REPO): sys.exit(-1)
+    if not create_worktree(DEPENDENCY_OLD, CONFIG.COMMIT_OLD, DEP_REPO): sys.exit(-1)
 
     NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
 
@@ -162,7 +208,7 @@ def run():
         ADDED_DIFF = list(filter(lambda d: \
                     has_allowed_suffix(d.a_path) and
                     'A' == d.change_type,
-            COMMIT_OLD.diff(COMMIT_NEW)
+                COMMIT_OLD.diff(COMMIT_NEW) # type: ignore
         ))
 
         add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
@@ -173,19 +219,6 @@ def run():
                 for d in DEP_SOURCE_DIFFS ]) + "\n")
         wait_on_cr()
 
-    if CONFIG.SHOW_DIFFS:
-        for d in DEP_SOURCE_DIFFS:
-            subprocess.run(["git", # Force pager for every file
-                "-c", "core.pager=less -+F -c",
-                "diff", "--no-index", "--color=always",
-                "--function-context",
-                f"{DEPENDENCY_OLD}/{d.old_path}",
-                f"{DEPENDENCY_NEW}/{d.new_path}" ])
-        sys.exit(0)
-
-    DEP_SOURCE_DIFFS = filter_out_excluded(DEP_SOURCE_DIFFS, \
-            [ d.old_path for d in DEP_SOURCE_DIFFS ] )
-
     # Update the project root in case the source code and .git
     # folder are not both at the root of the project
     dep_source_root = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
@@ -195,41 +228,9 @@ def run():
     DEP_SOURCE_ROOT_OLD = DEPENDENCY_OLD + dep_source_root
     DEP_SOURCE_ROOT_NEW = DEPENDENCY_NEW + dep_source_root
 
-    if CONFIG.CCDB_BUILD_SCRIPT != "":
-        try:
-            script_env = CONFIG.get_script_env()
-            script_env.update({
-                'DEP_SOURCE_ROOT_OLD': DEP_SOURCE_ROOT_OLD,
-                'DEP_SOURCE_ROOT_NEW': DEP_SOURCE_ROOT_NEW,
-            })
-            print_info(f"Running custom compile_commands.json generator: {CONFIG.CCDB_BUILD_SCRIPT}")
-            (subprocess.run([ CONFIG.CCDB_BUILD_SCRIPT ],
-                stdout = sys.stderr, cwd = BASE_DIR, env = script_env
-            )).check_returncode()
-        except subprocess.CalledProcessError:
-            traceback.print_exc()
-            sys.exit(-1)
-    else:
-        # Attempt to create the compilation database automatically
-        # if they do not already exist
-        if not autogen_compile_db(DEP_SOURCE_ROOT_OLD): sys.exit(-1)
-        if not autogen_compile_db(DEP_SOURCE_ROOT_NEW): sys.exit(-1)
-        if not autogen_compile_db(CONFIG.PROJECT_DIR): sys.exit(-1)
-
-    # For the AST dump to contain a resolved view of the symbols
-    # we need to provide the correct compile commands
-    try:
-        DEP_DB_OLD: cindex.CompilationDatabase  = \
-            cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_OLD)
-    except cindex.CompilationDatabaseError as e:
-        print_err(f"Failed to parse {DEP_SOURCE_ROOT_OLD}/compile_commands.json")
-        sys.exit(-1)
-    try:
-        DEP_DB_NEW: cindex.CompilationDatabase  = \
-                cindex.CompilationDatabase.fromDirectory(DEP_SOURCE_ROOT_NEW)
-    except cindex.CompilationDatabaseError as e:
-        print_err(f"Failed to parse {DEP_SOURCE_ROOT_NEW}/compile_commands.json")
-        sys.exit(-1)
+    # Attempt to create the compilation database automatically
+    # if they do not already exist
+    (DEP_DB_OLD, DEP_DB_NEW) = get_ccdbs(DEP_SOURCE_ROOT_OLD, DEP_SOURCE_ROOT_NEW)
 
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:

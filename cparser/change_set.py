@@ -1,12 +1,132 @@
 from itertools import zip_longest
+import re
+import subprocess
 
 from clang import cindex
 from git.diff import Diff
 from git.repo.base import Repo
 
 from cparser import CONFIG, DependencyFunction, CursorPair, \
-        DependencyFunctionChange, SourceDiff, SourceFile, get_path_relative_to, print_err
+        DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile, get_path_relative_to, print_err
 from cparser.util import get_column_counts, print_info
+
+
+def git_diff_change_set(dep_old: str, dep_new: str,
+    source_diffs: list[SourceDiff],
+    global_identifiers: set[IdentifierLocation]) -> dict[str,list[IdentifierLocation]]:
+    '''
+    1. Determine the line start (maybe thats enough since the next 
+        functions line start is effectivly the end of the previous?) 
+        and line end of functions through srcLocation in clang
+    2. Grep for all +/- in the full diff
+    3. Set changed functions based on if there is a +/- 
+    between their start/end location
+
+    This idea falls apart if the get_global_names() function cannot retrieve
+    all names (which it cant if functions are defined inside of a
+    '#if 0' block)
+
+    For git-blamed files, we can still use this method, 
+    just diff the correct old and new files (i think) 
+    '''
+
+    has_changed = {}
+
+    for d in source_diffs:
+        cmd = ["git", "--no-pager", "diff",
+            "--no-index", "--color=never", "-U9000",
+            f"{dep_old}/{d.old_path}",
+            f"{dep_new}/{d.new_path}" ]
+
+        print(' '.join(cmd))
+
+        p = subprocess.Popen(cmd, stdout = subprocess.PIPE)
+        git_diff_txt = p.stdout.read().decode('utf8') # type: ignore
+
+        '''
+        We have a list of were every function is located in the original file
+        In the diff, these locations will be different based on how many
+        change (-/+) lines are present. Example: 
+
+        foo():164
+        Before line 164:
+            30 (-)
+            20 (+)
+        Observe that every removed (-) line is a line that exists
+        in the original file. We therefore only need to add the lines
+        which start with '+' to reach the new location of a symbol
+            164 + 20
+        '''
+
+        # Extract a list of the function locations in the file
+        # sorted by line number definition
+        globals_in_file = filter(lambda g: \
+                g.filepath == f"{dep_old}/{d.old_path}" or \
+                g.filepath == f"{dep_new}/{d.new_path}",
+                list(global_identifiers)[:])
+
+        globals_in_file = sorted(globals_in_file, key = lambda g: g.line)
+
+        if len(globals_in_file) == 0:
+            continue
+
+        # Every diff starts with 5 lines of context info
+        extra_lines = 3
+        found_change = False
+
+        # Note that there could be several functions with the same name
+        # (but different paramters) so we cannot use a set
+        # of identifier names (since these may not be unique)
+        has_changed[d.old_path] = []
+
+        start_line = globals_in_file[0].line
+        idx=1
+
+        for linenr,line in enumerate(git_diff_txt.splitlines()):
+
+            # Continue to one line AFTER the first function
+            if line.startswith("+"):
+                extra_lines += 1
+            if linenr <= start_line:
+                continue
+
+            if line.startswith("+"):
+                found_change = True
+
+            # This approach will produce FPs when there is code outside of a function 
+            # in between two start lines that has changed.
+            #
+            # A hack to avoid these cases would be to consider lines starting
+            # with '}' (no indents) as the end of a function.
+            # This risks introducing cases where changes are missed
+            #
+            # We will instead accept that fact that certain 'changed'
+            # functions returned from this stage are going to be FPs
+            # (the alternative is to check all of them with AST comp)
+            # If we are lucky, the FPs could be removed 
+            # in the AST comparision...
+            # 
+            if linenr - extra_lines == globals_in_file[idx].line:
+                # Ensure that the captured line actually contains the
+                # name of the next global
+                assert(re.match(rf".*{globals_in_file[idx].name}.*", line))
+
+                # Add the previous global to the change set 
+                # if a +/- occurred in the stream after its start location
+                if found_change:
+                    print(globals_in_file[idx-1], linenr)
+                    has_changed[d.old_path].append(globals_in_file[idx-1])
+
+                # Reset the change detection flag on entering a new function
+                # unless the actual decleration has a change
+                if not line.startswith("+") and not line.startswith("-"):
+                    found_change = False
+
+                idx += 1
+                if idx >= len(globals_in_file): break
+
+
+    return has_changed
 
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
@@ -28,6 +148,12 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     To automate harness generation we need to record argument types and return values for
     the functions that have changed. TODO: Determining which pointer arguments change
     would be very useful, we might be able to do this through analyzing the function body
+
+    Since we consider the Git-Diff as our base change set, we only check the differences
+    in functions that have changed according to --function-context in git diff. Including all
+    functions has a non-neglibale chance of introducing FPs, see src/regcomp.c:5721:1:onig_is_code_in_cc
+
+    Git-diff could of course miss some functions and that is an accepted limitation of this approach
     '''
 
     tu_old = cindex.TranslationUnit.from_source(
@@ -89,15 +215,22 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
         for arg_old,arg_new in zip_longest(\
                 cursor_old.get_arguments(), cursor_new.get_arguments()):
             if not arg_old or not arg_new:
+                if not arg_old: print("(arg) a: NULL", "| b:", arg_new.spelling, arg_new.kind)
+                if not arg_new: print("(arg) a:", arg_old.spelling, arg_old.kind, "| b: NULL")
                 return True
             if arg_old.kind != arg_new.kind:
+            #if arg_old.spelling != arg_new.spelling:
+                print("(arg) a:", arg_old.spelling, arg_old.kind, "| b:", arg_new.spelling, arg_new.kind)
                 return True
 
         for child_old,child_new in \
             zip_longest(cursor_old.get_children(), cursor_new.get_children()):
             if not child_old or not child_new:
+                if not child_old: print("(child) a: NULL", "| b:", child_new.spelling, child_new.kind)
+                if not child_new: print("(child) a:", child_old.spelling, child_old.kind, "| b: NULL")
                 return True
             if functions_differ(child_old,child_new):
+                print("(child) a:", child_old.spelling, child_old.kind, "| b:", child_new.spelling, child_new.kind)
                 return True
 
         return False
@@ -111,22 +244,28 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     # change has occurred and we do not need to
     # perform a deeper SMT analysis
     for pair in cursor_pairs.values():
+
         if not pair.new:
             if CONFIG.VERBOSITY >= 3:
-                print(f"Deleted: {pair.old_path} {pair.old.spelling}()")
+                print(f"Deleted: a/{pair.old_path} {pair.old.spelling}()")
             continue
         elif not pair.old:
             if CONFIG.VERBOSITY >= 3:
-                print(f"New: {pair.new_path} {pair.new.spelling}()")
+                print(f"New: b/{pair.new_path} {pair.new.spelling}()")
             continue
 
         cursor_old_fn = pair.old
         cursor_new_fn = pair.new
 
+
         function_change = DependencyFunctionChange.new_from_cursors(
                 old_root_dir, new_root_dir,
                 cursor_old_fn, cursor_new_fn
         )
+
+
+        if cursor_old_fn.spelling != "onig_is_code_in_cc": continue
+        print_info(f"Comparing: a/{cursor_old_fn.spelling} b/{cursor_new_fn.spelling}")
 
         if functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
             if CONFIG.VERBOSITY >= 3:

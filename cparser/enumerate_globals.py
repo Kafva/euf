@@ -1,6 +1,5 @@
 import os, traceback
 from clang import cindex
-from typing import Set
 
 from cparser.util import has_allowed_suffix, time_start, time_end
 from cparser import CONFIG, IdentifierLocation, print_err
@@ -13,13 +12,12 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             indent += 1
         dump_children(child, indent)
 
-def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocation]:
+def get_top_level_decl_locations(cursor: cindex.Cursor) -> set[IdentifierLocation]:
     ''' 
     Extract the names of all top level declerations (variables and functions) 
     excluding those defined externally under /usr/include
     '''
-    global_decls: Set[IdentifierLocation] = set()
-        #    child.is_definition() and
+    global_decls: set[IdentifierLocation] = set()
 
     for child in cursor.get_children():
         if  str(child.kind).endswith("FUNCTION_DECL") and \
@@ -35,7 +33,7 @@ def get_top_level_decl_locations(cursor: cindex.Cursor) -> Set[IdentifierLocatio
 
     return global_decls
 
-def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> Set[IdentifierLocation]:
+def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> set[IdentifierLocation]:
     '''
     Reads the compilation database and creates:
         A set of all top level labels in the changed files that we need to
@@ -48,8 +46,8 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> S
 
     start_time = time_start(f"Enumerating global symbols...")
 
-    global_identifiers: Set[IdentifierLocation] = set()
-    filepaths: Set[str] = set()
+    global_identifiers: set[IdentifierLocation] = set()
+    filepaths: set[str] = set()
 
     try:
         for ccmds in ccdb.getAllCompileCommands():
@@ -91,7 +89,7 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> S
 
     return global_identifiers
 
-def read_in_names(rename_txt: str, names: Set[str]):
+def read_in_names(rename_txt: str, names: set[str]):
     with open(rename_txt, mode="r",  encoding='utf8') as f:
         for line in f.readlines():
             names.add(line.rstrip("\n"))
