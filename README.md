@@ -11,9 +11,12 @@ pip3 install --user -r requirements.txt
 
 make -C clang-plugins all
 
-# CBMC fork
 apt-get install flex bison make curl patch cmake -y
 make -C cbmc install
+
+# Download and setup example projects
+apt-get install libidn11-dev
+./scripts/examples_env.sh
 ```
 
 Invoke with a JSON config file

@@ -1,6 +1,6 @@
 [submodule "cbmc"]
 	path = cbmc
-	url = git@github.com:Kafva/cbmc.git
+	url = https://github.com/Kafva/cbmc.git
 [submodule "clang-plugins"]
 	path = clang-plugins
-	url = git@github.com:Kafva/clang-plugins.git
+	url = https://github.com/Kafva/clang-plugins.git
