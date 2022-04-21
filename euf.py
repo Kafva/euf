@@ -191,18 +191,6 @@ def run():
     DEP_SOURCE_DIFFS = filter_out_excluded(DEP_SOURCE_DIFFS, \
             [ d.old_path for d in DEP_SOURCE_DIFFS ] )
 
-    if CONFIG.SHOW_DIFFS:
-        for d in DEP_SOURCE_DIFFS:
-            cmd = ["git", # Force pager for every file
-                "-c", "core.pager=less -+F -c",
-                "diff", "--no-index", "--color=always",
-                "--function-context",
-                f"{DEPENDENCY_OLD}/{d.old_path}",
-                f"{DEPENDENCY_NEW}/{d.new_path}" ]
-            print(' '.join(cmd))
-            subprocess.run(cmd)
-        sys.exit(0)
-
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
@@ -291,11 +279,28 @@ def run():
                     not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
                 CHANGED_FUNCTIONS[:]))
 
-            if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
+            if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "" and not CONFIG.SHOW_DIFFS:
                 pprint(CHANGED_FUNCTIONS)
     except Exception:
         traceback.print_exc()
         sys.exit(-1)
+
+    if CONFIG.SHOW_DIFFS:
+        for c in CHANGED_FUNCTIONS:
+            print(c.divergence())
+        wait_on_cr(always=True)
+
+        for d in DEP_SOURCE_DIFFS:
+            cmd = ["git", # Force pager for every file
+                "-c", "core.pager=less -+F -c",
+                "diff", "--no-index", "--color=always",
+                "--function-context",
+                f"{DEPENDENCY_OLD}/{d.old_path}",
+                f"{DEPENDENCY_NEW}/{d.new_path}" ]
+            print(' '.join(cmd))
+            subprocess.run(cmd)
+
+        sys.exit(0)
 
     wait_on_cr()
     log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/change_set.csv")
@@ -535,7 +540,7 @@ if __name__ == '__main__':
     parser.add_argument("--config", metavar="json", type=str, required=True,
         default="", help="JSON file containing a custom Config object to use")
     parser.add_argument("--diff", action='store_true', default=False,
-        help='Print the diff between the files in the change set and exit')
+        help='Print the first point of divergence for each function in the change set followed by the git-diff of the corresponding files and exit')
 
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)

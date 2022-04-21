@@ -4,8 +4,8 @@ from typing import Set
 
 from cparser import CONFIG, AnalysisResult, print_warn, print_err
 
-def wait_on_cr():
-    while CONFIG.PAUSES and not CONFIG.SHOW_DIFFS:
+def wait_on_cr(always=False):
+    while (CONFIG.PAUSES and not CONFIG.SHOW_DIFFS) or always:
         print("\033[32m\033[0m ", end='', file = sys.stderr, flush = True)
         if sys.stdin.readline() == "\n":
             break

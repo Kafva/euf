@@ -673,6 +673,9 @@ class DependencyFunctionChange:
     # This will be unset for indirect changes in the transative pass
     point_of_divergence: ASTDivergence = ASTDivergence()
 
+    def divergence(self) -> str:
+        return f"{self.__repr__()}\n  diverged at \033[4m{self.point_of_divergence}\033[0m"
+
     @classmethod
     def new_from_cursors(cls, old_root: str, new_root: str,
             old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):

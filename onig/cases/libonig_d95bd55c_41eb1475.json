@@ -61,7 +61,7 @@
   "DIE_ON_ERROR": true,
   "USE_EXISTING_DRIVERS": false,
   "REVERSE_MAPPING": true,
-  "VERBOSITY": 5,
+  "VERBOSITY": 1,
   "NPROC": 12,
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,

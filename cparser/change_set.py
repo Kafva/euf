@@ -42,7 +42,6 @@ def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
                 cursor_pairs[key].old_path = \
                     get_path_relative_to(str(child.location.file), root_dir)
 
-
 def functions_differ(cursor_old: cindex.Cursor,
     cursor_new: cindex.Cursor) -> cindex.SourceLocation|None:
     '''
@@ -59,28 +58,20 @@ def functions_differ(cursor_old: cindex.Cursor,
       cursor_old.get_arguments(), cursor_new.get_arguments()):
 
         if not arg_old:
-            print("(arg) a: NULL", "| b:", arg_new.spelling, arg_new.kind)
             return cursor_old.location
         if not arg_new:
-            print("(arg) a:", arg_old.spelling, arg_old.kind, "| b: NULL")
             return arg_old.location
-
         if arg_old.kind != arg_new.kind:
-            print("(arg) a:", arg_old.spelling, arg_old.kind, "| b:", arg_new.spelling, arg_new.kind)
             return arg_old.location
 
     for child_old,child_new in \
      zip_longest(cursor_old.get_children(), cursor_new.get_children()):
 
         if not child_old:
-            print("(child) a: NULL", "| b:", child_new.spelling, child_new.kind)
             return cursor_old.location
         if not child_new:
-            print("(child) a:", child_old.spelling, child_old.kind, "| b: NULL")
             return child_old.location
-
         if src_loc := functions_differ(child_old,child_new):
-            print("(child) a:", child_old.spelling, child_old.kind, "| b:", child_new.spelling, child_new.kind)
             return src_loc
 
 def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
