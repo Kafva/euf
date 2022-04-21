@@ -47,7 +47,8 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
   clone_repo llvm/llvm-project ~/Repos/llvm-project
 
   cd llvm-project
-    cmake -S llvm -B ./build -G Ninja -DLLVM_ENABLE_PROJECTS=llvm,clang && 
+    cmake -S llvm -B ./build -G Ninja \
+      -DLLVM_TARGETS_TO_BUILD=host && 
       ninja -C ./build
 
 fi
