@@ -43,7 +43,8 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
   sudo apt-get install cmake clang ninja-build -y
 
   [ -d ~/Repos/llvm-project ] ||
-    git clone -b release/13.x https://github.com/llvm/llvm-project.git ~/Repos/llvm-project
+    git clone -b release/13.x \
+    https://github.com/llvm/llvm-project.git ~/Repos/llvm-project
 
   cd ~/Repos/llvm-project
     mkdir -p build
