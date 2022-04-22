@@ -11,38 +11,8 @@ For this to work we need to create a union of all the ccmd flags for each direct
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
 import subprocess, re, sys, json, os
-from cparser import CONFIG, FunctionState, SubDirTU, matches_excluded, print_warn, print_err
+from cparser import CONFIG, FunctionState, SubDirTU, matches_excluded, print_warn, print_err, get_isystem_flags
 from cparser.util import print_info
-
-def get_isystem_flags(source_file: str, dep_path: str) -> list:
-    '''
-    https://clang.llvm.org/docs/FAQ.html#id2
-    The -cc1 flag is used to invoke the clang 'frontend', using only the
-    frontend infers that default options are lost, errors like
-    	'stddef.h' file not found
-    are caused from the fact that the builtin-include path of clang is missing
-    We can see the default frontend options used by clang with
-    	clang -### test/file.cpp
-    '''
-    isystem_flags = subprocess.check_output(
-        f"clang -### {source_file} 2>&1 | sed -E '1,4d; s/\" \"/\", \"/g; s/(.*)(\\(in-process\\))(.*)/\\1\\3/'",
-        shell=True, cwd = dep_path
-    ).decode('ascii').split(",")
-
-    out = []
-    add_next = False
-
-    for flag in isystem_flags:
-        flag = flag.strip().strip('"')
-
-        if flag == '-internal-isystem':
-            out.append(flag)
-            add_next = True
-        elif add_next:
-            out.append(flag)
-            add_next = False
-
-    return out
 
 def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU]:
     '''

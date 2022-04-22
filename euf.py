@@ -26,8 +26,8 @@ from git.repo import Repo
 from git.objects.commit import Commit
 
 from cparser import BASE_DIR, CONFIG, FALLBACK_LIBCLANG, DependencyFunction, DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err
-from cparser.arg_states import call_arg_states_plugin, get_isystem_flags, get_subdir_tus, join_arg_states_result
+    ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err, get_compile_args
+from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
 from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
         print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
@@ -51,36 +51,6 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
             filtered.append(item)
 
     return filtered
-
-def get_compile_args(compile_db: cindex.CompilationDatabase,
-        filepath: str, repo_path: str) -> tuple[str,list[str]]:
-    ''' 
-    Load the compilation configuration for the particular file
-    and retrieve the compilation arguments and the directory that
-    the file should be compiled in 
-    '''
-    ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
-    if ccmds:
-        compile_args                    = list(ccmds[0].arguments)
-        compile_dir                     = str(ccmds[0].directory)
-
-        # We need each isystem flag to be passed to clang directly
-        # and therefore prefix every argument with -Xclang
-        isystem_flags = get_isystem_flags(filepath,repo_path)
-        xclang_flags = []
-        for flag in isystem_flags:
-            xclang_flags.append("-Xclang")
-            xclang_flags.append(flag)
-
-        # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-        flags = xclang_flags + compile_args[1:-1] + CONFIG.EXTRA_COMPILE_FLAGS
-
-        # Strip away warnings
-        flags = list(filter(lambda f: not f.startswith("-W"), flags))
-
-        return (compile_dir, flags)
-    else:
-        raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
 def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir: str):
     target_name = os.path.basename(target_dir)
@@ -254,11 +224,16 @@ def run():
         MAIN_DB = cindex.CompilationDatabase.fromDirectory(CONFIG.PROJECT_DIR)
     except cindex.CompilationDatabaseError as e:
         check_ccdb_error(CONFIG.PROJECT_DIR)
+        sys.exit(1)
 
-    PROJECT_SOURCE_FILES = [ SourceFile(
-        new_path = filepath, # type: ignore
-        new_compile_args = get_compile_args(MAIN_DB, filepath, CONFIG.PROJECT_DIR) # type: ignore
-    ) for filepath in PROJECT_SOURCE_FILES ]
+    # Create a list of all files from the dependency
+    # used for transative call analysis and state space estimation
+    PROJECT_SOURCE_FILES = []
+    for e in main_repo.tree().traverse(): # type: ignore
+        if has_allowed_suffix(e.path):
+            PROJECT_SOURCE_FILES.append(
+                SourceFile.new(e.path,MAIN_DB,CONFIG.PROJECT_DIR)
+            )
 
     # - - - Change set - - - #
     if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
@@ -319,16 +294,14 @@ def run():
 
     # Create a list of all files from the dependency
     # used for transative call analysis and state space estimation
-    DEP_SOURCE_FILES = filter(lambda p: has_allowed_suffix(p),
-        [ e.path for e in NEW_DEP_REPO.tree().traverse() ] # type: ignore
-    )
+    DEP_SOURCE_FILES = []
+    for e in NEW_DEP_REPO.tree().traverse(): # type: ignore
+        if has_allowed_suffix(e.path):
+            DEP_SOURCE_FILES.append(
+                SourceFile.new(e.path,DEP_DB_NEW, DEPENDENCY_NEW)
+            )
 
-    DEP_SOURCE_FILES = [ SourceFile(
-        new_path = filepath, # type: ignore
-        new_compile_args = get_compile_args(DEP_DB_NEW, filepath, DEPENDENCY_NEW) # type: ignore
-    ) for filepath in DEP_SOURCE_FILES ]
-
-    DEP_SOURCE_FILES = filter_out_excluded(DEP_SOURCE_FILES, \
+    DEP_SOURCE_FILES = filter_out_excluded(list(DEP_SOURCE_FILES), \
             [ f.new_path for f in DEP_SOURCE_FILES  ])
 
     # - - - Reduction of change set - - - #

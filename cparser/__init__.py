@@ -1,4 +1,4 @@
-import sys, os, json, re, traceback
+import sys, os, json, re, traceback, subprocess
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -40,6 +40,67 @@ def matches_excluded(string: str) -> bool:
             traceback.print_exc()
             sys.exit(-1)
     return False
+
+def get_isystem_flags(source_file: str, dep_path: str) -> list:
+    '''
+    https://clang.llvm.org/docs/FAQ.html#id2
+    The -cc1 flag is used to invoke the clang 'frontend', using only the
+    frontend infers that default options are lost, errors like
+    	'stddef.h' file not found
+    are caused from the fact that the builtin-include path of clang is missing
+    We can see the default frontend options used by clang with
+    	clang -### test/file.cpp
+    '''
+    isystem_flags = subprocess.check_output(
+        f"clang -### {source_file} 2>&1 | sed -E '1,4d; s/\" \"/\", \"/g; s/(.*)(\\(in-process\\))(.*)/\\1\\3/'",
+        shell=True, cwd = dep_path
+    ).decode('ascii').split(",")
+
+    out = []
+    add_next = False
+
+    for flag in isystem_flags:
+        flag = flag.strip().strip('"')
+
+        if flag == '-internal-isystem':
+            out.append(flag)
+            add_next = True
+        elif add_next:
+            out.append(flag)
+            add_next = False
+
+    return out
+
+def get_compile_args(compile_db: cindex.CompilationDatabase,
+    filepath: str, repo_path: str) -> tuple[str,list[str]]:
+    ''' 
+    Load the compilation configuration for the particular file
+    and retrieve the compilation arguments and the directory that
+    the file should be compiled in 
+    '''
+    ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
+    if ccmds:
+        compile_args                    = list(ccmds[0].arguments)
+        compile_dir                     = str(ccmds[0].directory)
+
+        # We need each isystem flag to be passed to clang directly
+        # and therefore prefix every argument with -Xclang
+        isystem_flags = get_isystem_flags(filepath,repo_path)
+        xclang_flags = []
+        for flag in isystem_flags:
+            xclang_flags.append("-Xclang")
+            xclang_flags.append(flag)
+
+        # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
+        flags = xclang_flags + compile_args[1:-1] + CONFIG.EXTRA_COMPILE_FLAGS
+
+        # Strip away warnings
+        flags = list(filter(lambda f: not f.startswith("-W"), flags))
+
+        return (compile_dir, flags)
+    else:
+        raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
+
 
 class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
@@ -770,6 +831,16 @@ class SourceFile:
     new_path: str
     new_compile_args: list[str] = field(default_factory=list)
     new_compile_dir: str = ""
+
+    @classmethod
+    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, dep_path: str):
+        (new_compile_dir, new_compile_args) = \
+                get_compile_args(ccdb, filepath, dep_path)
+        return cls(
+            new_path = filepath,
+            new_compile_dir = new_compile_dir,
+            new_compile_args = new_compile_args
+        )
 
 @dataclass(init=True)
 class SourceDiff(SourceFile):
