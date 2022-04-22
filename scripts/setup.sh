@@ -4,6 +4,19 @@ clone_repo(){
   [ -d "$2" ] || git clone https://github.com/$1.git $2
 }
 
+if $(which apt &> /dev/null); then
+  # EUF dependencies
+  sudo apt-get install bear clang llvm-12 flex bison make \
+    curl patch cmake -y
+
+  # Dependencies for example projects
+  sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev -y
+fi
+
+# Compile submodules
+make -C clang-plugins all
+make -C cbmc install
+
 # Clone all projects
 mkdir -p ~/Repos
 
@@ -37,7 +50,6 @@ if ! $(which python3.10 &> /dev/null); then
     sudo make altinstall -j4
 fi
 
-
 # Build llvm-13 from source
 if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
   sudo apt-get install cmake clang ninja-build -y
@@ -53,6 +65,13 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
     ninja -C ./build &&
     sudo cmake --install ./build --prefix "/usr/local"
+fi
+
+# Setup venv
+if ! [ -d venv ]; then
+  python3.10 -m venv venv
+  source ./venv/bin/activate
+  pip3 install -r requirements.txt
 fi
 
 # Setup structures needed for pytest
