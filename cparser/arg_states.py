@@ -10,9 +10,21 @@ For this to work we need to create a union of all the ccmd flags for each direct
 1. Split up the dep dir into subdirs (including top level)
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
-import subprocess, re, sys, json, os
-from cparser import CONFIG, FunctionState, SubDirTU, matches_excluded, print_warn, print_err, get_isystem_flags
-from cparser.util import print_info
+import subprocess, re, sys, json, os, traceback
+from cparser.config import CONFIG
+from cparser.types import SourceFile, FunctionState, SubDirTU
+from cparser.util import print_info, print_warn, print_err
+
+def matches_excluded(string: str) -> bool:
+    for exclude_regex in CONFIG.EXCLUDE_REGEXES:
+        try:
+            if re.search(rf"{exclude_regex}", string):
+                return True
+        except re.error:
+            print_err(f"Invalid regex provided: {exclude_regex}")
+            traceback.print_exc()
+            sys.exit(-1)
+    return False
 
 def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU]:
     '''
@@ -70,7 +82,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir
     cmd = [ "clang", "-cc1", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
-        get_isystem_flags(list(subdir_tu.files)[0], target_dir) + \
+        SourceFile.get_isystem_flags(list(subdir_tu.files)[0], target_dir) + \
         list(subdir_tu.files) + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
     #print(f"({subdir})> \n", ' '.join(cmd))

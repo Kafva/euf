@@ -1,10 +1,10 @@
+import os, subprocess, sys, signal, json, shutil
 from datetime import datetime
-import os, subprocess, sys, signal, json
-import shutil
-
 from clang import cindex
-from cparser import BASE_DIR, CONFIG, AnalysisResult, \
-        DependencyFunctionChange, FunctionState, SourceDiff
+
+from cparser import BASE_DIR
+from cparser.config import CONFIG
+from cparser.types import AnalysisResult, DependencyFunctionChange, FunctionState, SourceDiff
 from cparser.util import print_result, time_end, time_start, wait_on_cr, print_err
 
 

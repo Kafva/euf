@@ -1,8 +1,9 @@
 import os, traceback
 from clang import cindex
 
-from cparser.util import has_allowed_suffix, time_start, time_end
-from cparser import CONFIG, IdentifierLocation, print_err
+from cparser.util import has_allowed_suffix, time_start, time_end, print_err
+from cparser.config import CONFIG
+from cparser.types import IdentifierLocation
 
 def dump_children(cursor: cindex.Cursor, indent: int) -> None:
     for child in cursor.get_children():

@@ -5,9 +5,10 @@ from clang import cindex
 from git.diff import Diff
 from git.repo.base import Repo
 
-from cparser import CONFIG, ASTDivergence, DependencyFunction, CursorPair, \
-        DependencyFunctionChange, SourceDiff, SourceFile, get_path_relative_to, print_err
-from cparser.util import get_column_counts, print_info
+from cparser.config import CONFIG
+from cparser.types import ASTDivergence, DependencyFunction, CursorPair, \
+    DependencyFunctionChange, SourceDiff, SourceFile
+from cparser.util import get_column_counts, print_info, print_err
 
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
     cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
@@ -37,11 +38,11 @@ def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
             if is_new:
                 cursor_pairs[key].new = child
                 cursor_pairs[key].new_path = \
-                    get_path_relative_to(str(child.location.file), root_dir)
+                    str(child.location.file).removeprefix(root_dir).removeprefix("/")
             else:
                 cursor_pairs[key].old = child
                 cursor_pairs[key].old_path = \
-                    get_path_relative_to(str(child.location.file), root_dir)
+                    str(child.location.file).removeprefix(root_dir).removeprefix("/")
 
 def functions_differ(cursor_old: cindex.Cursor,
     cursor_new: cindex.Cursor) -> cindex.SourceLocation|None:

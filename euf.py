@@ -25,12 +25,14 @@ from clang import cindex
 from git.repo import Repo
 from git.objects.commit import Commit
 
-from cparser import BASE_DIR, CONFIG, FALLBACK_LIBCLANG, DependencyFunction, DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile, matches_excluded, print_err, get_compile_args
-from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
+from cparser import BASE_DIR
+from cparser.config import CONFIG
+from cparser.types import DependencyFunction, DependencyFunctionChange, FunctionState, \
+    ProjectInvocation, SourceDiff, SourceFile
+from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result, matches_excluded
 from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
-        print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr
+        print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr, print_err
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
@@ -137,11 +139,11 @@ def run():
 
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
-        if not os.path.exists(FALLBACK_LIBCLANG):
+        if not os.path.exists(CONFIG.FALLBACK_LIBCLANG):
             print_err(f"Missing path to libclang: {CONFIG.LIBCLANG}")
             sys.exit(1)
         else:
-            CONFIG.LIBCLANG = FALLBACK_LIBCLANG
+            CONFIG.LIBCLANG = CONFIG.FALLBACK_LIBCLANG
 
     cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
@@ -209,9 +211,9 @@ def run():
     # Extract compile flags for each file that was changed
     for diff in DEP_SOURCE_DIFFS:
         (diff.old_compile_dir, diff.old_compile_args) = \
-                get_compile_args(DEP_DB_OLD, diff.old_path, DEPENDENCY_OLD)
+                SourceFile.get_compile_args(DEP_DB_OLD, diff.old_path, DEPENDENCY_OLD)
         (diff.new_compile_dir, diff.new_compile_args) = \
-                get_compile_args(DEP_DB_NEW, diff.new_path, DEPENDENCY_NEW)
+                SourceFile.get_compile_args(DEP_DB_NEW, diff.new_path, DEPENDENCY_NEW)
 
     # - - - Main project - - - #
     # Gather a list of all the source files in the main project

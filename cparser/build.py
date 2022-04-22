@@ -3,8 +3,8 @@ import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
 from git.exc import GitCommandError
 from git.repo.base import Repo
 
-from cparser.util import print_info, find
-from cparser import CONFIG, print_err
+from cparser.util import print_info, find, print_err
+from cparser.config import CONFIG
 
 def get_bear_version(path: str) -> int:
     if shutil.which("bear") is None:

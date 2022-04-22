@@ -33,7 +33,7 @@
   ],
 
   "SILENT_IDENTITY_VERIFICATION": true,
-  "SILENT_VERIFICATION": false,
+  "SILENT_VERIFICATION": true,
 
   "FORCE_RECOMPILE": true,
   "SHOW_FUNCTIONS": false,
