@@ -6,8 +6,7 @@
   "DEPLIB_NAME": "libonig.a",
   "EXCLUDE_REGEXES": [
     "sample/.*",
-    "test/.*",
-    "testu.c"
+    "test/.*"
   ],
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 10,

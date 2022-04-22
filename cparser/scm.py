@@ -1,11 +1,12 @@
 import sys, re, os, traceback
+from clang import cindex
 from git.objects.commit import Commit
 from git.repo.base import Repo
 from git.exc import GitCommandError
 
 from cparser.arg_states import matches_excluded
 from cparser.config import CONFIG
-from cparser.types import SourceDiff
+from cparser.types import SourceDiff, SourceFile
 from cparser.util import has_allowed_suffix, print_info
 
 def filter_out_excluded(items: list, path_arr: list[str]) -> list:
@@ -62,4 +63,20 @@ def create_worktree(target: str, commit: str, repo: Repo) -> bool:
             traceback.print_exc()
             return False
     return True
+
+def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[SourceFile]:
+    repo = Repo(path)
+    source_files = filter(lambda p: has_allowed_suffix(p),
+        [ e.path for e in repo.tree().traverse() ] # type: ignore
+    )
+
+    source_files = []
+    for e in repo.tree().traverse(): # type: ignore
+        if has_allowed_suffix(e.path):
+            source_files.append(
+                SourceFile.new(e.path,ccdb,path)
+            )
+
+    path_arr = [ s.new_path for s in source_files ]
+    return filter_out_excluded(source_files, path_arr)
 

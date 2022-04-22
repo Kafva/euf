@@ -1,8 +1,6 @@
 import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
-from pathlib import Path
 from clang import cindex
 from git.repo.base import Repo
-from cparser.types import SourceDiff, SourceFile
 
 from cparser.util import print_info, find, print_err
 from cparser.config import CONFIG
@@ -53,8 +51,16 @@ def has_valid_compile_db(source_path: str) -> bool:
         return False
 
 def autogen_compile_db(source_path: str) -> bool:
+
+    script_env = CONFIG.get_script_env()
+
     if has_valid_compile_db(source_path):
         return True
+    else:
+        # If we are creating a compile_commands.json we need to ensure
+        # that the project is clean, otherwise nothing will be built
+        # and the db will be empty
+        make_clean(source_path, script_env, subprocess.DEVNULL)
 
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
@@ -73,7 +79,6 @@ def autogen_compile_db(source_path: str) -> bool:
     # CC=goto-cc should NOT be set when generating the ccdb since this
     # can cause platform specific definitions to be omitted
     if conf_script:
-        script_env = CONFIG.get_script_env()
         script_env.update(CONFIG.BUILD_ENV)
         try:
             print_info(f"{source_path}: Running {conf_script}...")
@@ -108,9 +113,6 @@ def autogen_compile_db(source_path: str) -> bool:
     # 4. Run 'compdb' to insert entries for '.h' files into the database
     patch_ccdb_with_headers(source_path)
 
-    # 5. 'touch config.h' silences libclang errors
-    Path(f"{source_path}/config.h").touch()
-
     return has_valid_compile_db(source_path)
 
 def patch_ccdb_with_headers(source_path: str) -> bool:
@@ -119,10 +121,12 @@ def patch_ccdb_with_headers(source_path: str) -> bool:
     standard arguments array, we need to convert this to maintain
     compatibility with the rest of EUF
     '''
+    ccdb_path = f"{source_path}/compile_commands.json"
+
     if CONFIG.VERBOSITY >= 1:
         print_info("Running compdb...")
     try:
-        p = subprocess.Popen([ "compdb", "-p", ".", "list" ],
+        p = subprocess.Popen(["compdb", "-p", ".", "list"],
             stdout = subprocess.PIPE, stderr = subprocess.DEVNULL,
             cwd = source_path
         )
@@ -139,12 +143,21 @@ def patch_ccdb_with_headers(source_path: str) -> bool:
         return False
 
     current_db = {}
-    with open(f"{source_path}/compile_commands.json", mode = 'r', encoding='utf8') as f:
+    with open(ccdb_path, mode='r', encoding='utf8') as f:
         current_db = json.load(f)
         current_db.extend(header_entries)
 
-    with open(f"{source_path}/compile_commands.json", mode = 'w', encoding='utf8') as f:
-        json.dump(current_db,f, ensure_ascii=True, indent=4, sort_keys=True)
+    # To allow for easy testing, we sort the array based on 
+    # 'output' + 'file',
+    # ensuring that the ccdb always looks the same for a project 
+    # (compdb headers do not have an output, which would
+    # otherwise be a unique field)
+    current_db = sorted(current_db, key = lambda entry:
+            entry['file'] + (entry['output'] if 'output' in entry else '')
+    )
+
+    with open(ccdb_path, mode='w', encoding='utf8') as f:
+        json.dump(current_db, f, ensure_ascii=True, indent=4, sort_keys=True)
 
     return True
 
@@ -254,10 +267,11 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
 
     return find(CONFIG.DEPLIB_NAME, dep_dir)
 
-
 def create_ccdb(source_path:str) -> cindex.CompilationDatabase:
-    # For the AST dump to contain a resolved view of the symbols
-    # we need to provide the correct compile commands
+    '''
+    For the AST to contain a resolved view of the symbols
+    we need to provide the correct compile commands
+    '''
     if not autogen_compile_db(source_path): sys.exit(-1)
 
     try:

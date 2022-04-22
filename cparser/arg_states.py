@@ -10,10 +10,12 @@ For this to work we need to create a union of all the ccmd flags for each direct
 1. Split up the dep dir into subdirs (including top level)
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
-import subprocess, re, sys, json, os, traceback
+import subprocess, re, sys, json, os, traceback, multiprocessing
+from functools import partial
 from cparser.config import CONFIG
 from cparser.types import SourceFile, FunctionState, SubDirTU
-from cparser.util import print_info, print_warn, print_err
+from cparser.util import mkdir_p, print_info, print_warn, \
+        print_err, remove_files_in, time_end, time_start
 
 def matches_excluded(string: str) -> bool:
     for exclude_regex in CONFIG.EXCLUDE_REGEXES:
@@ -85,7 +87,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir
         SourceFile.get_isystem_flags(list(subdir_tu.files)[0], target_dir) + \
         list(subdir_tu.files) + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
-    #print(f"({subdir})> \n", ' '.join(cmd))
+    print(f"({subdir})> \n", ' '.join(cmd))
     subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out, env = script_env)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
@@ -155,3 +157,30 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
                     print(param.states)
 
     return arg_states
+
+def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir: str):
+    target_name = os.path.basename(target_dir)
+
+    start = time_start(f"Inspecting call sites ({target_name})...")
+    outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{target_name}"
+    mkdir_p(outdir)
+    remove_files_in(outdir)
+    subdir_tus = get_subdir_tus(target_source_dir, target_dir)
+    if CONFIG.VERBOSITY >= 3:
+        print("Subdirectories to analyze: ", end='')
+        print([ p.removeprefix(f"{target_source_dir}/") for p in subdir_tus.keys()])
+
+    with multiprocessing.Pool(CONFIG.NPROC) as p:
+        for subdir, subdir_tu in subdir_tus.items():
+            # Run parallel processes for different symbols
+            p.map(partial(call_arg_states_plugin,
+                outdir = outdir,
+                target_dir = target_source_dir,
+                subdir = subdir,
+                subdir_tu = subdir_tu,
+                quiet = True),
+                symbols
+            )
+
+    time_end(f"State space analysis ({target_name})", start)
+

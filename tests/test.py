@@ -1,11 +1,13 @@
 import filecmp, os, json, shutil
 from os.path import expanduser
 
-from cparser import BASE_DIR, CONFIG
-from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result
+from cparser import BASE_DIR
+from cparser.config import CONFIG
+from cparser.arg_states import call_arg_states_plugin, \
+        get_subdir_tus, join_arg_states_result
 
-from cparser.util import flatten, mkdir_p
-from cparser.build import dir_has_magic_file, patch_ccdb_with_headers
+from cparser.util import flatten, mkdir_p, remove_files_in, rm_f
+from cparser.build import autogen_compile_db, dir_has_magic_file, patch_ccdb_with_headers
 from euf import run
 
 TEST_DIR =  f"{BASE_DIR}/tests"
@@ -64,7 +66,9 @@ def test_get_source_subdirs():
 def test_join_arg_states_result():
     function_name = "usage"
     outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{EXPAT_OLD_NAME}"
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/libexpat_build_test.json")
     mkdir_p(outdir)
+    remove_files_in(outdir) # !!
 
     if os.path.exists(EXPAT_OLD_PATH):
         for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH, EXPAT_OLD_PATH).items():
@@ -72,6 +76,8 @@ def test_join_arg_states_result():
 
     result = join_arg_states_result( [ EXPAT_OLD_NAME ] )
     # If one includes the lib/tests/ path the expected set increases to [0,1,2]
+    # The increase is a FP of sorts since the call with (1) is a different 
+    # static definition of usage()
     assert( result[function_name].parameters[1].states == set([0,2]) )
 
 def test_compdb():
@@ -82,4 +88,14 @@ def test_compdb():
     # Check that no 'command' entries remain
     with open(f"{REPO_PATH}/compile_commands.json", mode='r', encoding='utf8') as f:
         ccdb = json.load(f)
-        assert( not any( [ 'command' in entry for entry in ccdb  ] ) )
+        assert(not any( [ 'command' in entry for entry in ccdb ] ))
+
+def test_autogen_compile_db():
+    rm_f(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json")
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/libexpat_build_test.json")
+    autogen_compile_db(EXPAT_OLD_SRC_PATH)
+
+    assert(filecmp.cmp(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json", \
+            f"{TEST_DIR}/expected/expat_compile.json" )
+    )
+
