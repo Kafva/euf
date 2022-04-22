@@ -1,7 +1,8 @@
-from pathlib import Path
 import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
-from git.exc import GitCommandError
+from pathlib import Path
+from clang import cindex
 from git.repo.base import Repo
+from cparser.types import SourceDiff, SourceFile
 
 from cparser.util import print_info, find, print_err
 from cparser.config import CONFIG
@@ -160,19 +161,6 @@ def check_ccdb_error(path: str) -> None:
     else:
         print_err(f"An error occured but {path}/compile_commands.json was created")
 
-def create_worktree(target: str, commit: str, repo: Repo) -> bool:
-    if not os.path.exists(target):
-        print_info(f"Creating worktree at {target}")
-        # git checkout COMMIT_NEW.hexsha
-        # git checkout -b euf-abcdefghi
-        # git worktree add -b euf-abcdefghi /tmp/openssl euf-abcdefghi
-        try:
-            repo.git.worktree("add", "-b", f"euf-{commit[:8]}", target, commit) # type: ignore
-        except GitCommandError:
-            traceback.print_exc()
-            return False
-    return True
-
 def make_clean(dep_source_dir: str, script_env: dict[str,str], out) -> bool:
     if os.path.exists(f"{dep_source_dir}/Makefile"):
         try:
@@ -266,3 +254,16 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
 
     return find(CONFIG.DEPLIB_NAME, dep_dir)
 
+
+def create_ccdb(source_path:str) -> cindex.CompilationDatabase:
+    # For the AST dump to contain a resolved view of the symbols
+    # we need to provide the correct compile commands
+    if not autogen_compile_db(source_path): sys.exit(-1)
+
+    try:
+        ccdb: cindex.CompilationDatabase  = \
+            cindex.CompilationDatabase.fromDirectory(source_path)
+    except cindex.CompilationDatabaseError:
+        print_err(f"Failed to parse {source_path}/compile_commands.json")
+        sys.exit(-1)
+    return ccdb

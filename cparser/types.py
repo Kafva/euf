@@ -5,7 +5,6 @@ from enum import Enum
 from clang import cindex
 from cparser.config import CONFIG
 
-
 class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
     ERROR = 1

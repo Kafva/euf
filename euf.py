@@ -18,41 +18,29 @@ remove equivalent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, re, sys, os, traceback, multiprocessing, subprocess
+import argparse, sys, os, traceback, multiprocessing, subprocess
 from functools import partial
 from pprint import pprint
 from clang import cindex
 from git.repo import Repo
-from git.objects.commit import Commit
 
 from cparser import BASE_DIR
 from cparser.config import CONFIG
 from cparser.types import DependencyFunction, DependencyFunctionChange, FunctionState, \
     ProjectInvocation, SourceDiff, SourceFile
-from cparser.arg_states import call_arg_states_plugin, get_subdir_tus, join_arg_states_result, matches_excluded
-from cparser.harness import valid_preconds, create_harness, get_I_flags_from_tu, run_harness, add_includes_from_tu
+from cparser.arg_states import call_arg_states_plugin, \
+        get_subdir_tus, join_arg_states_result
+from cparser.harness import valid_preconds, create_harness, \
+        get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, mkdir_p, print_info, \
         print_stage, remove_files_in, rm_f, time_end, time_start, wait_on_cr, print_err
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
         pretty_print_impact_by_proj, pretty_print_impact_by_dep
-from cparser.build import autogen_compile_db, build_goto_lib, create_worktree, \
-        check_ccdb_error
+from cparser.build import build_goto_lib, create_ccdb
 from cparser.enumerate_globals import write_rename_files
-
-def filter_out_excluded(items: list, path_arr: list[str]) -> list:
-    '''
-    Filter out any files that are in excluded paths
-    The paths are provided as python regex
-    '''
-    filtered = []
-
-    for item,path in zip(items,path_arr):
-        if not matches_excluded(path):
-            filtered.append(item)
-
-    return filtered
+from cparser.scm import filter_out_excluded, get_commits, get_source_diffs, create_worktree
 
 def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir: str):
     target_name = os.path.basename(target_dir)
@@ -80,63 +68,157 @@ def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir:
 
     time_end(f"State space analysis ({target_name})", start)
 
-def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
-    commit_old: Commit = None # type: ignore
-    commit_new: Commit = None # type: ignore
+def impact_stage(log_dir:str, project_source_files: list[SourceFile],
+ changed_functions: list[DependencyFunctionChange]):
+    ''' - - - Impact set - - - '''
+    if CONFIG.VERBOSITY >= 1:
+        print_stage("Impact set")
+        wait_on_cr()
+    CALL_SITES: list[ProjectInvocation]      = []
 
-    for commit in dep_repo.iter_commits():
-        if commit.hexsha.startswith(CONFIG.COMMIT_NEW):
-            commit_new: Commit = commit
-        elif commit.hexsha.startswith(CONFIG.COMMIT_OLD):
-            commit_old: Commit = commit
+    os.chdir(CONFIG.PROJECT_DIR)
 
-    if not commit_old:
-        print(f"Unable to find old commit: {CONFIG.COMMIT_OLD}")
+    # With the changed functions enumerated we can
+    # begin parsing the source code of the main project
+    # to find all call locations (the impact set)
+    try:
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
+            CALL_SITES = flatten(p.map(
+                partial(get_call_sites_from_file,
+                    changed_functions = set(changed_functions)
+                ),
+                project_source_files
+            ))
+
+            if CONFIG.VERBOSITY >= 2 or len(CALL_SITES) == 0:
+                pprint(CALL_SITES)
+            else:
+                if CONFIG.REVERSE_MAPPING:
+                    pretty_print_impact_by_dep(CALL_SITES)
+                else:
+                    pretty_print_impact_by_proj(CALL_SITES)
+            if CONFIG.ENABLE_RESULT_LOG:
+                log_impact_set(CALL_SITES, f"{log_dir}/impact_set.csv")
+    except Exception:
+        traceback.print_exc()
         sys.exit(-1)
-    if not commit_new:
-        print(f"Unable to find new commit: {CONFIG.COMMIT_NEW}")
-        sys.exit(-1)
 
-    return (commit_old,commit_new)
-
-def get_source_diffs(commit_old: Commit, commit_new: Commit) -> list[SourceDiff]:
-    COMMIT_DIFF = filter(lambda d: \
-                has_allowed_suffix(d.a_path) and \
-                re.match("M|R", d.change_type),
-            commit_old.diff(commit_new) # type: ignore
+def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[SourceFile]:
+    repo = Repo(path)
+    source_files = filter(lambda p: has_allowed_suffix(p),
+        [ e.path for e in repo.tree().traverse() ] # type: ignore
     )
 
-    return [ SourceDiff(new_path = d.b_path, old_path = d.a_path) \
-            for d in COMMIT_DIFF ]
+    source_files = []
+    for e in repo.tree().traverse(): # type: ignore
+        if has_allowed_suffix(e.path):
+            source_files.append(
+                SourceFile.new(e.path,ccdb,path)
+            )
 
-def get_ccdbs(dep_source_root_old: str,
- dep_source_root_new: str) -> tuple[cindex.CompilationDatabase,cindex.CompilationDatabase]:
-    if not autogen_compile_db(dep_source_root_old): sys.exit(-1)
-    if not autogen_compile_db(dep_source_root_new): sys.exit(-1)
-    if not autogen_compile_db(CONFIG.PROJECT_DIR): sys.exit(-1)
+    return source_files
 
-    # For the AST dump to contain a resolved view of the symbols
-    # we need to provide the correct compile commands
+def ast_diff_stage(dep_old:str, dep_new:str,
+ dep_source_diffs: list[SourceDiff]) -> list[DependencyFunctionChange]:
+    '''
+    Look through the old and new version of each delta
+    using NPROC parallel processes and save
+    the changed functions to `changed_functions`
+    '''
+    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
+        print_stage("Change set")
+
+    changed_functions = []
     try:
-        dep_db_old: cindex.CompilationDatabase  = \
-            cindex.CompilationDatabase.fromDirectory(dep_source_root_old)
-    except cindex.CompilationDatabaseError:
-        print_err(f"Failed to parse {dep_source_root_old}/compile_commands.json")
-        sys.exit(-1)
-    try:
-        dep_db_new: cindex.CompilationDatabase  = \
-                cindex.CompilationDatabase.fromDirectory(dep_source_root_new)
-    except cindex.CompilationDatabaseError:
-        print_err(f"Failed to parse {dep_source_root_new}/compile_commands.json")
+        with multiprocessing.Pool(CONFIG.NPROC) as p:
+            changed_functions       = flatten(p.map(
+                partial(get_changed_functions_from_diff,
+                    old_root_dir=dep_old,
+                    new_root_dir=dep_new
+                ),
+                dep_source_diffs
+            ))
+            changed_functions = list(filter(lambda f: \
+                    not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
+                changed_functions[:]))
+
+            if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "" and not CONFIG.SHOW_DIFFS:
+                pprint(changed_functions)
+    except Exception:
+        traceback.print_exc()
         sys.exit(-1)
 
-    return (dep_db_old, dep_db_new)
+    os.chdir(BASE_DIR) # cwd changes during compilation
+
+    if CONFIG.SHOW_DIFFS:
+        for c in changed_functions:
+            print(c.divergence())
+        wait_on_cr(always=True)
+
+        for d in dep_source_diffs:
+            cmd = ["git", # Force pager for every file
+                "-c", "core.pager=less -+F -c",
+                "diff", "--no-index", "--color=always",
+                "--function-context",
+                f"{dep_old}/{d.old_path}",
+                f"{dep_new}/{d.new_path}" ]
+            print(' '.join(cmd))
+            subprocess.run(cmd)
+
+        sys.exit(0)
+
+    return changed_functions
+
+def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
+ dep_db_old: cindex.CompilationDatabase, dep_db_new: cindex.CompilationDatabase
+ ) -> list[SourceDiff]:
+    ''' Find the objects that correspond to the old and new commit '''
+    (commit_old, commit_new) = get_commits(dep_repo)
+
+    # Only include modified (M) and renamed (R) '.c' files
+    # Renamed files still provide us with context information when a
+    # change has occurred at the same time as a move operation:
+    #   e.g. `foo.c -> src/foo.c`
+    dep_source_diffs = get_source_diffs(commit_old, commit_new)
+
+    dep_source_diffs = filter_out_excluded(dep_source_diffs, \
+            [ d.old_path for d in dep_source_diffs ] )
+
+    # To get the full context when parsing source files we need the
+    # full source tree (and a compilation database) for both the
+    # new and old version of the dependency
+    if not create_worktree(dep_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(-1)
+    if not create_worktree(dep_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(-1)
+
+    if not CONFIG.SKIP_BLAME:
+        # Add additional diffs based on git-blame that were not recorded
+        added_diff = list(filter(lambda d: \
+                    has_allowed_suffix(d.a_path) and
+                    'A' == d.change_type,
+                commit_old.diff(commit_new) # type: ignore
+        ))
+
+        add_rename_changes_based_on_blame(
+                Repo(dep_new), added_diff, dep_source_diffs
+        )
+
+    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
+        print_stage("Git Diff")
+        print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
+                for d in dep_source_diffs ]) + "\n")
+        wait_on_cr()
+
+    # Extract compile flags for each file that was changed
+    for diff in dep_source_diffs:
+        (diff.old_compile_dir, diff.old_compile_args) = \
+                SourceFile.get_compile_args(dep_db_old, diff.old_path, dep_old)
+        (diff.new_compile_dir, diff.new_compile_args) = \
+                SourceFile.get_compile_args(dep_db_new, diff.new_path, dep_new)
+
+    return dep_source_diffs
 
 def run():
-    mkdir_p(CONFIG.EUF_CACHE)
-    mkdir_p(CONFIG.RESULTS_DIR)
-    mkdir_p(CONFIG.ARG_STATES_OUTDIR)
-
+    ''' - - - Setup - - - '''
     # Set the path to the clang library (platform dependent)
     if not os.path.exists(CONFIG.LIBCLANG):
         if not os.path.exists(CONFIG.FALLBACK_LIBCLANG):
@@ -149,8 +231,28 @@ def run():
 
     DEP_REPO = Repo(CONFIG.DEPENDENCY_DIR)
     DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
-    DEPENDENCY_NEW = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_NEW[:8]}"
-    DEPENDENCY_OLD = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_OLD[:8]}"
+
+    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}"+\
+        f"_{CONFIG.COMMIT_OLD[:4]}_{CONFIG.COMMIT_NEW[:4]}"
+
+    # Dependency .git directories
+    dep_new = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_NEW[:8]}"
+    dep_old = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_OLD[:8]}"
+
+    # Source code directory (usually same as .git directory)
+    dep_source_root = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
+        if CONFIG.DEP_SOURCE_ROOT != "" \
+        else ""
+
+    dep_source_root_old = dep_old + dep_source_root
+    dep_source_root_new = dep_new + dep_source_root
+
+    if CONFIG.ENABLE_RESULT_LOG:
+        mkdir_p(LOG_DIR)
+
+    mkdir_p(CONFIG.EUF_CACHE)
+    mkdir_p(CONFIG.RESULTS_DIR)
+    mkdir_p(CONFIG.ARG_STATES_OUTDIR)
 
     try:
         _ = DEP_REPO.active_branch
@@ -158,166 +260,43 @@ def run():
         print_err(f"Unable to read current branch name for {CONFIG.DEPENDENCY_DIR}\n{e}")
         sys.exit(1)
 
-    # - - - Git diff - - - #
-    # Find the objects that correspond to the old and new commit
-    (COMMIT_OLD, COMMIT_NEW) = get_commits(DEP_REPO)
-
-    # Only include modified (M) and renamed (R) '.c' files
-    # Renamed files still provide us with context information when a
-    # change has occurred at the same time as a move operation:
-    #   e.g. `foo.c -> src/foo.c`
-    DEP_SOURCE_DIFFS = get_source_diffs(COMMIT_OLD, COMMIT_NEW)
-
-    DEP_SOURCE_DIFFS = filter_out_excluded(DEP_SOURCE_DIFFS, \
-            [ d.old_path for d in DEP_SOURCE_DIFFS ] )
-
-    # To get the full context when parsing source files we need the
-    # full source tree (and a compilation database) for both the
-    # new and old version of the dependency
-    if not create_worktree(DEPENDENCY_NEW, CONFIG.COMMIT_NEW, DEP_REPO): sys.exit(-1)
-    if not create_worktree(DEPENDENCY_OLD, CONFIG.COMMIT_OLD, DEP_REPO): sys.exit(-1)
-
-    NEW_DEP_REPO = Repo(DEPENDENCY_NEW)
-
-    if not CONFIG.SKIP_BLAME:
-        # Add additional diffs based on git-blame that were not recorded
-        ADDED_DIFF = list(filter(lambda d: \
-                    has_allowed_suffix(d.a_path) and
-                    'A' == d.change_type,
-                COMMIT_OLD.diff(COMMIT_NEW) # type: ignore
-        ))
-
-        add_rename_changes_based_on_blame(NEW_DEP_REPO, ADDED_DIFF, DEP_SOURCE_DIFFS)
-
-    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
-        print_stage("Git Diff")
-        print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
-                for d in DEP_SOURCE_DIFFS ]) + "\n")
-        wait_on_cr()
-
-    # Update the project root in case the source code and .git
-    # folder are not both at the root of the project
-    dep_source_root = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
-        if CONFIG.DEP_SOURCE_ROOT != "" \
-        else ""
-
-    DEP_SOURCE_ROOT_OLD = DEPENDENCY_OLD + dep_source_root
-    DEP_SOURCE_ROOT_NEW = DEPENDENCY_NEW + dep_source_root
-
     # Attempt to create the compilation database automatically
     # if they do not already exist
-    (DEP_DB_OLD, DEP_DB_NEW) = get_ccdbs(DEP_SOURCE_ROOT_OLD, DEP_SOURCE_ROOT_NEW)
+    dep_db_new = create_ccdb(dep_source_root_new)
+    dep_db_old = create_ccdb(dep_source_root_old)
+    main_db = create_ccdb(CONFIG.PROJECT_DIR)
 
-    # Extract compile flags for each file that was changed
-    for diff in DEP_SOURCE_DIFFS:
-        (diff.old_compile_dir, diff.old_compile_args) = \
-                SourceFile.get_compile_args(DEP_DB_OLD, diff.old_path, DEPENDENCY_OLD)
-        (diff.new_compile_dir, diff.new_compile_args) = \
-                SourceFile.get_compile_args(DEP_DB_NEW, diff.new_path, DEPENDENCY_NEW)
-
-    # - - - Main project - - - #
     # Gather a list of all the source files in the main project
-    main_repo = Repo(CONFIG.PROJECT_DIR)
-    PROJECT_SOURCE_FILES = filter(lambda p: has_allowed_suffix(p),
-        [ e.path for e in main_repo.tree().traverse() ] # type: ignore
-    )
-
-    try:
-        MAIN_DB = cindex.CompilationDatabase.fromDirectory(CONFIG.PROJECT_DIR)
-    except cindex.CompilationDatabaseError as e:
-        check_ccdb_error(CONFIG.PROJECT_DIR)
-        sys.exit(1)
+    PROJECT_SOURCE_FILES = get_source_files(CONFIG.PROJECT_DIR, main_db)
 
     # Create a list of all files from the dependency
     # used for transative call analysis and state space estimation
-    PROJECT_SOURCE_FILES = []
-    for e in main_repo.tree().traverse(): # type: ignore
-        if has_allowed_suffix(e.path):
-            PROJECT_SOURCE_FILES.append(
-                SourceFile.new(e.path,MAIN_DB,CONFIG.PROJECT_DIR)
-            )
+    DEP_SOURCE_FILES = get_source_files(dep_old, dep_db_old)
+
+    # - - - Git diff - - - #
+    dep_source_diffs = git_diff_stage(DEP_REPO,
+        dep_old, dep_new, dep_db_old, dep_db_new
+    )
 
     # - - - Change set - - - #
-    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
-        print_stage("Change set")
-
-    LOG_DIR = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}"+\
-        f"_{COMMIT_OLD.hexsha[:4]}_{COMMIT_NEW.hexsha[:4]}"
-
-    if CONFIG.ENABLE_RESULT_LOG:
-        mkdir_p(LOG_DIR)
-
-    CHANGED_FUNCTIONS: list[DependencyFunctionChange] = []
+    CHANGED_FUNCTIONS = ast_diff_stage(dep_old, dep_new, dep_source_diffs)
     TU_INCLUDES = {}
-
-    # Look through the old and new version of each delta
-    # using NPROC parallel processes and save
-    # the changed functions to `CHANGED_FUNCTIONS`
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            CHANGED_FUNCTIONS       = flatten(p.map(
-                partial(get_changed_functions_from_diff,
-                    old_root_dir=DEPENDENCY_OLD,
-                    new_root_dir=DEPENDENCY_NEW
-                ),
-                DEP_SOURCE_DIFFS
-            ))
-            CHANGED_FUNCTIONS = list(filter(lambda f: \
-                    not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
-                CHANGED_FUNCTIONS[:]))
-
-            if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "" and not CONFIG.SHOW_DIFFS:
-                pprint(CHANGED_FUNCTIONS)
-    except Exception:
-        traceback.print_exc()
-        sys.exit(-1)
-
-    os.chdir(BASE_DIR) # cwd changes during compilation
-
-    if CONFIG.SHOW_DIFFS:
-        for c in CHANGED_FUNCTIONS:
-            print(c.divergence())
-        wait_on_cr(always=True)
-
-        for d in DEP_SOURCE_DIFFS:
-            cmd = ["git", # Force pager for every file
-                "-c", "core.pager=less -+F -c",
-                "diff", "--no-index", "--color=always",
-                "--function-context",
-                f"{DEPENDENCY_OLD}/{d.old_path}",
-                f"{DEPENDENCY_NEW}/{d.new_path}" ]
-            print(' '.join(cmd))
-            subprocess.run(cmd)
-
-        sys.exit(0)
 
     wait_on_cr()
     log_changed_functions(CHANGED_FUNCTIONS, f"{LOG_DIR}/change_set.csv")
-
-    # Create a list of all files from the dependency
-    # used for transative call analysis and state space estimation
-    DEP_SOURCE_FILES = []
-    for e in NEW_DEP_REPO.tree().traverse(): # type: ignore
-        if has_allowed_suffix(e.path):
-            DEP_SOURCE_FILES.append(
-                SourceFile.new(e.path,DEP_DB_NEW, DEPENDENCY_NEW)
-            )
-
-    DEP_SOURCE_FILES = filter_out_excluded(list(DEP_SOURCE_FILES), \
-            [ f.new_path for f in DEP_SOURCE_FILES  ])
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
         if CONFIG.VERBOSITY >= 1:
             print_stage("Reduction")
 
-        write_rename_files(DEPENDENCY_OLD, DEP_DB_OLD)
+        write_rename_files(dep_old, dep_db_old)
 
         # Compile the old and new version of the dependency as a set of 
         # goto-bin files
-        if (new_lib := build_goto_lib(DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW, False)) == "":
+        if (new_lib := build_goto_lib(dep_source_root_new, dep_new, False)) == "":
             sys.exit(-1)
-        if (old_lib := build_goto_lib(DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD, True)) == "":
+        if (old_lib := build_goto_lib(dep_source_root_old, dep_old, True)) == "":
             sys.exit(-1)
 
         # Copy any required headers into the include
@@ -340,7 +319,7 @@ def run():
         # Retrieve a list of the headers that each TU uses
         # We will need to include these in the driver
         # for types etc. to be defined
-        IFLAGS = get_I_flags_from_tu(DEP_SOURCE_DIFFS, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD)
+        IFLAGS = get_I_flags_from_tu(dep_source_diffs, dep_old, dep_source_root_old)
 
         # Exclude functions that we are not going to analyze
         changes_to_analyze = []
@@ -348,13 +327,13 @@ def run():
             if valid_preconds(c,IFLAGS,logfile="",quiet=True):
                 changes_to_analyze.append(c.old.ident.spelling)
 
-        state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_OLD, DEPENDENCY_OLD)
-        #state_space_analysis(changes_to_analyze, DEP_SOURCE_ROOT_NEW, DEPENDENCY_NEW)
+        state_space_analysis(changes_to_analyze, dep_source_root_old, dep_old)
+        #state_space_analysis(changes_to_analyze, dep_source_root_new, dep_new)
         #state_space_analysis(changes_to_analyze, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO: takes to long
 
         # Join the results from each analysis
-        old_name    = os.path.basename(DEPENDENCY_OLD)
-        new_name    = os.path.basename(DEPENDENCY_NEW)
+        old_name    = os.path.basename(dep_old)
+        new_name    = os.path.basename(dep_new)
         proj_name   = os.path.basename(CONFIG.PROJECT_DIR)
         ARG_STATES  = join_arg_states_result([ old_name, new_name, proj_name ])
 
@@ -368,13 +347,13 @@ def run():
             'CBMC_OPTS_STR': CONFIG.CBMC_OPTS_STR
         })
 
-        harness_dir = f"{DEP_SOURCE_ROOT_OLD}/{CONFIG.HARNESS_DIR}"
+        harness_dir = f"{dep_source_root_old}/{CONFIG.HARNESS_DIR}"
         mkdir_p(harness_dir)
 
         total = len(CHANGED_FUNCTIONS)
 
-        for diff in DEP_SOURCE_DIFFS:
-            add_includes_from_tu(diff, DEPENDENCY_OLD, DEP_SOURCE_ROOT_OLD, IFLAGS, TU_INCLUDES)
+        for diff in dep_source_diffs:
+            add_includes_from_tu(diff, dep_old, dep_source_root_old, IFLAGS, TU_INCLUDES)
 
         for i,change in enumerate(CHANGED_FUNCTIONS[:]):
             # - - - Harness generation - - - #
@@ -444,7 +423,7 @@ def run():
         print_stage("Transitive change set")
         wait_on_cr()
     TRANSATIVE_CHANGED_FUNCTIONS = {}
-    os.chdir(DEPENDENCY_NEW)
+    os.chdir(dep_new)
 
     for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
@@ -452,7 +431,7 @@ def run():
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
                         changed_functions = CHANGED_FUNCTIONS,
-                        dep_root_dir = DEP_SOURCE_ROOT_NEW
+                        dep_root_dir = dep_source_root_new
                     ),
                     DEP_SOURCE_FILES
                 ))
@@ -486,38 +465,7 @@ def run():
         pprint(CHANGED_FUNCTIONS)
 
 
-    # - - - Impact set - - - #
-    if CONFIG.VERBOSITY >= 1:
-        print_stage("Impact set")
-        wait_on_cr()
-    CALL_SITES: list[ProjectInvocation]      = []
-
-    os.chdir(CONFIG.PROJECT_DIR)
-
-    # With the changed functions enumerated we can
-    # begin parsing the source code of the main project
-    # to find all call locations (the impact set)
-    try:
-        with multiprocessing.Pool(CONFIG.NPROC) as p:
-            CALL_SITES = flatten(p.map(
-                partial(get_call_sites_from_file,
-                    changed_functions = set(CHANGED_FUNCTIONS)
-                ),
-                PROJECT_SOURCE_FILES
-            ))
-
-            if CONFIG.VERBOSITY >= 2 or len(CALL_SITES) == 0:
-                pprint(CALL_SITES)
-            else:
-                if CONFIG.REVERSE_MAPPING:
-                    pretty_print_impact_by_dep(CALL_SITES)
-                else:
-                    pretty_print_impact_by_proj(CALL_SITES)
-            if CONFIG.ENABLE_RESULT_LOG:
-                log_impact_set(CALL_SITES, f"{LOG_DIR}/impact_set.csv")
-    except Exception as e:
-        traceback.print_exc()
-        sys.exit(-1)
+    impact_stage(LOG_DIR, PROJECT_SOURCE_FILES, CHANGED_FUNCTIONS)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
