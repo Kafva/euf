@@ -777,7 +777,6 @@ class SourceDiff(SourceFile):
     old_compile_args: list[str] = field(default_factory=list)
     old_compile_dir: str = ""
 
-
 @dataclass(init=True)
 class CursorPair:
     new: cindex.Cursor

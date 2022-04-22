@@ -52,7 +52,7 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
       -DLLVM_TARGETS_TO_BUILD=host \
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
     ninja -C ./build &&
-    cmake --install ./build --prefix "/usr/local"
+    sudo cmake --install ./build --prefix "/usr/local"
 fi
 
 # Setup structures needed for pytest
