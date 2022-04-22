@@ -78,6 +78,7 @@ class Config:
     # accessible outside of their TU
     BUILD_ENV: dict[str,str] = field(default_factory=dict)
     FORCE_RECOMPILE: bool = False
+    FORCE_CCDB_RECOMPILE: bool = False
 
     _GOTO_BUILD_SCRIPT: str = ""
     _CCDB_BUILD_SCRIPT: str = ""

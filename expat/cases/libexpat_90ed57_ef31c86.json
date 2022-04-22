@@ -20,6 +20,8 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
+  "FORCE_RECOMPILE": false,
+  "FORCE_CCDB_RECOMPILE": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 7,
   "PAUSES": false,

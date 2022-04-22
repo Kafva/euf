@@ -71,6 +71,7 @@ class Identifier:
 
         typing = str(canonical.kind).removeprefix("TypeKind.").lower()
         type_spelling = canonical.spelling.removeprefix("const ")
+        type_spelling = type_spelling.replace(" ", "")
 
         return (typing,type_spelling)
 

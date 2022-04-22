@@ -51,10 +51,9 @@ def has_valid_compile_db(source_path: str) -> bool:
         return False
 
 def autogen_compile_db(source_path: str) -> bool:
-
     script_env = CONFIG.get_script_env()
 
-    if has_valid_compile_db(source_path):
+    if has_valid_compile_db(source_path) and not CONFIG.FORCE_CCDB_RECOMPILE:
         return True
     else:
         # If we are creating a compile_commands.json we need to ensure
