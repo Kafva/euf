@@ -138,7 +138,8 @@ def pretty_print_impact_by_dep(call_sites: list[ProjectInvocation]) -> None:
 
         print("Called from:")
         for site in affected:
-            print("\t"+site.invocation())
+            print(f"{CONFIG.INDENT}{site.invocation()}")
 
-        print(dep_change.affected_by(pretty=True))
-
+            affected_str = dep_change.affected_by(pretty=True)
+            if affected_str!="":
+                print(affected_str)

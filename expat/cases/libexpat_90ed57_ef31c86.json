@@ -7,7 +7,8 @@
     "expat/tests/.*",
     "expat/examples/.*",
     "expat/.*tab.h",
-    "expat/fuzz/.*"
+    "expat/fuzz/.*",
+    "expat/xmlwf/win32.*"
   ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [

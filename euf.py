@@ -300,7 +300,6 @@ def transitive_stage(dep_new: str,
                     dep_source_files
                 ))
 
-            exit()
             if CONFIG.VERBOSITY >= 1:
                 pprint(TRANSATIVE_CHANGED_FUNCTIONS)
 

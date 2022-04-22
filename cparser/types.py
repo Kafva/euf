@@ -211,11 +211,11 @@ class Identifier:
         report = [
             f"type_spelling: {self.type_spelling} {other.type_spelling} " + \
                     (same if self.type_spelling == other.type_spelling else differ),
-            f"typing: {self.typing} {other.typing} " + \
+            f"(strict) typing: {self.typing} {other.typing} " + \
                     (same if self.typing == other.typing else differ),
-            f"is_ptr: {self.is_ptr} {other.is_ptr}: " + \
+            f"(strict) is_ptr: {self.is_ptr} {other.is_ptr}: " + \
                     (same if self.is_ptr == other.is_ptr else differ),
-            f"is_const: {self.is_const} {other.is_const} " + \
+            f"(strict) is_const: {self.is_const} {other.is_const} " + \
                     (same if self.is_const == other.is_const else differ),
             f"is_function: {self.is_function} {other.is_function} " + \
                     (same if self.is_function == other.is_function else differ)
@@ -241,20 +241,22 @@ class Identifier:
 
         Unresolved nodes with a 'dependent type' are considered equal to everything
         unless we are using STRICT_TYPECHECKS
+        We only check the function_flag and type_spelling if STRICT_TYPECHECKS is not set,
+        Typechecking through python's clang bindings is very FP prone
         '''
-        typing_check = True
+        strict_check = True
         if CONFIG.STRICT_TYPECHECKS:
-            typing_check = self.typing == other.typing
+            strict_check = self.typing == other.typing and \
+               self.is_ptr == other.is_ptr and \
+               self.is_const == other.is_const
 
         elif re.search(CONFIG.UNRESOLVED_NODES_REGEX, self.type_spelling) or \
              re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
                 return True
 
-        return typing_check and \
+        return strict_check and \
                self.type_spelling == other.type_spelling and \
-               self.is_ptr == other.is_ptr and \
-               self.is_function == other.is_function and \
-               self.is_const == other.is_const
+               self.is_function == other.is_function
 
     def explicitly_renamed_type(self) -> str:
         '''
@@ -338,13 +340,13 @@ class DependencyFunction:
         '''
         if (err := self.ident.eq_report(other.ident, return_value=True, check_function=True)) != "":
             print(err)
-            print(f"{self}\n{other}\n")
+            print(f"definition: {self}\ncall: {other}\n")
             return False
 
         for self_arg,other_arg in zip(self.arguments,other.arguments):
             if (err := self_arg.eq_report(other_arg, return_value=False, check_function=False)) != "":
                 print(err)
-                print(f"{self}\n{other}\n")
+                print(f"definition: {self}\ncall: {other}\n")
                 return False
 
         return True
@@ -431,21 +433,21 @@ class DependencyFunctionChange:
         if brief and pretty:
                 out += "\033[0m"
 
-        if len(self.invokes_changed_functions) > 0 and not brief:
+        if not brief:
             out += self.affected_by(pretty)
 
         return out
 
     def affected_by(self,pretty=True) -> str:
         out = ""
+        if len(self.invokes_changed_functions) > 0:
+            if pretty:
+                out += "\nAffected by changes to:"
+            else:
+                out += "\n affected by changes to:"
 
-        if pretty:
-            out += "\nAffected by changes to:"
-        else:
-            out += "\n affected by changes to:"
-
-        for trans_call in self.invokes_changed_functions:
-            out += f"\n\t{trans_call}"
+            for trans_call in self.invokes_changed_functions:
+                out += f"\n{CONFIG.INDENT}{trans_call}"
         return out
 
     def to_csv(self) -> str:
