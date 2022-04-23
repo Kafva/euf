@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 die(){ echo -e "$1" >&2 ; exit 1; }
+warn(){ echo -e "(pytest) \033[33m!>\033[0m $1">&2; }
 clone_repo(){
-  [ -d "$2" ] || git clone https://github.com/$1.git $2
+  [ -d "$2" ] || git clone https://github.com/$1.git "$2"
 }
 
 if $(which apt &> /dev/null); then
@@ -15,7 +16,8 @@ fi
 
 # Compile submodules
 make -C clang-plugins all
-make -C cbmc install
+make -C cbmc clean && 
+  make -C cbmc install
 
 # Clone all projects
 mkdir -p ~/Repos
@@ -26,7 +28,7 @@ clone_repo libusb/libusb          ~/Repos/libusb
 clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
 
-if ! [ -f ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
+if ! [ -e ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
   cd ~/Repos/jq
     git submodule update --init --recursive
     cd modules/oniguruma &&
@@ -73,3 +75,9 @@ if ! [ -d venv ]; then
   source ./venv/bin/activate
   pip3 install -r requirements.txt
 fi
+
+# Ensure preconditions for pytest
+find ~/.ssh -type f | xargs -I{} file {} 2>/dev/null |
+  grep -q ELF && warn "$HOME/.ssh contains ELF file(s)"
+find /usr/local/bin -type f | xargs -I{} file {} 2>/dev/null | 
+  grep -q ELF || warn "/usr/local/bin has no ELF file(s)"
