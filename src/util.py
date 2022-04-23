@@ -123,7 +123,7 @@ def mkdir_p(path: str):
         os.mkdir(path)
 
 def rm_f(path: str):
-    if os.path.exists(path):
+    if os.path.isfile(path):
         os.remove(path)
 
 def has_allowed_suffix(string) -> bool:

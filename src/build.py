@@ -18,8 +18,8 @@ def get_bear_version(path: str) -> int:
 def run_autoreconf(path: str, out) -> bool:
     script_env = os.environ.copy()
 
-    if os.path.exists(f"{path}/configure.ac") or \
-       os.path.exists(f"{path}/configure.in"):
+    if os.path.isfile(f"{path}/configure.ac") or \
+       os.path.isfile(f"{path}/configure.in"):
         try:
             print_info(f"{path}: Running autoreconf -vfi...")
             (subprocess.run([ "autoreconf", "-vfi" ],
@@ -37,7 +37,7 @@ def run_autoreconf(path: str, out) -> bool:
 def has_valid_compile_db(source_path: str) -> bool:
     cmds_json = f"{source_path}/compile_commands.json"
 
-    if os.path.exists(cmds_json):
+    if os.path.isfile(cmds_json):
         # If the project has already been built the database will be empty
         f = open(cmds_json, mode="r", encoding = "utf8")
 
@@ -67,14 +67,14 @@ def autogen_compile_db(source_path: str) -> bool:
 
     # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
     # needs to be manually invoked to create configure
-    if not os.path.exists(f"{source_path}/configure"):
+    if not os.path.isfile(f"{source_path}/configure"):
         print_err(f"({source_path}): Missing ./configure")
         run_autoreconf(source_path, out)
 
     conf_script = None
-    if os.path.exists(f"{source_path}/configure"):
+    if os.path.isfile(f"{source_path}/configure"):
         conf_script = f"{source_path}/configure"
-    elif os.path.exists(f"{source_path}/Configure"):
+    elif os.path.isfile(f"{source_path}/Configure"):
         conf_script = f"{source_path}/Configure"
 
     # 1. Configure the project according to ./configure if applicable
@@ -92,7 +92,7 @@ def autogen_compile_db(source_path: str) -> bool:
             check_ccdb_error(source_path)
 
     # 3. Run 'make' with 'bear'
-    if os.path.exists(f"{source_path}/Makefile"):
+    if os.path.isfile(f"{source_path}/Makefile"):
         try:
             print_info(f"Generating {source_path}/compile_commands.json...")
             cmd = [ "bear", "--", "make", "-j",
@@ -177,7 +177,7 @@ def check_ccdb_error(path: str) -> None:
         print_err(f"An error occured but {path}/compile_commands.json was created")
 
 def make_clean(dep_source_dir: str, script_env: dict[str,str], out) -> bool:
-    if os.path.exists(f"{dep_source_dir}/Makefile"):
+    if os.path.isfile(f"{dep_source_dir}/Makefile"):
         try:
             subprocess.run([ "make", "clean"],
                 stdout = out, stderr = out,
@@ -205,8 +205,8 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
     script_env = CONFIG.get_script_env()
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
-    if os.path.exists(f"{dep_source_dir}/configure") or \
-         os.path.exists(f"{dep_source_dir}/Makefile") or \
+    if os.path.isfile(f"{dep_source_dir}/configure") or \
+         os.path.isfile(f"{dep_source_dir}/Makefile") or \
          CONFIG.GOTO_BUILD_SCRIPT != "":
         # Always recompile if at least one file in the project is 
         # an ELF binary, goto-bin files are recorded as 'data' with `file`
@@ -242,7 +242,7 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
                     ).check_returncode()
 
                 else:
-                    if os.path.exists(f"{dep_source_dir}/configure"):
+                    if os.path.isfile(f"{dep_source_dir}/configure"):
                         subprocess.run([
                             "./configure", "--host", "none-none-none"
                             ],

@@ -238,7 +238,7 @@ def reduction_stage(dep_new: str, dep_old: str,
                     ([],[])
         i_flags     = ' '.join(IFLAGS[change.old.location.filepath]).strip()
 
-        if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
+        if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
             pass # Use existing driver
         else:
             create_harness(change, harness_path, tu_includes,
@@ -251,7 +251,7 @@ def reduction_stage(dep_new: str, dep_old: str,
 
             harness_path = f"{harness_dir}/{change.old.ident.spelling}.c"
 
-            if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
+            if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
                 pass # Use existing driver
             else:
                 create_harness(change, harness_path, tu_includes,
