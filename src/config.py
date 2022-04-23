@@ -150,6 +150,9 @@ class Config:
     # No spaces
     UNRESOLVED_NODES_REGEX: str = r"unnamedat|<dependenttype>"
 
+    # Compiler used during ccdb generation
+    CCDB_CC = "clang"
+
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
     HARNESS_DIR: str = ".harnesses"
@@ -236,11 +239,22 @@ class Config:
 
     def update_from_file(self, filepath: str):
         ''' If we create a new object the CONFIG object wont be shared '''
+        self.reset()
         with open(filepath, mode = "r", encoding = "utf8") as f:
            dct = json.load(f)
            for key,val in dct.items():
             if key in dct:
                 setattr(self, key, val) # Respects .setters
+
+    def reset(self):
+        '''
+        Reinitalize with default values, used to avoid
+        inconsistcies during tests
+        '''
+        default = Config()
+        for attr in dir(self):
+            if not attr.startswith("__"):
+                setattr(self, attr, getattr(default,attr))
 
 CONFIG = Config()
 

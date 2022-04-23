@@ -60,8 +60,8 @@ def autogen_compile_db(source_path: str) -> bool:
         # If we are creating a compile_commands.json we need to ensure
         # that the project is clean, otherwise nothing will be built
         # and the db will be empty
-        #make_clean(source_path, script_env, subprocess.DEVNULL)
-        pass
+        # Removing this will cause certain tests to fail
+        make_clean(source_path, script_env, subprocess.DEVNULL)
 
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
@@ -82,6 +82,7 @@ def autogen_compile_db(source_path: str) -> bool:
     # can cause platform specific definitions to be omitted
     if conf_script:
         script_env.update(CONFIG.BUILD_ENV)
+        script_env.update({"CC": CONFIG.CCDB_CC})
         try:
             print_info(f"{source_path}: Running {conf_script}...")
             (subprocess.run([ conf_script ],
