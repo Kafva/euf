@@ -1,6 +1,8 @@
 import filecmp, os, json, shutil
 from os.path import expanduser
 
+from clang import cindex
+
 from cparser import BASE_DIR
 from cparser.config import CONFIG
 from cparser.arg_states import call_arg_states_plugin, \
@@ -28,7 +30,16 @@ ONIG_NEW = f"{expanduser('~')}/.cache/euf/oniguruma-41eb1475"
 
 USB_PATH = f"{expanduser('~')}/.cache/euf/libusb-385eaafb/libusb"
 
-LIBCLANG_LOADED:bool = False
+
+def setup():
+    ''' Load libclang once for all tests '''
+    if not os.path.exists(CONFIG.LIBCLANG):
+        if not os.path.exists(CONFIG.FALLBACK_LIBCLANG):
+            assert(False)
+        else:
+            CONFIG.LIBCLANG = CONFIG.FALLBACK_LIBCLANG
+
+    cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
@@ -41,7 +52,7 @@ def test_dir_has_elf_binary():
 def test_transitive_changes():
     ''' Verifies that the transative change set is not empty for a known case '''
     CONFIG.update_from_file(f"{TEST_DIR}/configs/onig_trans_test.json")
-    run()
+    run(load_libclang=False)
     assert(filecmp.cmp(
         f"{RESULT_DIR}/libonig_7ed8_e8bd/trans_change_set.csv", \
         f"{TEST_DIR}/expected/libonig_7ed8_e8bd_trans_change_set.csv"
@@ -107,7 +118,7 @@ def test_impact_set():
     in the output (with verbosity=0) if the main project actually calls them
     '''
     CONFIG.update_from_file(f"{TEST_DIR}/configs/expat_impact.json")
-    run()
+    run(load_libclang=False)
 
     assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_90ed_ef31/change_set.csv", \
             f"{TEST_DIR}/expected/libexpat_90ed_ef31/change_set.csv" )

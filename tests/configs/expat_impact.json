@@ -28,7 +28,7 @@
   "PAUSES": false,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
-  "ORDER_BY_CALL_SITE": false,
+  "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 0,
   "NPROC": 14,
   "SKIP_BLAME": false,
