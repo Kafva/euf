@@ -34,35 +34,25 @@ bmc:
 xml:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
-	./scripts/test_harness.sh expat/cases/811c41_b1d039.json XML_ErrorString
+	./scripts/test_harness.sh examples/expat/cases/xml.json XML_ErrorString
 
 # Full analysis of the same case
 xml_full:
-	./euf.py --config expat/cases/811c41_b1d039.json 
+	./euf.py --config examples/expat/cases/811c41_b1d039.json 
 
 # Analysis of a specific function which has a equivalent (based on return value) change
 entr:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
-	./scripts/test_harness.sh expat/cases/10d34296_f178826b.json ENTROPY_DEBUG
+	./scripts/test_harness.sh examples/expat/cases/entr.json ENTROPY_DEBUG
 
 empty:
-	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json --diff
-	./euf.py --config expat/cases/6aa6a82d_c9e1ac00.json
+	./euf.py --config examples/expat/cases/6aa6a82d_c9e1ac00.json --diff
+	./euf.py --config examples/expat/cases/6aa6a82d_c9e1ac00.json
 
 rand:
-	./euf.py --config expat/cases/0d21b17b_9288cd54.json
+	./euf.py --config examples/expat/cases/0d21b17b_9288cd54.json
 	
 # Example run on another project without CBMC
 onig:
-	./euf.py --config tests/configs/oniguruma.json
-
-
-#== Testing ==#
-trans:
-	./euf.py --config tests/configs/onig_trans_test.json
-
-# Test state space generation
-state:
-	@FILE=xmlparse.c \
-	./scripts/test_harness.sh expat/cases/2020_2022.json XML_ExternalEntityParserCreate
+	./euf.py --config examples/onig/cases/libonig_7ed8_e8bd.json

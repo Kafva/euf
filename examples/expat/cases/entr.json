@@ -1,6 +1,6 @@
 {
-  "COMMIT_OLD": "811c41e3b",
-  "COMMIT_NEW": "b1d039607",
+  "COMMIT_OLD": "10d34296211f8a1b7a9ac09df0e2983eeb892569",
+  "COMMIT_NEW": "f178826bb1e9c8ee23202f1be55ad4ac7b649e84",
 	"PROJECT_DIR": "~/Repos/jabberd-2.7.0",
 	"DEPENDENCY_DIR": "~/Repos/libexpat",
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
@@ -27,21 +27,24 @@
     "latin1tab.h"
   ],
 
+  "FORCE_CCDB_RECOMPILE": false,
   "FORCE_RECOMPILE": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1", 
   "CBMC_TIMEOUT": 7,
 
-  "PAUSES": false,
+  "PAUSES": true,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
-  "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_IDENTITY_VERIFICATION": false,
+  "SILENT_VERIFICATION": false,
   "SHOW_FUNCTIONS": false,
-  "USE_EXISTING_DRIVERS": false,
+  "USE_EXISTING_DRIVERS": true,
 
 	"ORDER_BY_CALL_SITE": true,
 	"VERBOSITY": 2,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,
-	"FULL": false
+	"FULL": true
 }
+

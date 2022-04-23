@@ -68,9 +68,8 @@ def autogen_compile_db(source_path: str) -> bool:
     # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
     # needs to be manually invoked to create configure
     if not os.path.exists(f"{source_path}/configure"):
-        run_autoreconf(source_path, out)
-    else:
         print_err(f"({source_path}): Missing ./configure")
+        run_autoreconf(source_path, out)
 
     conf_script = None
     if os.path.exists(f"{source_path}/configure"):

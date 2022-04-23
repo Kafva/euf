@@ -1,0 +1,72 @@
+{
+  "PROJECT_DIR": "~/Repos/jq",
+  "DEPENDENCY_DIR": "~/Repos/oniguruma",
+  "DEPLIB_NAME": "libonig.a",
+  "EXPLICIT_RENAME": [
+    "OnigEncodingTypeST",
+    "OnigEncodingType",
+    "OnigEncoding",
+
+    "OnigEncodingASCII",
+    "OnigEncodingISO_8859_1",
+    "OnigEncodingISO_8859_2",
+    "OnigEncodingISO_8859_3",
+    "OnigEncodingISO_8859_4",
+    "OnigEncodingISO_8859_5",
+    "OnigEncodingISO_8859_6",
+    "OnigEncodingISO_8859_7",
+    "OnigEncodingISO_8859_8",
+    "OnigEncodingISO_8859_9",
+    "OnigEncodingISO_8859_10",
+    "OnigEncodingISO_8859_11",
+    "OnigEncodingISO_8859_13",
+    "OnigEncodingISO_8859_14",
+    "OnigEncodingISO_8859_15",
+    "OnigEncodingISO_8859_16",
+    "OnigEncodingUTF8",
+    "OnigEncodingUTF16_BE",
+    "OnigEncodingUTF16_LE",
+    "OnigEncodingUTF32_BE",
+    "OnigEncodingUTF32_LE",
+    "OnigEncodingEUC_JP",
+    "OnigEncodingEUC_TW",
+    "OnigEncodingEUC_KR",
+    "OnigEncodingEUC_CN",
+    "OnigEncodingSJIS",
+    "OnigEncodingKOI8",
+    "OnigEncodingKOI8_R",
+    "OnigEncodingCP1251",
+    "OnigEncodingBIG5",
+    "OnigEncodingGB18030"
+  ],
+  "EXCLUDE_REGEXES": [
+    "sample/.*",
+    "test/.*"
+  ],
+  "CUSTOM_HEADERS": {
+    "regcomp.c": [
+      "~/Repos/euf/examples/onig/include/regcomp.h"
+    ],
+    "regparse.c": [
+      "~/Repos/euf/examples/onig/include/regparse2.h"
+    ]
+  },
+  "FORCE_RECOMPILE": false,
+  "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_VERIFICATION": true,
+  "SHOW_FUNCTIONS": false,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
+  "CBMC_TIMEOUT": 7,
+  "ENABLE_RESULT_LOG": true,
+  "DIE_ON_ERROR": true,
+  "USE_EXISTING_DRIVERS": false,
+  "ORDER_BY_CALL_SITE": true,
+  "VERBOSITY": 1,
+  "NPROC": 12,
+  "SKIP_BLAME": false,
+  "SKIP_IMPACT": false,
+  "FULL": false,
+  "QUIET_BUILD": true,
+  "COMMIT_OLD": "7ed8689ec15f32f2de90f4077a5b52612fbc9743",
+  "COMMIT_NEW": "e8bd631e187873a2085899bfc99f2f2c6af2adbd"
+}

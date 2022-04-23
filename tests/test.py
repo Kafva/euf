@@ -1,4 +1,5 @@
 import filecmp, os, json, shutil
+from itertools import zip_longest
 from os.path import expanduser
 
 from clang import cindex
@@ -129,4 +130,37 @@ def test_impact_set():
     assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_90ed_ef31/trans_change_set.csv", \
             f"{TEST_DIR}/expected/libexpat_90ed_ef31/trans_change_set.csv" )
     )
+
+def test_usb():
+    ''' 
+    Used to detect if the behaviour gets worse or better during development
+    '''
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/libusb_4a5540a9_500c64ae.json")
+    run(load_libclang=False)
+
+    assert(filecmp.cmp(f"{RESULT_DIR}/libusb-1.0_4a55_500c/change_set.csv", \
+            f"{TEST_DIR}/expected/libusb-1.0_4a55_500c/change_set.csv" )
+    )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libusb-1.0_4a55_500c/reduced_set.csv", \
+            f"{TEST_DIR}/expected/libusb-1.0_4a55_500c/reduced_set.csv" )
+    )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libusb-1.0_4a55_500c/impact_set.csv", \
+            f"{TEST_DIR}/expected/libusb-1.0_4a55_500c/impact_set.csv" )
+    )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libusb-1.0_4a55_500c/trans_change_set.csv", \
+            f"{TEST_DIR}/expected/libusb-1.0_4a55_500c/trans_change_set.csv" )
+    )
+
+    # The runtime field may differ
+    with open(f"{RESULT_DIR}/libusb-1.0_4a55_500c/cbmc.csv", mode='r',
+            encoding='utf8' ) as f1:
+
+        with open(f"{TEST_DIR}/expected/libusb-1.0_4a55_500c/cbmc.csv", mode =
+                'r', encoding='utf8') as f2:
+            for line1,line2 in zip_longest(f1.readlines(), f2.readlines()):
+                split1 = line1.split(";")
+                del split1[3]
+                split2 = line2.split(";")
+                del split2[3]
+                assert(''.join(split1) == ''.join(split2))
 

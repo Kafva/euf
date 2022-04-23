@@ -9,6 +9,12 @@
   "CUSTOM_HEADERS": {
     "linux_usbfs.c": [
       "libusb/libusbi.h"
+    ],
+    "linux_netlink.c": [
+      "libusb/libusbi.h"
+    ],
+    "linux_udev.c": [
+      "libusb/libusbi.h"
     ]
   },
   "EXCLUDE_REGEXES": [
@@ -23,12 +29,13 @@
     "libusb/os/netbsd*",
     "libusb/os/openbsd*",
     "libusb/os/sunos*",
-    "libusb/os/.*_windows.*"
+    "libusb/os/threads_windows.h"
   ],
-  "FORCE_RECOMPILE": true,
+  "FORCE_RECOMPILE": false,
+  "FORCE_CCDB_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
-  "CBMC_TIMEOUT": 10,
+  "CBMC_TIMEOUT": 30,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": false,
   "SILENT_IDENTITY_VERIFICATION": true,
@@ -36,13 +43,11 @@
   "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 2,
-  "NPROC": 12,
+  "NPROC": 15,
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
   "FULL": true,
-  "COMMIT_OLD": "6baa3239b",
-  "COMMIT_NEW": "c3deb6dd6",
-  "QUIET_BUILD": true
+  "QUIET_BUILD": true,
+  "COMMIT_OLD": "4a5540a925e47923ed20b4ea68aabe550dac976d",
+  "COMMIT_NEW": "500c64aef290348a1c833983b7297bdc3f3262c4"
 }
-
-
