@@ -45,28 +45,29 @@
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
-      "~/Repos/euf/onig/include/regcomp.h"
+      "~/Repos/euf/examples/onig/include/regcomp.h"
     ],
     "regparse.c": [
-      "~/Repos/euf/onig/include/regparse2.h"
+      "~/Repos/euf/examples/onig/include/regparse2.h"
     ]
   },
   "FORCE_RECOMPILE": false,
-  "SILENT_IDENTITY_VERIFICATION": false,
-  "SILENT_VERIFICATION": false,
+  "FORCE_CCDB_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
-  "CBMC_TIMEOUT": 70000000000000000000000,
+  "CBMC_TIMEOUT": 7,
   "ENABLE_RESULT_LOG": true,
-  "DIE_ON_ERROR": true,
-  "USE_EXISTING_DRIVERS": true,
+  "DIE_ON_ERROR": false,
+  "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_VERIFICATION": true,
+  "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
-  "VERBOSITY": 1,
-  "NPROC": 12,
+  "VERBOSITY": 2,
+  "NPROC": 15,
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,
   "FULL": true,
-  "QUIET_BUILD": true,
-  "COMMIT_OLD": "d95bd55c96a0e5c7e34302e2ef3f555cf8ba1fae",
-  "COMMIT_NEW": "41eb14754811db788dbdcea38947b9e8b0926be7"
+  "QUIET_BUILD": true
 }
+
+

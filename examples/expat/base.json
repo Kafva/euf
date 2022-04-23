@@ -14,7 +14,7 @@
   
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
-      "~/Repos/euf/expat/include/xmlparse.h"
+      "~/Repos/euf/examples/expat/include/xmlparse.h"
     ]
   },
   "BLACKLISTED_HEADERS": [
@@ -31,7 +31,7 @@
 
   "PAUSES": false,
   "ENABLE_RESULT_LOG": true,
-  "DIE_ON_ERROR": true,
+  "DIE_ON_ERROR": false,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
@@ -39,7 +39,7 @@
 
 	"ORDER_BY_CALL_SITE": true,
 	"VERBOSITY": 2,
-	"NPROC": 12,
+	"NPROC": 15,
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,
 	"FULL": true

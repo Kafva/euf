@@ -8,11 +8,11 @@ CMTS=/tmp/commits
 
 case "$1" in
   libusb)
-    BASE_CONF=./usb/base.json
+    BASE_CONF=./examples/usb/base.json
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-    DISTANCE=$(( 24*60*60 * 30))
+    DISTANCE=$(( 24*60*60 * 60))
     NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
   libonig)
@@ -20,15 +20,15 @@ case "$1" in
     #
     # We also need to watch out for changes to structs...
     # This seems to be near un-avoidable with oniguruma...
-    BASE_CONF=./onig/base.json
+    BASE_CONF=./examples/onig/base.json
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
     NOT_BEFORE=$(date -d "2017-01-01" '+%s')
-    DISTANCE=$(( 24*60*60 * 30))
+    DISTANCE=$(( 24*60*60 * 60))
     NOT_AFTER=$(date -d "2017-06-25" '+%s')
   ;;
   *)
-    BASE_CONF=./expat/base.json
+    BASE_CONF=./examples/expat/base.json
     DEP_DIR=~/Repos/libexpat
     LIBNAME=libexpat
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
@@ -51,8 +51,6 @@ get_pair(){
 
   epoch1=$(date -d "$date1" '+%s')
   epoch2=$(date -d "$date2" '+%s')
-
-  #printf "$epoch1 -- $epoch2\n"
 }
 
 get_pair

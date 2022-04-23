@@ -4,11 +4,11 @@ from git.objects.commit import Commit
 from git.repo.base import Repo
 from git.exc import GitCommandError
 
-from cparser import ERR_EXIT
-from cparser.arg_states import matches_excluded
-from cparser.config import CONFIG
-from cparser.types import SourceDiff, SourceFile
-from cparser.util import has_allowed_suffix, print_info
+from src import ERR_EXIT
+from src.arg_states import matches_excluded
+from src.config import CONFIG
+from src.types import SourceDiff, SourceFile
+from src.util import has_allowed_suffix, print_info
 
 def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     '''

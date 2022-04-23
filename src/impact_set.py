@@ -3,10 +3,10 @@ import json
 import traceback
 from typing import Set
 from clang import cindex
-from cparser.config import CONFIG
-from cparser.types import DependencyFunction, DependencyFunctionChange, \
+from src.config import CONFIG
+from src.types import DependencyFunction, DependencyFunctionChange, \
         CallSite, IdentifierLocation, SourceFile
-from cparser.util import print_err
+from src.util import print_err
 
 def get_call_sites_from_file(source_file: SourceFile,
         changed_functions: Set[DependencyFunctionChange]

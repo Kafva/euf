@@ -2,8 +2,8 @@ import sys, os, re
 from datetime import datetime
 from typing import Set
 
-from cparser.config import CONFIG
-from cparser.types import AnalysisResult
+from src.config import CONFIG
+from src.types import AnalysisResult
 
 def wait_on_cr(always=False):
     while (CONFIG.PAUSES and not CONFIG.SHOW_DIFFS) or always:

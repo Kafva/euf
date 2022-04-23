@@ -3,13 +3,13 @@ from os.path import expanduser
 
 from clang import cindex
 
-from cparser import BASE_DIR
-from cparser.config import CONFIG
-from cparser.arg_states import call_arg_states_plugin, \
+from src import BASE_DIR
+from src.config import CONFIG
+from src.arg_states import call_arg_states_plugin, \
         get_subdir_tus, join_arg_states_result
 
-from cparser.util import flatten, mkdir_p, remove_files_in, rm_f
-from cparser.build import autogen_compile_db, dir_has_magic_file, patch_ccdb_with_headers
+from src.util import flatten, mkdir_p, remove_files_in, rm_f
+from src.build import autogen_compile_db, dir_has_magic_file, patch_ccdb_with_headers
 from euf import run
 
 TEST_DIR =  f"{BASE_DIR}/tests"

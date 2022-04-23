@@ -1,5 +1,5 @@
 import os, json
-from cparser import BASE_DIR
+from src import BASE_DIR
 from dataclasses import dataclass, field
 
 @dataclass

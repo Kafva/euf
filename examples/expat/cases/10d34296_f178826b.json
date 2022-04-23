@@ -6,11 +6,12 @@
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
     "expat/examples/.*",
-    "expat/fuzz/.*"
+    "expat/fuzz/.*",
+    "expat/xmlwf/win32.*"
   ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
-      "~/Repos/euf/expat/include/xmlparse.h"
+      "~/Repos/euf/examples/expat/include/xmlparse.h"
     ]
   },
   "BLACKLISTED_HEADERS": [
@@ -19,6 +20,7 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
+  "FORCE_CCDB_RECOMPILE": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 10,
   "ENABLE_RESULT_LOG": true,

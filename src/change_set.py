@@ -5,10 +5,10 @@ from clang import cindex
 from git.diff import Diff
 from git.repo.base import Repo
 
-from cparser.config import CONFIG
-from cparser.types import DependencyFunction, CursorPair, \
+from src.config import CONFIG
+from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
-from cparser.util import get_column_counts, print_info, print_err
+from src.util import get_column_counts, print_info, print_err
 
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
     cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:

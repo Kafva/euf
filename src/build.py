@@ -1,10 +1,10 @@
 import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
 from clang import cindex
 from git.repo.base import Repo
-from cparser import ERR_EXIT
+from src import ERR_EXIT
 
-from cparser.util import print_info, find, print_err
-from cparser.config import CONFIG
+from src.util import print_info, find, print_err
+from src.config import CONFIG
 
 def get_bear_version(path: str) -> int:
     if shutil.which("bear") is None:
@@ -29,7 +29,7 @@ def run_autoreconf(path: str, out) -> bool:
         except subprocess.CalledProcessError:
             check_ccdb_error(path)
     else:
-        print_err(f"Missing autoconf files")
+        print_err(f"({path}): Missing autoconf files")
         return False
 
     return True
@@ -60,7 +60,8 @@ def autogen_compile_db(source_path: str) -> bool:
         # If we are creating a compile_commands.json we need to ensure
         # that the project is clean, otherwise nothing will be built
         # and the db will be empty
-        make_clean(source_path, script_env, subprocess.DEVNULL)
+        #make_clean(source_path, script_env, subprocess.DEVNULL)
+        pass
 
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
@@ -68,6 +69,8 @@ def autogen_compile_db(source_path: str) -> bool:
     # needs to be manually invoked to create configure
     if not os.path.exists(f"{source_path}/configure"):
         run_autoreconf(source_path, out)
+    else:
+        print_err(f"({source_path}): Missing ./configure")
 
     conf_script = None
     if os.path.exists(f"{source_path}/configure"):

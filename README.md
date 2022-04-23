@@ -35,8 +35,8 @@ Changes are categorized as either *direct* or *indirect*. A direct change to a f
 
 The impact set presented by EUF will only consider changed functions that are reachable from the main project based on AST traversal. For example, in the image below `util/nad.c:nad_parse()` has been affected by an indirect change to `XML_Parse`. The indirect change originates from direct (or additional indirect) changes in `XML_GetBuffer` and `XML_ParseBuffer`, neither of which are directly called in the main project. Each change is prefixed with the line and column number of the invocation within the current file.
 
-![](assets/impact_set_example.png)
-![](assets/impact_set_example_2.png)
+![](.assets/impact_set_example.png)
+![](.assets/impact_set_example_2.png)
 
 A complete canonical representation of the impact set will always be written to `./results/<dependency>_<new>_<old>/impact_set.json` for further analysis.
 

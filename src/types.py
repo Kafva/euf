@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from clang import cindex
-from cparser.config import CONFIG
+from src.config import CONFIG
 
 class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
@@ -71,7 +71,10 @@ class Identifier:
 
         typing = str(canonical.kind).removeprefix("TypeKind.").lower()
         type_spelling = canonical.spelling.removeprefix("const ")
-        type_spelling = type_spelling.replace(" ", "")
+
+        # Ensure that the representation is the same regardless of white spaces
+        type_spelling = re.sub(r" +", repl=" ", string = type_spelling)
+        type_spelling = re.sub(r" \*", repl="*", string = type_spelling)
 
         return (typing,type_spelling)
 

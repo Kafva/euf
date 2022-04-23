@@ -2,10 +2,10 @@ import os, subprocess, sys, signal, json, shutil
 from datetime import datetime
 from clang import cindex
 
-from cparser import BASE_DIR
-from cparser.config import CONFIG
-from cparser.types import AnalysisResult, DependencyFunctionChange, FunctionState, IdentifierLocation, SourceDiff
-from cparser.util import print_result, time_end, time_start, wait_on_cr, print_err
+from src import BASE_DIR
+from src.config import CONFIG
+from src.types import AnalysisResult, DependencyFunctionChange, FunctionState, IdentifierLocation, SourceDiff
+from src.util import print_result, time_end, time_start, wait_on_cr, print_err
 
 
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
@@ -19,8 +19,8 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
     fail_msg = ""
 
     # There exists compilation instructions for the TU the function is defined in
-    if not change.old.filepath in iflags or len(iflags[change.old.filepath]) == 0:
-        fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.filepath}"
+    if not change.old.location.filepath in iflags or len(iflags[change.old.location.filepath]) == 0:
+        fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.location.filepath}"
         result = AnalysisResult.MISSING_COMPILE
 
     # The number-of arugments and their types have not changed
@@ -194,7 +194,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         # Any custom include directives for the specific file
         # Note that these are included _before_ standard project includes
-        filename = os.path.basename(change.old.filepath)
+        filename = os.path.basename(change.old.location.filepath)
         if filename in CONFIG.CUSTOM_HEADERS:
             f.write("\n")
             for header in CONFIG.CUSTOM_HEADERS[filename]:

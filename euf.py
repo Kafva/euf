@@ -24,25 +24,25 @@ from pprint import pprint
 from clang import cindex
 from git.repo import Repo
 
-from cparser import BASE_DIR, ERR_EXIT
-from cparser.config import CONFIG
-from cparser.types import DependencyFunction, \
+from src import BASE_DIR, ERR_EXIT
+from src.config import CONFIG
+from src.types import DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
     CallSite, SourceDiff, SourceFile
-from cparser.arg_states import join_arg_states_result, state_space_analysis
-from cparser.harness import valid_preconds, create_harness, \
+from src.arg_states import join_arg_states_result, state_space_analysis
+from src.harness import valid_preconds, create_harness, \
         get_I_flags_from_tu, run_harness, add_includes_from_tu
-from cparser.util import flatten, flatten_dict, has_allowed_suffix, \
+from src.util import flatten, flatten_dict, has_allowed_suffix, \
         mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, \
         wait_on_cr, print_err
-from cparser.change_set import add_rename_changes_based_on_blame, \
+from src.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, \
         get_transative_changes_from_file, log_changed_functions
-from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
+from src.impact_set import get_call_sites_from_file, log_impact_set, \
         pretty_print_impact_by_call_site, pretty_print_impact_by_dep
-from cparser.build import build_goto_lib, create_ccdb
-from cparser.enumerate_globals import write_rename_files
-from cparser.scm import filter_out_excluded, get_commits, get_source_files, \
+from src.build import build_goto_lib, create_ccdb
+from src.enumerate_globals import write_rename_files
+from src.scm import filter_out_excluded, get_commits, get_source_files, \
         get_source_diffs, create_worktree
 
 def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
@@ -59,12 +59,6 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
 
     dep_source_diffs = filter_out_excluded(dep_source_diffs, \
             [ d.old_path for d in dep_source_diffs ] )
-
-    # To get the full context when parsing source files we need the
-    # full source tree (and a compilation database) for both the
-    # new and old version of the dependency
-    if not create_worktree(dep_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(ERR_EXIT)
-    if not create_worktree(dep_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(ERR_EXIT)
 
     if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
@@ -407,6 +401,7 @@ def run(load_libclang:bool = True) -> tuple:
 
     dep_source_root_old = dep_old + dep_source_root
     dep_source_root_new = dep_new + dep_source_root
+    dep_repo = Repo(CONFIG.DEPENDENCY_DIR)
 
     if CONFIG.ENABLE_RESULT_LOG:
         mkdir_p(log_dir)
@@ -418,10 +413,16 @@ def run(load_libclang:bool = True) -> tuple:
     try:
         _ = DEP_REPO.active_branch
     except TypeError as e:
-        print_err(f"Unable to read current branch name for" + \
+        print_err("Unable to read current branch name for" + \
             f" {CONFIG.DEPENDENCY_DIR}\n{e}"
         )
         sys.exit(1)
+
+    # To get the full context when parsing source files we need the
+    # full source tree (and a compilation database) for both the
+    # new and old version of the dependency
+    if not create_worktree(dep_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(ERR_EXIT)
+    if not create_worktree(dep_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(ERR_EXIT)
 
     # Attempt to create the compilation database automatically
     # if they do not already exist

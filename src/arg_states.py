@@ -12,10 +12,10 @@ For this to work we need to create a union of all the ccmd flags for each direct
 '''
 import subprocess, re, sys, json, os, traceback, multiprocessing
 from functools import partial
-from cparser import ERR_EXIT
-from cparser.config import CONFIG
-from cparser.types import SourceFile, FunctionState, SubDirTU
-from cparser.util import mkdir_p, print_info, print_warn, \
+from src import ERR_EXIT
+from src.config import CONFIG
+from src.types import SourceFile, FunctionState, SubDirTU
+from src.util import mkdir_p, print_info, print_warn, \
         print_err, remove_files_in, time_end, time_start
 
 def matches_excluded(string: str) -> bool:
@@ -88,7 +88,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir
         SourceFile.get_isystem_flags(list(subdir_tu.files)[0], target_dir) + \
         list(subdir_tu.files) + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
-    print(f"({subdir})> \n", ' '.join(cmd))
+    #print(f"({subdir})> \n", ' '.join(cmd))
     subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out, env = script_env)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
