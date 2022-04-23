@@ -60,7 +60,7 @@
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
   "USE_EXISTING_DRIVERS": true,
-  "REVERSE_MAPPING": true,
+  "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 1,
   "NPROC": 12,
   "SKIP_BLAME": false,

@@ -4,7 +4,7 @@ from clang import cindex
 
 from cparser import BASE_DIR
 from cparser.config import CONFIG
-from cparser.types import AnalysisResult, DependencyFunctionChange, FunctionState, SourceDiff
+from cparser.types import AnalysisResult, DependencyFunctionChange, FunctionState, IdentifierLocation, SourceDiff
 from cparser.util import print_result, time_end, time_start, wait_on_cr, print_err
 
 
@@ -363,13 +363,16 @@ def log_harness(filename: str,
     if CONFIG.ENABLE_RESULT_LOG:
         if not os.path.exists(filename):
             f = open(filename, mode='w', encoding='utf8')
-            f.write("func_name;identity;result;runtime;driver;old_src;new_src\n")
+            f.write("func_name;identity;result;runtime;driver;"+\
+                    IdentifierLocation.csv_header('old') + ";"+\
+                    IdentifierLocation.csv_header('new')+"\n"
+            )
         else:
             f = open(filename, mode='a', encoding='utf8')
 
         runtime = datetime.now() - start_time if start_time else ""
 
-        f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.filepath};{change.new.filepath}\n")
+        f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.location.to_csv()};{change.new.location.to_csv()}\n")
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],

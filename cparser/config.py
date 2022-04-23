@@ -22,7 +22,7 @@ class Config:
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
 
     # Impact set output format
-    REVERSE_MAPPING: bool = False
+    ORDER_BY_CALL_SITE: bool = True
 
     # Show diffs of files in change set and exit
     SHOW_DIFFS: bool = False
@@ -134,9 +134,6 @@ class Config:
     # The timeout (seconds) before killing CBMC analysis
     CBMC_TIMEOUT: int = 60
 
-    # Maps function names to filepaths of drivers
-    DRIVERS: dict[str,str] = field(default_factory=dict)
-
     # Do not generate a new driver if one already exists under .harnesses
     # allows for manual modifications and custom drivers to be provided
     USE_EXISTING_DRIVERS: bool = False
@@ -150,10 +147,8 @@ class Config:
     # Only files with these suffixes are considered during analysis
     SUFFIX_WHITELIST = [".c", ".h"]
 
-    # Only used during ccdb generation
-    TARGET_TRIPLET: str = "x86_64-unknown-linux"
-
-    UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"
+    # No spaces
+    UNRESOLVED_NODES_REGEX: str = r"unnamedat|<dependenttype>"
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"

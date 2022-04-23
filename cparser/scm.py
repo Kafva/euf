@@ -4,6 +4,7 @@ from git.objects.commit import Commit
 from git.repo.base import Repo
 from git.exc import GitCommandError
 
+from cparser import ERR_EXIT
 from cparser.arg_states import matches_excluded
 from cparser.config import CONFIG
 from cparser.types import SourceDiff, SourceFile
@@ -44,10 +45,10 @@ def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
 
     if not commit_old:
         print(f"Unable to find old commit: {CONFIG.COMMIT_OLD}")
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
     if not commit_new:
         print(f"Unable to find new commit: {CONFIG.COMMIT_NEW}")
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
 
     return (commit_old,commit_new)
 

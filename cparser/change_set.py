@@ -6,8 +6,8 @@ from git.diff import Diff
 from git.repo.base import Repo
 
 from cparser.config import CONFIG
-from cparser.types import ASTDivergence, DependencyFunction, CursorPair, \
-    DependencyFunctionChange, SourceDiff, SourceFile
+from cparser.types import DependencyFunction, CursorPair, \
+    DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
 from cparser.util import get_column_counts, print_info, print_err
 
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
@@ -156,7 +156,7 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
                 print(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
             function_change.point_of_divergence = \
-                ASTDivergence.new_from_src_loc(src_loc) # type: ignore
+                IdentifierLocation.new_from_src_loc(src_loc) # type: ignore
 
             changed_functions.append(function_change)
         elif CONFIG.VERBOSITY >= 3:
@@ -285,7 +285,7 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
 def log_changed_functions(changed_functions: list[DependencyFunctionChange], filename: str):
     if CONFIG.ENABLE_RESULT_LOG:
         with open(filename, mode='w', encoding='utf8') as f:
-            f.write("direct_change;old_filepath;old_name;old_line;old_col;new_filepath;new_name;new_line;new_col\n")
+            f.write(f"direct_change;{IdentifierLocation.csv_header('old')};{IdentifierLocation.csv_header('new')}\n")
             for change in changed_functions:
                 f.write(f"{change.to_csv()}\n")
 

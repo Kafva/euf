@@ -1,6 +1,7 @@
 import shutil, subprocess, os, sys, multiprocessing, traceback, re, json
 from clang import cindex
 from git.repo.base import Repo
+from cparser import ERR_EXIT
 
 from cparser.util import print_info, find, print_err
 from cparser.config import CONFIG
@@ -169,7 +170,7 @@ def check_ccdb_error(path: str) -> None:
         print_err(f"Failed to parse or create {path}/compile_commands.json\n" +
         "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
         "Consult the documentation for your particular dependency for additional build instructions.")
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
     else:
         print_err(f"An error occured but {path}/compile_commands.json was created")
 
@@ -271,12 +272,12 @@ def create_ccdb(source_path:str) -> cindex.CompilationDatabase:
     For the AST to contain a resolved view of the symbols
     we need to provide the correct compile commands
     '''
-    if not autogen_compile_db(source_path): sys.exit(-1)
+    if not autogen_compile_db(source_path): sys.exit(ERR_EXIT)
 
     try:
         ccdb: cindex.CompilationDatabase  = \
             cindex.CompilationDatabase.fromDirectory(source_path)
     except cindex.CompilationDatabaseError:
         print_err(f"Failed to parse {source_path}/compile_commands.json")
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
     return ccdb

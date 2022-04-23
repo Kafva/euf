@@ -11,7 +11,7 @@
   "DRIVERS": {
     "redirection_ok": "./tests/drivers/crypto_http_driver.c"
   },
-  "REVERSE_MAPPING": true,
+  "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 1,
   "NPROC": 12,
   "SKIP_BLAME": true,

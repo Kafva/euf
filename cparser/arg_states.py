@@ -12,6 +12,7 @@ For this to work we need to create a union of all the ccmd flags for each direct
 '''
 import subprocess, re, sys, json, os, traceback, multiprocessing
 from functools import partial
+from cparser import ERR_EXIT
 from cparser.config import CONFIG
 from cparser.types import SourceFile, FunctionState, SubDirTU
 from cparser.util import mkdir_p, print_info, print_warn, \
@@ -25,7 +26,7 @@ def matches_excluded(string: str) -> bool:
         except re.error:
             print_err(f"Invalid regex provided: {exclude_regex}")
             traceback.print_exc()
-            sys.exit(-1)
+            sys.exit(ERR_EXIT)
     return False
 
 def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU]:

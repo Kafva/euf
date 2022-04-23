@@ -291,6 +291,60 @@ class Identifier:
         return fmt
 
 @dataclass(init=True)
+class IdentifierLocation:
+    '''
+    This class is equvivalent to clang's SourceLocation
+    except that it only contains simple properties
+    and can thereby be hashed
+    '''
+    line: int
+    column: int
+    filepath: str
+    name: str
+
+    @classmethod
+    def new_from_cursor(cls, cursor: cindex.Cursor):
+        return cls(
+                line = cursor.location.line,
+                column = cursor.location.column,
+                # !! The file attribute must be converted to
+                # a non-complex type to avoid mp deadlocks o.O
+                filepath = str(cursor.location.file),
+                name = cursor.spelling
+        )
+
+    @classmethod
+    def new_from_src_loc(cls, loc: cindex.SourceLocation):
+        return cls(
+            filepath = str(loc.file.name), # type: ignore
+            line = loc.line,
+            column = loc.column,
+            name = ""
+        )
+
+    @classmethod
+    def empty(cls):
+        return cls(filepath = "", line = -1, column = -1, name = "")
+
+    @classmethod
+    def csv_header(cls, prefix:str="") -> str:
+        prefix = f"{prefix}_" if prefix!="" else ""
+        return f"{prefix}path;{prefix}line;{prefix}col;{prefix}name"
+
+    def __repr__(self) -> str:
+        if self.name != "":
+            return f"{self.filepath}:{self.line}:{self.column}:{self.name}"
+        else:
+            return f"{self.filepath}:{self.line}:{self.column}"
+
+
+    def to_csv(self) -> str:
+        return f"{self.filepath};{self.line};{self.column};{self.name}"
+
+    def __hash__(self):
+        return hash(str(self.line)+str(self.column)+str(self.filepath)+self.name)
+
+@dataclass(init=True)
 class DependencyFunction:
     ''' 
     A function which is transativly changed due to invoking either
@@ -301,36 +355,34 @@ class DependencyFunction:
     {diff.new_path}:{diff.old_path}:{child.spelling}
     All other attributes could thus differ between the new and old version.
     '''
-    ident: Identifier # Function name and return type
     displayname: str # Includes the full prototype string
-    filepath: str
-    # Note: the arguments must be in correct order within the list
-    arguments: list[Identifier]
-    line: int
-    col: int
+    ident: Identifier # Function name and return type
+    location: IdentifierLocation
+    arguments: list[Identifier] # The arguments must be in correct order within the list
 
     @classmethod
     def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
         filepath = str(cursor.location.file).removeprefix(root_dir).removeprefix("/")
         return cls(
-            filepath    = filepath,
+            location = IdentifierLocation(
+                filepath=filepath,
+                line=cursor.location.line,
+                column=cursor.location.column,
+                name = cursor.spelling
+            ),
             displayname = cursor.displayname,
-            ident        = Identifier.new_from_cursor(cursor) ,
+            ident        = Identifier.new_from_cursor(cursor),
             arguments   = [ Identifier.new_from_cursor(arg)
                   for arg in cursor.get_arguments() ],
-            line = cursor.location.line,
-            col = cursor.location.column
         )
 
     @classmethod
     def empty(cls):
         return cls(
-            filepath    = "",
             displayname = "",
             ident       = Identifier.empty(),
             arguments   = [],
-            line = 0,
-            col = 0
+            location = IdentifierLocation.empty()
         )
 
     def eq(self, other) -> bool:
@@ -352,7 +404,7 @@ class DependencyFunction:
         return True
 
     def __repr__(self):
-        return f"{self.filepath}:{self.line}:{self.col}:{self.ident.spelling}()"
+        return f"{self.location}()"
 
     def prototype_string(self, suffix: str = "") -> str:
         out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
@@ -365,48 +417,20 @@ class DependencyFunction:
         return out.removesuffix(", ") + ")"
 
     def __hash__(self):
-        return hash(self.filepath + self.ident.__repr__() + self.displayname +
-                str(self.line) + str(self.col))
-
-@dataclass(init=True)
-class ASTDivergence:
-    filepath: str = ""
-    line: int = -1
-    column: int = -1
-
-    def __repr__(self) -> str:
-        return f"{self.filepath}:{self.line}:{self.column}"
-
-    @classmethod
-    def new_from_src_loc(cls, loc: cindex.SourceLocation):
-        return cls(
-            filepath = loc.file.name, # type: ignore
-            line = loc.line,
-            column = loc.column
-        )
+        return hash(self.location.__repr__() + self.ident.__repr__() + self.displayname)
 
 @dataclass(init=True)
 class DependencyFunctionChange:
-    '''
-    We pair functions based on the key:
-        {diff.new_path}:{diff.old_path}:{child.spelling}
-    All other attributes could thus differ between the new and old version.
-    '''
     old: DependencyFunction
     new: DependencyFunction
 
-    # The list contains `filepath:displayname:line:col` entries
-    # The line and col references the _new version_ of the dependency
     invokes_changed_functions: list[str]
     direct_change: bool = True
 
     # The source code location (in the old version)
     # were divergence in the AST was encountered
     # This will be unset for indirect changes in the transative pass
-    point_of_divergence: ASTDivergence = ASTDivergence()
-
-    def divergence(self) -> str:
-        return f"{self.__repr__()}\n  diverged at \033[4m{self.point_of_divergence}\033[0m"
+    point_of_divergence: IdentifierLocation = IdentifierLocation.empty()
 
     @classmethod
     def new_from_cursors(cls, old_root: str, new_root: str,
@@ -417,7 +441,32 @@ class DependencyFunctionChange:
             invokes_changed_functions = []
         )
 
-    def detail(self, pretty: bool = False, brief: bool = False):
+    @classmethod
+    def csv_header(cls) -> str:
+        return f"direct_change;{IdentifierLocation.csv_header('old')};{IdentifierLocation.csv_header('new')}"
+
+    def divergence(self,with_context:bool=True) -> str:
+        if with_context:
+            return f"{self.__repr__()}\n{CONFIG.INDENT}diverged at \033[4m{self.point_of_divergence}\033[0m"
+        else:
+            return f"\n{CONFIG.INDENT}diverged at \033[4m{self.point_of_divergence}\033[0m"
+
+    def affected_by(self,pretty=True) -> str:
+        out = ""
+        if len(self.invokes_changed_functions) > 0:
+            if pretty:
+                out += "\nAffected by changes to:"
+            else:
+                out += "\n affected by changes to:"
+
+            for trans_call in self.invokes_changed_functions:
+                out += f"\n{CONFIG.INDENT}{trans_call}"
+        return out
+
+    def to_csv(self) -> str:
+        return f"{self.direct_change};{self.old.location.to_csv()};{self.new.location.to_csv()}"
+
+    def __repr__(self, pretty: bool = False, brief: bool = False):
         if pretty:
             out =   "\033[31mDirect\033[0m change: " if self.direct_change else \
                     "\033[34mIndirect\033[0m change: "
@@ -438,25 +487,6 @@ class DependencyFunctionChange:
 
         return out
 
-    def affected_by(self,pretty=True) -> str:
-        out = ""
-        if len(self.invokes_changed_functions) > 0:
-            if pretty:
-                out += "\nAffected by changes to:"
-            else:
-                out += "\n affected by changes to:"
-
-            for trans_call in self.invokes_changed_functions:
-                out += f"\n{CONFIG.INDENT}{trans_call}"
-        return out
-
-    def to_csv(self) -> str:
-        return f"{self.direct_change};{self.old.filepath};{self.old.ident.spelling};{self.old.line};{self.old.col};" + \
-                f"{self.new.filepath};{self.new.ident.spelling};{self.new.line};{self.new.col}"
-
-    def __repr__(self):
-        return self.detail()
-
     def __hash__(self):
         ''' 
         Note that the hash does not consider the `invokes_changed_functions` 
@@ -465,28 +495,20 @@ class DependencyFunctionChange:
         return hash(hash(self.old) + hash(self.new))
 
 @dataclass(init=True)
-class ProjectInvocation:
-    function: DependencyFunctionChange
-    enclosing_name: str
-    filepath: str
-    line: int
-    col: int
+class CallSite:
+    called_function_change: DependencyFunctionChange
+    call_location: IdentifierLocation
 
-    def brief(self):
-        return f"call to {self.function.new} at {self.filepath}:{self.line}:{self.col}"
-
-    def invocation(self):
-        return f"{self.filepath}:{self.line}:{self.col}:{self.enclosing_name}()"
+    @classmethod
+    def csv_header(cls) -> str:
+        return f"{IdentifierLocation.csv_header('impacted')};{DependencyFunctionChange.csv_header()}"
 
     def to_csv(self):
-        return f"{self.filepath};{self.enclosing_name};{self.line};{self.col};{self.function.direct_change};" + \
-               f"{self.function.old.filepath};{self.function.old.ident.spelling};{self.function.old.line};{self.function.old.col}"
-
-    def detail(self):
-        return f"call to {self.function}\nat {self.invocation()}"
+        return f"{self.call_location.to_csv()};" + \
+               f"{self.called_function_change.to_csv()}"
 
     def __repr__(self):
-        return self.detail()
+        return f"call to {self.called_function_change.new} at {self.call_location}()"
 
 @dataclass(init=True)
 class SourceFile:
@@ -587,49 +609,6 @@ class CursorPair:
     def __init__(self):
         self.new = None # type: ignore
         self.old = None # type: ignore
-
-@dataclass(init=True)
-class IdentifierLocation:
-    '''
-    This class is equvivalent to clang's SourceLocation
-    except that it only contains simple properties
-    and can thereby be hashed
-    '''
-    line: int
-    column: int
-    filepath: str
-    name: str
-
-
-    @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor):
-        return cls(
-                line = cursor.location.line,
-                column = cursor.location.column,
-                filepath = str(cursor.location.file),
-                name = cursor.spelling
-        )
-
-    def compact_path(self,path: str) -> str:
-        out = ""
-        for name in path.split("/"):
-            if len(name) >= 2 and not name[0].isalnum():
-                out += "/" + name[:2]
-            elif len(name) > 0:
-                out += "/" + name[0]
-
-        return out
-
-    def __repr__(self) -> str:
-        brief_path = self.compact_path(CONFIG.EUF_CACHE) + self.filepath.removeprefix(CONFIG.EUF_CACHE)
-        return f"{brief_path}:{self.name}:{self.line}:{self.column}"
-
-    def to_csv(self) -> str:
-        return f"{self.filepath};{self.name};{self.line};{self.column}"
-
-
-    def __hash__(self):
-        return hash(str(self.line)+str(self.column)+str(self.filepath)+self.name)
 
 @dataclass(init=True)
 class SubDirTU:

@@ -28,7 +28,7 @@
   "SILENT_IDENTITY_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
   "USE_EXISTING_DRIVERS": false,
-  "REVERSE_MAPPING": true,
+  "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 3,
   "NPROC": 14,
   "SKIP_BLAME": false,

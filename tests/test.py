@@ -28,7 +28,9 @@ ONIG_NEW = f"{expanduser('~')}/.cache/euf/oniguruma-41eb1475"
 
 USB_PATH = f"{expanduser('~')}/.cache/euf/libusb-385eaafb/libusb"
 
-def test():
+LIBCLANG_LOADED:bool = False
+
+def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
 
 def test_dir_has_elf_binary():
@@ -36,7 +38,7 @@ def test_dir_has_elf_binary():
     assert( dir_has_magic_file(REPO_PATH) )
     assert( not dir_has_magic_file(f"{expanduser('~')}/.ssh") )
 
-def test_transative_changes():
+def test_transitive_changes():
     ''' Verifies that the transative change set is not empty for a known case '''
     CONFIG.update_from_file(f"{TEST_DIR}/configs/onig_trans_test.json")
     run()
@@ -97,5 +99,23 @@ def test_autogen_compile_db():
 
     assert(filecmp.cmp(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json", \
             f"{TEST_DIR}/expected/expat_compile.json" )
+    )
+
+def test_impact_set():
+    '''
+    Note that the functions listed in "Affected by changes" will only be explicitly listed
+    in the output (with verbosity=0) if the main project actually calls them
+    '''
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/expat_impact.json")
+    run()
+
+    assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_90ed_ef31/change_set.csv", \
+            f"{TEST_DIR}/expected/libexpat_90ed_ef31/change_set.csv" )
+    )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_90ed_ef31/impact_set.csv", \
+            f"{TEST_DIR}/expected/libexpat_90ed_ef31/impact_set.csv" )
+    )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_90ed_ef31/trans_change_set.csv", \
+            f"{TEST_DIR}/expected/libexpat_90ed_ef31/trans_change_set.csv" )
     )
 

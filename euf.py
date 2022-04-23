@@ -24,22 +24,22 @@ from pprint import pprint
 from clang import cindex
 from git.repo import Repo
 
-from cparser import BASE_DIR
+from cparser import BASE_DIR, ERR_EXIT
 from cparser.config import CONFIG
 from cparser.types import DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
-    ProjectInvocation, SourceDiff, SourceFile
+    CallSite, SourceDiff, SourceFile
 from cparser.arg_states import join_arg_states_result, state_space_analysis
 from cparser.harness import valid_preconds, create_harness, \
         get_I_flags_from_tu, run_harness, add_includes_from_tu
 from cparser.util import flatten, flatten_dict, has_allowed_suffix, \
-        mkdir_p, print_info, print_stage, remove_files_in, rm_f, \
+        mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, \
         wait_on_cr, print_err
 from cparser.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, \
         get_transative_changes_from_file, log_changed_functions
 from cparser.impact_set import get_call_sites_from_file, log_impact_set, \
-        pretty_print_impact_by_proj, pretty_print_impact_by_dep
+        pretty_print_impact_by_call_site, pretty_print_impact_by_dep
 from cparser.build import build_goto_lib, create_ccdb
 from cparser.enumerate_globals import write_rename_files
 from cparser.scm import filter_out_excluded, get_commits, get_source_files, \
@@ -63,8 +63,8 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(dep_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(-1)
-    if not create_worktree(dep_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(-1)
+    if not create_worktree(dep_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(ERR_EXIT)
+    if not create_worktree(dep_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(ERR_EXIT)
 
     if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
@@ -94,7 +94,7 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
     return dep_source_diffs
 
 def ast_diff_stage(dep_old:str, dep_new:str,
- dep_source_diffs: list[SourceDiff]) -> list[DependencyFunctionChange]:
+ dep_source_diffs: list[SourceDiff], log_dir: str) -> list[DependencyFunctionChange]:
     '''
     Look through the old and new version of each delta
     using NPROC parallel processes and save
@@ -121,7 +121,7 @@ def ast_diff_stage(dep_old:str, dep_new:str,
                 pprint(changed_functions)
     except Exception:
         traceback.print_exc()
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
 
     os.chdir(BASE_DIR) # cwd changes during compilation
 
@@ -142,6 +142,9 @@ def ast_diff_stage(dep_old:str, dep_new:str,
 
         sys.exit(0)
 
+    wait_on_cr()
+    log_changed_functions(changed_functions, f"{log_dir}/change_set.csv")
+
     return changed_functions
 
 def reduction_stage(dep_new: str, dep_old: str,
@@ -158,9 +161,9 @@ def reduction_stage(dep_new: str, dep_old: str,
     # Compile the old and new version of the dependency as a set of 
     # goto-bin files
     if (new_lib := build_goto_lib(dep_source_root_new, dep_new, False)) == "":
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
     if (old_lib := build_goto_lib(dep_source_root_old, dep_old, True)) == "":
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
 
     # Copy any required headers into the include
     # directory of the driver
@@ -236,10 +239,10 @@ def reduction_stage(dep_new: str, dep_old: str,
         harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
         function_state = ARG_STATES[func_name] if func_name in ARG_STATES \
                 else FunctionState()
-        tu_includes = TU_INCLUDES[change.old.filepath] if \
-                    change.old.filepath in TU_INCLUDES else \
+        tu_includes = TU_INCLUDES[change.old.location.filepath] if \
+                    change.old.location.filepath in TU_INCLUDES else \
                     ([],[])
-        i_flags     = ' '.join(IFLAGS[change.old.filepath]).strip()
+        i_flags     = ' '.join(IFLAGS[change.old.location.filepath]).strip()
 
         if CONFIG.USE_EXISTING_DRIVERS and os.path.exists(harness_path):
             pass # Use existing driver
@@ -320,7 +323,7 @@ def transitive_stage(dep_new: str,
 
         except Exception:
             traceback.print_exc()
-            sys.exit(-1)
+            sys.exit(ERR_EXIT)
 
     log_changed_functions(changed_functions, f"{log_dir}/trans_change_set.csv")
 
@@ -329,43 +332,53 @@ def transitive_stage(dep_new: str,
         pprint(changed_functions)
 
 def impact_stage(log_dir:str, project_source_files: list[SourceFile],
- changed_functions: list[DependencyFunctionChange]):
+ changed_functions: list[DependencyFunctionChange]) -> list[CallSite]:
     ''' - - - Impact set - - - '''
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
         wait_on_cr()
-    CALL_SITES: list[ProjectInvocation]      = []
+    call_sites: list[CallSite]      = []
 
     os.chdir(CONFIG.PROJECT_DIR)
+    start = time_start("Enumerating call sites...")
 
     # With the changed functions enumerated we can
     # begin parsing the source code of the main project
     # to find all call locations (the impact set)
     try:
         with multiprocessing.Pool(CONFIG.NPROC) as p:
-            CALL_SITES = flatten(p.map(
+            call_sites = flatten(p.map(
                 partial(get_call_sites_from_file,
                     changed_functions = set(changed_functions)
                 ),
                 project_source_files
             ))
-
-            if CONFIG.VERBOSITY >= 2 or len(CALL_SITES) == 0:
-                pprint(CALL_SITES)
-            else:
-                if CONFIG.REVERSE_MAPPING:
-                    pretty_print_impact_by_dep(CALL_SITES)
-                else:
-                    pretty_print_impact_by_proj(CALL_SITES)
-            if CONFIG.ENABLE_RESULT_LOG:
-                log_impact_set(CALL_SITES, f"{log_dir}/impact_set.csv")
     except Exception:
         traceback.print_exc()
-        sys.exit(-1)
+        sys.exit(ERR_EXIT)
 
-def run():
-    ''' - - - Setup - - - '''
+    time_end("Finished call site enumeration", start)
+
+    if CONFIG.VERBOSITY >= 2 or len(call_sites) == 0:
+        pprint(call_sites)
+    else:
+        if CONFIG.ORDER_BY_CALL_SITE:
+            pretty_print_impact_by_call_site(call_sites)
+        else:
+            pretty_print_impact_by_dep(call_sites)
+    if CONFIG.ENABLE_RESULT_LOG:
+        log_impact_set(call_sites, f"{log_dir}/impact_set.csv")
+
+    return call_sites
+
+def run(load_libclang:bool = True) -> tuple:
+    ''' 
+    Returns a tuple with changed functions and call_sites 
+    '''
+    # - - - Setup - - -
     # Set the path to the clang library (platform dependent)
+    # We need to skip this in tests where run() is invoked several times
+
     if not os.path.exists(CONFIG.LIBCLANG):
         if not os.path.exists(CONFIG.FALLBACK_LIBCLANG):
             print_err(f"Missing path to libclang: {CONFIG.LIBCLANG}")
@@ -373,7 +386,8 @@ def run():
         else:
             CONFIG.LIBCLANG = CONFIG.FALLBACK_LIBCLANG
 
-    cindex.Config.set_library_file(CONFIG.LIBCLANG)
+    if load_libclang:
+        cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
     DEP_REPO = Repo(CONFIG.DEPENDENCY_DIR)
     DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
@@ -427,10 +441,7 @@ def run():
         dep_old, dep_new, dep_db_old, dep_db_new
     )
     # - - - Change set - - - #
-    changed_functions = ast_diff_stage(dep_old, dep_new, dep_source_diffs)
-
-    wait_on_cr()
-    log_changed_functions(changed_functions, f"{log_dir}/change_set.csv")
+    changed_functions = ast_diff_stage(dep_old, dep_new, dep_source_diffs, log_dir)
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
@@ -446,7 +457,8 @@ def run():
         )
         log_changed_functions(changed_functions, f"{log_dir}/reduced_set.csv")
 
-    if CONFIG.SKIP_IMPACT:  sys.exit(0)
+    if CONFIG.SKIP_IMPACT:
+        return (changed_functions, None)
 
     # - - - Transitive change set propagation - - - #
     transitive_stage(dep_new,
@@ -456,7 +468,9 @@ def run():
         log_dir
     )
     # - - - Impact set  - - - #
-    impact_stage(log_dir, project_files, changed_functions)
+    call_sites = impact_stage(log_dir, project_files, changed_functions)
+
+    return (changed_functions, call_sites)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=

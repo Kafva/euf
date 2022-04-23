@@ -24,7 +24,7 @@
   "DIE_ON_ERROR": true,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
-  "REVERSE_MAPPING": true,
+  "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 2,
   "NPROC": 12,
   "SKIP_BLAME": false,

@@ -119,7 +119,7 @@ def time_end(msg: str, start_time: datetime, result: AnalysisResult = AnalysisRe
         start_time = datetime.now()
 
 def mkdir_p(path: str):
-    if not os.path.exists(path):
+    if not os.path.isdir(path):
         os.mkdir(path)
 
 def rm_f(path: str):

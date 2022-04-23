@@ -5,3 +5,4 @@ from pathlib import Path
 sys.path.append('../')
 
 BASE_DIR = str(Path(__file__).parent.parent.absolute())
+ERR_EXIT = 1

@@ -12,7 +12,7 @@
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
   "CBMC_TIMEOUT": 10,
   "ENABLE_RESULT_LOG": true,
-  "REVERSE_MAPPING": false,
+  "ORDER_BY_CALL_SITE": false,
   "VERBOSITY": 1,
   "NPROC": 12,
   "SKIP_BLAME": false,
