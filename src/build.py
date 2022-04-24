@@ -180,6 +180,8 @@ def check_ccdb_error(path: str) -> None:
 def make_clean(dep_source_dir: str, script_env: dict[str,str], out) -> bool:
     if os.path.isfile(f"{dep_source_dir}/Makefile"):
         try:
+            if CONFIG.VERBOSITY >= 1:
+                print("!> make clean")
             subprocess.run([ "make", "clean"],
                 stdout = out, stderr = out,
                 cwd = dep_source_dir, env = script_env
@@ -189,15 +191,15 @@ def make_clean(dep_source_dir: str, script_env: dict[str,str], out) -> bool:
             return False
     return True
 
-def dir_has_magic_file(dep_source_dir: str, magic: bytes = b'\x7fELF') -> bool:
-    has_elf = False
-    for root, _, filenames in os.walk(dep_source_dir):
-        for filename in filenames:
-            with open(f"{root}/{filename}", mode="rb") as f:
-                if f.read(4) == magic:
-                    has_elf = True
-                    break
-    return has_elf
+def lib_is_gbf(dep_source_dir: str, libpath: str) -> bool:
+    script_env = CONFIG.get_script_env()
+    p = subprocess.Popen(["ar", "t", libpath ], cwd = dep_source_dir, env =
+            script_env, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL)
+    first_binary = p.stdout.readline().decode('ascii').strip('\n') # type: ignore
+    p = subprocess.Popen(["ar", "p", libpath, first_binary ], cwd = dep_source_dir, env =
+            script_env, stdout = subprocess.PIPE)
+
+    return p.stdout.read(4) == b'\x7fGBF' # type: ignore
 
 def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
     '''
@@ -207,12 +209,11 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
     if os.path.isfile(f"{dep_source_dir}/configure") or \
-         os.path.isfile(f"{dep_source_dir}/Makefile") or \
-         CONFIG.GOTO_BUILD_SCRIPT != "":
-        # Always recompile if at least one file in the project is 
-        # an ELF binary, goto-bin files are recorded as 'data' with `file`
-        if dir_has_magic_file(dep_source_dir) or CONFIG.FORCE_RECOMPILE or \
-            not find(CONFIG.DEPLIB_NAME, dep_dir):
+       os.path.isfile(f"{dep_source_dir}/Makefile"):
+        # Recompile if the library cannot be found or is on ELF format
+        if (libpath := find(CONFIG.DEPLIB_NAME, dep_dir)) == "" or \
+            not lib_is_gbf(dep_source_dir,libpath) or \
+            CONFIG.FORCE_RECOMPILE:
 
             if CONFIG.VERBOSITY > 0:
                 print_info(f"Building GOTO bin library: {dep_dir}")
@@ -233,36 +234,30 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
             script_env.update(CONFIG.BUILD_ENV)
 
             try:
-                if CONFIG.GOTO_BUILD_SCRIPT != "":
-                    if old_version:
-                        script_env.update({CONFIG.SUFFIX_ENV_FLAG: '1'})
-
-                    subprocess.run([ CONFIG.GOTO_BUILD_SCRIPT, dep_dir ],
-                        stdout = out, stderr = out,
-                        cwd = dep_dir, env = script_env
-                    ).check_returncode()
-
-                else:
-                    if os.path.isfile(f"{dep_source_dir}/configure"):
-                        subprocess.run([
-                            "./configure", "--host", "none-none-none"
-                            ],
-                            stdout = out, stderr = out,
-                            cwd = dep_source_dir, env = script_env
-                        ).check_returncode()
-
-                    if old_version:
-                        # Tell CBMC to add a suffix to every global
-                        # symbol when we compile the old version
-                        script_env.update({CONFIG.SUFFIX_ENV_FLAG: '1'})
-
+                if os.path.isfile(f"{dep_source_dir}/configure"):
+                    if CONFIG.VERBOSITY >= 1:
+                        print("!> ./configure")
                     subprocess.run([
-                        "make", "-j",
-                        str(multiprocessing.cpu_count() - 1)
+                        "./configure", "--host", "none-none-none"
                         ],
                         stdout = out, stderr = out,
                         cwd = dep_source_dir, env = script_env
                     ).check_returncode()
+
+                if old_version:
+                    # Tell CBMC to add a suffix to every global
+                    # symbol when we compile the old version
+                    script_env.update({CONFIG.SUFFIX_ENV_FLAG: '1'})
+
+                cmd = ["make", "-j", str(multiprocessing.cpu_count() - 1) ]
+
+                if CONFIG.VERBOSITY >= 1:
+                    print(f"!> {' '.join(cmd)}")
+
+                subprocess.run(cmd,
+                    stdout = out, stderr = out,
+                    cwd = dep_source_dir, env = script_env
+                ).check_returncode()
 
             except subprocess.CalledProcessError:
                 traceback.print_exc()

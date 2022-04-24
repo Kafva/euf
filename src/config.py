@@ -80,9 +80,6 @@ class Config:
     FORCE_RECOMPILE: bool = False
     FORCE_CCDB_RECOMPILE: bool = False
 
-    _GOTO_BUILD_SCRIPT: str = ""
-    _CCDB_BUILD_SCRIPT: str = ""
-
     # System header paths to skip over for the #include directives
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda:
@@ -151,7 +148,7 @@ class Config:
     UNRESOLVED_NODES_REGEX: str = r"unnamedat|<dependenttype>"
 
     # Compiler used during ccdb generation
-    CCDB_CC = "clang"
+    CCDB_CC = "cc"
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
@@ -214,12 +211,6 @@ class Config:
     @property
     def DEP_SOURCE_ROOT(self) -> str:
         return self._DEP_SOURCE_ROOT
-    @property
-    def GOTO_BUILD_SCRIPT(self) -> str:
-        return self._GOTO_BUILD_SCRIPT
-    @property
-    def CCDB_BUILD_SCRIPT(self) -> str:
-        return self._CCDB_BUILD_SCRIPT
 
     @PROJECT_DIR.setter
     def PROJECT_DIR(self,value):
@@ -230,12 +221,6 @@ class Config:
     @DEP_SOURCE_ROOT.setter
     def DEP_SOURCE_ROOT(self,value):
         self._DEP_SOURCE_ROOT = self._parse_path(value)
-    @GOTO_BUILD_SCRIPT.setter
-    def GOTO_BUILD_SCRIPT(self,value):
-        self._GOTO_BUILD_SCRIPT = self._parse_path(value)
-    @CCDB_BUILD_SCRIPT.setter
-    def CCDB_BUILD_SCRIPT(self,value):
-        self._CCDB_BUILD_SCRIPT = self._parse_path(value)
 
     def update_from_file(self, filepath: str):
         ''' If we create a new object the CONFIG object wont be shared '''
@@ -253,7 +238,9 @@ class Config:
         '''
         default = Config()
         for attr in dir(self):
-            if not attr.startswith("__"):
+            # Only assign values to memebers in capital letters
+            if not attr.startswith("__") and attr.upper() == attr:
+                print(attr, getattr(default,attr))
                 setattr(self, attr, getattr(default,attr))
 
 CONFIG = Config()

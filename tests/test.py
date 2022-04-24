@@ -10,7 +10,7 @@ from src.arg_states import call_arg_states_plugin, \
         get_subdir_tus, join_arg_states_result
 
 from src.util import flatten, mkdir_p, remove_files_in, rm_f
-from src.build import autogen_compile_db, dir_has_magic_file, patch_ccdb_with_headers
+from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers
 from euf import run
 
 TEST_DIR =  f"{BASE_DIR}/tests"
@@ -45,10 +45,9 @@ def setup():
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
 
-def test_dir_has_elf_binary():
-    assert( dir_has_magic_file(f"/usr/local/bin") )
-    assert( dir_has_magic_file(REPO_PATH) )
-    assert( not dir_has_magic_file(f"{expanduser('~')}/.ssh") )
+def test_lib_is_gbf():
+    assert(not lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_elf.a"))
+    assert(lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_gbf.a"))
 
 def test_transitive_changes():
     ''' Verifies that the transative change set is not empty for a known case '''
