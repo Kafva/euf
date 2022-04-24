@@ -75,9 +75,3 @@ if ! [ -d venv ]; then
   source ./venv/bin/activate
   pip3 install -r requirements.txt
 fi
-
-# Ensure preconditions for pytest
-find ~/.ssh -type f | xargs -I{} file {} 2>/dev/null |
-  grep -q ELF && warn "$HOME/.ssh contains ELF file(s)"
-find /usr/local/bin -type f | xargs -I{} file {} 2>/dev/null | 
-  grep -q ELF || warn "/usr/local/bin has no ELF file(s)"
