@@ -284,24 +284,21 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             if base_type in CONFIG.EXPLICIT_RENAME:
                 unequal_inputs = True
 
-                type_str = arg.explicitly_renamed_type()
-                f.write(f"{INDENT}{type_str} {arg.spelling}{SUFFIX};\n"  )
-
+                f.write(f"{INDENT}{arg.__repr__(use_suffix=True)};\n"  )
                 arg_string_old += f"{arg.spelling}{SUFFIX}, "
 
-                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                f.write(f"{INDENT}{arg.__repr__(use_suffix=False)};\n"  )
                 arg_string += f"{arg.spelling}, "
-
-            elif not arg.is_ptr:
+            else:
                 # For non-pointer types we only need to create one variable
                 # since the original value will not be modified and thus
                 # will not need to be verified
-                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
-                arg_string_old += f"{arg.spelling}, "
-                arg_string += f"{arg.spelling}, "
-            else:
-                # Argument initialisation
-                f.write(f"{INDENT}{arg.type_spelling} {arg.spelling};\n")
+                #
+                # Since we only check return values, we never need to create
+                # more than one input variable. If we had been checking pointer
+                # modifications then we would need seperate variables to pass
+                # the old/new version
+                f.write(f"{INDENT}{arg};\n")
                 arg_string_old += f"{arg.spelling}, "
                 arg_string += f"{arg.spelling}, "
 
@@ -318,7 +315,8 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 f.write(f"{INDENT}__CPROVER_assume(\n")
 
                 out_string = ""
-                for state in param.states:
+                # Sort the states to enable file-diff regression testing
+                for state in sorted(param.states):
                     state_val  = state if str(state).isnumeric() else f"\"{state}\""
                     out_string += f"{INDENT}{INDENT}{arg_name} == {state_val} ||\n"
 

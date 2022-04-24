@@ -144,8 +144,7 @@ class Config:
     # Only files with these suffixes are considered during analysis
     SUFFIX_WHITELIST = [".c", ".h"]
 
-    # No spaces
-    UNRESOLVED_NODES_REGEX: str = r"unnamedat|<dependenttype>"
+    UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"
 
     # Compiler used during ccdb generation
     CCDB_CC = "cc"
@@ -240,7 +239,6 @@ class Config:
         for attr in dir(self):
             # Only assign values to memebers in capital letters
             if not attr.startswith("__") and attr.upper() == attr:
-                print(attr, getattr(default,attr))
                 setattr(self, attr, getattr(default,attr))
 
 CONFIG = Config()

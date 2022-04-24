@@ -1,0 +1,9 @@
+impacted_path;impacted_line;impacted_col;impacted_name;direct_change;old_path;old_line;old_col;old_name;new_path;new_line;new_col;new_name
+sx/io.c;43;34;_sx_process_read;True;expat/lib/xmlparse.c;2244;1;XML_ErrorString;expat/lib/xmlparse.c;2349;1;XML_ErrorString
+sx/io.c;70;30;_sx_process_read;True;expat/lib/xmlparse.c;2244;1;XML_ErrorString;expat/lib/xmlparse.c;2349;1;XML_ErrorString
+sx/sx.c;36;16;sx_new;True;expat/lib/xmlparse.c;630;1;XML_ParserCreateNS;expat/lib/xmlparse.c;720;1;XML_ParserCreateNS
+util/config.c;135;126;config_load_with_id;True;expat/lib/xmlparse.c;2244;1;XML_ErrorString;expat/lib/xmlparse.c;2349;1;XML_ErrorString
+util/nad.c;1437;9;nad_parse;True;expat/lib/xmlparse.c;630;1;XML_ParserCreateNS;expat/lib/xmlparse.c;720;1;XML_ParserCreateNS
+sx/io.c;39;8;_sx_process_read;False;;-1;-1;;expat/lib/xmlparse.c;1818;1;XML_Parse
+util/config.c;133;13;config_load_with_id;False;;-1;-1;;expat/lib/xmlparse.c;1818;1;XML_Parse
+util/nad.c;1462;9;nad_parse;False;;-1;-1;;expat/lib/xmlparse.c;1818;1;XML_Parse

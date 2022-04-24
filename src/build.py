@@ -161,6 +161,7 @@ def patch_ccdb_with_headers(source_path: str) -> bool:
 
     with open(ccdb_path, mode='w', encoding='utf8') as f:
         json.dump(current_db, f, ensure_ascii=True, indent=4, sort_keys=True)
+        f.write('\n')
 
     return True
 

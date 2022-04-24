@@ -22,7 +22,7 @@
     "latin1tab.h"
   ],
   "FORCE_CCDB_RECOMPILE": false,
-  "FORCE_RECOMPILE": false,
+  "FORCE_RECOMPILE": true,
   "USE_EXISTING_DRIVERS": false,
   "QUIET_BUILD": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
@@ -36,7 +36,7 @@
   "VERBOSITY": 2,
   "NPROC": 12,
   "SKIP_BLAME": false,
-  "SKIP_IMPACT": true,
+  "SKIP_IMPACT": false,
   "FULL": true,
   "COMMIT_OLD": "10d34296211f8a1b7a9ac09df0e2983eeb892569",
   "COMMIT_NEW": "f178826bb1e9c8ee23202f1be55ad4ac7b649e84"

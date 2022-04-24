@@ -37,8 +37,13 @@ class Identifier:
     ''' 
     Refers to either a function argument or a function, 
     '''
+
     spelling: str
-    type_spelling: str # Includes a '*' if the ident is a ptr
+
+    # The canoncial type string for this identifier,
+    # Note that double pointers will have a '*' in this
+    # string as well as the is_ptr attribute set
+    type_spelling: str
 
     # Derived from the string conversion of the clang type value
     # after 'TypeKind.' in lower case.
@@ -50,11 +55,13 @@ class Identifier:
 
     # If set, the identifier is a pointer to the specified type
     is_ptr: bool = False
+
+    # If set, the identifier is defined with a const qualifer
     is_const: bool = False
 
 
     @classmethod
-    def get_type_data(cls, clang_type: cindex.Type) -> tuple[str,str]:
+    def get_type_data(cls, clang_type: cindex.Type) -> tuple[bool,str,str]:
         '''
         To determine if a function is being called with the same types of arguments
         as those specified in the prototype we need to resolve all typedefs into
@@ -69,6 +76,10 @@ class Identifier:
         else:
             canonical = clang_type.get_canonical()
 
+        # The is_const_qualified() attribute is not always reliable...
+        is_const = canonical.is_const_qualified()
+        #canonical.spelling.find("const ") != -1
+
         typing = str(canonical.kind).removeprefix("TypeKind.").lower()
         type_spelling = canonical.spelling.removeprefix("const ")
 
@@ -76,7 +87,7 @@ class Identifier:
         type_spelling = re.sub(r" +", repl=" ", string = type_spelling)
         type_spelling = re.sub(r" \*", repl="*", string = type_spelling)
 
-        return (typing,type_spelling)
+        return (is_const,typing,type_spelling)
 
     @classmethod
     def get_underlying_args(cls,cursor: cindex.Cursor, level:int):
@@ -112,12 +123,12 @@ class Identifier:
 
         # Dependent experssions e.g. the second argument in
         #   hashTableIterInit(&iter, &(p->elementTypes));
-        # do not have a 'spelling' value, we need to traverse down
-        # these nodes until we find a node with a name (the actual argument)
-        #
+        # do not have a 'spelling' value,
         # In the situation above we can only resolve the type of 'p'...
+        #
+        # We have a dedicated check that excludes type checks for these types of
+        # values
         if re.search(CONFIG.UNRESOLVED_NODES_REGEX, cursor.type.get_canonical().spelling):
-            #print("!> Dependent")
             #cls.get_underlying_node(cursor,1)
             #cls.get_underlying_args(cursor,1)
             pass
@@ -134,12 +145,10 @@ class Identifier:
 
         if result_pointee_type.spelling != "":
             # Pointer return type
-            (typing, type_spelling) = cls.get_type_data(result_pointee_type)
-            is_const = result_pointee_type.is_const_qualified()
+            is_const, typing, type_spelling = cls.get_type_data(result_pointee_type)
             is_ptr = True
         else:
-            (typing, type_spelling) = cls.get_type_data(type_obj)
-            is_const = type_obj.is_const_qualified()
+            is_const, typing, type_spelling = cls.get_type_data(type_obj)
             is_ptr = False
 
         if re.search(r"^int\**", type_spelling):
@@ -261,32 +270,28 @@ class Identifier:
                self.type_spelling == other.type_spelling and \
                self.is_function == other.is_function
 
-    def explicitly_renamed_type(self) -> str:
-        '''
-        Add a SUFFIX to type names that are explicitly renamed
-        through config options
-        '''
+
+    def __repr__(self, paranthesis: bool = True, use_suffix:bool=False):
+        constant = 'const ' if self.is_const else ''
+        func = '()' if self.is_function and paranthesis else ''
+
+        # Types that should be explicitly renamed will be given a suffix
+        # with their type string and spelling if the use_suffix flag is set
         base_type = self.type_spelling.removeprefix("struct").strip(' *')
 
-        if base_type in CONFIG.EXPLICIT_RENAME:
+        if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
             struct = "struct " if self.type_spelling.startswith("struct") else ''
             type_str = f"{struct}{base_type}{CONFIG.SUFFIX}"
 
             if self.type_spelling.endswith("*"):
                 type_str = f"{type_str}*"
+
+            spelling_str = self.spelling+CONFIG.SUFFIX
         else:
             type_str = self.type_spelling
+            spelling_str = self.spelling
 
-        return type_str
-
-    def __repr__(self, paranthesis: bool = True, explicit_type:str = ""):
-        constant = 'const ' if self.is_const else ''
-        func = '()' if self.is_function and paranthesis else ''
-
-        # Allow for a custom type string when we need to add suffixes
-        type_str = explicit_type if explicit_type != "" else self.type_spelling
-
-        return f"{constant}{type_str} {self.spelling}{func}"
+        return f"{constant}{type_str} {spelling_str}{func}"
 
     def dump(self, header:bool = False) -> str:
         fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
@@ -413,7 +418,7 @@ class DependencyFunction:
         out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
         for arg in self.arguments:
             if suffix != "":
-                out += f"{arg.explicitly_renamed_type()}, "
+                out += f"{arg.__repr__(use_suffix=True)}, "
             else:
                 out += f"{arg}, "
 
