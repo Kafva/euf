@@ -1,8 +1,9 @@
-import os
+import os, traceback
 from itertools import zip_longest
 
 from clang import cindex
 from git.diff import Diff
+from git.exc import GitCommandError
 from git.repo.base import Repo
 
 from src.config import CONFIG
@@ -150,8 +151,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
                 cursor_old_fn, cursor_new_fn
         )
 
-
-        if src_loc := functions_differ(cursor_old_fn, cursor_new_fn): # type: ignore
+        if type(src_loc := functions_differ(cursor_old_fn, cursor_new_fn)) == \
+         cindex.SourceLocation:
             if CONFIG.VERBOSITY >= 3:
                 print(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
@@ -236,7 +237,7 @@ def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
         find_transative_changes_in_tu(dep_root_dir, child, changed_functions,
             transative_function_calls, current_function)
 
-def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff],
+def add_rename_changes_based_on_blame(new_dep_path: str, added_diff: list[Diff],
         dep_source_diffs: list[SourceDiff]) -> None:
     '''
     In some situations Git is not able to detect a rename across
@@ -245,7 +246,12 @@ def add_rename_changes_based_on_blame(new_dep_repo: Repo, added_diff: list[Diff]
     closer to rename operations.
     '''
     for added_file in added_diff:
-        blame_output = new_dep_repo.git.blame("-f", added_file.a_path) # type: ignore
+        try:
+            blame_output = Repo(new_dep_path).git.blame("-f", added_file.a_path) # type: ignore
+        except GitCommandError:
+            traceback.print_exc()
+            print_err("Git blame correlation failed")
+            return
 
         # Create a list '[ (file_origin, count) ... ]' that describes how many 
         # lines originates from each file in the blame output

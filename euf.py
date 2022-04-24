@@ -69,7 +69,7 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
         ))
 
         add_rename_changes_based_on_blame(
-                Repo(dep_new), added_diff, dep_source_diffs
+                dep_new, added_diff, dep_source_diffs
         )
 
     if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
@@ -383,7 +383,7 @@ def run(load_libclang:bool = True) -> tuple:
     if load_libclang:
         cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
-    DEP_REPO = Repo(CONFIG.DEPENDENCY_DIR)
+    dep_repo = Repo(CONFIG.DEPENDENCY_DIR)
     DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)
 
     log_dir = f"{CONFIG.RESULTS_DIR}/{CONFIG.DEPLIB_NAME.removesuffix('.a')}"+\
@@ -411,7 +411,7 @@ def run(load_libclang:bool = True) -> tuple:
     mkdir_p(CONFIG.ARG_STATES_OUTDIR)
 
     try:
-        _ = DEP_REPO.active_branch
+        _ = dep_repo.active_branch
     except TypeError as e:
         print_err("Unable to read current branch name for" + \
             f" {CONFIG.DEPENDENCY_DIR}\n{e}"
@@ -438,8 +438,11 @@ def run(load_libclang:bool = True) -> tuple:
     dep_source_files = get_source_files(dep_old, dep_db_old)
 
     # - - - Git diff - - - #
-    dep_source_diffs = git_diff_stage(DEP_REPO,
-        dep_old, dep_new, dep_db_old, dep_db_new
+    dep_source_diffs = git_diff_stage(dep_repo,
+        dep_new = dep_new,
+        dep_old = dep_old,
+        dep_db_old = dep_db_old,
+        dep_db_new = dep_db_new
     )
     # - - - Change set - - - #
     changed_functions = ast_diff_stage(dep_old, dep_new, dep_source_diffs, log_dir)

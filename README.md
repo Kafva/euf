@@ -9,7 +9,7 @@ git clone --recursive https://github.com/Kafva/euf.git
 ./scripts/setup.sh
 ```
 
-Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `cparser/config.py` and there are several examples present in the repository.
+Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
 ```
 (venv) ./euf.py --config tests/configs/basic.json
 ```

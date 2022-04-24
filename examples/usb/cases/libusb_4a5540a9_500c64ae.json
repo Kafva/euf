@@ -18,6 +18,7 @@
     ]
   },
   "EXCLUDE_REGEXES": [
+    "android/.*",
     "Xcode/.*",
     "msvc/.*",
     "examples/.*",
