@@ -11,7 +11,6 @@ True;src/regcomp.c;1673;1;compile_tree;src/regcomp.c;1671;1;compile_tree
 True;src/regcomp.c;1842;1;noname_disable_map;src/regcomp.c;1841;1;noname_disable_map
 True;src/regcomp.c;1929;1;renumber_by_map;src/regcomp.c;1928;1;renumber_by_map
 True;src/regcomp.c;1964;1;numbered_ref_check;src/regcomp.c;1962;1;numbered_ref_check
-True;src/regcomp.c;2042;1;unset_addr_list_fix;src/regcomp.c;2039;1;unset_addr_list_fix
 True;src/regcomp.c;2066;1;get_char_length_tree1;src/regcomp.c;2063;1;get_char_length_tree1
 True;src/regcomp.c;2372;1;get_head_value_node;src/regcomp.c;2379;1;get_head_value_node
 True;src/regcomp.c;2459;1;check_type_tree;src/regcomp.c;2468;1;check_type_tree

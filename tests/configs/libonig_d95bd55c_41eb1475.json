@@ -56,7 +56,7 @@
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
-  "CBMC_TIMEOUT": 7,
+  "CBMC_TIMEOUT": 12,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": false,
   "USE_EXISTING_DRIVERS": false,
