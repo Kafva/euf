@@ -1,4 +1,3 @@
-// run.sh example
 int sum(int a, int b){ return a+b; }
 
 void euf_main(){

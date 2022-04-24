@@ -27,32 +27,18 @@ inf:
 
 # Basic example of CBMC
 bmc:
-	bat ./tests/drivers/example.c
+	@bat ./tests/drivers/example.c
+	@read
 	cbmc ./tests/drivers/example.c --unwind 5 -DCBMC --object-bits 12 --function euf_main --property euf_main.assertion.1
 
 # Analysis of a specific function which has a influential change
 xml:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
-	./scripts/test_harness.sh examples/expat/cases/xml.json XML_ErrorString
-
-# Full analysis of the same case
-xml_full:
-	./euf.py --config examples/expat/cases/811c41_b1d039.json 
+	./scripts/test_harness.sh tests/configs/xml.json XML_ErrorString
 
 # Analysis of a specific function which has a equivalent (based on return value) change
 entr:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
-	./scripts/test_harness.sh examples/expat/cases/entr.json ENTROPY_DEBUG
-
-empty:
-	./euf.py --config examples/expat/cases/6aa6a82d_c9e1ac00.json --diff
-	./euf.py --config examples/expat/cases/6aa6a82d_c9e1ac00.json
-
-rand:
-	./euf.py --config examples/expat/cases/0d21b17b_9288cd54.json
-	
-# Example run on another project without CBMC
-onig:
-	./euf.py --config examples/onig/cases/libonig_7ed8_e8bd.json
+	./scripts/test_harness.sh tests/configs/entr.json ENTROPY_DEBUG

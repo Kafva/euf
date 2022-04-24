@@ -33,7 +33,7 @@ from src.arg_states import join_arg_states_result, state_space_analysis
 from src.harness import valid_preconds, create_harness, \
         get_I_flags_from_tu, run_harness, add_includes_from_tu
 from src.util import flatten, flatten_dict, has_allowed_suffix, \
-        mkdir_p, print_info, print_stage, remove_files_in, rm_f, time_end, time_start, \
+        mkdir_p, print_stage, remove_files_in, rm_f, time_end, time_start, \
         wait_on_cr, print_err
 from src.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, \
@@ -137,6 +137,13 @@ def ast_diff_stage(dep_old:str, dep_new:str,
         sys.exit(0)
 
     wait_on_cr()
+
+    # Sort the functions to ensure that processing is always done
+    # in the same order (makes testing easier)
+    changed_functions = sorted(changed_functions,
+            key = lambda c: c.old.ident.spelling
+    )
+
     log_changed_functions(changed_functions, f"{log_dir}/change_set.csv")
 
     return changed_functions
@@ -216,6 +223,8 @@ def reduction_stage(dep_new: str, dep_old: str,
     for diff in dep_source_diffs:
         add_includes_from_tu(diff, dep_old, dep_source_root_old, IFLAGS, TU_INCLUDES)
 
+    start = time_start("Starting change set reduction...")
+
     for i,change in enumerate(changed_functions[:]):
         # Begin by generating an identity driver and verify that it
         # passes as equivalent, then generate the actual driver and check if the
@@ -263,7 +272,7 @@ def reduction_stage(dep_new: str, dep_old: str,
                 # Remove the change from the change set if the equivalance check passes
                 changed_functions.remove(change)
 
-    print_info(f"Change set reduction: {total} -> {len(changed_functions)}")
+    time_end(f"Change set reduction: {total} -> {len(changed_functions)}", start)
 
 def transitive_stage(dep_new: str,
  dep_source_root_new:str,
@@ -296,29 +305,32 @@ def transitive_stage(dep_new: str,
                     ),
                     dep_source_files
                 ))
-
-            if CONFIG.VERBOSITY >= 1:
-                pprint(TRANSATIVE_CHANGED_FUNCTIONS)
-
-            for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
-                try:
-                    # Add calls to a function that already has been identified as changed
-                    if (idx := [ c.new for c in changed_functions ].index(key)):
-                        changed_functions[idx].invokes_changed_functions.extend(calls)
-                except ValueError:
-                    # Add a new function (with an indirect change) to the changed set
-                    changed_function = DependencyFunctionChange(
-                            old = DependencyFunction.empty(),
-                            new = key,
-                            invokes_changed_functions = calls,
-                            direct_change = False
-                    )
-                    changed_functions.append(changed_function)
-
         except Exception:
             traceback.print_exc()
             sys.exit(ERR_EXIT)
 
+        if CONFIG.VERBOSITY >= 1:
+            pprint(TRANSATIVE_CHANGED_FUNCTIONS)
+
+        for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
+            try:
+                # Add calls to a function that already has been identified as changed
+                if (idx := [ c.new for c in changed_functions ].index(key)):
+                    changed_functions[idx].invokes_changed_functions.extend(calls)
+            except ValueError:
+                # Add a new function (with an indirect change) to the changed set
+                changed_function = DependencyFunctionChange(
+                        old = DependencyFunction.empty(),
+                        new = key,
+                        invokes_changed_functions = calls,
+                        direct_change = False
+                )
+                changed_functions.append(changed_function)
+
+    # Ensure a canonical order
+    changed_functions = sorted(changed_functions,
+            key = lambda c: c.old.ident.spelling
+    )
     log_changed_functions(changed_functions, f"{log_dir}/trans_change_set.csv")
 
     if CONFIG.VERBOSITY >= 2:

@@ -189,25 +189,24 @@ def test_expat():
             f"{TEST_DIR}/expected/libexpat_10d3_f178/cbmc.csv"
     )
 
-
 def test_onig():
-    CONFIG.update_from_file(f"{TEST_DIR}/configs/libonig_d95bd55c_41eb1475.json")
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/onig.json")
     run(load_libclang=False)
 
-    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d95b_41eb/change_set.csv", \
-            f"{TEST_DIR}/expected/libonig_d95b_41eb/change_set.csv" )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d3d6_6f8c/change_set.csv", \
+            f"{TEST_DIR}/expected/libonig_d3d6_6f8c/change_set.csv" )
     )
-    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d95b_41eb/reduced_set.csv", \
-            f"{TEST_DIR}/expected/libonig_d95b_41eb/reduced_set.csv" )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d3d6_6f8c/reduced_set.csv", \
+            f"{TEST_DIR}/expected/libonig_d3d6_6f8c/reduced_set.csv" )
     )
-    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d95b_41eb/impact_set.csv", \
-            f"{TEST_DIR}/expected/libonig_d95b_41eb/impact_set.csv" )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d3d6_6f8c/impact_set.csv", \
+            f"{TEST_DIR}/expected/libonig_d3d6_6f8c/impact_set.csv" )
     )
-    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d95b_41eb/trans_change_set.csv", \
-            f"{TEST_DIR}/expected/libonig_d95b_41eb/trans_change_set.csv" )
+    assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d3d6_6f8c/trans_change_set.csv", \
+            f"{TEST_DIR}/expected/libonig_d3d6_6f8c/trans_change_set.csv" )
     )
 
-    check_cbmc_csv(f"{RESULT_DIR}/libonig_d95b_41eb/cbmc.csv",
-            f"{TEST_DIR}/expected/libonig_d95b_41eb/cbmc.csv"
+    check_cbmc_csv(f"{RESULT_DIR}/libonig_d3d6_6f8c/cbmc.csv",
+            f"{TEST_DIR}/expected/libonig_d3d6_6f8c/cbmc.csv"
     )
 
