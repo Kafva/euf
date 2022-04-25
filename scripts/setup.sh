@@ -7,7 +7,7 @@ clone_repo(){
 
 if $(which apt &> /dev/null); then
   # EUF dependencies
-  sudo apt-get install bear clang llvm-12 flex bison make \
+  sudo apt-get install clang llvm-12 flex bison make \
     curl patch cmake -y
 
   # Dependencies for example projects
