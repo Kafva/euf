@@ -15,9 +15,17 @@ if $(which apt &> /dev/null); then
 fi
 
 # Compile submodules
-make -C clang-plugins all
-make -C cbmc clean && 
-  make -C cbmc install
+#make -C clang-plugins all
+#make -C cbmc clean && 
+#  make -C cbmc install
+
+if ! $(which bear &> /dev/null); then
+  mkdir -p bear/build
+  cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
+    -S bear/source -B bear/build
+      make -C bear/build -j$((`nproc`-1)) all
+  sudo make -C bear/build install
+fi
 
 # Clone all projects
 mkdir -p ~/Repos

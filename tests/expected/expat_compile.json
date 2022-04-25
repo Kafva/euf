@@ -1,7 +1,7 @@
 [
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -39,7 +39,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -77,7 +77,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -113,7 +113,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -149,7 +149,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -185,7 +185,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -221,7 +221,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -257,7 +257,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -293,7 +293,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -329,7 +329,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -365,7 +365,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -401,7 +401,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -437,7 +437,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -473,7 +473,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -509,7 +509,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -548,7 +548,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -585,7 +585,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -624,7 +624,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -661,7 +661,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -697,7 +697,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -736,7 +736,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -773,7 +773,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -809,7 +809,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -845,7 +845,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I../..",
@@ -883,7 +883,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -921,7 +921,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -956,7 +956,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -994,7 +994,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1029,7 +1029,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1067,7 +1067,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1102,7 +1102,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1140,7 +1140,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1175,7 +1175,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1213,7 +1213,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1248,7 +1248,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1283,7 +1283,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1321,7 +1321,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1359,7 +1359,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1394,7 +1394,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -1429,7 +1429,7 @@
     },
     {
         "arguments": [
-            "/usr/bin/cc",
+            "/usr/bin/clang",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
