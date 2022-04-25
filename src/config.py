@@ -89,7 +89,7 @@ class Config:
 
     # Extra compile flags to add for every TU in libclang
     EXTRA_COMPILE_FLAGS = [
-        "-Wno-unused-function"
+        "-Wno-unused-function", "-Wno-implicit-int"
     ]
 
     # Set to True to echo out all information during the build process

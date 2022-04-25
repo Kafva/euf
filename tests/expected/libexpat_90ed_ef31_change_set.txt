@@ -1,3 +1,4 @@
+siphash24
 XML_ExternalEntityParserCreate
 appendAttributeValue
 lookup

@@ -59,7 +59,7 @@ def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU
     return src_subdirs
 
 def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir: str,
-    subdir_tu: SubDirTU, quiet:bool = True) -> None:
+        subdir_tu: SubDirTU, quiet:bool = True, setx:bool=False) -> None:
     '''
     Some of the ccdb arguments are not comptabile with the -cc1 frontend and need to
     be filtered out.
@@ -80,15 +80,19 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir
         script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
         out = sys.stderr
 
+    # We assume all headers that we need to analyze are included by one
+    # or more of the c files so we do not explicitly pass them
+    c_files = list(filter(lambda f: f.endswith(".c"), subdir_tu.files))
 
     # We assume that the isystem-flags are the same for all source files in a directory
     cmd = [ "clang", "-cc1", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
         SourceFile.get_isystem_flags(list(subdir_tu.files)[0], target_dir) + \
-        list(subdir_tu.files) + [ "-I", "/usr/include" ] + list(ccdb_filtered)
+        c_files + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
-    #print(f"({subdir})> \n", ' '.join(cmd))
+    if setx:
+        print(f"({subdir})> \n", ' '.join(cmd))
     subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out, env = script_env)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
