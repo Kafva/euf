@@ -141,13 +141,7 @@ def patch_old_bear_db(ccdb_path:str):
 
             new_json.append(tu)
 
-    new_json = sorted(new_json, key = lambda entry:
-            entry['file'] + (entry['output'] if 'output' in entry else '')
-    )
-
-    with open(ccdb_path, mode='w', encoding='utf8') as f:
-        json.dump(new_json, f, ensure_ascii=True, indent=4, sort_keys=True)
-        f.write('\n')
+    write_ccdb_from_object(ccdb_path, ccdb_json)
 
 def patch_ccdb_with_headers(source_path: str) -> bool:
     '''
@@ -176,25 +170,30 @@ def patch_ccdb_with_headers(source_path: str) -> bool:
         print_err("Failed to patch ccdb with compdb")
         return False
 
-    current_db = {}
+    current_db = []
     with open(ccdb_path, mode='r', encoding='utf8') as f:
         current_db = json.load(f)
         current_db.extend(header_entries)
 
-    # To allow for easy testing, we sort the array based on 
-    # 'output' + 'file',
-    # ensuring that the ccdb always looks the same for a project 
-    # (compdb headers do not have an output, which would
-    # otherwise be a unique field)
-    current_db = sorted(current_db, key = lambda entry:
+    write_ccdb_from_object(ccdb_path, current_db)
+
+    return True
+
+def write_ccdb_from_object(ccdb_path:str, json_db: list[dict]):
+    '''
+    To allow for easy testing, we sort the array based on 
+    'output' + 'file',
+    ensuring that the ccdb always looks the same for a project 
+    (compdb headers do not have an output, which would
+    otherwise be a unique field)
+    '''
+    json_db = sorted(json_db, key = lambda entry:
             entry['file'] + (entry['output'] if 'output' in entry else '')
     )
 
     with open(ccdb_path, mode='w', encoding='utf8') as f:
-        json.dump(current_db, f, ensure_ascii=True, indent=4, sort_keys=True)
+        json.dump(json_db, f, ensure_ascii=True, indent=4, sort_keys=True)
         f.write('\n')
-
-    return True
 
 def check_ccdb_error(path: str) -> None:
     ''' Exits the program if the ccdb is empty or does not exist '''

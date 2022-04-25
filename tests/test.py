@@ -55,7 +55,6 @@ def setup():
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
 
-
 def test_patch_old_bear_db():
     ccdb_path = "/tmp/old_bear.json"
     shutil.copy(f"{TEST_DIR}/expected/old_bear.json", ccdb_path)
