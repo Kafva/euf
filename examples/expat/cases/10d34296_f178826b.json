@@ -21,8 +21,8 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "FORCE_CCDB_RECOMPILE": false,
-  "FORCE_RECOMPILE": false,
+  "FORCE_CCDB_RECOMPILE": true,
+  "FORCE_RECOMPILE": true,
   "USE_EXISTING_DRIVERS": false,
   "QUIET_BUILD": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",

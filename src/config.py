@@ -147,7 +147,7 @@ class Config:
     UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"
 
     # Compiler used during ccdb generation
-    CCDB_CC = "cc"
+    CCDB_CC = "/usr/bin/clang"
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"
