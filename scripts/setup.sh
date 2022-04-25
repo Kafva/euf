@@ -22,7 +22,7 @@ fi
 if ! $(which bear &> /dev/null); then
   sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
     nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
-    libssl-dev
+    libssl-dev -y
 
   mkdir -p bear/build
   cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
