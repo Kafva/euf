@@ -11,6 +11,15 @@ from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
 from src.util import get_column_counts, print_info, print_err
 
+def get_non_static(changed_functions:
+ list[DependencyFunctionChange]) -> list[DependencyFunctionChange]:
+    non_static_changes = []
+    for c in changed_functions:
+        if not c.old.is_static and not c.new.is_static:
+            non_static_changes.append(c)
+    return non_static_changes
+
+
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
     cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
 
@@ -31,6 +40,7 @@ def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
             # Note: the key in the dict uses the new and old filepath
             # to ensure that functions in renamed paths still end up in the same pair
             key = f"{diff.new_path}:{diff.old_path}:{child.spelling}"
+
 
             # Add the child to an existing pair or create a new one
             if not key in cursor_pairs:

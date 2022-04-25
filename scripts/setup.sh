@@ -35,6 +35,7 @@ clone_repo libexpat/libexpat      ~/Repos/libexpat
 clone_repo libusb/libusb          ~/Repos/libusb
 clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
+clone_repo bminor/binutils-gdb    ~/Repos/gdb
 
 if ! [ -e ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
   cd ~/Repos/jq

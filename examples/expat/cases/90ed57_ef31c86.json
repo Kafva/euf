@@ -35,7 +35,7 @@
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 2,
   "NPROC": 14,
-  "SKIP_BLAME": false,
+  "SKIP_BLAME": true,
   "SKIP_IMPACT": false,
   "FULL": true,
   "COMMIT_OLD": "90ed5777a6e447f0d4ed34a6a293c99069123bcb",

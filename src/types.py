@@ -266,8 +266,12 @@ class Identifier:
              re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
                 return True
 
+        # The type spelling usuaully differs slightly between declerations and
+        # call sites, e.g. the call site usually does not have an 'enum' prefix
+        # for enums
         return strict_check and \
-               self.type_spelling == other.type_spelling and \
+               self.type_spelling.removeprefix("enum ") == \
+               other.type_spelling.removeprefix("enum ") and \
                self.is_function == other.is_function
 
 
@@ -367,6 +371,7 @@ class DependencyFunction:
     ident: Identifier # Function name and return type
     location: IdentifierLocation
     arguments: list[Identifier] # The arguments must be in correct order within the list
+    is_static: bool = False
 
     @classmethod
     def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
@@ -382,6 +387,7 @@ class DependencyFunction:
             ident        = Identifier.new_from_cursor(cursor),
             arguments   = [ Identifier.new_from_cursor(arg)
                   for arg in cursor.get_arguments() ],
+            is_static = str(cursor.storage_class).endswith("STATIC")
         )
 
     @classmethod
@@ -390,7 +396,7 @@ class DependencyFunction:
             displayname = "",
             ident       = Identifier.empty(),
             arguments   = [],
-            location = IdentifierLocation.empty()
+            location = IdentifierLocation.empty(),
         )
 
     def eq(self, other) -> bool:

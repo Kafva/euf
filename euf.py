@@ -36,7 +36,7 @@ from src.util import flatten, flatten_dict, has_allowed_suffix, \
         mkdir_p, print_stage, remove_files_in, rm_f, time_end, time_start, \
         wait_on_cr, print_err
 from src.change_set import add_rename_changes_based_on_blame, \
-        get_changed_functions_from_diff, \
+        get_changed_functions_from_diff, get_non_static, \
         get_transative_changes_from_file, log_changed_functions
 from src.impact_set import get_call_sites_from_file, log_impact_set, \
         pretty_print_impact_by_call_site, pretty_print_impact_by_dep
@@ -191,11 +191,19 @@ def reduction_stage(dep_new: str, dep_old: str,
     changes_to_analyze = []
     for c in changed_functions:
         if valid_preconds(c,IFLAGS,logfile="",quiet=True):
-            changes_to_analyze.append(c.old.ident.spelling)
+            changes_to_analyze.append(c)
 
-    state_space_analysis(changes_to_analyze, dep_source_root_old, dep_old)
+    idents_to_analyze = [ c.old.ident.spelling for c in changes_to_analyze ]
+
+    # Skip the state space analysis for static functions since these
+    # cannot be called from the main project
+    non_static_changes = [ c.old.ident.spelling for c in
+            get_non_static(changes_to_analyze) ]
+
+    state_space_analysis(idents_to_analyze, dep_source_root_old, dep_old)
+    # TODO: disabled to save time during development
     #state_space_analysis(changes_to_analyze, dep_source_root_new, dep_new)
-    #state_space_analysis(changes_to_analyze, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR) TODO: takes to long
+    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR)
 
     # Join the results from each analysis
     old_name    = os.path.basename(dep_old)
@@ -347,6 +355,7 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
 
     os.chdir(CONFIG.PROJECT_DIR)
     start = time_start("Enumerating call sites...")
+    non_static_changes = get_non_static(changed_functions)
 
     # With the changed functions enumerated we can
     # begin parsing the source code of the main project
@@ -355,7 +364,7 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             call_sites = flatten(p.map(
                 partial(get_call_sites_from_file,
-                    changed_functions = set(changed_functions)
+                    changed_functions = set(non_static_changes)
                 ),
                 project_source_files
             ))
