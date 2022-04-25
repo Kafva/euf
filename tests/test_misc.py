@@ -42,6 +42,17 @@ def setup():
 
     cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
+    # Create required paths (libexpat-90ed5777)
+    conf = f"{TEST_DIR}/configs/libexpat_build_test.json"
+    CONFIG.update_from_file(conf)
+
+    if not os.path.exists(EXPAT_OLD_PATH):
+        # Create the directory if neccessary
+        CONFIG.FULL = False
+        run(load_libclang=False)
+        CONFIG.FULL = True
+
+
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
 
@@ -73,7 +84,6 @@ def test_transitive_changes():
     ))
 
 def test_get_source_subdirs():
-    usb_path = f"{expanduser('~')}/.cache/euf/libusb-385eaafb/libusb"
     expected = [ "lib", "xmlwf" ]
     CONFIG.EXCLUDE_REGEXES = ["expat/tests/.*", "expat/examples/.*"]
 
@@ -82,25 +92,16 @@ def test_get_source_subdirs():
             set( [ f"{EXPAT_SRC_PATH}/{subdir}" for subdir in  expected ] )
     )
 
-    # Test with source in root
-    assert(os.path.exists(f"{usb_path}/compile_commands.json"))
-
-    expected = [ "" ]
-    subdirs = get_subdir_tus(usb_path, usb_path)
-    assert( set([ key for key in subdirs.keys() ]) ==
-            set( [usb_path] )
-    )
-
 def test_join_arg_states_result():
     function_name = "usage"
     outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{EXPAT_OLD_NAME}"
-    CONFIG.update_from_file(f"{TEST_DIR}/configs/libexpat_build_test.json")
+    conf = f"{TEST_DIR}/configs/libexpat_build_test.json"
+    CONFIG.update_from_file(conf)
     mkdir_p(outdir)
     remove_files_in(outdir) # !!
 
-    if os.path.exists(EXPAT_OLD_PATH):
-        for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH, EXPAT_OLD_PATH).items():
-            call_arg_states_plugin(function_name, outdir, EXPAT_OLD_SRC_PATH, subdir, subdir_tu, quiet=True)
+    for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH, EXPAT_OLD_PATH).items():
+        call_arg_states_plugin(function_name, outdir, EXPAT_OLD_SRC_PATH, subdir, subdir_tu, quiet=True)
 
     result = join_arg_states_result( [ EXPAT_OLD_NAME ] )
     # If one includes the lib/tests/ path the expected set increases to [0,1,2]
