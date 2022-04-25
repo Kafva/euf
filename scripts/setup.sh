@@ -22,10 +22,12 @@ fi
 if ! $(which bear &> /dev/null); then
   sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
     nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
-    libssl-dev -y
+    libssl-dev libprotobuf-dev -y
 
   mkdir -p bear/build
   cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang \
+    -DCMAKE_C_COMPILER=/usr/bin/clang \
     -S bear/source -B bear/build
       make -C bear/build -j$((`nproc`-1)) all
   sudo make -C bear/build install
