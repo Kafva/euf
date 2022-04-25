@@ -10,7 +10,7 @@ from src.arg_states import call_arg_states_plugin, \
         get_subdir_tus, join_arg_states_result
 
 from src.util import flatten, mkdir_p, remove_files_in, rm_f
-from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers
+from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers, patch_old_bear_db
 from euf import run
 
 TEST_DIR =  f"{BASE_DIR}/tests"
@@ -54,6 +54,13 @@ def setup():
 
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
+
+
+def test_patch_old_bear_db():
+    ccdb_path = "/tmp/old_bear.json"
+    shutil.copy(f"{TEST_DIR}/expected/old_bear.json", ccdb_path)
+    patch_old_bear_db(ccdb_path)
+    assert(filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json"))
 
 def test_mkdirp():
     make_path = f"{BASE_DIR}/examples/expat/cases/2"

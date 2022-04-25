@@ -6,6 +6,15 @@ from src import ERR_EXIT
 from src.util import print_info, find, print_err
 from src.config import CONFIG
 
+def get_bear_version(path: str) -> int:
+    if shutil.which("bear") is None:
+        print_err("Missing 'bear' executable")
+        check_ccdb_error(path)
+        return -1
+    out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
+    prefix_len = len("bear ")
+    return int(out.stdout[prefix_len])
+
 def run_autoreconf(path: str, out) -> bool:
     script_env = os.environ.copy()
 
@@ -84,22 +93,61 @@ def autogen_compile_db(source_path: str) -> bool:
             check_ccdb_error(source_path)
 
     # 3. Run 'make' with 'bear'
+    version = get_bear_version(source_path)
+
     if os.path.isfile(f"{source_path}/Makefile"):
         try:
             print_info(f"Generating {source_path}/compile_commands.json...")
             cmd = [ "bear", "--", "make", "-j",
                     str(multiprocessing.cpu_count() - 1),
             ]
+            if version <= 0:
+                print_err("Unknown version or non-existent 'bear' executable")
+                return False
+            elif version <= 2:
+                del cmd[1]
             print("!> " + ' '.join(cmd))
             (subprocess.run(cmd, cwd = source_path, stdout = out, stderr = out
             )).check_returncode()
         except subprocess.CalledProcessError:
             check_ccdb_error(source_path)
 
+    # In bear versions prior to v3, there is no output field so we need to
+    # manaully insert one...
+    if version <= 2:
+        try:
+            patch_old_bear_db(f"{source_path}/compile_commands.json")
+        except:
+            print_err(f"Error patching {source_path}/compile_commands.json")
+            sys.exit(ERR_EXIT)
+
     # 4. Run 'compdb' to insert entries for '.h' files into the database
     patch_ccdb_with_headers(source_path)
 
     return has_valid_compile_db(source_path)
+
+def patch_old_bear_db(ccdb_path:str):
+    new_json = []
+    with open(ccdb_path, mode='r') as f:
+        ccdb_json = json.load(f)
+        for tu in ccdb_json:
+            # Find the [-o] flag and extract the target name after it
+            out_idx = tu['arguments'].index("-o")
+            tu['output'] = tu['directory'] + f"/{tu['arguments'][out_idx+1]}"
+            # Also, insert the full directory path in the file field
+            # if it is not already an absolute path
+            if not tu['file'].startswith("/"):
+                tu['file'] = tu['directory'] + "/" + tu['file']
+
+            new_json.append(tu)
+
+    new_json = sorted(new_json, key = lambda entry:
+            entry['file'] + (entry['output'] if 'output' in entry else '')
+    )
+
+    with open(ccdb_path, mode='w', encoding='utf8') as f:
+        json.dump(new_json, f, ensure_ascii=True, indent=4, sort_keys=True)
+        f.write('\n')
 
 def patch_ccdb_with_headers(source_path: str) -> bool:
     '''

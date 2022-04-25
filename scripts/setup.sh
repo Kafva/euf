@@ -13,11 +13,6 @@ if $(which apt &> /dev/null); then
   # Dependencies for example projects
   sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev -y
 
-  # bear
-  sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
-    nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
-    libssl-dev libprotobuf-dev -y
-
   # python3.10
   sudo apt install wget build-essential libreadline-dev \
     libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev \
@@ -74,16 +69,6 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
     ninja -C ./build &&
     sudo cmake --install ./build --prefix "/usr/local"
-fi
-
-
-# Build bear
-if ! $(which bear &> /dev/null); then
-  mkdir -p bear/build
-  cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
-    -S bear/source -B bear/build
-      make -C bear/build -j$((`nproc`-1)) all
-  sudo make -C bear/build install
 fi
 
 # Setup venv
