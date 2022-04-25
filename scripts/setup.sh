@@ -19,20 +19,6 @@ fi
 #make -C cbmc clean && 
 #  make -C cbmc install
 
-if ! $(which bear &> /dev/null); then
-  sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
-    nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
-    libssl-dev libprotobuf-dev -y
-
-  mkdir -p bear/build
-  cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
-    -DCMAKE_CXX_COMPILER=/usr/bin/clang \
-    -DCMAKE_C_COMPILER=/usr/bin/clang \
-    -S bear/source -B bear/build
-      make -C bear/build -j$((`nproc`-1)) all
-  sudo make -C bear/build install
-fi
-
 # Clone all projects
 mkdir -p ~/Repos
 
@@ -81,6 +67,22 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
     ninja -C ./build &&
     sudo cmake --install ./build --prefix "/usr/local"
+fi
+
+
+# Build bear (with clang-13)
+if ! $(which bear &> /dev/null); then
+  sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
+    nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
+    libssl-dev libprotobuf-dev -y
+
+  mkdir -p bear/build
+  cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
+    -DCMAKE_CXX_COMPILER=/usr/local/bin/clang \
+    -DCMAKE_C_COMPILER=/usr/local/bin/clang \
+    -S bear/source -B bear/build
+      make -C bear/build -j$((`nproc`-1)) all
+  sudo make -C bear/build install
 fi
 
 # Setup venv
