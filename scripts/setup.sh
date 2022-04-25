@@ -78,7 +78,7 @@ if ! $(which bear &> /dev/null); then
 
   mkdir -p bear/build
   cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
-    -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+    -DCMAKE_CXX_COMPILER=/usr/bin/gcc \
     -DCMAKE_C_COMPILER=/usr/bin/gcc \
     -S bear/source -B bear/build
       make -C bear/build -j$((`nproc`-1)) all
