@@ -20,6 +20,10 @@ fi
 #  make -C cbmc install
 
 if ! $(which bear &> /dev/null); then
+  sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
+    nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
+    libssl-dev
+
   mkdir -p bear/build
   cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
     -S bear/source -B bear/build

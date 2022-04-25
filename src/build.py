@@ -6,15 +6,6 @@ from src import ERR_EXIT
 from src.util import print_info, find, print_err
 from src.config import CONFIG
 
-def get_bear_version(path: str) -> int:
-    if shutil.which("bear") is None:
-        print_err("Missing 'bear' executable")
-        check_ccdb_error(path)
-        return -1
-    out = subprocess.run([ "bear", "--version" ], capture_output=True, text=True)
-    prefix_len = len("bear ")
-    return int(out.stdout[prefix_len])
-
 def run_autoreconf(path: str, out) -> bool:
     script_env = os.environ.copy()
 
@@ -99,14 +90,6 @@ def autogen_compile_db(source_path: str) -> bool:
             cmd = [ "bear", "--", "make", "-j",
                     str(multiprocessing.cpu_count() - 1),
             ]
-            version = get_bear_version(source_path)
-
-            if version <= 0:
-                print_err("Unknown version or non-existent 'bear' executable")
-                return False
-            elif version <= 2:
-                del cmd[1]
-
             print("!> " + ' '.join(cmd))
             (subprocess.run(cmd, cwd = source_path, stdout = out, stderr = out
             )).check_returncode()
