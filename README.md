@@ -20,7 +20,7 @@ To avoid duplicate symbols a fork of CBMC which adds a suffix to all global symb
 ## Tests
 Unit tests for the functions of the actual script are ran with
 ```sh
-pytest tests/test.py
+pytest tests/test_*
 ```
 
 ## Implementation notes
