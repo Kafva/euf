@@ -1,6 +1,7 @@
 import sys, os, re
 from datetime import datetime
 from typing import Set
+from src import ERR_EXIT
 
 from src.config import CONFIG
 from src.types import AnalysisResult
@@ -119,8 +120,16 @@ def time_end(msg: str, start_time: datetime, result: AnalysisResult = AnalysisRe
         start_time = datetime.now()
 
 def mkdir_p(path: str):
-    if not os.path.isdir(path):
-        os.mkdir(path)
+    joined = ""
+    for subpath in path.split('/')[1:]:
+
+        joined += "/"+subpath
+
+        if os.path.exists(joined) and not os.path.isdir(joined):
+            print_err(f"Not a directory: {joined}")
+            sys.exit(ERR_EXIT)
+        elif not os.path.isdir(joined):
+            os.mkdir(joined)
 
 def rm_f(path: str):
     if os.path.isfile(path):

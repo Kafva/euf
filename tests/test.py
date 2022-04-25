@@ -55,6 +55,14 @@ def setup():
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
 
+def test_mkdirp():
+    make_path = f"{BASE_DIR}/examples/expat/cases/2"
+    mkdir_p(make_path)
+
+    result = os.path.isdir(make_path)
+    os.rmdir(make_path)
+    assert(result)
+
 def test_lib_is_gbf():
     assert(not lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_elf.a"))
     assert(lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_gbf.a"))
