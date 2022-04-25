@@ -12,12 +12,25 @@ if $(which apt &> /dev/null); then
 
   # Dependencies for example projects
   sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev -y
+
+  # bear
+  sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
+    nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
+    libssl-dev libprotobuf-dev -y
+
+  # python3.10
+  sudo apt install wget build-essential libreadline-dev \
+    libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev \
+    libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
+  
+  # llvm-13
+  sudo apt-get install cmake clang ninja-build -y
 fi
 
 # Compile submodules
-#make -C clang-plugins all
-#make -C cbmc clean && 
-#  make -C cbmc install
+make -C clang-plugins all
+make -C cbmc clean && 
+  make -C cbmc install
 
 # Clone all projects
 mkdir -p ~/Repos
@@ -40,10 +53,6 @@ fi
 
 # Build python3.10 from source
 if ! $(which python3.10 &> /dev/null); then
-  sudo apt install wget build-essential libreadline-dev \
-    libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev \
-    libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
-
   cd ~/Repos
     curl -OLs https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tar.xz
     tar -Jxf Python-3.10.0.tar.xz
@@ -54,8 +63,6 @@ fi
 
 # Build llvm-13 from source
 if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
-  sudo apt-get install cmake clang ninja-build -y
-
   [ -d ~/Repos/llvm-project ] ||
     git clone -b release/13.x \
     https://github.com/llvm/llvm-project.git ~/Repos/llvm-project
@@ -70,16 +77,10 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
 fi
 
 
-# Build bear (with clang-13)
+# Build bear
 if ! $(which bear &> /dev/null); then
-  sudo apt-get install pkg-config libfmt-dev libspdlog-dev \
-    nlohmann-json3-dev libgrpc++-dev protobuf-compiler-grpc \
-    libssl-dev libprotobuf-dev -y
-
   mkdir -p bear/build
   cmake -DENABLE_UNIT_TESTS=OFF -DENABLE_FUNC_TESTS=OFF \
-    -DCMAKE_CXX_COMPILER=/usr/bin/gcc \
-    -DCMAKE_C_COMPILER=/usr/bin/gcc \
     -S bear/source -B bear/build
       make -C bear/build -j$((`nproc`-1)) all
   sudo make -C bear/build install
