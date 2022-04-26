@@ -6,6 +6,7 @@ clone_repo(){
 }
 
 FULL=${FULL:=false}
+NPROC=$((`nproc`-1))
 
 if $(which apt &> /dev/null); then
   # EUF dependencies
@@ -76,10 +77,10 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
 
   cd ~/Repos/llvm-project
     mkdir -p build
-    cmake -S llvm -B ./build -G Ninja \
+    cmake -S llvm -B ./build -G makefile \
       -DLLVM_TARGETS_TO_BUILD=host \
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
-    ninja -C ./build &&
+    make -C ./build -j$NPROC  &&
     sudo cmake --install ./build --prefix "/usr/local"
 fi
 
@@ -89,7 +90,7 @@ if $FULL; then
   clone_repo qemu/qemu ~/Repos/qemu
   cd ~/Repos/qemu &&
     ./configure && 
-    bear -- make -C build -j$((`nproc`-1))
+    bear -- make -C build -j$NPROC
   cd -
 fi
 
