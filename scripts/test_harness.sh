@@ -9,6 +9,7 @@ usage="usage: $(basename $0) <cfg.json> <functions...>"
 BASE_DIR=~/Repos/euf
 CONF=/tmp/config.json
 DEBUG=${DEBUG:=false}
+CONTEXT_LINES=${CONTEXT_LINES:=15}
 
 [ -z "$1" ] && die "$usage"
 
@@ -29,12 +30,12 @@ if [ -n "$SHOW_DIFF" ]; then
   COMMIT_NEW=$(jq -rM ".COMMIT_NEW" "$1")
   COMMIT_OLD=$(jq -rM ".COMMIT_OLD" "$1")
 
-	git diff --color=always  --no-index \
+	git diff --color=always -U9000 --no-index \
     ~/.cache/euf/libexpat-${COMMIT_OLD:0:8}/expat/lib/$FILE \
     ~/.cache/euf/libexpat-${COMMIT_NEW:0:8}/expat/lib/$FILE \
-		| grep -A 15 --color=always  "$func_name("
-
-	read
+		| grep -m1 -A $CONTEXT_LINES --color=always  "$func_name(" | 
+    bat --language diff --style plain
+	exit 0
 fi
 
 jq -s '.[0] * .[1]' "$1" /tmp/$func_name.json > $CONF

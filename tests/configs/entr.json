@@ -35,8 +35,8 @@
   "PAUSES": true,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
-  "SILENT_IDENTITY_VERIFICATION": false,
-  "SILENT_VERIFICATION": false,
+  "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
   "USE_EXISTING_DRIVERS": true,
 
@@ -44,7 +44,7 @@
 	"VERBOSITY": 2,
 	"NPROC": 12,
 	"SKIP_BLAME": false,
-	"SKIP_IMPACT": true,
+	"SKIP_IMPACT": false,
 	"FULL": true
 }
 

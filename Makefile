@@ -32,13 +32,29 @@ bmc:
 	cbmc ./tests/drivers/example.c --unwind 5 -DCBMC --object-bits 12 --function euf_main --property euf_main.assertion.1
 
 # Analysis of a specific function which has a influential change
-xml:
+xml_diff:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
+	CONTEXT_LINES=103 \
+	./scripts/test_harness.sh tests/configs/xml.json XML_ErrorString
+xml:
+	@FILE=xmlparse.c \
 	./scripts/test_harness.sh tests/configs/xml.json XML_ErrorString
 
 # Analysis of a specific function which has a equivalent (based on return value) change
-entr:
+entr_diff:
 	@FILE=xmlparse.c \
 	SHOW_DIFF=1 \
+	CONTEXT_LINES=10 \
 	./scripts/test_harness.sh tests/configs/entr.json ENTROPY_DEBUG
+entr:
+	@FILE=xmlparse.c \
+	./scripts/test_harness.sh tests/configs/entr.json ENTROPY_DEBUG
+
+# Impact set example
+entr_full:
+	./euf.py --config tests/configs/entr_impact.json
+
+# Huge reduction example
+usb:
+	./euf.py --config tests/config/usb_example.json

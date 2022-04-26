@@ -509,7 +509,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)
     CONFIG.SHOW_DIFFS = args.diff # Ignored if given in config file
-    if CONFIG.VERBOSITY >= 2:
+    if CONFIG.VERBOSITY >= 3:
         pprint(CONFIG)
 
     run()

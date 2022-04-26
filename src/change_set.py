@@ -19,7 +19,6 @@ def get_non_static(changed_functions:
             non_static_changes.append(c)
     return non_static_changes
 
-
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
     cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
 
