@@ -5,6 +5,8 @@ clone_repo(){
   [ -d "$2" ] || git clone https://github.com/$1.git "$2"
 }
 
+FULL=${FULL:=false}
+
 if $(which apt &> /dev/null); then
   # EUF dependencies
   sudo apt-get install clang llvm-12 flex bison make \
@@ -42,7 +44,6 @@ clone_repo libexpat/libexpat      ~/Repos/libexpat
 clone_repo libusb/libusb          ~/Repos/libusb
 clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
-clone_repo bminor/binutils-gdb    ~/Repos/gdb
 
 if ! [ -e ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
   cd ~/Repos/jq
@@ -82,8 +83,9 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
     sudo cmake --install ./build --prefix "/usr/local"
 fi
 
-# Qemu uses a dedicated build dir (and is huge)
-if false; then
+if $FULL; then
+  clone_repo bminor/binutils-gdb    ~/Repos/gdb
+  # Qemu uses a dedicated build dir (and is huge)
   clone_repo qemu/qemu ~/Repos/qemu
   cd ~/Repos/qemu &&
     ./configure && 
