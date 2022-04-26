@@ -80,7 +80,7 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
 
   cd ~/Repos/llvm-project
     mkdir -p build
-    cmake -S llvm -B ./build -G makefile \
+    cmake -S llvm -B ./build -G "Unix Makefiles" \
       -DLLVM_TARGETS_TO_BUILD=host \
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
     make -C ./build -j$NPROC  &&
