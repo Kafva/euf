@@ -1,0 +1,65 @@
+libusb_free_streams_old_b026324c6904b2a /* libusb_free_streams_old_b026324c6904b2a */
+        // 7421 file core.c line 1884 function libusb_free_streams_old_b026324c6904b2a
+        CALL usbi_log_old_b026324c6904b2a(cast(cast(0, empty*), struct tag-libusb_context*), cast(4, c_enum tag-libusb_log_level), address_of("libusb_free_streams_old_b026324c6904b2a"[0]), address_of("eps %d"[0]), libusb_free_streams_old_b026324c6904b2a::num_endpoints)
+        // 7422 file core.c line 1886 function libusb_free_streams_old_b026324c6904b2a
+        IF ¬(¬(libusb_free_streams_old_b026324c6904b2a::endpoints ≠ NULL) ∨ libusb_free_streams_old_b026324c6904b2a::num_endpoints ≤ 0) THEN GOTO 1
+        // 7423 file core.c line 1887 function libusb_free_streams_old_b026324c6904b2a
+        SET RETURN VALUE -2
+        // 7424 file core.c line 1887 function libusb_free_streams_old_b026324c6904b2a
+        GOTO 5
+        // 7425 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+     1: DECL libusb_free_streams_old_b026324c6904b2a::$tmp::tmp_statement_expression : signedbv[64]
+        // 7426 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        DECL libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_ptr : signedbv[64]*
+        // 7427 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        ASSIGN libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_ptr := address_of #source_location=""(*(*libusb_free_streams_old_b026324c6904b2a::dev_handle.dev).attached)
+        // 7428 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        DECL libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_tmp : signedbv[64]
+        // 7429 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        CALL __atomic_load_S64(libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_ptr, address_of #source_location=""(libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_tmp), 5)
+        // 7430 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        ASSIGN libusb_free_streams_old_b026324c6904b2a::$tmp::tmp_statement_expression := libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_tmp
+        // 7431 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_tmp
+        // 7432 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::1::1::__atomic_load_ptr
+        // 7433 file core.c line 1889 function libusb_free_streams_old_b026324c6904b2a
+        IF libusb_free_streams_old_b026324c6904b2a::$tmp::tmp_statement_expression ≠ 0 THEN GOTO 2
+        // 7434 file core.c line 1890 function libusb_free_streams_old_b026324c6904b2a
+        SET RETURN VALUE -4
+        // 7435 file core.c line 1890 function libusb_free_streams_old_b026324c6904b2a
+        GOTO 5
+        // 7436 file core.c line 1892 function libusb_free_streams_old_b026324c6904b2a
+     2: IF ¬(usbi_backend_old_b026324c6904b2a.free_streams ≠ NULL) THEN GOTO 3
+        // 7437 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        DECL libusb_free_streams_old_b026324c6904b2a::$tmp::return_value : signedbv[32]
+        // 7438 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        OTHER code #source_location="" statement="expression"(*(usbi_backend_old_b026324c6904b2a.free_streams))
+        // 7439 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        ASSUME false
+        // 7440 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        SET RETURN VALUE libusb_free_streams_old_b026324c6904b2a::$tmp::return_value
+        // 7441 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::$tmp::return_value
+        // 7442 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::$tmp::tmp_statement_expression
+        // 7443 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        GOTO 5
+        // 7444 file core.c line 1893 function libusb_free_streams_old_b026324c6904b2a
+        GOTO 4
+        // 7445 file core.c line 1896 function libusb_free_streams_old_b026324c6904b2a
+     3: SET RETURN VALUE -12
+        // 7446 file core.c line 1896 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::$tmp::return_value
+        // 7447 file core.c line 1896 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::$tmp::tmp_statement_expression
+        // 7448 file core.c line 1896 function libusb_free_streams_old_b026324c6904b2a
+        GOTO 5
+        // 7449 file core.c line 1897 function libusb_free_streams_old_b026324c6904b2a
+     4: DEAD libusb_free_streams_old_b026324c6904b2a::$tmp::return_value
+        // 7450 file core.c line 1897 function libusb_free_streams_old_b026324c6904b2a
+        DEAD libusb_free_streams_old_b026324c6904b2a::$tmp::tmp_statement_expression
+        // 7451 file core.c line 1897 function libusb_free_streams_old_b026324c6904b2a
+        SET RETURN VALUE side_effect #source_location="" statement="nondet" is_nondet_nullable="1"
+        // 7452 file core.c line 1897 function libusb_free_streams_old_b026324c6904b2a
+     5: END_FUNCTION

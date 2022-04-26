@@ -1,0 +1,53 @@
+libusb_free_streams /* libusb_free_streams */
+        // 4152 file core.c line 1888 function libusb_free_streams
+        CALL usbi_log(*(*libusb_free_streams::dev_handle.dev).ctx, cast(4, c_enum tag-libusb_log_level), address_of("libusb_free_streams"[0]), address_of("eps %d"[0]), libusb_free_streams::num_endpoints)
+        // 4153 file core.c line 1890 function libusb_free_streams
+        IF ¬(¬(libusb_free_streams::endpoints ≠ NULL) ∨ libusb_free_streams::num_endpoints ≤ 0) THEN GOTO 1
+        // 4154 file core.c line 1891 function libusb_free_streams
+        SET RETURN VALUE -2
+        // 4155 file core.c line 1891 function libusb_free_streams
+        GOTO 5
+        // 4156 file core.c line 1893 function libusb_free_streams
+     1: DECL libusb_free_streams::$tmp::tmp_statement_expression : signedbv[64]
+        // 4157 file core.c line 1893 function libusb_free_streams
+        DECL libusb_free_streams::1::1::__atomic_load_ptr : signedbv[64]*
+        // 4158 file core.c line 1893 function libusb_free_streams
+        ASSIGN libusb_free_streams::1::1::__atomic_load_ptr := address_of #source_location=""(*(*libusb_free_streams::dev_handle.dev).attached)
+        // 4159 file core.c line 1893 function libusb_free_streams
+        DECL libusb_free_streams::1::1::__atomic_load_tmp : signedbv[64]
+        // 4160 file core.c line 1893 function libusb_free_streams
+        CALL __atomic_load_S64(libusb_free_streams::1::1::__atomic_load_ptr, address_of #source_location=""(libusb_free_streams::1::1::__atomic_load_tmp), 5)
+        // 4161 file core.c line 1893 function libusb_free_streams
+        ASSIGN libusb_free_streams::$tmp::tmp_statement_expression := libusb_free_streams::1::1::__atomic_load_tmp
+        // 4162 file core.c line 1893 function libusb_free_streams
+        DEAD libusb_free_streams::1::1::__atomic_load_tmp
+        // 4163 file core.c line 1893 function libusb_free_streams
+        DEAD libusb_free_streams::1::1::__atomic_load_ptr
+        // 4164 file core.c line 1893 function libusb_free_streams
+        IF libusb_free_streams::$tmp::tmp_statement_expression ≠ 0 THEN GOTO 2
+        // 4165 file core.c line 1894 function libusb_free_streams
+        SET RETURN VALUE -4
+        // 4166 file core.c line 1894 function libusb_free_streams
+        GOTO 5
+        // 4167 file core.c line 1896 function libusb_free_streams
+     2: IF ¬(usbi_backend.free_streams ≠ NULL) THEN GOTO 3
+        // 4168 file core.c line 1897 function libusb_free_streams
+        SET RETURN VALUE 12
+        // 4169 file core.c line 1897 function libusb_free_streams
+        DEAD libusb_free_streams::$tmp::tmp_statement_expression
+        // 4170 file core.c line 1897 function libusb_free_streams
+        GOTO 5
+        // 4171 file core.c line 1897 function libusb_free_streams
+        GOTO 4
+        // 4172 file core.c line 1901 function libusb_free_streams
+     3: SET RETURN VALUE -12
+        // 4173 file core.c line 1901 function libusb_free_streams
+        DEAD libusb_free_streams::$tmp::tmp_statement_expression
+        // 4174 file core.c line 1901 function libusb_free_streams
+        GOTO 5
+        // 4175 file core.c line 1902 function libusb_free_streams
+     4: DEAD libusb_free_streams::$tmp::tmp_statement_expression
+        // 4176 file core.c line 1902 function libusb_free_streams
+        SET RETURN VALUE side_effect #source_location="" statement="nondet" is_nondet_nullable="1"
+        // 4177 file core.c line 1902 function libusb_free_streams
+     5: END_FUNCTION

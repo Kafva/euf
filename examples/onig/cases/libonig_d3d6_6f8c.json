@@ -52,7 +52,7 @@
       "~/Repos/euf/examples/onig/include/regparse2.h"
     ]
   },
-  "FORCE_RECOMPILE": false,
+  "FORCE_RECOMPILE": true,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,

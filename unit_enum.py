@@ -20,6 +20,22 @@ tests = {
    the non-static functions in the dep, traverse the AST of all test files
    to create the mapping above.
 
-This approach assumes that the project has unit tests written in C and does not
-rely on e.g. shell scripts to invoke the finished binary, jq does this....
+This approach assumes that the project has a considerable ammount of 
+unit tests written in C that actually invoke the dependency's API.
+Git and Gdb both use expat but only have 1-3 unit tests that touches it so we
+would need to run tests from several projects for each update to get a decent
+data set.
+
+
+Most projects test their high-level functionality by actually executing the program in question and
+supplying `input,expected output` tuples. Unlike unit tests, it is not immediatelly apparent which
+tests can reach a dependency when using this approach
+
+We could either limit ourselves to unit tests (where we know exactly which tests
+reach a specific dependency change through source code reachability analsyis) or...
+
+1. Patch the dependency so that EVERY api function call is logged
+2. We can then look at the log after a test and the test results to determine
+if a test that reached a changed failed or not
+
 '''

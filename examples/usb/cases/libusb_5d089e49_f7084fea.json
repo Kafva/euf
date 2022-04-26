@@ -31,7 +31,7 @@
     "libusb/os/openbsd.*",
     "libusb/os/sunos.*"
   ],
-  "FORCE_RECOMPILE": false,
+  "FORCE_RECOMPILE": true,
   "FORCE_CCDB_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",

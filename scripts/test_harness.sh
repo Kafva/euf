@@ -10,6 +10,11 @@ BASE_DIR=~/Repos/euf
 CONF=/tmp/config.json
 DEBUG=${DEBUG:=false}
 CONTEXT_LINES=${CONTEXT_LINES:=15}
+EXIT=${EXIT:=false}
+SHOW_DIFF=${SHOW_DIFF:=false}
+PROJ=${PROJ:=libexpat}
+SILENT=${SILENT:=true}
+SHOW_FUNC=${SHOW_FUNC:=false}
 
 [ -z "$1" ] && die "$usage"
 
@@ -19,23 +24,28 @@ for func_name in $@; do
 
 cat << EOF > /tmp/$func_name.json
 {
-  "ONLY_ANALYZE": "$func_name"
+  "ONLY_ANALYZE": "$func_name",
+  "SILENT_IDENTITY_VERIFICATION": $SILENT,
+  "SILENT_VERIFICATION": $SILENT,
+  "SHOW_FUNCTIONS": $SHOW_FUNC,
+  "SKIP_IMPACT": true
 }
 EOF
 
-
-if [ -n "$SHOW_DIFF" ]; then
+if $SHOW_DIFF; then
   [ -z "$FILE" ] && die 'Missing FILE in env'
 
+  IDENT="[_0-9A-Za-z]"
   COMMIT_NEW=$(jq -rM ".COMMIT_NEW" "$1")
   COMMIT_OLD=$(jq -rM ".COMMIT_OLD" "$1")
 
 	git diff --color=always -U9000 --no-index \
-    ~/.cache/euf/libexpat-${COMMIT_OLD:0:8}/expat/lib/$FILE \
-    ~/.cache/euf/libexpat-${COMMIT_NEW:0:8}/expat/lib/$FILE \
-		| grep -m1 -A $CONTEXT_LINES --color=always  "$func_name(" | 
+    ~/.cache/euf/$PROJ-${COMMIT_OLD:0:8}/$FILE \
+    ~/.cache/euf/$PROJ-${COMMIT_NEW:0:8}/$FILE \
+		| grep -E -m2 -A $CONTEXT_LINES --color=always  \
+    "^\s*${IDENT}*\s*${IDENT}*\s*$func_name\(" | 
     bat --language diff --style plain
-	exit 0
+  $EXIT && exit 0
 fi
 
 jq -s '.[0] * .[1]' "$1" /tmp/$func_name.json > $CONF

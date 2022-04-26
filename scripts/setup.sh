@@ -20,6 +20,13 @@ if $(which apt &> /dev/null); then
   
   # llvm-13
   sudo apt-get install cmake clang ninja-build -y
+elif $(which pacman &> /dev/null); then
+  sudo pacman -Syu clang llvm flex bison make \
+    curl patch cmake --noconfirm
+
+  sudo pacman -Syu libidn udns gsasl --noconfirm 
+else
+  die "Unsupported package manager"
 fi
 
 # Compile submodules
@@ -63,6 +70,9 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
     git clone -b release/13.x \
     https://github.com/llvm/llvm-project.git ~/Repos/llvm-project
 
+  [ $(sed -nE 's/MemTotal:\s*(.*) kB/\1/p' /proc/meminfo) -lt 16777216 ] &&
+    die "Not enough RAM"
+
   cd ~/Repos/llvm-project
     mkdir -p build
     cmake -S llvm -B ./build -G Ninja \
@@ -70,6 +80,15 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
       -DLLVM_ENABLE_PROJECTS="llvm;clang" &&
     ninja -C ./build &&
     sudo cmake --install ./build --prefix "/usr/local"
+fi
+
+# Qemu uses a dedicated build dir (and is huge)
+if false; then
+  clone_repo qemu/qemu ~/Repos/qemu
+  cd ~/Repos/qemu &&
+    ./configure && 
+    bear -- make -C build -j$((`nproc`-1))
+  cd -
 fi
 
 # Setup venv
