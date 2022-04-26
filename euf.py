@@ -19,6 +19,7 @@ remove equivalent entries based on CBMC analysis
 all locations were functions from the change set are called
 '''
 import argparse, sys, os, traceback, multiprocessing, subprocess
+from datetime import datetime
 from functools import partial
 from pprint import pprint
 from clang import cindex
@@ -96,6 +97,7 @@ def ast_diff_stage(dep_old:str, dep_new:str,
     '''
     if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
         print_stage("Change set")
+        start = datetime.now()
 
     changed_functions = []
     try:
@@ -111,7 +113,8 @@ def ast_diff_stage(dep_old:str, dep_new:str,
                     not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
                 changed_functions[:]))
 
-            if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "" and not CONFIG.SHOW_DIFFS:
+            if CONFIG.VERBOSITY >= 1 and \
+               CONFIG.ONLY_ANALYZE == "" and not CONFIG.SHOW_DIFFS:
                 pprint(changed_functions)
     except Exception:
         traceback.print_exc()
@@ -135,6 +138,9 @@ def ast_diff_stage(dep_old:str, dep_new:str,
             subprocess.run(cmd)
 
         sys.exit(0)
+
+    if CONFIG.VERBOSITY >=1 and CONFIG.ONLY_ANALYZE == "":
+        time_end("Finished change set enumeration", start) # type: ignore
 
     wait_on_cr()
 
@@ -300,6 +306,7 @@ def transitive_stage(dep_new: str,
     if CONFIG.VERBOSITY >= 1:
         print_stage("Transitive change set")
         wait_on_cr()
+        start = datetime.now()
     TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(dep_new)
 
@@ -344,6 +351,7 @@ def transitive_stage(dep_new: str,
     if CONFIG.VERBOSITY >= 2:
         print_stage("Complete set")
         pprint(changed_functions)
+        time_end("Transitive change enumeration", start) # type: ignore
 
 def impact_stage(log_dir:str, project_source_files: list[SourceFile],
  changed_functions: list[DependencyFunctionChange]) -> list[CallSite]:

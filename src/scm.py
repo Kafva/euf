@@ -8,7 +8,7 @@ from src import ERR_EXIT
 from src.arg_states import matches_excluded
 from src.config import CONFIG
 from src.types import SourceDiff, SourceFile
-from src.util import has_allowed_suffix, print_info
+from src.util import has_allowed_suffix, print_info, time_end, time_start
 
 def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     '''
@@ -66,6 +66,8 @@ def create_worktree(target: str, commit: str, repo: Repo) -> bool:
     return True
 
 def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[SourceFile]:
+    if CONFIG.VERBOSITY >= 1:
+        start = time_start(f"Loading files from {path}...")
     repo = Repo(path)
     source_files = filter(lambda p: has_allowed_suffix(p),
         [ e.path for e in repo.tree().traverse() ] # type: ignore
@@ -79,5 +81,7 @@ def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[Source
             )
 
     path_arr = [ s.new_path for s in source_files ]
+    if CONFIG.VERBOSITY >= 1:
+        time_end(f"Done loading {path}", start) # type: ignore
     return filter_out_excluded(source_files, path_arr)
 

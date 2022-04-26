@@ -26,6 +26,8 @@ Git and Gdb both use expat but only have 1-3 unit tests that touches it so we
 would need to run tests from several projects for each update to get a decent
 data set.
 
+Maybe implement this just to see how many functions are touched by tests...
+
 
 Most projects test their high-level functionality by actually executing the program in question and
 supplying `input,expected output` tuples. Unlike unit tests, it is not immediatelly apparent which

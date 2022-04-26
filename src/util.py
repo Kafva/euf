@@ -13,25 +13,26 @@ def wait_on_cr(always=False):
             break
 
 def print_info(msg: str):
-    print("\033[34m!>\033[0m " +  msg, file=sys.stderr)
+    print("\033[34m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
 def print_stage(msg: str):
-    print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ", file=sys.stderr)
+    print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ",
+        file=sys.stderr, flush=True)
 
 def print_success(msg: str):
-    print("[\033[32m+\033[0m] " +  msg, file=sys.stderr)
+    print("[\033[32m+\033[0m] " +  msg, file=sys.stderr, flush=True)
 
 def print_fail(msg: str):
-    print("[\033[31mX\033[0m] " +  msg, file=sys.stderr)
+    print("[\033[31mX\033[0m] " +  msg, file=sys.stderr, flush=True)
 
 def print_inconclusive(msg: str):
-    print("[\033[33m~\033[0m] " +  msg, file=sys.stderr)
+    print("[\033[33m~\033[0m] " +  msg, file=sys.stderr, flush=True)
 
 def print_warn(msg: str):
-    print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
+    print("\033[33m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
 def print_err(msg: str):
-    print("\033[31m!>\033[0m " +  msg, file=sys.stderr)
+    print("\033[31m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
 def flatten_dict(list_of_dicts: list[dict] ) -> dict:
     flat = {}

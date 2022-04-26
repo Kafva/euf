@@ -9,7 +9,7 @@ from git.repo.base import Repo
 from src.config import CONFIG
 from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
-from src.util import get_column_counts, print_info, print_err
+from src.util import get_column_counts, print_info, print_err, time_end, time_start
 
 def get_non_static(changed_functions:
  list[DependencyFunctionChange]) -> list[DependencyFunctionChange]:
@@ -254,6 +254,9 @@ def add_rename_changes_based_on_blame(new_dep_path: str, added_diff: list[Diff],
     files can still show that certain "new" files are actually
     closer to rename operations.
     '''
+    if CONFIG.VERBOSITY >= 2:
+        start = time_start("Looking for implicit 'RENAME' actions through blame...")
+
     for added_file in added_diff:
         try:
             blame_output = Repo(new_dep_path).git.blame("-f", added_file.a_path) # type: ignore
@@ -296,6 +299,8 @@ def add_rename_changes_based_on_blame(new_dep_path: str, added_diff: list[Diff],
                             new_compile_args = [],
                             old_compile_args = []
                 ))
+    if CONFIG.VERBOSITY >= 2:
+        time_end("Git blame analysis done", start) # type: ignore
 
 def log_changed_functions(changed_functions: list[DependencyFunctionChange], filename: str):
     if CONFIG.ENABLE_RESULT_LOG:

@@ -76,7 +76,7 @@ usb:
 # 1. Open the FILE and modify the return value manually
 # 2. Recompile (done automatically when running)
 # 3. Run the recipe, if the verification fails, we do not have a FP
-fp_verify:
+usb_verify:
 	@EXIT=false PROJ=libusb \
 	FILE=libusb/core.c \
 	SHOW_DIFF=true \
