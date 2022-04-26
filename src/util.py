@@ -24,6 +24,9 @@ def print_success(msg: str):
 def print_fail(msg: str):
     print("[\033[31mX\033[0m] " +  msg, file=sys.stderr)
 
+def print_inconclusive(msg: str):
+    print("[\033[33m~\033[0m] " +  msg, file=sys.stderr)
+
 def print_warn(msg: str):
     print("\033[33m!>\033[0m " +  msg, file=sys.stderr)
 
@@ -97,11 +100,15 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
     match result:
         case AnalysisResult.SUCCESS:
             print_success(msg)
+        case AnalysisResult.SUCCESS_UNWIND_FAIL:
+            print_inconclusive(msg)
         case AnalysisResult.FAILURE:
             print_fail(msg)
         case AnalysisResult.NO_VCCS:
             print_fail(msg)
         case AnalysisResult.NO_BODY:
+            print_fail(msg)
+        case AnalysisResult.FAILURE_UNWIND_FAIL:
             print_fail(msg)
         case AnalysisResult.STRUCT_CNT_CONFLICT:
             print_err(msg)

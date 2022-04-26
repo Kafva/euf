@@ -35,6 +35,17 @@ We could either limit ourselves to unit tests (where we know exactly which tests
 reach a specific dependency change through source code reachability analsyis) or...
 
 1. Patch the dependency so that EVERY api function call is logged
+
+foo(){ traceback >> /tmp/log
+        call_stack;
+...
+}
+
+> run_test jq '.[] | keys' test 
+    # Check test result
+    # Check invoked log
+
+
 2. We can then look at the log after a test and the test results to determine
 if a test that reached a changed failed or not
 

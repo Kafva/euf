@@ -50,10 +50,13 @@ time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
     | output_formatting | tee $cbmc_output
 
 
-rm -f $OUTFILE
-
 # Arbitrary return codes to signify different errors, 
 # see cparser/__init__.py
+if $(grep -qE "unwinding assertion.*FAILURE" $cbmc_output); then 
+  grep -q "Equivalent output:.*SUCCESS" $cbmc_output && exit 63
+  grep -q "Equivalent output:.*FAILURE" $cbmc_output && exit 64
+fi
+
 grep -q  "no body for function ${FUNC_NAME}$" $cbmc_output && exit 55
 grep -q  "no body for function ${FUNC_NAME}_old_b026324c6904b2a$" $cbmc_output && exit 55
 grep -q  "0 remaining after simplification" $cbmc_output && exit 53

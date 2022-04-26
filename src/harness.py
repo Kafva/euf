@@ -441,6 +441,12 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         case AnalysisResult.SUCCESS.value:
             msg = f"Identity verification successful: {func_name}" if identity else \
                     f"Verification successful: {func_name}"
+        case AnalysisResult.SUCCESS_UNWIND_FAIL.value:
+            msg = f"Identity verification successful (incomplete unwinding): {func_name}" if identity else \
+                    f"Verification successful (incomplete unwinding): {func_name}"
+        case AnalysisResult.FAILURE_UNWIND_FAIL.value:
+            msg = f"Identity verification failed (incomplete unwinding): {func_name}" if identity else \
+                    f"Verification failed (incomplete unwinding): {func_name}"
         case _:
             if return_code == AnalysisResult.STRUCT_CNT_CONFLICT.value:
                 msg = f"Differing member count in one or more structs"
@@ -460,4 +466,6 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     time_end(msg,  start, AnalysisResult(return_code))
 
-    return return_code == AnalysisResult.SUCCESS.value
+    return return_code == AnalysisResult.SUCCESS.value or \
+            (CONFIG.REDUCE_INCOMPLETE_UNWIND and \
+            return_code == AnalysisResult.SUCCESS_UNWIND_FAIL.value)

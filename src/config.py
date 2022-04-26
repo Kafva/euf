@@ -77,15 +77,21 @@ class Config:
     # all functions, the CBMC fork is configured to make functions
     # accessible outside of their TU
     BUILD_ENV: dict[str,str] = field(default_factory=dict)
+
+    # If set to True, succesful verifcations will
+    # remove an item from the change set even if
+    # --unwinding-assertions generated a failure
+    REDUCE_INCOMPLETE_UNWIND: bool = True
+
     FORCE_RECOMPILE: bool = False
     FORCE_CCDB_RECOMPILE: bool = False
 
     # System header paths to skip over for the #include directives
     # of the driver
-    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda:
-            ["include/bits", "include/x86_64-linux-gnu/bits", "lib/clang",
-                "local/lib/clang"]
-    )
+    SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: [
+        "include/bits", "include/x86_64-linux-gnu/bits", "lib/clang",
+        "local/lib/clang"
+    ])
 
     # Extra compile flags to add for every TU in libclang
     EXTRA_COMPILE_FLAGS = [

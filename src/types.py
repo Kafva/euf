@@ -8,6 +8,10 @@ from src.config import CONFIG
 class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
     ERROR = 1
+    # SUCCESS verification of equivalent change and failed unwinding assertion
+    SUCCESS_UNWIND_FAIL = 63
+    # FAILED verification and failed unwinding assertion
+    FAILURE_UNWIND_FAIL = 64
     INTERRUPT = 51
     TIMEOUT = 52
     # "SUCCESS": No verification conditions generated

@@ -118,8 +118,18 @@ onig_verify2:
 	@EXIT=false PROJ=oniguruma \
 	FILE=src/regcomp.c \
 	SHOW_DIFF=true \
-	CONTEXT_LINES=27 \
+	CONTEXT_LINES=0 \
+	SILENT=false \
 	./scripts/test_harness.sh \
 	examples/onig/cases/libonig_d3d6_6f8c.json \
 	subexp_recursive_check_trav
+
+onig_verify3:
+	@EXIT=false PROJ=oniguruma \
+	FILE=src/regcomp.c \
+	SHOW_DIFF=true \
+	CONTEXT_LINES=30 \
+	./scripts/test_harness.sh \
+	examples/onig/cases/libonig_d3d6_6f8c.json \
+	unset_addr_list_fix
 
