@@ -71,7 +71,7 @@ if ! $(clang --version 2>/dev/null | grep -q "version.*13"); then
     git clone -b release/13.x \
     https://github.com/llvm/llvm-project.git ~/Repos/llvm-project
 
-  [ $(sed -nE 's/MemTotal:\s*(.*) kB/\1/p' /proc/meminfo) -lt 16777216 ] &&
+  [ $(sed -nE 's/MemTotal:\s*(.*) kB/\1/p' /proc/meminfo) -lt 16385440 ] &&
     die "Not enough RAM"
 
   cd ~/Repos/llvm-project
