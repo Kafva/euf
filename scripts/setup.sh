@@ -5,6 +5,7 @@ clone_repo(){
   [ -d "$2" ] || git clone https://github.com/$1.git "$2"
 }
 
+SUDMODS=${SUBMODS:=true}
 FULL=${FULL:=false}
 NPROC=$((`nproc`-1))
 
@@ -33,9 +34,11 @@ else
 fi
 
 # Compile submodules
-make -C clang-plugins all
-make -C cbmc clean && 
-  make -C cbmc install
+if $SUBMODS; then
+  make -C clang-plugins all
+  make -C cbmc clean && 
+    make -C cbmc install
+fi
 
 # Clone all projects
 mkdir -p ~/Repos
