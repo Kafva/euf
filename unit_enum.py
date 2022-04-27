@@ -57,6 +57,12 @@ There are several existing solutions for this:
     https://gcc.gnu.org/onlinedocs/gcc-8.1.0/gcc/Instrumentation-Options.html
     http://cmdlinelinux.blogspot.com/2020/01/i-have-been-chasing-for-toolcompiler.html
 
+    https://valgrind.org/docs/manual/cl-manual.html
+
+============
+We can litterally just wrap every test in `valgrind --tool=callgrind <binary>`
+to aquire a list of all functions that are executed
+============
 
 __cyg approach:
 

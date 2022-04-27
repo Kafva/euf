@@ -19,4 +19,6 @@ cd ~/Repos/main
   make CC=gcc CFLAGS="-finstrument-functions -ldl -rdynamic" main
 
 # Run the main project with instrumentation active
+rm -f /tmp/trace.out
 TRACE_LOGFILE=/tmp/trace.out ./main
+cat /tmp/trace.out
