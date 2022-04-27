@@ -40,6 +40,9 @@ bmc:
 	cbmc ./tests/drivers/example.c --unwind 5 -DCBMC \
 		--object-bits 12 --function euf_main --property euf_main.assertion.1
 
+xml_impact:
+	./euf.py --config tests/configs/xml_impact.json
+
 # Analysis of a specific function which has a influential change
 xml_diff:
 	@FILE=expat/lib/xmlparse.c \
@@ -68,15 +71,17 @@ entr_full:
 	./euf.py --config tests/configs/entr_impact.json
 
 # Huge reduction example
+usb_diff:
+	git diff -U9000 --no-index /home/jonas/.cache/euf/libusb-5d089e49/libusb/core.c /home/jonas/.cache/euf/libusb-f7084fea/libusb/core.c
 usb:
-	./euf.py --config tests/config/usb_example.json
+	./euf.py --config tests/configs/usb_example.json
 
 #== dev ==#
 # To check if these reduced changes are actually FPs
 # 1. Open the FILE and modify the return value manually
 # 2. Recompile (done automatically when running)
 # 3. Run the recipe, if the verification fails, we do not have a FP
-usb_verify:
+fp_verify:
 	@EXIT=false PROJ=libusb \
 	FILE=libusb/core.c \
 	SHOW_DIFF=true \
@@ -89,11 +94,11 @@ fp_verify2:
 	@EXIT=false PROJ=libusb \
 	FILE=libusb/core.c \
 	SHOW_DIFF=true \
-	SILENT=false \
-	SHOW_FUNC=true \
+	SILENT=true \
+	SHOW_FUNC=false \
 	CONTEXT_LINES=30 \
 	./scripts/test_harness.sh \
-	examples/usb/cases/libusb_5d089e49_f7084fea.json \
+	tests/configs/fp_verify2.json \
 	libusb_free_streams
 
 fp_verify3:

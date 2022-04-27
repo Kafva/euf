@@ -42,7 +42,7 @@ if $SHOW_DIFF; then
 	git diff --color=always -U9000 --no-index \
     ~/.cache/euf/$PROJ-${COMMIT_OLD:0:8}/$FILE \
     ~/.cache/euf/$PROJ-${COMMIT_NEW:0:8}/$FILE \
-		| grep -E -m2 -A $CONTEXT_LINES --color=always  \
+		| grep -E -m1 -A $CONTEXT_LINES --color=always  \
     "^\s*${IDENT}*\s*${IDENT}*\s*$func_name\(" | 
     bat --language diff --style plain
   $EXIT && exit 0

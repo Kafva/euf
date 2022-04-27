@@ -22,7 +22,7 @@ def get_non_static(changed_functions:
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
     cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
 
-    if len(list(cursor.get_children())) == 0 and CONFIG.VERBOSITY > 0:
+    if len(list(cursor.get_children())) == 0 and CONFIG.VERBOSITY > 1:
         print_err(f"No data to parse for {cursor.spelling}")
 
     for child in cursor.get_children():
@@ -313,7 +313,7 @@ def print_diag_errors(filepath:str, tu: cindex.TranslationUnit):
     if CONFIG.VERBOSITY >= 3:
         for d in tu.diagnostics:
             print_err(str(d))
-    elif len(tu.diagnostics) > 0 and CONFIG.VERBOSITY > 0:
+    elif len(tu.diagnostics) > 0 and CONFIG.VERBOSITY > 1:
         # Header entries from compdb usually generate a lot of errors
         if not filepath.endswith(".h"):
             msgs = f", {len(tu.diagnostics)-1} more message(s)" \
