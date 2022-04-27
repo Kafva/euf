@@ -56,10 +56,4 @@ There are several existing solutions for this:
     https://llvm.org/docs/XRay.html
     https://gcc.gnu.org/onlinedocs/gcc-8.1.0/gcc/Instrumentation-Options.html
     http://cmdlinelinux.blogspot.com/2020/01/i-have-been-chasing-for-toolcompiler.html
-
-
-
-    make clean&&make CC=clang CFLAGS="-g -fxray-instrument -fxray-instruction-threshold=50" main&&./main
-    llvm-xray account main
-
 '''
