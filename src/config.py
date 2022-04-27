@@ -78,7 +78,7 @@ class Config:
     # accessible outside of their TU
     BUILD_ENV: dict[str,str] = field(default_factory=dict)
 
-    # If set to True, succesful verifcations will
+    # If set to True, successful verifications will
     # remove an item from the change set even if
     # --unwinding-assertions generated a failure
     REDUCE_INCOMPLETE_UNWIND: bool = True
@@ -121,13 +121,13 @@ class Config:
     #      "exact_include_directive" 
     #   ]
     #
-    # EUF will differentiate between the two cases based on if the
-    # the value is existant file or not
+    # EUF will differentiate between the two cases based on if
+    # the value is existent file or not
     CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
 
     # Expat has certain headers which work more like macro definitions
     # If we include these headers like normal headers we get syntax
-    # errors and it is therefore neccessary to blacklist them
+    # errors and it is therefore necessary to blacklist them
     BLACKLISTED_HEADERS: list[str] = field(default_factory=list)
 
     # - - - CBMC - - -
@@ -239,12 +239,12 @@ class Config:
 
     def reset(self):
         '''
-        Reinitalize with default values, used to avoid
-        inconsistcies during tests
+        Reinitialize with default values, used to avoid
+        inconsistencies during tests
         '''
         default = Config()
         for attr in dir(self):
-            # Only assign values to memebers in capital letters
+            # Only assign values to members in capital letters
             if not attr.startswith("__") and attr.upper() == attr:
                 setattr(self, attr, getattr(default,attr))
 

@@ -59,8 +59,8 @@ def flatten(list_of_lists: list[list]) -> list:
 
 def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[str,int]]:
     ''' 
-    Return the number of occurences of each string in a newline seperated file
-    for a given seperator and column index (zero based). Empty on failure
+    Return the number of occurrences of each string in a newline separated file
+    for a given separator and column index (zero based). Empty on failure
     '''
     column_stats = {}
 

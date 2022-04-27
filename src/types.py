@@ -44,7 +44,7 @@ class Identifier:
 
     spelling: str
 
-    # The canoncial type string for this identifier,
+    # The canonical type string for this identifier,
     # Note that double pointers will have a '*' in this
     # string as well as the is_ptr attribute set
     type_spelling: str
@@ -60,7 +60,7 @@ class Identifier:
     # If set, the identifier is a pointer to the specified type
     is_ptr: bool = False
 
-    # If set, the identifier is defined with a const qualifer
+    # If set, the identifier is defined with a const qualifier
     is_const: bool = False
 
 
@@ -69,7 +69,7 @@ class Identifier:
         '''
         To determine if a function is being called with the same types of arguments
         as those specified in the prototype we need to resolve all typedefs into
-        their canoncial representation. This infers that the declarations created
+        their canonical representation. This infers that the declarations created
         inside harnesses may look slightly different from those in the original source code
         This should not be an issue though since the "parent" type resolves in the same way
 
@@ -125,7 +125,7 @@ class Identifier:
         is_decl = str(cursor.type.kind).endswith("FUNCTIONPROTO")
         is_call = str(cursor.kind).endswith("CALL_EXPR")
 
-        # Dependent experssions e.g. the second argument in
+        # Dependent expressions e.g. the second argument in
         #   hashTableIterInit(&iter, &(p->elementTypes));
         # do not have a 'spelling' value,
         # In the situation above we can only resolve the type of 'p'...
@@ -133,11 +133,9 @@ class Identifier:
         # We have a dedicated check that excludes type checks for these types of
         # values
         if re.search(CONFIG.UNRESOLVED_NODES_REGEX, cursor.type.get_canonical().spelling):
-            #cls.get_underlying_node(cursor,1)
-            #cls.get_underlying_args(cursor,1)
             pass
 
-        # For functions we are intrested in the `.result_type`, this value
+        # For functions we are interested in the `.result_type`, this value
         # is empty for function arguments which instead 
         # have their typing in `.type`
         #
@@ -211,7 +209,7 @@ class Identifier:
 
     def eq_report(self,other, return_value:bool, check_function:bool) -> str:
         '''
-        When type-checking paramters against arguments we do not want to
+        When type-checking parameters against arguments we do not want to
         to check the function field since e.g. `foo( bar() )` is valid
         provided that the return value is correct (even though 
         it is a function unlike the param ident)
@@ -258,7 +256,7 @@ class Identifier:
         Unresolved nodes with a 'dependent type' are considered equal to everything
         unless we are using STRICT_TYPECHECKS
         We only check the function_flag and type_spelling if STRICT_TYPECHECKS is not set,
-        Typechecking through python's clang bindings is very FP prone
+        Type checking through python's clang bindings is very FP prone
         '''
         strict_check = True
         if CONFIG.STRICT_TYPECHECKS:
@@ -270,7 +268,7 @@ class Identifier:
              re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
                 return True
 
-        # The type spelling usuaully differs slightly between declerations and
+        # The type spelling usually differs slightly between declarations and
         # call sites, e.g. the call site usually does not have an 'enum' prefix
         # for enums
         return strict_check and \
@@ -309,7 +307,7 @@ class Identifier:
 @dataclass(init=True)
 class IdentifierLocation:
     '''
-    This class is equvivalent to clang's SourceLocation
+    This class is equivalent to clang's SourceLocation
     except that it only contains simple properties
     and can thereby be hashed
     '''
@@ -363,8 +361,8 @@ class IdentifierLocation:
 @dataclass(init=True)
 class DependencyFunction:
     ''' 
-    A function which is transativly changed due to invoking either
-    a direclty changed function or another transativly changed function
+    A function which is transitively changed due to invoking either
+    a directly changed function or another transitively changed function
     will have the `invokes_changed_function` attribute set to a non-empty list 
 
     We pair functions based on the key:
@@ -447,7 +445,7 @@ class DependencyFunctionChange:
 
     # The source code location (in the old version)
     # were divergence in the AST was encountered
-    # This will be unset for indirect changes in the transative pass
+    # This will be unset for indirect changes in the transitive pass
     point_of_divergence: IdentifierLocation = IdentifierLocation.empty()
 
     @classmethod
@@ -661,7 +659,7 @@ class FunctionState:
 
     def add_state_values(self, param_name:str, idx: int, values: set) -> None:
         '''
-        The parameter will be an integer if the declaration has it unamed
+        The parameter will be an integer if the declaration has it unnamed
         '''
 
         # Add entries to ensure that we can insert the current param

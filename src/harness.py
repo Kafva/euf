@@ -23,7 +23,7 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
         fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.location.filepath}"
         result = AnalysisResult.MISSING_COMPILE
 
-    # The number-of arugments and their types have not changed
+    # The number-of arguments and their types have not changed
     elif (old_cnt := len(change.old.arguments)) != \
         (new_cnt := len(change.new.arguments)):
         fail_msg = f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt} in {change}"
@@ -46,7 +46,7 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
         fail_msg = f"Cannot verify a function with zero arguments: {change.old}"
         result = AnalysisResult.NO_ARGS
     else:
-        # The paramter types have not changed
+        # The parameter types have not changed
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
                 fail_msg = f"Different argument types: a/{a1} -> b/{a2} in {change}"
@@ -173,8 +173,8 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
     "a/" side --> OLD
     "b/" side --> NEW
 
-    If "identity" is set, the comparsion will be made with the old version
-    and itself, creating a seperate harness file with the suffix _id
+    If "identity" is set, the comparison will be made with the old version
+    and itself, creating a separate harness file with the suffix _id
     '''
     INDENT=CONFIG.INDENT
 
@@ -216,14 +216,14 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         for header in includes[1]:
             f.write(f"#include \"{header}\"\n")
 
-        # Decleration of the old version of the function
+        # Declaration of the old version of the function
         f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n")
 
         if not identity:
-            # Decleration for the new version of the function
+            # Declaration for the new version of the function
             #
             # In some cases the function will already be declared in of the headers
-            # but providing a second decleration in the driver does
+            # but providing a second declaration in the driver does
             # not cause issues
             #
             # NOTE: if the function is declared as 'static' in one of the included
@@ -231,7 +231,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             #
             # **** WARNING: no body for function <...>
             #
-            # will show up during the cbmc analysis if this occurs
+            # will show up during the CBMC analysis if this occurs
             f.write(f"{change.new.prototype_string()};\n")
 
         f.write("\n")
@@ -267,14 +267,14 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # Note that all checks for e.g. void params are done before calling create_harness()
         for arg in change.old.arguments:
 
-            # If the function takes a paramter whose type has been renamed, 
+            # If the function takes a parameter whose type has been renamed, 
             #   e.g. OnigEncodingTypeST or usbi_os_backend
             # we cannot perform any meaningful verification unless we are able
-            # to initialise each seperate field and create assumptions for each one
+            # to initialise each separate field and create assumptions for each one
             # that the _old and regular objects are equal in every way except their
             # function_ptr fields (TODO)
             #
-            # For now, we just initalise both as nondet(), meaning that a passing equivalance
+            # For now, we just initalise both as nondet(), meaning that a passing equivalence
             # check would infer a pass for all (unrelated) possible values of the parameter.
             # A SUCCESS result for this limited harness would still be sound but it would
             # need to produce the same output regardless of what values the input has
@@ -296,7 +296,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 #
                 # Since we only check return values, we never need to create
                 # more than one input variable. If we had been checking pointer
-                # modifications then we would need seperate variables to pass
+                # modifications then we would need separate variables to pass
                 # the old/new version
                 f.write(f"{INDENT}{arg};\n")
                 arg_string_old += f"{arg.spelling}, "
@@ -329,7 +329,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         ret_type = change.old.ident.type_spelling
 
         if unequal_inputs and not identity:
-            f.write(f"{INDENT}// Unequal input comparsion!\n")
+            f.write(f"{INDENT}// Unequal input comparison!\n")
 
         f.write(f"{INDENT}{ret_type} ret_old = ")
         f.write(f"{change.old.ident.spelling}{SUFFIX}({arg_string_old});\n")
@@ -342,7 +342,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
 
         # 4. Postconditions
-        #   Verify equivalance with one or more assertions
+        #   Verify equivalence with one or more assertions
         f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
 
         # Enclose driver function
@@ -453,9 +453,9 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
             elif return_code == AnalysisResult.STRUCT_TYPE_CONFLICT.value:
                 msg = f"Type conflict in one or more structs"
             elif not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
-                msg = f"An error occured during goto-cc compilation of {driver}"
+                msg = f"An error occurred during goto-cc compilation of {driver}"
             else:
-                msg = f"An error occured during the analysis of {driver}"
+                msg = f"An error occurred during the analysis of {driver}"
 
             if CONFIG.DIE_ON_ERROR:
                 print(output)

@@ -73,7 +73,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 def log_impact_set(call_sites: list[CallSite], filename: str) -> None:
     '''
     A full record of the impact set will 
-    be recoreded as a JSON dump of the CallSite list
+    be recorded as a JSON dump of the CallSite list
 
     We would not benefit from making two different CSV logging schemes (with reversed mappings)
     since every line would still need an impact site and a change site
@@ -107,7 +107,7 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
 
     for site in call_sites:
         # To compile all calls within the same enclosing function
-        # togheter we only use the filepath and name as keys
+        # together we only use the filepath and name as keys
         # since the line and column will differ
         key = f"{site.call_location.filepath}:{site.call_location.name}()"
         called_at = f"({site.call_location.line}:{site.call_location.column}) "
@@ -135,7 +135,7 @@ def pretty_print_impact_by_dep(call_sites: list[CallSite]) -> None:
     in our project beneath it
     '''
 
-    # Create a dictonary that maps a DependencyFunctionChange to a list of
+    # Create a dictionary that maps a DependencyFunctionChange to a list of
     # affected call sites in our project
     func_change_to_invocations_map = {}
 

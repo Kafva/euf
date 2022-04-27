@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 '''
-Approach:
 1. Determine what source files in the dependency have been 
 modified (M) or renamed (R) since the last commit based on git labeling 
 2. Walk the AST of the old and new version of each modified file
 3. Consider any functions with a difference in the AST composition as
 the base change-set
 4. Perform a configurable number of passes where we add functions that
-are transativly changed, i.e. functions that call a function that 
+are transitively changed, i.e. functions that call a function that 
 has been changed
 5. Inspect all calls in the dependency to the changed functions and
 save 'state sets' for each parameter. The state set will contain all
 constant values that the given parameter can be assigned during program
-execution or be set as empty if the parameter recieves nondet() assignemnts
+execution or be set as empty if the parameter receives nondet() assignments
 5. Analyze each of the objects in the base change-set and 
 remove equivalent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
@@ -182,8 +181,8 @@ def reduction_stage(dep_new: str, dep_old: str,
     # This process is performed using an external clang plugin
     #
     # FIXME: If the main project has an internal function with the same name as a function
-    # in the change set these will not be differentiated and likely cause params
-    # to be set as nondet when they could potentially be det.
+    # in the change set these will not be differentiated and likely cause
+    # parameters to be set as nondet when they could potentially be det.
     remove_files_in(CONFIG.ARG_STATES_OUTDIR)
 
     rm_f(log_file)
@@ -283,7 +282,7 @@ def reduction_stage(dep_new: str, dep_old: str,
             # Run the actual harness
             if run_harness(change, script_env, harness_path, func_name, log_file, \
                i+1, total, i_flags, quiet = CONFIG.SILENT_VERIFICATION):
-                # Remove the change from the change set if the equivalance check passes
+                # Remove the change from the change set if the equivalence check passes
                 changed_functions.remove(change)
 
     time_end(f"Change set reduction: {total} -> {len(changed_functions)}", start)
@@ -463,7 +462,7 @@ def run(load_libclang:bool = True) -> tuple:
     project_files = get_source_files(CONFIG.PROJECT_DIR, main_db)
 
     # Create a list of all files from the dependency
-    # used for transative call analysis and state space estimation
+    # used for transitive call analysis and state space estimation
     dep_source_files = get_source_files(dep_old, dep_db_old)
 
     # - - - Git diff - - - #

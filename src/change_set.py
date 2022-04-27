@@ -93,13 +93,13 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     consider any divergence (within a function) as a potential change
 
     1. Save the cursors for each top-level function in both versions
-    2. Walk both cursors in parallel for each funcion pair and exit as soon as any divergence occurs
+    2. Walk both cursors in parallel for each function pair and exit as soon as any divergence occurs
 
     Processing nested function definitions would infer that the entire AST needs to be
-    traveresed, this could be unnecessary if this feature is not used in the code base
+    traversed, this could be unnecessary if this feature is not used in the code base
     
     The from_source() method also accepts content from arbitrary text streams,
-    but this causes inconsitencies that produce an incomplete AST, we therefore need
+    but this causes inconsistencies that produce an incomplete AST, we therefore need
     to read both versions directly from disk
 
     To automate harness generation we need to record argument types and return values for
@@ -178,7 +178,7 @@ def get_transative_changes_from_file(source_file: SourceFile, dep_root_dir:str,
     changed_functions: list[DependencyFunctionChange]) -> dict[DependencyFunction,list[str]]:
     '''
     Go through the complete AST of the provided (new) file and save 
-    any transative calls.
+    any transitive calls.
 
     If a changed function is called from the old version, and the call is removed
     in the new version, the function in question will have had a direct change and
@@ -214,8 +214,8 @@ def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
     current_function: DependencyFunction) -> None:
     '''
     Look for calls to functions in the change-set and record which
-    encolsing functions perform these calls in the 
-    transative_function_calls dict
+    enclosing functions perform these calls in the 
+    transitive_function_calls dict
     '''
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():

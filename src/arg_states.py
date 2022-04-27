@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''
 We will run the plugin once PER changed name PER source directory
-If we try to run if once per changed named the include paths become inconsisitent between TUs
+If we try to run if once per changed named the include paths become inconsistent between TUs
 Running the plugin for all names (and once per file) is a bad idea as seen with the uber hack macros
 in clang-plugins.
 
@@ -61,7 +61,7 @@ def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU
 def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir: str,
         subdir_tu: SubDirTU, quiet:bool = True, setx:bool=False) -> None:
     '''
-    Some of the ccdb arguments are not comptabile with the -cc1 frontend and need to
+    Some of the ccdb arguments are not compatible with the -cc1 frontend and need to
     be filtered out.
 
     Different output directories can be provided to allow for non-overlapping filenames

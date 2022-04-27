@@ -113,7 +113,7 @@ def autogen_compile_db(source_path: str) -> bool:
             check_ccdb_error(source_path)
 
     # In bear versions prior to v3, there is no output field so we need to
-    # manaully insert one...
+    # manually insert one...
     if version <= 2:
         try:
             patch_old_bear_db(f"{source_path}/compile_commands.json")
@@ -206,7 +206,7 @@ def check_ccdb_error(path: str) -> None:
         "Consult the documentation for your particular dependency for additional build instructions.")
         sys.exit(ERR_EXIT)
     else:
-        print_err(f"An error occured but {path}/compile_commands.json was created")
+        print_err(f"An error occurred but {path}/compile_commands.json was created")
 
 def make_clean(dep_source_dir: str, script_env: dict[str,str], out) -> bool:
     if os.path.isfile(f"{dep_source_dir}/Makefile"):
@@ -253,7 +253,7 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
             if not make_clean(dep_source_dir, script_env, out):
                 return ""
 
-            # Remove any other extranous files
+            # Remove any other extraneous files
             Repo(dep_dir).git.clean( # type: ignore
                 "-df", "--exclude=compile_commands.json", \
                 f"--exclude={CONFIG.HARNESS_DIR}"

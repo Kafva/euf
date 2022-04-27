@@ -15,7 +15,7 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
 
 def get_top_level_decl_locations(cursor: cindex.Cursor) -> set[IdentifierLocation]:
     ''' 
-    Extract the names of all top level declerations (variables and functions) 
+    Extract the names of all top level declarations (variables and functions) 
     excluding those defined externally under /usr/include
     '''
     global_decls: set[IdentifierLocation] = set()
@@ -98,7 +98,7 @@ def read_in_names(rename_txt: str, names: set[str]):
 def write_rename_files(dep_path: str, ccdb: cindex.CompilationDatabase,):
     ''' 
     Dump a list of global_name;line;col names to disk 
-    along with a newline seperated file containing just the global names 
+    along with a newline separated file containing just the global names 
     '''
     global_identifiers = get_global_identifiers(dep_path, ccdb)
 
@@ -112,7 +112,7 @@ def write_rename_files(dep_path: str, ccdb: cindex.CompilationDatabase,):
             f.write(f";{identifier};;\n")
 
     # Used by CBMC when invoked with 'USE_SUFFIX'
-    # In this version we strip out any duplicate occurences of the same name
+    # In this version we strip out any duplicate occurrences of the same name
     global_names = set([ g.name for g in global_identifiers ])
 
     with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
