@@ -17,14 +17,14 @@ class Config:
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
     FALLBACK_LIBCLANG: str = "/usr/local/lib/libclang.so.13.0.1"
 
-    # Paths to exclude from all analysis (requires a '*'
-    # to match all files under a directory)
+    # Paths to exclude from all analysis, given as a list
+    # of regular expressions
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
 
     # Impact set output format
     ORDER_BY_CALL_SITE: bool = True
 
-    # Show diffs of files in change set and exit
+    # Show diff of files in the change set and exit
     SHOW_DIFFS: bool = False
 
     # A list of strings that should be explicitly given a 
