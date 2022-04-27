@@ -56,4 +56,16 @@ There are several existing solutions for this:
     https://llvm.org/docs/XRay.html
     https://gcc.gnu.org/onlinedocs/gcc-8.1.0/gcc/Instrumentation-Options.html
     http://cmdlinelinux.blogspot.com/2020/01/i-have-been-chasing-for-toolcompiler.html
+
+
+__cyg approach:
+
+1. Compile the new version of the dependency with trace.c injected
+into the build process
+2. Compile the main project linked agianst the new version
+    - Run each test, one by one, with TRACE_LOGFILE set to different values
+3. Based on the contents of the trace file, we can then derive which tests
+invoked which functions from the dependency
+
+
 '''
