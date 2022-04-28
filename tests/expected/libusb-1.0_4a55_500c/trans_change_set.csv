@@ -10,6 +10,7 @@ False;;-1;-1;;libusb/os/linux_usbfs.c;2242;12;handle_bulk_completion
 False;;-1;-1;;libusb/os/linux_usbfs.c;2379;12;handle_iso_completion
 False;;-1;-1;;libusb/os/linux_usbfs.c;2499;12;handle_control_completion
 True;libusb/io.c;1381;12;add_to_flying_list;libusb/io.c;1382;12;add_to_flying_list
+True;libusb/io.c;1342;12;arm_timerfd_for_next_timeout;libusb/io.c;1343;12;arm_timerfd_for_next_timeout
 True;libusb/io.c;1202;12;calculate_timeout;libusb/io.c;1202;12;calculate_timeout
 True;libusb/core.c;1407;13;do_close;libusb/core.c;1407;13;do_close
 True;libusb/io.c;2004;13;handle_timeout;libusb/io.c;2005;13;handle_timeout
