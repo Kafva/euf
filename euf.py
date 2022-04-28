@@ -34,7 +34,7 @@ from src.harness import valid_preconds, create_harness, \
         get_I_flags_from_tu, run_harness, add_includes_from_tu
 from src.util import flatten, flatten_dict, has_allowed_suffix, \
         mkdir_p, print_stage, remove_files_in, rm_f, time_end, time_start, \
-        wait_on_cr, print_err
+        wait_on_cr, print_err, set_libclang
 from src.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_non_static, \
         get_transative_changes_from_file, log_changed_functions
@@ -401,21 +401,8 @@ def run(load_libclang:bool = True) -> tuple:
     # - - - Setup - - -
     # Set the path to the clang library (platform dependent)
     # We need to skip this in tests where run() is invoked several times
-
-    if not os.path.exists(CONFIG.LIBCLANG):
-        found = False
-        for fallback in CONFIG.LIBCLANG_FALLBACKS:
-            if os.path.exists(fallback):
-                CONFIG.LIBCLANG = fallback
-                found = True
-                break
-
-        if not found:
-            print_err(f"Missing path to libclang")
-            sys.exit(1)
-
     if load_libclang:
-        cindex.Config.set_library_file(CONFIG.LIBCLANG)
+        set_libclang()
 
     dep_repo = Repo(CONFIG.DEPENDENCY_DIR)
     DEP_NAME = os.path.basename(CONFIG.DEPENDENCY_DIR)

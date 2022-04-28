@@ -1,14 +1,12 @@
 import filecmp, os, json, shutil
 from os.path import expanduser
 
-from clang import cindex
-
 from src import BASE_DIR
 from src.config import CONFIG
 from src.arg_states import call_arg_states_plugin, \
         get_subdir_tus, join_arg_states_result
 
-from src.util import flatten, mkdir_p, remove_files_in, rm_f
+from src.util import flatten, mkdir_p, remove_files_in, rm_f, set_libclang
 from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers, patch_old_bear_db
 from euf import run
 from tests import RESULT_DIR, TEST_DIR
@@ -21,13 +19,7 @@ EXPAT_OLD_NAME = "libexpat-90ed5777"
 
 def setup():
     ''' Load libclang once for all tests '''
-    if not os.path.exists(CONFIG.LIBCLANG):
-        if not os.path.exists(CONFIG.FALLBACK_LIBCLANG):
-            assert(False)
-        else:
-            CONFIG.LIBCLANG = CONFIG.FALLBACK_LIBCLANG
-
-    cindex.Config.set_library_file(CONFIG.LIBCLANG)
+    set_libclang()
 
     # Create required paths (libexpat-90ed5777)
     conf = f"{TEST_DIR}/configs/libexpat_build_test.json"

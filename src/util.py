@@ -1,6 +1,8 @@
 import sys, os, re
 from datetime import datetime
 from typing import Set
+
+from clang import cindex
 from src import ERR_EXIT
 
 from src.config import CONFIG
@@ -33,6 +35,21 @@ def print_warn(msg: str):
 
 def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg, file=sys.stderr, flush=True)
+
+def set_libclang():
+    if not os.path.exists(CONFIG.LIBCLANG):
+        found = False
+        for fallback in CONFIG.LIBCLANG_FALLBACKS:
+            if os.path.exists(fallback):
+                CONFIG.LIBCLANG = fallback
+                found = True
+                break
+
+        if not found:
+            print_err(f"Missing path to libclang")
+            sys.exit(ERR_EXIT)
+
+    cindex.Config.set_library_file(CONFIG.LIBCLANG)
 
 def flatten_dict(list_of_dicts: list[dict] ) -> dict:
     flat = {}
