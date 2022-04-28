@@ -65,7 +65,8 @@ def get_top_level_structs(cursor: cindex.Cursor) -> set[Cstruct]:
 
     return structs;
 
-def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) -> tuple[list[Identifier],set[str]]:
+def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) \
+ -> tuple[list[Identifier],set[str]]:
     '''
     Reads the compilation database and creates:
         A set of all top level labels in the changed files that we need to
@@ -167,7 +168,7 @@ def handle_struct_conflicts(structs: set[Cstruct],
     # Return all symbols except for functions that are statically
     # defined AND overlap with a field name
     not_in_static_overlap = list(filter(lambda i:
-        not i.location.name in static_overlap and i.is_function, idents
+        not i.location.name in static_overlap, idents
     ))
 
     return not_in_static_overlap, static_overlap

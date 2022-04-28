@@ -7,7 +7,6 @@ from src.config import CONFIG
 from src.types import AnalysisResult, DependencyFunctionChange, FunctionState, IdentifierLocation, SourceDiff
 from src.util import print_result, time_end, time_start, wait_on_cr, print_err
 
-
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
         skip_renaming: set[str],
         logfile: str= "", quiet:bool = False) -> bool:
