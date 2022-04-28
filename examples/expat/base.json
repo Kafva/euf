@@ -3,7 +3,6 @@
 	"DEPENDENCY_DIR": "~/Repos/libexpat",
 	"DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
 	"DEPLIB_NAME": "libexpat.a",
-
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
     "expat/examples/.*",
@@ -39,7 +38,6 @@
 
 	"ORDER_BY_CALL_SITE": true,
 	"VERBOSITY": 2,
-	
 	"SKIP_BLAME": false,
 	"SKIP_IMPACT": true,
 	"FULL": true

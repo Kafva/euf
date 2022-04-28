@@ -375,8 +375,9 @@ def log_harness(filename: str,
             f = open(filename, mode='a', encoding='utf8')
 
         runtime = datetime.now() - start_time if start_time else ""
+        identity_str = "" if identity == None else identity
 
-        f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.ident.location.to_csv()};{change.new.ident.location.to_csv()}\n")
+        f.write(f"{func_name};{identity_str};{result.name};{runtime};{driver};{change.old.ident.location.to_csv()};{change.new.ident.location.to_csv()}\n")
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
