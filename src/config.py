@@ -15,7 +15,10 @@ class Config:
     TRANSATIVE_PASSES: int = 1
     NPROC: int = max(1,multiprocessing.cpu_count() - 1)
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
-    FALLBACK_LIBCLANG: str = "/usr/local/lib/libclang.so.13.0.1"
+    LIBCLANG_FALLBACKS: list[str] = field(default_factory=lambda:[
+        "/usr/local/lib/libclang.so.13.0.1",
+        "/usr/lib/llvm-13/lib/libclang.so.1"
+    ])
 
     # Paths to exclude from all analysis, given as a list
     # of regular expressions

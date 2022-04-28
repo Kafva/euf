@@ -1,47 +1,39 @@
-FROM ubuntu:20.04 as builder
+FROM ubuntu:21.10
 
 ENV DEBIAN_FRONTEND=noninteractive 
 ENV TZ=UTC
-RUN apt-get update && apt-get install -y \
-    clang llvm-12 flex bison make \
-    curl patch cmake ninja-build \
-    wget build-essential libreadline-dev \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+    clang llvm-13 git flex bison make curl patch cmake \
+    xz-utils wget build-essential libreadline-dev \
     libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev \
-    libc6-dev libbz2-dev libffi-dev zlib1g-dev git
+    libc6-dev libbz2-dev libffi-dev zlib1g-dev sudo
 
-# Build python3.10 from source
-WORKDIR /app
-RUN curl -OLs https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tar.xz
-RUN tar -Jxf Python-3.10.0.tar.xz
-WORKDIR /app/Python-3.10.0
-RUN ./configure --enable-optimizations
-RUN make altinstall -j4
 
-# Build llvm from source
-RUN git clone -b release/13.x \
-    https://github.com/llvm/llvm-project.git /app/llvm-project
+RUN apt-get install -y python3.10 python3.10-venv python3-pip
 
-WORKDIR /app/llvm-project/build
-RUN ../cmake -S llvm -B . -G "Ninja" \
-      -DLLVM_TARGETS_TO_BUILD=host \
-      -DLLVM_ENABLE_PROJECTS="clang"
-RUN ninja &&
-RUN cmake --install . --prefix "/usr/local"
-
-#== EUF setup ==#
-#FROM ubuntu:20.04
-#COPY --from=builder /app/Python-3.10.0/python3.10 /usr/bin/python3.10
+# 21.10 is missing a 'python3.10-pip' package so we build
+# python from source instead
+#WORKDIR /app
+#RUN curl -OLs https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tar.xz
+#RUN tar -Jxf Python-3.10.0.tar.xz
+#WORKDIR /app/Python-3.10.0
+#RUN ./configure --enable-optimizations
+#RUN make altinstall -j$((`nproc`-1))
 
 WORKDIR /app/euf
 COPY . .
 
-# Setup Python
+# Setup Python enviroment
 ENV VIRTUAL_ENV=/app/euf/venv
-RUN python3 -m venv $VIRTUAL_ENV
+RUN python3.10 -m venv $VIRTUAL_ENV
 
 # Update the PATH to `activate` the virtual enviroment
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN python3.10 -m pip install -r requirements.txt
 
-ENTRYPOINT [ "./euf.py" ]
+# Build submodules
+RUN make -C cbmc install
+RUN make -C clang-plugins all
+
+ENTRYPOINT ["./euf.py"]

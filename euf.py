@@ -403,11 +403,16 @@ def run(load_libclang:bool = True) -> tuple:
     # We need to skip this in tests where run() is invoked several times
 
     if not os.path.exists(CONFIG.LIBCLANG):
-        if not os.path.exists(CONFIG.FALLBACK_LIBCLANG):
-            print_err(f"Missing path to libclang: {CONFIG.LIBCLANG}")
+        found = False
+        for fallback in CONFIG.LIBCLANG_FALLBACKS:
+            if os.path.exists(fallback):
+                CONFIG.LIBCLANG = fallback
+                found = True
+                break
+
+        if not found:
+            print_err(f"Missing path to libclang")
             sys.exit(1)
-        else:
-            CONFIG.LIBCLANG = CONFIG.FALLBACK_LIBCLANG
 
     if load_libclang:
         cindex.Config.set_library_file(CONFIG.LIBCLANG)

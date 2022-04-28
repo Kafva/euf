@@ -1,6 +1,7 @@
 # euf
 
-## Ubuntu installation
+
+## Installation
 * EUF relies on certain features, e.g. the `match` keyword, which are only available in Python 3.10 onwards.
 * The Python bindings for libclang utilise clang-13, if it is not installed, the `setup.sh` script will attempt to build it from source.
 
@@ -12,6 +13,16 @@ git clone --recursive https://github.com/Kafva/euf.git
 Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
 ```
 (venv) ./euf.py --config tests/configs/basic.json
+```
+
+EUF can also be built and used with Docker
+```sh
+docker build --rm --tag=euf .
+docker run \
+  -v ~/Repos/jq:/repos/jq \
+  -v ~/Repos/oniguruma:/repos/oniguruma euf \
+  --config tests/configs/onig.json
+
 ```
 
 ## CBMC fork

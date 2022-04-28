@@ -1,0 +1,6 @@
+venv
+__pycache__
+runner
+results
+clang-plugins/build
+cbmc/build
