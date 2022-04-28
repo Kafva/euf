@@ -2,8 +2,7 @@ import filecmp
 from posixpath import expanduser
 from euf import run
 from src.config import CONFIG
-from tests import RESULT_DIR, TEST_DIR
-from tests.test import check_cbmc_csv
+from tests import RESULT_DIR, TEST_DIR, check_cbmc_csv
 
 def test_impact_set():
     '''

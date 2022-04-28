@@ -13,7 +13,7 @@
   "USE_EXISTING_DRIVERS": true,
   "QUIET_BUILD": false,
   "VERBOSITY": 1,
-  "NPROC": 1,
+  
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
   "FULL": false,

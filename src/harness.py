@@ -9,18 +9,25 @@ from src.util import print_result, time_end, time_start, wait_on_cr, print_err
 
 
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
+        skip_renaming: set[str],
         logfile: str= "", quiet:bool = False) -> bool:
     '''
     If a change passes this function, it should be possible 
     to create a harness for it.
     '''
-    func_name = change.old.ident.spelling
+    func_name = change.old.ident.location.name
     result = AnalysisResult.SUCCESS
     fail_msg = ""
 
+    # The function has not been given an '_old' suffix, preventing analysis
+    if func_name in skip_renaming or func_name == "compile_enclose_node":
+        fail_msg = f"Renaming {func_name}() could cause conflicts, skipping {change}"
+        result = AnalysisResult.NOT_RENAMED
+
     # There exists compilation instructions for the TU the function is defined in
-    if not change.old.location.filepath in iflags or len(iflags[change.old.location.filepath]) == 0:
-        fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.location.filepath}"
+    elif not change.old.ident.location.filepath in iflags or \
+       len(iflags[change.old.ident.location.filepath]) == 0:
+        fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.ident.location.filepath}"
         result = AnalysisResult.MISSING_COMPILE
 
     # The number-of arguments and their types have not changed
@@ -57,7 +64,7 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
             # We cannot auto-generate harnesses for functions that require void pointers
             for arg in change.old.arguments:
                 if arg.type_spelling == "void*":
-                    fail_msg = f"Function requires a 'void* {arg.spelling}' argument: {change.old}"
+                    fail_msg = f"Function requires a 'void* {arg.location.name}' argument: {change.old}"
                     result = AnalysisResult.VOID_ARG
                     break
 
@@ -194,7 +201,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         # Any custom include directives for the specific file
         # Note that these are included _before_ standard project includes
-        filename = os.path.basename(change.old.location.filepath)
+        filename = os.path.basename(change.old.ident.location.filepath)
         if filename in CONFIG.CUSTOM_HEADERS:
             f.write("\n")
             for header in CONFIG.CUSTOM_HEADERS[filename]:
@@ -285,10 +292,10 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 unequal_inputs = True
 
                 f.write(f"{INDENT}{arg.__repr__(use_suffix=True)};\n"  )
-                arg_string_old += f"{arg.spelling}{SUFFIX}, "
+                arg_string_old += f"{arg.location.name}{SUFFIX}, "
 
                 f.write(f"{INDENT}{arg.__repr__(use_suffix=False)};\n"  )
-                arg_string += f"{arg.spelling}, "
+                arg_string += f"{arg.location.name}, "
             else:
                 # For non-pointer types we only need to create one variable
                 # since the original value will not be modified and thus
@@ -299,8 +306,8 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 # modifications then we would need separate variables to pass
                 # the old/new version
                 f.write(f"{INDENT}{arg};\n")
-                arg_string_old += f"{arg.spelling}, "
-                arg_string += f"{arg.spelling}, "
+                arg_string_old += f"{arg.location.name}, "
+                arg_string += f"{arg.location.name}, "
 
         arg_string_old = arg_string_old.removesuffix(", ")
         arg_string = arg_string.removesuffix(", ")
@@ -311,7 +318,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         f.write("\n")
         for idx,param in enumerate(function_state.parameters):
             if not param.nondet and len(param.states) > 0:
-                arg_name = change.old.arguments[idx].spelling
+                arg_name = change.old.arguments[idx].location.name
                 f.write(f"{INDENT}__CPROVER_assume(\n")
 
                 out_string = ""
@@ -332,13 +339,13 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             f.write(f"{INDENT}// Unequal input comparison!\n")
 
         f.write(f"{INDENT}{ret_type} ret_old = ")
-        f.write(f"{change.old.ident.spelling}{SUFFIX}({arg_string_old});\n")
+        f.write(f"{change.old.ident.location.name}{SUFFIX}({arg_string_old});\n")
 
         f.write(f"{INDENT}{ret_type} ret = ")
         if identity:
-            f.write(f"{change.new.ident.spelling}{SUFFIX}({arg_string_old});\n\n")
+            f.write(f"{change.new.ident.location.name}{SUFFIX}({arg_string_old});\n\n")
         else:
-            f.write(f"{change.new.ident.spelling}({arg_string});\n\n")
+            f.write(f"{change.new.ident.location.name}({arg_string});\n\n")
 
 
         # 4. Postconditions
@@ -370,7 +377,7 @@ def log_harness(filename: str,
 
         runtime = datetime.now() - start_time if start_time else ""
 
-        f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.location.to_csv()};{change.new.location.to_csv()}\n")
+        f.write(f"{func_name};{identity};{result.name};{runtime};{driver};{change.old.ident.location.to_csv()};{change.new.ident.location.to_csv()}\n")
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],

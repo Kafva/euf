@@ -41,7 +41,7 @@ from src.change_set import add_rename_changes_based_on_blame, \
 from src.impact_set import get_call_sites_from_file, log_impact_set, \
         pretty_print_impact_by_call_site, pretty_print_impact_by_dep
 from src.build import build_goto_lib, create_ccdb
-from src.enumerate_globals import write_rename_files
+from src.enumerate_globals import get_global_identifiers, write_rename_files
 from src.scm import filter_out_excluded, get_commits, get_source_files, \
         get_source_diffs, create_worktree
 
@@ -109,7 +109,7 @@ def ast_diff_stage(dep_old:str, dep_new:str,
                 dep_source_diffs
             ))
             changed_functions = list(filter(lambda f: \
-                    not f.old.ident.spelling in CONFIG.IGNORE_FUNCTIONS,
+                    not f.old.ident.location.name in CONFIG.IGNORE_FUNCTIONS,
                 changed_functions[:]))
 
             if CONFIG.VERBOSITY >= 1 and \
@@ -146,7 +146,7 @@ def ast_diff_stage(dep_old:str, dep_new:str,
     # Sort the functions to ensure that processing is always done
     # in the same order (makes testing easier)
     changed_functions = sorted(changed_functions,
-            key = lambda c: c.old.ident.spelling
+            key = lambda c: c.old.ident.location.name
     )
 
     log_changed_functions(changed_functions, f"{log_dir}/change_set.csv")
@@ -162,7 +162,8 @@ def reduction_stage(dep_new: str, dep_old: str,
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
 
-    write_rename_files(dep_old, dep_db_old)
+    global_identifiers, skip_renaming = get_global_identifiers(dep_old, dep_db_old)
+    write_rename_files(global_identifiers)
 
     # Compile the old and new version of the dependency as a set of 
     # goto-bin files
@@ -195,14 +196,14 @@ def reduction_stage(dep_new: str, dep_old: str,
     # Exclude functions that we are not going to analyze
     changes_to_analyze = []
     for c in changed_functions:
-        if valid_preconds(c,IFLAGS,logfile="",quiet=True):
+        if valid_preconds(c,IFLAGS,skip_renaming,logfile="",quiet=True):
             changes_to_analyze.append(c)
 
-    idents_to_analyze = [ c.old.ident.spelling for c in changes_to_analyze ]
+    idents_to_analyze = [ c.old.ident.location.name for c in changes_to_analyze ]
 
     # Skip the state space analysis for static functions since these
     # cannot be called from the main project
-    non_static_changes = [ c.old.ident.spelling for c in
+    non_static_changes = [ c.old.ident.location.name for c in
             get_non_static(changes_to_analyze) ]
 
     state_space_analysis(idents_to_analyze, dep_source_root_old, dep_old)
@@ -242,23 +243,23 @@ def reduction_stage(dep_new: str, dep_old: str,
         # Begin by generating an identity driver and verify that it
         # passes as equivalent, then generate the actual driver and check if the
         # change is considered equivalent
-        func_name = change.old.ident.spelling
+        func_name = change.old.ident.location.name
 
         if CONFIG.ONLY_ANALYZE != "" and \
            CONFIG.ONLY_ANALYZE != func_name:
             continue
 
         # Log the reason for why a change could not be verified
-        if not valid_preconds(change, IFLAGS, log_file, quiet=False):
+        if not valid_preconds(change, IFLAGS, skip_renaming, log_file, quiet=False):
             continue
 
-        harness_path = f"{harness_dir}/{change.old.ident.spelling}{CONFIG.IDENTITY_HARNESS}.c"
+        harness_path = f"{harness_dir}/{change.old.ident.location.name}{CONFIG.IDENTITY_HARNESS}.c"
         function_state = ARG_STATES[func_name] if func_name in ARG_STATES \
                 else FunctionState()
-        tu_includes = TU_INCLUDES[change.old.location.filepath] if \
-                    change.old.location.filepath in TU_INCLUDES else \
+        tu_includes = TU_INCLUDES[change.old.ident.location.filepath] if \
+                    change.old.ident.location.filepath in TU_INCLUDES else \
                     ([],[])
-        i_flags     = ' '.join(IFLAGS[change.old.location.filepath]).strip()
+        i_flags     = ' '.join(IFLAGS[change.old.ident.location.filepath]).strip()
 
         if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
             pass # Use existing driver
@@ -271,7 +272,7 @@ def reduction_stage(dep_new: str, dep_old: str,
            log_file, i+1, total, i_flags, \
            quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
 
-            harness_path = f"{harness_dir}/{change.old.ident.spelling}.c"
+            harness_path = f"{harness_dir}/{change.old.ident.location.name}.c"
 
             if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
                 pass # Use existing driver
@@ -343,7 +344,7 @@ def transitive_stage(dep_new: str,
 
     # Ensure a canonical order
     changed_functions = sorted(changed_functions,
-            key = lambda c: c.old.ident.spelling
+            key = lambda c: c.old.ident.location.name
     )
     log_changed_functions(changed_functions, f"{log_dir}/trans_change_set.csv")
 

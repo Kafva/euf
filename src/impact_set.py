@@ -47,7 +47,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 
     if str(cursor.kind).endswith("CALL_EXPR") and \
         (changed_function := next(filter(lambda fn: \
-        fn.new.ident.spelling == cursor.spelling, changed_functions), None \
+        fn.new.ident.location.name == cursor.spelling, changed_functions), None \
     )):
         # Ensure that return type and arguments of the call
         # match the prototype in the change set

@@ -15,7 +15,7 @@ def get_non_static(changed_functions:
  list[DependencyFunctionChange]) -> list[DependencyFunctionChange]:
     non_static_changes = []
     for c in changed_functions:
-        if not c.old.is_static and not c.new.is_static:
+        if not c.old.ident.is_static and not c.new.ident.is_static:
             non_static_changes.append(c)
     return non_static_changes
 
@@ -143,11 +143,11 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
     for pair in cursor_pairs.values():
 
         if not pair.new:
-            if CONFIG.VERBOSITY >= 3:
+            if CONFIG.VERBOSITY >= 5:
                 print(f"Deleted: a/{pair.old_path} {pair.old.spelling}()")
             continue
         elif not pair.old:
-            if CONFIG.VERBOSITY >= 3:
+            if CONFIG.VERBOSITY >= 5:
                 print(f"New: b/{pair.new_path} {pair.new.spelling}()")
             continue
 
@@ -223,14 +223,14 @@ def find_transative_changes_in_tu(dep_root_dir: str, cursor: cindex.Cursor,
 
     elif str(cursor.kind).endswith("CALL_EXPR") and \
         (dep_func := next(filter(lambda fn: \
-        fn.new.ident.spelling == cursor.spelling, changed_functions), None \
+        fn.new.ident.location.name == cursor.spelling, changed_functions), None \
     )):
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
         called = DependencyFunction.new_from_cursor(dep_root_dir, cursor)
 
         if dep_func.new.eq(called) and \
-           current_function.ident.spelling != cursor.spelling:
+           current_function.ident.location.name != cursor.spelling:
             # If the enclosing function is calling itself we do not
             # record it as being 'indirectly affected'
             key = current_function

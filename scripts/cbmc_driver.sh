@@ -30,8 +30,8 @@ goto-cc -DCBMC -I $OUTDIR  $DEP_I_FLAGS \
 retval=${PIPESTATUS[0]}
 
 # Print compilation errors if SHOW_ERRORS is set
-grep -qE "names of member [0-9]+ differ"  $cbmc_output && retval=64
 grep -q  "number of members is different" $cbmc_output && retval=63
+grep -qE "names of member [0-9]+ differ"  $cbmc_output && retval=64
 [ $retval != 0 ] && exit $retval
 
 # If we use '--drop-unused-functions' we lose pretty much
@@ -53,11 +53,14 @@ time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
 # Arbitrary return codes to signify different errors, 
 # see cparser/__init__.py
 if $(grep -qE "unwinding assertion.*FAILURE" $cbmc_output); then 
-  grep -q "Equivalent output:.*SUCCESS" $cbmc_output && exit 63
-  grep -q "Equivalent output:.*FAILURE" $cbmc_output && exit 64
+  grep -q "Equivalent output:.*SUCCESS" $cbmc_output && exit 73
+  grep -q "Equivalent output:.*FAILURE" $cbmc_output && exit 74
 fi
 
 grep -q  "no body for function ${FUNC_NAME}$" $cbmc_output && exit 55
 grep -q  "no body for function ${FUNC_NAME}_old_b026324c6904b2a$" $cbmc_output && exit 55
 grep -q  "0 remaining after simplification" $cbmc_output && exit 53
-grep -q  "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0 || exit 54
+grep -q  "^VERIFICATION FAILED$" $cbmc_output && exit 54
+grep -q  "^VERIFICATION SUCCESSFUL$" $cbmc_output && exit 0
+exit 1
+

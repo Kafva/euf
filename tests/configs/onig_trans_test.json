@@ -13,7 +13,7 @@
   "ENABLE_RESULT_LOG": true,
   "ORDER_BY_CALL_SITE": false,
   "VERBOSITY": 2,
-  "NPROC": 12,
+  
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
   "FULL": false

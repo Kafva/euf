@@ -9,9 +9,9 @@ class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
     ERROR = 1
     # SUCCESS verification of equivalent change and failed unwinding assertion
-    SUCCESS_UNWIND_FAIL = 63
+    SUCCESS_UNWIND_FAIL = 73
     # FAILED verification and failed unwinding assertion
-    FAILURE_UNWIND_FAIL = 64
+    FAILURE_UNWIND_FAIL = 74
     INTERRUPT = 51
     TIMEOUT = 52
     # "SUCCESS": No verification conditions generated
@@ -34,275 +34,10 @@ class AnalysisResult(Enum):
     DIFF_ARG_TYPE = 61
     # Occurs if the TU the function lies in does not have a IFLAGS entry
     MISSING_COMPILE = 62
+    # Triggered if a pointer field in a global struct has the same name
+    # as a function
+    NOT_RENAMED = 84
     NONE = 255 # Basecase used in `print_result`
-
-@dataclass(init=True)
-class Identifier:
-    ''' 
-    Refers to either a function argument or a function, 
-    '''
-
-    spelling: str
-
-    # The canonical type string for this identifier,
-    # Note that double pointers will have a '*' in this
-    # string as well as the is_ptr attribute set
-    type_spelling: str
-
-    # Derived from the string conversion of the clang type value
-    # after 'TypeKind.' in lower case.
-    # If the object refers to a function, the type reflects the return type
-    typing: str
-
-    # Set for nodes that corresponds to function reference
-    is_function: bool = False
-
-    # If set, the identifier is a pointer to the specified type
-    is_ptr: bool = False
-
-    # If set, the identifier is defined with a const qualifier
-    is_const: bool = False
-
-
-    @classmethod
-    def get_type_data(cls, clang_type: cindex.Type) -> tuple[bool,str,str]:
-        '''
-        To determine if a function is being called with the same types of arguments
-        as those specified in the prototype we need to resolve all typedefs into
-        their canonical representation. This infers that the declarations created
-        inside harnesses may look slightly different from those in the original source code
-        This should not be an issue though since the "parent" type resolves in the same way
-
-        Some types are not properly resolved, for these we fallback to the current value
-        '''
-        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, clang_type.get_canonical().spelling):
-            canonical = clang_type
-        else:
-            canonical = clang_type.get_canonical()
-
-        # The is_const_qualified() attribute is not always reliable...
-        is_const = canonical.is_const_qualified()
-        #canonical.spelling.find("const ") != -1
-
-        typing = str(canonical.kind).removeprefix("TypeKind.").lower()
-        type_spelling = canonical.spelling.removeprefix("const ")
-
-        # Ensure that the representation is the same regardless of white spaces
-        type_spelling = re.sub(r" +", repl=" ", string = type_spelling)
-        type_spelling = re.sub(r" \*", repl="*", string = type_spelling)
-
-        return (is_const,typing,type_spelling)
-
-    @classmethod
-    def get_underlying_args(cls,cursor: cindex.Cursor, level:int):
-        for child in cursor.get_arguments():
-            print("  "*level, child.type.kind, child.kind, child.spelling,
-                    child.type.get_pointee().spelling,
-                    child.type.get_pointee().kind,
-            )
-            cls.get_underlying_args(child, level+1)
-
-        return cursor
-
-    @classmethod
-    def get_underlying_node(cls,cursor: cindex.Cursor, level:int):
-        for child in cursor.get_children():
-            print("  "*level, child.type.kind, child.kind, child.spelling,
-                    child.type.get_pointee().spelling,
-                    child.type.get_pointee().kind,
-            )
-            cls.get_underlying_args(child, level)
-            cls.get_underlying_node(child, level+1)
-
-        return cursor
-
-    @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor):
-        '''
-        FUNCTIONPROTO is set for DECL_REF_EXPR and FUNCTION_DECL nodes,
-        note that it is not set for 'CALL_EXPR' nodes
-        '''
-        is_decl = str(cursor.type.kind).endswith("FUNCTIONPROTO")
-        is_call = str(cursor.kind).endswith("CALL_EXPR")
-
-        # Dependent expressions e.g. the second argument in
-        #   hashTableIterInit(&iter, &(p->elementTypes));
-        # do not have a 'spelling' value,
-        # In the situation above we can only resolve the type of 'p'...
-        #
-        # We have a dedicated check that excludes type checks for these types of
-        # values
-        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, cursor.type.get_canonical().spelling):
-            pass
-
-        # For functions we are interested in the `.result_type`, this value
-        # is empty for function arguments which instead 
-        # have their typing in `.type`
-        #
-        # Note that this also applies for call expressions, these
-        # have type values directly in cursor.type and not the result_type
-        type_obj = cursor.result_type if is_decl else cursor.type
-
-        result_pointee_type = type_obj.get_pointee()
-
-        if result_pointee_type.spelling != "":
-            # Pointer return type
-            is_const, typing, type_spelling = cls.get_type_data(result_pointee_type)
-            is_ptr = True
-        else:
-            is_const, typing, type_spelling = cls.get_type_data(type_obj)
-            is_ptr = False
-
-        if re.search(r"^int\**", type_spelling):
-            type_spelling = cls.get_type_from_text(cursor, type_spelling)
-
-        return cls(
-            spelling = cursor.spelling,
-            typing = typing,
-            type_spelling = type_spelling + ('*' if is_ptr else ''),
-            is_ptr = is_ptr,
-            is_const = is_const,
-            is_function = (is_decl or is_call)
-        )
-
-    @classmethod
-    def get_type_from_text(cls, cursor: cindex.Cursor, type_spelling: str) -> str:
-        '''
-        ~~~ Hack ~~~
-        Built-in typedefs like size_t do not get resolved properly
-        and we resolve them by looking in the actual source file
-        '''
-        try:
-            with open(str(cursor.location.file), mode='r', encoding='utf8') as f:
-                lines = f.readlines()
-
-                # Get the line of the identifier
-                line_offset = cursor.location.line-1
-                line = lines[line_offset]
-
-                # Retrieve the text before the identifier on the same line
-                before_ident = line[:cursor.location.column-1]
-
-                # We assume that there are no more than 5 newlines
-                # between the identifier and the type specifier
-                low = max(line_offset-4,0)
-                high = max(line_offset-1,0)
-                before_ident = ' '.join(lines[low:high]) \
-                        + before_ident
-                before_ident = before_ident.replace('\n', ' ')
-
-                if (match := re.match(r".*,\s*([_0-9a-zA-Z]+)\s*$", before_ident)):
-                    type_spelling = match.group(1)
-        except UnicodeDecodeError:
-            # Oniguruma has some source files with exotic encodings
-            pass
-
-        return type_spelling
-
-    @classmethod
-    def empty(cls):
-        return cls(
-            spelling="",
-            typing="",
-            type_spelling=""
-        )
-
-    def eq_report(self,other, return_value:bool, check_function:bool) -> str:
-        '''
-        When type-checking parameters against arguments we do not want to
-        to check the function field since e.g. `foo( bar() )` is valid
-        provided that the return value is correct (even though 
-        it is a function unlike the param ident)
-        '''
-        same = "\033[32m✓\033[0m"
-        differ = "\033[31mX\033[0m"
-
-        if not check_function:
-            # Ensure that the function param check cannot fail
-            tmp = self.is_function
-            self.is_function = other.is_function
-
-        report = [
-            f"type_spelling: {self.type_spelling} {other.type_spelling} " + \
-                    (same if self.type_spelling == other.type_spelling else differ),
-            f"(strict) typing: {self.typing} {other.typing} " + \
-                    (same if self.typing == other.typing else differ),
-            f"(strict) is_ptr: {self.is_ptr} {other.is_ptr}: " + \
-                    (same if self.is_ptr == other.is_ptr else differ),
-            f"(strict) is_const: {self.is_const} {other.is_const} " + \
-                    (same if self.is_const == other.is_const else differ),
-            f"is_function: {self.is_function} {other.is_function} " + \
-                    (same if self.is_function == other.is_function else differ)
-        ]
-
-        if self != other:
-            ret = \
-                "Incompatible types " + \
-                ("(return value)" if return_value else "(parameter)") + \
-                f" '{self.spelling}' - '{other.spelling}'\n  " + '\n  '.join(report)
-        else:
-            ret = ""
-
-        if not check_function:
-            self.is_function = tmp # type: ignore
-
-        return ret
-
-    def __eq__(self, other) -> bool:
-        ''' 
-        Does not consider nodes which only differ in spelling
-        as different. Function calls and function decls are also considered the same
-
-        Unresolved nodes with a 'dependent type' are considered equal to everything
-        unless we are using STRICT_TYPECHECKS
-        We only check the function_flag and type_spelling if STRICT_TYPECHECKS is not set,
-        Type checking through python's clang bindings is very FP prone
-        '''
-        strict_check = True
-        if CONFIG.STRICT_TYPECHECKS:
-            strict_check = self.typing == other.typing and \
-               self.is_ptr == other.is_ptr and \
-               self.is_const == other.is_const
-
-        elif re.search(CONFIG.UNRESOLVED_NODES_REGEX, self.type_spelling) or \
-             re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
-                return True
-
-        # The type spelling usually differs slightly between declarations and
-        # call sites, e.g. the call site usually does not have an 'enum' prefix
-        # for enums
-        return strict_check and \
-               self.type_spelling.removeprefix("enum ") == \
-               other.type_spelling.removeprefix("enum ") and \
-               self.is_function == other.is_function
-
-
-    def __repr__(self, paranthesis: bool = True, use_suffix:bool=False):
-        constant = 'const ' if self.is_const else ''
-        func = '()' if self.is_function and paranthesis else ''
-
-        # Types that should be explicitly renamed will be given a suffix
-        # with their type string and spelling if the use_suffix flag is set
-        base_type = self.type_spelling.removeprefix("struct").strip(' *')
-
-        if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
-            struct = "struct " if self.type_spelling.startswith("struct") else ''
-            type_str = f"{struct}{base_type}{CONFIG.SUFFIX}"
-
-            if self.type_spelling.endswith("*"):
-                type_str = f"{type_str}*"
-
-            spelling_str = self.spelling+CONFIG.SUFFIX
-        else:
-            type_str = self.type_spelling
-            spelling_str = self.spelling
-
-        return f"{constant}{type_str} {spelling_str}{func}"
-
-    def dump(self, header:bool = False) -> str:
-        fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
-        fmt += f"{self.is_const};{self.is_ptr};{self.is_function};{self.typing};{self.type_spelling};{self.spelling}"
-        return fmt
 
 @dataclass(init=True)
 class IdentifierLocation:
@@ -359,6 +94,262 @@ class IdentifierLocation:
         return hash(str(self.line)+str(self.column)+str(self.filepath)+self.name)
 
 @dataclass(init=True)
+class Identifier:
+    ''' 
+    Refers to either a function argument or a function, 
+    '''
+
+    # The canonical type string for this identifier,
+    # Note that double pointers will have a '*' in this
+    # string as well as the is_ptr attribute set
+    type_spelling: str
+
+    # Derived from the string conversion of the clang type value
+    # after 'TypeKind.' in lower case.
+    # If the object refers to a function, the type reflects the return type
+    typing: str
+
+    location: IdentifierLocation = IdentifierLocation.empty()
+
+    # Set for nodes that corresponds to function reference
+    is_function: bool = False
+
+    # If set, the identifier is a pointer to the specified type
+    is_ptr: bool = False
+
+    # If set, the identifier is defined with a const qualifier
+    is_const: bool = False
+
+    is_static: bool = False
+
+    @classmethod
+    def get_type_data(cls, clang_type: cindex.Type) -> tuple[bool,str,str]:
+        '''
+        To determine if a function is being called with the same types of arguments
+        as those specified in the prototype we need to resolve all typedefs into
+        their canonical representation. This infers that the declarations created
+        inside harnesses may look slightly different from those in the original source code
+        This should not be an issue though since the "parent" type resolves in the same way
+
+        Some types are not properly resolved, for these we fallback to the current value
+        '''
+        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, clang_type.get_canonical().spelling):
+            canonical = clang_type
+        else:
+            canonical = clang_type.get_canonical()
+
+        # The is_const_qualified() attribute is not always reliable...
+        is_const = canonical.is_const_qualified()
+        #canonical.spelling.find("const ") != -1
+
+        typing = str(canonical.kind).removeprefix("TypeKind.").lower()
+        type_spelling = canonical.spelling.removeprefix("const ")
+
+        # Ensure that the representation is the same regardless of white spaces
+        type_spelling = re.sub(r" +", repl=" ", string = type_spelling)
+        type_spelling = re.sub(r" \*", repl="*", string = type_spelling)
+
+        return (is_const,typing,type_spelling)
+
+    @classmethod
+    def new_from_cursor(cls, cursor: cindex.Cursor, root_dir: str):
+        '''
+        FUNCTIONPROTO is set for DECL_REF_EXPR and FUNCTION_DECL nodes,
+        note that it is not set for 'CALL_EXPR' nodes
+        '''
+        is_decl = str(cursor.type.kind).endswith("FUNCTIONPROTO")
+        is_call = str(cursor.kind).endswith("CALL_EXPR")
+
+        # Dependent expressions e.g. the second argument in
+        #   hashTableIterInit(&iter, &(p->elementTypes));
+        # do not have a 'spelling' value,
+        # In the situation above we can only resolve the type of 'p'...
+        #
+        # We have a dedicated check that excludes type checks for these types of
+        # values
+        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, cursor.type.get_canonical().spelling):
+            pass
+
+        # For functions we are interested in the `.result_type`, this value
+        # is empty for function arguments which instead 
+        # have their typing in `.type`
+        #
+        # Note that this also applies for call expressions, these
+        # have type values directly in cursor.type and not the result_type
+        type_obj = cursor.result_type if is_decl else cursor.type
+
+        result_pointee_type = type_obj.get_pointee()
+
+        if result_pointee_type.spelling != "":
+            # Pointer return type
+            is_const, typing, type_spelling = cls.get_type_data(result_pointee_type)
+            is_ptr = True
+        else:
+            is_const, typing, type_spelling = cls.get_type_data(type_obj)
+            is_ptr = False
+
+        if re.search(r"^int\**", type_spelling):
+            type_spelling = cls.get_type_from_text(cursor, type_spelling)
+
+        filepath = str(cursor.location.file).removeprefix(root_dir).removeprefix("/")
+
+        return cls(
+            typing = typing,
+            type_spelling = type_spelling + ('*' if is_ptr else ''),
+            is_ptr = is_ptr,
+            is_const = is_const,
+            is_function = (is_decl or is_call),
+            is_static = str(cursor.storage_class).endswith("STATIC"),
+                location = IdentifierLocation(
+                    filepath=filepath,
+                    line=cursor.location.line,
+                    column=cursor.location.column,
+                    name = cursor.spelling
+                ),
+        )
+
+    @classmethod
+    def get_type_from_text(cls, cursor: cindex.Cursor, type_spelling: str) -> str:
+        '''
+        ~~~ Hack ~~~
+        Built-in typedefs like size_t do not get resolved properly
+        and we resolve them by looking in the actual source file
+        '''
+        try:
+            with open(str(cursor.location.file), mode='r', encoding='utf8') as f:
+                lines = f.readlines()
+
+                # Get the line of the identifier
+                line_offset = cursor.location.line-1
+                line = lines[line_offset]
+
+                # Retrieve the text before the identifier on the same line
+                before_ident = line[:cursor.location.column-1]
+
+                # We assume that there are no more than 5 newlines
+                # between the identifier and the type specifier
+                low = max(line_offset-4,0)
+                high = max(line_offset-1,0)
+                before_ident = ' '.join(lines[low:high]) \
+                        + before_ident
+                before_ident = before_ident.replace('\n', ' ')
+
+                if (match := re.match(r".*,\s*([_0-9a-zA-Z]+)\s*$", before_ident)):
+                    type_spelling = match.group(1)
+        except UnicodeDecodeError:
+            # Oniguruma has some source files with exotic encodings
+            pass
+
+        return type_spelling
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            typing="",
+            type_spelling=""
+        )
+
+    def eq_report(self,other, return_value:bool, check_function:bool) -> str:
+        '''
+        When type-checking parameters against arguments we do not want to
+        to check the function field since e.g. `foo( bar() )` is valid
+        provided that the return value is correct (even though 
+        it is a function unlike the param ident)
+        '''
+        same = "\033[32m✓\033[0m"
+        differ = "\033[31mX\033[0m"
+
+        if not check_function:
+            # Ensure that the function param check cannot fail
+            tmp = self.is_function
+            self.is_function = other.is_function
+
+        report = [
+            f"type_spelling: {self.type_spelling} {other.type_spelling} " + \
+                    (same if self.type_spelling == other.type_spelling else differ),
+            f"(strict) typing: {self.typing} {other.typing} " + \
+                    (same if self.typing == other.typing else differ),
+            f"(strict) is_ptr: {self.is_ptr} {other.is_ptr}: " + \
+                    (same if self.is_ptr == other.is_ptr else differ),
+            f"(strict) is_const: {self.is_const} {other.is_const} " + \
+                    (same if self.is_const == other.is_const else differ),
+            f"(strict) is_static: {self.is_static} {other.is_static} " + \
+                    (same if self.is_static == other.is_static else differ),
+            f"is_function: {self.is_function} {other.is_function} " + \
+                    (same if self.is_function == other.is_function else differ)
+        ]
+
+        if self != other:
+            ret = \
+                "Incompatible types " + \
+                ("(return value)" if return_value else "(parameter)") + \
+                f" '{self.location.name}' - '{other.location.name}'\n  " + '\n  '.join(report)
+        else:
+            ret = ""
+
+        if not check_function:
+            self.is_function = tmp # type: ignore
+
+        return ret
+
+    def __eq__(self, other) -> bool:
+        ''' 
+        Does not consider nodes which only differ in spelling or location
+        as different. Function calls and function decls are also considered the same
+
+        Unresolved nodes with a 'dependent type' are considered equal to everything
+        unless we are using STRICT_TYPECHECKS
+        We only check the function_flag and type_spelling if STRICT_TYPECHECKS is not set,
+        Type checking through python's clang bindings is very FP prone
+        '''
+        strict_check = True
+        if CONFIG.STRICT_TYPECHECKS:
+            strict_check = self.typing == other.typing and \
+               self.is_ptr == other.is_ptr and \
+               self.is_const == other.is_const and \
+               self.is_static == other.is_static
+
+        elif re.search(CONFIG.UNRESOLVED_NODES_REGEX, self.type_spelling) or \
+             re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
+                return True
+
+        # The type spelling usually differs slightly between declarations and
+        # call sites, e.g. the call site usually does not have an 'enum' prefix
+        # for enums
+        return strict_check and \
+               self.type_spelling.removeprefix("enum ") == \
+               other.type_spelling.removeprefix("enum ") and \
+               self.is_function == other.is_function
+
+    def __repr__(self, paranthesis: bool = True, use_suffix:bool=False):
+        constant = 'const ' if self.is_const else ''
+        func = '()' if self.is_function and paranthesis else ''
+
+        # Types that should be explicitly renamed will be given a suffix
+        # with their type string and spelling if the use_suffix flag is set
+        base_type = self.type_spelling.removeprefix("struct").strip(' *')
+
+        if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
+            struct = "struct " if self.type_spelling.startswith("struct") else ''
+            type_str = f"{struct}{base_type}{CONFIG.SUFFIX}"
+
+            if self.type_spelling.endswith("*"):
+                type_str = f"{type_str}*"
+
+            spelling_str = self.location.name+CONFIG.SUFFIX
+        else:
+            type_str = self.type_spelling
+            spelling_str = self.location.name
+
+        return f"{constant}{type_str} {spelling_str}{func}"
+
+    def dump(self, header:bool = False) -> str:
+        fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
+        fmt += \
+        f"{self.is_const};{self.is_ptr};{self.is_function};{self.typing};{self.type_spelling};{self.location.name}"
+        return fmt
+
+@dataclass(init=True)
 class DependencyFunction:
     ''' 
     A function which is transitively changed due to invoking either
@@ -371,25 +362,15 @@ class DependencyFunction:
     '''
     displayname: str # Includes the full prototype string
     ident: Identifier # Function name and return type
-    location: IdentifierLocation
     arguments: list[Identifier] # The arguments must be in correct order within the list
-    is_static: bool = False
 
     @classmethod
     def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
-        filepath = str(cursor.location.file).removeprefix(root_dir).removeprefix("/")
         return cls(
-            location = IdentifierLocation(
-                filepath=filepath,
-                line=cursor.location.line,
-                column=cursor.location.column,
-                name = cursor.spelling
-            ),
             displayname = cursor.displayname,
-            ident        = Identifier.new_from_cursor(cursor),
-            arguments   = [ Identifier.new_from_cursor(arg)
+            ident        = Identifier.new_from_cursor(cursor, root_dir),
+            arguments   = [ Identifier.new_from_cursor(arg, root_dir)
                   for arg in cursor.get_arguments() ],
-            is_static = str(cursor.storage_class).endswith("STATIC")
         )
 
     @classmethod
@@ -398,7 +379,6 @@ class DependencyFunction:
             displayname = "",
             ident       = Identifier.empty(),
             arguments   = [],
-            location = IdentifierLocation.empty(),
         )
 
     def eq(self, other) -> bool:
@@ -420,7 +400,7 @@ class DependencyFunction:
         return True
 
     def __repr__(self):
-        return f"{self.location}()"
+        return f"{self.ident.location}()"
 
     def prototype_string(self, suffix: str = "") -> str:
         out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
@@ -433,7 +413,7 @@ class DependencyFunction:
         return out.removesuffix(", ") + ")"
 
     def __hash__(self):
-        return hash(self.location.__repr__() + self.ident.__repr__() + self.displayname)
+        return hash(self.ident.location.__repr__() + self.ident.__repr__() + self.displayname)
 
 @dataclass(init=True)
 class DependencyFunctionChange:
@@ -480,7 +460,7 @@ class DependencyFunctionChange:
         return out
 
     def to_csv(self) -> str:
-        return f"{self.direct_change};{self.old.location.to_csv()};{self.new.location.to_csv()}"
+        return f"{self.direct_change};{self.old.ident.location.to_csv()};{self.new.ident.location.to_csv()}"
 
     def __repr__(self, pretty: bool = False, brief: bool = False):
         if pretty:
@@ -491,7 +471,7 @@ class DependencyFunctionChange:
                     "indirect change: "
         if brief and pretty:
                 out += "\033[33m"
-        if self.old.ident.spelling == "":
+        if self.old.ident.location.name == "":
             out += f"b/{self.new}"
         else:
             out += f"a/{self.old} -> b/{self.new}"
@@ -678,3 +658,10 @@ class FunctionState:
             # provided in 'values'
             self.parameters[idx].states |= values
 
+@dataclass(init=True)
+class Cstruct:
+    name: str
+    fields: set[str] = field(default_factory=set)
+
+    def __hash__(self):
+        return hash(self.name + ''.join([f for f in self.fields]))

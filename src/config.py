@@ -1,4 +1,4 @@
-import os, json
+import os, json, multiprocessing
 from src import BASE_DIR
 from dataclasses import dataclass, field
 
@@ -13,7 +13,7 @@ class Config:
     COMMIT_OLD: str = ""
 
     TRANSATIVE_PASSES: int = 1
-    NPROC: int = 5
+    NPROC: int = max(1,multiprocessing.cpu_count() - 1)
     LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
     FALLBACK_LIBCLANG: str = "/usr/local/lib/libclang.so.13.0.1"
 

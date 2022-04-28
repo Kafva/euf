@@ -1,5 +1,4 @@
 import filecmp, os, json, shutil
-from itertools import zip_longest
 from os.path import expanduser
 
 from clang import cindex
@@ -20,18 +19,6 @@ EXPAT_OLD_PATH = f"{expanduser('~')}/.cache/euf/libexpat-90ed5777"
 EXPAT_OLD_SRC_PATH = f"{EXPAT_OLD_PATH}/expat"
 EXPAT_OLD_NAME = "libexpat-90ed5777"
 
-
-def check_cbmc_csv(path1:str, path2:str):
-    with open(path1, mode='r', encoding='utf8' ) as f1:
-        with open(path2, mode ='r', encoding='utf8') as f2:
-            for line1,line2 in zip_longest(f1.readlines(), f2.readlines()):
-                # The runtime field may differ
-                split1 = line1.split(";")
-                del split1[3]
-                split2 = line2.split(";")
-                del split2[3]
-                assert(''.join(split1) == ''.join(split2))
-
 def setup():
     ''' Load libclang once for all tests '''
     if not os.path.exists(CONFIG.LIBCLANG):
@@ -51,7 +38,6 @@ def setup():
         CONFIG.FULL = False
         run(load_libclang=False)
         CONFIG.FULL = True
-
 
 def test_flatten():
     assert( flatten([[1,2],[3,4]]) == [1,2,3,4])

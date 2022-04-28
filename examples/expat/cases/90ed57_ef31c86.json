@@ -34,7 +34,7 @@
   "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 2,
-  "NPROC": 14,
+  
   "SKIP_BLAME": true,
   "SKIP_IMPACT": false,
   "FULL": true,

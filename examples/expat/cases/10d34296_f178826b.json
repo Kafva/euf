@@ -34,7 +34,7 @@
   "SHOW_FUNCTIONS": false,
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 2,
-  "NPROC": 12,
+  
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,
   "FULL": true,

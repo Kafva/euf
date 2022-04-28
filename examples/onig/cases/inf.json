@@ -62,7 +62,7 @@
   "USE_EXISTING_DRIVERS": true,
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 1,
-  "NPROC": 12,
+  
   "SKIP_BLAME": false,
   "SKIP_IMPACT": true,
   "FULL": true,

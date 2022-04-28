@@ -2,10 +2,6 @@
   "PROJECT_DIR": "~/Repos/libcups",
   "DEPENDENCY_DIR": "~/Repos/libusb",
   "DEPLIB_NAME": "libusb-1.0.a",
-  "EXPLICIT_RENAME": [
-    "usbi_os_backend",
-    "usbi_backend"
-  ],
   "CUSTOM_HEADERS": {
     "linux_usbfs.c": [
       "libusb/libusbi.h"
@@ -44,9 +40,9 @@
   "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 2,
-  "NPROC": 15,
+  
   "SKIP_BLAME": false,
-  "SKIP_IMPACT": false,
+  "SKIP_IMPACT": true,
   "FULL": true,
   "QUIET_BUILD": true,
   "COMMIT_OLD": "4a5540a925e47923ed20b4ea68aabe550dac976d",
