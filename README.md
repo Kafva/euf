@@ -16,16 +16,15 @@ Every invocation of EUF requires a JSON config file as an argument. The format o
 
 EUF can also be built and used with Docker
 ```sh
-docker build --rm --tag=euf .
+# Build the base image
+docker build --rm --tag=euf-base -f Dockerfile.base .
+
+# Build a derived image with any additional setup steps
+docker build --rm --tag=euf -f Dockerfile .
 
 # Mount the dependency (oniguruma) and the main project (jq)
 # along with the results directory and execute a configuration
 # available inside the container
-docker run \
-  -v ~/Repos/jq:/repos/jq \
-  -v ~/Repos/oniguruma:/repos/oniguruma \
-  -v ./output:/app/euf/results \
-  euf -- --config tests/configs/docker.json
 
 ```
 

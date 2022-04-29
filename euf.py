@@ -130,7 +130,7 @@ def ast_diff_stage(dep_old:str, dep_new:str,
             cmd = ["git", # Force pager for every file
                 "-c", "core.pager=less -+F -c",
                 "diff", "--no-index", "--color=always",
-                "--function-context",
+                "-U20000",
                 f"{dep_old}/{d.old_path}",
                 f"{dep_new}/{d.new_path}" ]
             print(' '.join(cmd))

@@ -1,6 +1,6 @@
 {
-  "PROJECT_DIR": "/repos/jq",
-  "DEPENDENCY_DIR": "/repos/oniguruma",
+  "PROJECT_DIR": "~/Repos/jq",
+  "DEPENDENCY_DIR": "~/Repos/oniguruma",
   "DEPLIB_NAME": "libonig.a",
   "EXPLICIT_RENAME": [
     "OnigEncodingTypeST",
@@ -46,10 +46,10 @@
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
-      "/app/euf/examples/onig/include/regcomp.h"
+      "~/euf/examples/onig/include/regcomp.h"
     ],
     "regparse.c": [
-      "/app/euf/examples/onig/include/regparse2.h"
+      "~/euf/examples/onig/include/regparse2.h"
     ]
   },
   "FORCE_RECOMPILE": false,
@@ -67,9 +67,9 @@
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
   "FULL": false,
-  "QUIET_BUILD": true,
-  "COMMIT_OLD": "d3d6a347913b4b0377b84c9c494b10a831030c17",
-  "COMMIT_NEW": "6f8c56c204a42d592ffa7b1835609d63ebc74301"
+  "QUIET_BUILD": false,
+  "COMMIT_OLD": "6c88510f",
+  "COMMIT_NEW": "a3c2df57"
 }
 
 

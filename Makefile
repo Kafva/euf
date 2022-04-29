@@ -141,8 +141,8 @@ onig_verify3:
 
 #== test cases ==#
 usb:
-	./euf.py --config examples/usb/cases/libusb_4a5540a9_500c64ae.json $@
+	./euf.py --config examples/usb/cases/libusb_4a5540a9_500c64ae.json $(ARGS)
 onig:
-	./euf.py --config examples/onig/cases/libonig_d3d6_6f8c.json $@
+	./euf.py --config examples/onig/cases/libonig_d3d6_6f8c.json $(ARGS)
 expat:
-	./euf.py --config examples/expat/cases/10d34296_f178826b.json $@
+	./euf.py --config examples/expat/cases/10d34296_f178826b.json $(ARGS)

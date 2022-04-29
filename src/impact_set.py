@@ -41,6 +41,10 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
     Go through the complete AST of the provided file and save any sites
     where a changed function is called as an call_site
     '''
+    if str(cursor.location.file).startswith("/usr"):
+        # We do not want to track call sites from system headers
+        return
+
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
         # Keep track of the current enclosing function
         current_enclosing = cursor.spelling
