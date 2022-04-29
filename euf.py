@@ -158,11 +158,13 @@ def reduction_stage(dep_new: str, dep_old: str,
  dep_source_root_new:str,
  dep_db_old: cindex.CompilationDatabase,
  changed_functions: list[DependencyFunctionChange],
- dep_source_diffs: list[SourceDiff], log_file: str):
+ dep_source_diffs: list[SourceDiff],
+ dep_source_files: list[SourceFile],
+ log_file: str):
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
 
-    global_identifiers, skip_renaming = get_global_identifiers(dep_old, dep_db_old)
+    global_identifiers, skip_renaming = get_global_identifiers(dep_source_files, dep_old, dep_db_old)
     write_rename_files(global_identifiers)
 
     # Compile the old and new version of the dependency as a set of 
@@ -477,6 +479,7 @@ def run(load_libclang:bool = True) -> tuple:
              dep_db_old,
              changed_functions,
              dep_source_diffs,
+             dep_source_files,
              log_file
         )
         log_changed_functions(changed_functions, f"{log_dir}/reduced_set.csv")

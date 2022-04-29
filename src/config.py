@@ -152,6 +152,7 @@ class Config:
     RENAME_RATIO_LOW: float = .3
 
     # Only files with these suffixes are considered during analysis
+    # Excluding .h files will disable compdb
     SUFFIX_WHITELIST = [".c", ".h"]
 
     UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"

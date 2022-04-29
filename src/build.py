@@ -122,7 +122,8 @@ def autogen_compile_db(source_path: str) -> bool:
             sys.exit(ERR_EXIT)
 
     # 4. Run 'compdb' to insert entries for '.h' files into the database
-    patch_ccdb_with_headers(source_path)
+    if ".h" in CONFIG.SUFFIX_WHITELIST:
+        patch_ccdb_with_headers(source_path)
 
     return has_valid_compile_db(source_path)
 
