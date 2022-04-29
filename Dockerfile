@@ -5,8 +5,12 @@ USER root
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
   libidn11-dev libudns-dev libgsasl7-dev
 
-# Update source files
 USER euf
-COPY . .
+
+# Update source files
+ADD euf.py ./
+ADD src/*.py ./src/
+ADD tests/configs/*.json ./tests/configs/
+ADD scripts/*.sh ./scripts/
 
 ENTRYPOINT ["./euf.py"]

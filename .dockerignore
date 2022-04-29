@@ -1,3 +1,5 @@
+Dockerfile*
+.git*
 venv
 __pycache__
 runner
@@ -21,6 +23,10 @@ sonar-project.properties
 _DS_Store
 *.dSYM
 *.o
+*.so
+*.a
 *.out
 *.log
 **/bin/**
+**/obj/**
+*.cache*

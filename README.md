@@ -20,12 +20,17 @@ EUF can also be built and used with Docker
 docker build --rm --tag=euf-base -f Dockerfile.base .
 
 # Build a derived image with any additional setup steps
-docker build --rm --tag=euf -f Dockerfile .
+# necessary to build the projects being analyzed
+docker build --rm --tag=euf .
 
 # Mount the dependency (oniguruma) and the main project (jq)
-# along with the results directory and execute a configuration
-# available inside the container
-
+# along with the results directory and execute euf with a 
+# configuration available inside the container
+docker run -it \
+  -v $HOME/Repos/jq:/home/euf/Repos/jq \
+  -v $HOME/Repos/oniguruma:/home/euf/Repos/oniguruma \
+  -v $PWD/output:/home/euf/euf/results \
+  euf --config tests/configs/docker.json
 ```
 
 ## CBMC fork

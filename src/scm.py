@@ -55,11 +55,20 @@ def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
 def create_worktree(target: str, commit: str, repo: Repo) -> bool:
     if not os.path.exists(target):
         print_info(f"Creating worktree at {target}")
-        # git checkout COMMIT_NEW.hexsha
-        # git checkout -b euf-abcdefghi
-        # git worktree add -b euf-abcdefghi /tmp/openssl euf-abcdefghi
+
+        # Remove any stale branches or worktrees that already exist
+        branch_name = f"euf-{commit[:8]}"
+        repo.git.worktree("prune") # type: ignore
         try:
-            repo.git.worktree("add", "-b", f"euf-{commit[:8]}", target, commit) # type: ignore
+            repo.git.branch("-D", branch_name) # type: ignore
+        except GitCommandError:
+            pass
+
+        try:
+            # git checkout COMMIT_NEW.hexsha
+            # git checkout -b euf-abcdefghi
+            # git worktree add -b euf-abcdefghi /tmp/openssl euf-abcdefghi
+            repo.git.worktree("add", "-b", branch_name, target, commit) # type: ignore
         except GitCommandError:
             traceback.print_exc()
             return False

@@ -207,8 +207,7 @@ def reduction_stage(dep_new: str, dep_old: str,
             get_non_static(changes_to_analyze) ]
 
     state_space_analysis(idents_to_analyze, dep_source_root_old, dep_old)
-    # TODO: disabled to save time during development
-    #state_space_analysis(changes_to_analyze, dep_source_root_new, dep_new)
+    state_space_analysis(idents_to_analyze, dep_source_root_new, dep_new)
     state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR)
 
     # Join the results from each analysis

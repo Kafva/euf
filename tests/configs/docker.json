@@ -56,7 +56,7 @@
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
   "CBMC_TIMEOUT": 7,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": false,
@@ -66,8 +66,8 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": false,
-  "QUIET_BUILD": false,
+  "FULL": true,
+  "QUIET_BUILD": true,
   "COMMIT_OLD": "6c88510f",
   "COMMIT_NEW": "a3c2df57"
 }

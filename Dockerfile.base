@@ -7,7 +7,7 @@ ENV TZ=Etc/Utc
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     clang llvm-13 git flex bison make curl patch cmake \
     build-essential autoconf sudo z3 bear libclang-dev \
-    python3.10 python3.10-venv python3-pip jq
+    python3.10 python3.10-venv python3-pip jq libtool
 
 # For git operations to work the UID of the host user that owns
 # all mounted volumes and the container must match
@@ -15,6 +15,7 @@ RUN useradd --create-home --shell /bin/bash --gid root -G sudo -u 1000 euf
 USER euf
 
 WORKDIR /home/euf
+
 COPY . .
 
 # Setup Python environment
