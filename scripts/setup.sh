@@ -12,7 +12,7 @@ NPROC=$((`nproc`-1))
 if $(which apt &> /dev/null); then
   # EUF dependencies
   sudo apt-get install clang llvm-12 flex bison make \
-    curl patch cmake -y
+    curl patch cmake bear -y
 
   # Dependencies for example projects
   sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev -y
@@ -26,7 +26,7 @@ if $(which apt &> /dev/null); then
   sudo apt-get install cmake clang ninja-build -y
 elif $(which pacman &> /dev/null); then
   sudo pacman -Syu clang llvm flex bison make \
-    curl patch cmake --noconfirm
+    curl patch cmake bear --noconfirm
 
   sudo pacman -Syu libidn udns gsasl --noconfirm 
 else

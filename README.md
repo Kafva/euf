@@ -1,27 +1,32 @@
 # euf
 
 ## Installation
-* EUF relies on certain features, e.g. the `match` keyword, which are only available in Python 3.10 onwards.
-* The Python bindings for libclang utilise clang-13, if it is not installed, the `setup.sh` script will attempt to build it from source.
+EUF has four core dependencies:
+* Python >=3.10, required to support type hints and the `match` keyword
+* Clang 13, required for the clang-plugins module and Python's libclang bindings
+* Bear, used to generate compilation databases for libclang
+* CBMC, the core tool for equivalence analysis 
+
+To setup the project, clone all submodules and refer to `./scripts/setup.sh` or build a Docker image.
 
 ```sh
 git clone --recursive https://github.com/Kafva/euf.git
+
+# Automatic setup for Arch or Ubuntu 20.04
 ./scripts/setup.sh
+
+# Docker setup
+# Additional setup steps will likely be necessary
+# to build the projects being analyzed and the docker
+# configuration is therefore split into two separate images
+docker build --rm -f Dockerfile.base .
+docker build --rm . # Derived from Dockerfile.base
 ```
 
 Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
-```
-(venv) ./euf.py --config tests/configs/basic.json
-```
 
-EUF can also be built and used with Docker
 ```sh
-# Build the base image
-docker build --rm --tag=euf-base -f Dockerfile.base .
-
-# Build a derived image with any additional setup steps
-# necessary to build the projects being analyzed
-docker build --rm --tag=euf .
+(venv) ./euf.py --config tests/configs/basic.json
 
 # Mount the dependency (oniguruma) and the main project (jq)
 # along with the results directory and execute euf with a 
@@ -31,6 +36,7 @@ docker run -it \
   -v $HOME/Repos/oniguruma:/home/euf/Repos/oniguruma \
   -v $PWD/output:/home/euf/euf/results \
   euf --config tests/configs/docker.json
+
 ```
 
 ## CBMC fork

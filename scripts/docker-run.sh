@@ -16,10 +16,10 @@ docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 popd
 
 # Build the base image if neccessary
-docker images --format "{{.Tag}}" | grep -q "euf-base" ||
-  docker build --tag=euf-base -f Dockerfile.base .
+docker images --format "{{.Repository}}" | grep -q "euf-base" ||
+  docker build --rm -f Dockerfile.base .
 
-docker build --tag=euf . &&
+docker build --rm . &&
 docker run -it \
   -v /home/jonas/Repos/jq:/home/euf/Repos/jq \
   -v /home/jonas/Repos/oniguruma:/home/euf/Repos/oniguruma \
