@@ -90,7 +90,11 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) \
             filepath = ccmds.filename
 
             # Skip files in other formats, e.g. asm
-            if not has_allowed_suffix(filepath):
+            # FIXME: We also skip files not under our basepath
+            # (these should never actually be in the db
+            # to begin with so it is effectivly hiding bugs)
+            if not has_allowed_suffix(filepath) or not \
+            filepath.startswith(basepath):
                 continue
 
             if not filepath.startswith(basepath):
@@ -114,7 +118,8 @@ def get_global_identifiers(basepath: str, ccdb: cindex.CompilationDatabase) \
                 structs |= get_top_level_structs(cursor)
 
             except cindex.TranslationUnitLoadError:
-                traceback.format_exc()
+                if CONFIG.VERBOSITY >= 4:
+                    print(traceback.format_exc())
                 print_err(f"Failed to parse TU: {filepath}")
 
     except cindex.CompilationDatabaseError:

@@ -162,14 +162,14 @@ def get_changed_functions_from_diff(diff: SourceDiff, new_root_dir: str,
 
         if type(src_loc := functions_differ(cursor_old_fn, cursor_new_fn)) == \
          cindex.SourceLocation:
-            if CONFIG.VERBOSITY >= 3:
+            if CONFIG.VERBOSITY >= 5:
                 print(f"Differ: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
             function_change.point_of_divergence = \
                 IdentifierLocation.new_from_src_loc(src_loc) # type: ignore
 
             changed_functions.append(function_change)
-        elif CONFIG.VERBOSITY >= 3:
+        elif CONFIG.VERBOSITY >= 5:
             print(f"Same: a/{pair.new_path} b/{pair.old_path} {pair.new.spelling}()")
 
     return changed_functions

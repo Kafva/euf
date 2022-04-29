@@ -19,8 +19,8 @@ git clone --recursive https://github.com/Kafva/euf.git
 # Additional setup steps will likely be necessary
 # to build the projects being analyzed and the docker
 # configuration is therefore split into two separate images
-docker build --rm -f Dockerfile.base .
-docker build --rm . # Derived from Dockerfile.base
+docker build --rm --tag=euf-base -f Dockerfile.base .
+docker build --rm --tag=euf . # Derived from Dockerfile.base
 ```
 
 Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
@@ -28,15 +28,13 @@ Every invocation of EUF requires a JSON config file as an argument. The format o
 ```sh
 (venv) ./euf.py --config tests/configs/basic.json
 
-# Mount the dependency (oniguruma) and the main project (jq)
-# along with the results directory and execute euf with a 
-# configuration available inside the container
+# The dependency (oniguruma), the main project (jq),
+# and the configuration all need to be mounted when using Docker
 docker run -it \
-  -v $HOME/Repos/jq:/home/euf/Repos/jq \
-  -v $HOME/Repos/oniguruma:/home/euf/Repos/oniguruma \
-  -v $PWD/output:/home/euf/euf/results \
-  euf --config tests/configs/docker.json
-
+  -v /home/jonas/Repos/jq:/home/euf/Repos/jq \
+  -v /home/jonas/Repos/oniguruma:/home/euf/Repos/oniguruma \
+  -v $PWD/tests/configs:/home/euf/configs \
+  euf --config /home/euf/configs/docker.json
 ```
 
 ## CBMC fork

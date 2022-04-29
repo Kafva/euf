@@ -6,11 +6,25 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
   libidn11-dev libudns-dev libgsasl7-dev
 
 USER euf
+WORKDIR /home/euf/euf
 
-# Update source files
-ADD euf.py ./
-ADD src/*.py ./src/
-ADD tests/configs/*.json ./tests/configs/
-ADD scripts/*.sh ./scripts/
+#tmp
+RUN mkdir scripts
 
+
+# 'RUN true' is used to avoid build failures when
+# the files to copy have not changed (and therefore
+# do not create a new layer)
+COPY --chown=euf:root scripts/*.sh ./scripts/
+RUN true
+COPY --chown=euf:root euf.py ./
+RUN true
+COPY --chown=euf:root src/*.py ./src/
+
+#tmp
+USER root
+RUN rmdir /usr/local/include
+RUN ln -s /usr/include /usr/local/include
+
+USER euf
 ENTRYPOINT ["./euf.py"]

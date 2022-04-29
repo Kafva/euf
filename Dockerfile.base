@@ -14,12 +14,17 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 RUN useradd --create-home --shell /bin/bash --gid root -G sudo -u 1000 euf
 USER euf
 
-WORKDIR /home/euf
+# If the directory is not explicitly created
+# as the euf user before WORKDIR the directory will be owned by root
+RUN mkdir /home/euf/euf
+WORKDIR /home/euf/euf
 
-COPY . .
+# COPY is always ran as root, so eventhough we have
+# switched to a new user we need to explicitly set permissions
+COPY --chown=euf:root . .
 
 # Setup Python environment
-ENV VIRTUAL_ENV=/home/euf/venv
+ENV VIRTUAL_ENV=/home/euf/euf/venv
 RUN python3.10 -m venv $VIRTUAL_ENV
 
 # Update the PATH to `activate` the virtual environment
@@ -29,12 +34,20 @@ RUN python3.10 -m pip install -r requirements.txt
 
 # Build submodules ('install' requires root)
 USER root
-RUN git config --global --add safe.directory /home/euf/cbmc
-RUN git config --global --add safe.directory /home/euf/clang-plugins
+RUN git config --global --add safe.directory /home/euf/euf/cbmc
+RUN git config --global --add safe.directory /home/euf/euf/clang-plugins
 
-RUN make -C cbmc install
+RUN make -C /home/euf/euf/cbmc install
  
 RUN CLANG_INSTALL_DIR=/usr \
     LLVM_INCLUDE_DIR=/usr/include/llvm-13/llvm \
     LLVM_CMAKE_DIR=/usr/lib/cmake/clang-13 \
-    make -C clang-plugins all
+    make -C /home/euf/euf/clang-plugins all
+
+# Fix permissions on build directories
+RUN chown -R euf:root /home/euf
+
+# Hack for projects which have /usr/local/include
+# instead of /usr/include in their ccdb.
+RUN rmdir /usr/local/include
+RUN ln -s /usr/include /usr/local/include

@@ -162,7 +162,8 @@ def patch_ccdb_with_headers(source_path: str) -> bool:
         header_entries = []
 
         for json_entry in json_output:
-            if json_entry['file'].endswith(".h"):
+            if json_entry['file'].endswith(".h") and \
+               not json_entry['file'].startswith("/usr"):
                 json_entry["arguments"] = json_entry['command'].split(' ')
                 del json_entry['command']
                 header_entries.append(json_entry)

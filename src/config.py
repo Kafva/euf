@@ -92,8 +92,8 @@ class Config:
     # System header paths to skip over for the #include directives
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: [
-        "include/bits", "include/x86_64-linux-gnu/bits", "lib/clang",
-        "local/lib/clang"
+        "include/bits", "include/x86_64-linux-gnu", "lib/clang",
+        "local/lib/clang", "include/clang/13.0.0"
     ])
 
     # Extra compile flags to add for every TU in libclang
