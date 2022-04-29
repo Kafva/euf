@@ -1,6 +1,5 @@
 # euf
 
-
 ## Installation
 * EUF relies on certain features, e.g. the `match` keyword, which are only available in Python 3.10 onwards.
 * The Python bindings for libclang utilise clang-13, if it is not installed, the `setup.sh` script will attempt to build it from source.
@@ -18,10 +17,15 @@ Every invocation of EUF requires a JSON config file as an argument. The format o
 EUF can also be built and used with Docker
 ```sh
 docker build --rm --tag=euf .
+
+# Mount the dependency (oniguruma) and the main project (jq)
+# along with the results directory and execute a configuration
+# available inside the container
 docker run \
   -v ~/Repos/jq:/repos/jq \
-  -v ~/Repos/oniguruma:/repos/oniguruma euf \
-  --config tests/configs/onig.json
+  -v ~/Repos/oniguruma:/repos/oniguruma \
+  -v ./output:/app/euf/results \
+  euf -- --config tests/configs/docker.json
 
 ```
 

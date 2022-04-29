@@ -73,7 +73,7 @@ entr_full:
 # Huge reduction example
 usb_diff:
 	git diff -U9000 --no-index /home/jonas/.cache/euf/libusb-5d089e49/libusb/core.c /home/jonas/.cache/euf/libusb-f7084fea/libusb/core.c
-usb:
+usb_example:
 	./euf.py --config tests/configs/usb_example.json
 
 #== dev ==#
@@ -138,3 +138,11 @@ onig_verify3:
 	examples/onig/cases/libonig_d3d6_6f8c.json \
 	unset_addr_list_fix
 
+
+#== test cases ==#
+usb:
+	./euf.py --config examples/usb/cases/libusb_4a5540a9_500c64ae.json $@
+onig:
+	./euf.py --config examples/onig/cases/libonig_d3d6_6f8c.json $@
+expat:
+	./euf.py --config examples/expat/cases/10d34296_f178826b.json $@
