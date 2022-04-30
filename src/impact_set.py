@@ -9,8 +9,7 @@ from src.types import DependencyFunction, DependencyFunctionChange, \
 from src.util import print_err
 
 def get_call_sites_from_file(source_file: SourceFile,
-        changed_functions: Set[DependencyFunctionChange]
-    ) -> list[CallSite]:
+ changed_functions: Set[DependencyFunctionChange]) -> list[CallSite]:
     '''
     Return a list of call sites (to the old version of functions) in the 
     provided source file for the functions in `changed_functions`
@@ -20,23 +19,24 @@ def get_call_sites_from_file(source_file: SourceFile,
     try:
         translation_unit: cindex.TranslationUnit  = \
             cindex.TranslationUnit.from_source(
-                source_file.new_path, args = source_file.new_compile_args
+                source_file.filepath_new,
+                args = source_file.compile_args_new
         )
         cursor: cindex.Cursor       = translation_unit.cursor
         current_enclosing = ""
 
-        find_call_sites_in_tu(source_file.new_path, cursor,
+        find_call_sites_in_tu(source_file.filepath_new, cursor,
             changed_functions, call_sites, current_enclosing
         )
     except cindex.TranslationUnitLoadError:
         traceback.print_exc()
-        print_err(f"Failed to create TU for {source_file.new_path}")
+        print_err(f"Failed to create TU for {source_file.filepath_new}")
 
     return call_sites
 
 def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
-    changed_functions: Set[DependencyFunctionChange],
-    call_sites: list[CallSite], current_enclosing: str) -> None:
+  changed_functions: Set[DependencyFunctionChange],
+  call_sites: list[CallSite], current_enclosing: str) -> None:
     '''
     Go through the complete AST of the provided file and save any sites
     where a changed function is called as an call_site

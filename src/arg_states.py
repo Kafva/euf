@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 '''
 We will run the plugin once PER changed name PER source directory
-If we try to run if once per changed named the include paths become inconsistent between TUs
-Running the plugin for all names (and once per file) is a bad idea as seen with the uber hack macros
-in clang-plugins.
+If we try to run the plugin once per changed named the include paths become 
+inconsistent between TUs. Running the plugin for all names (and once per file) 
+is a bad idea as seen with the uber hack macros in clang-plugins.
 
-For this to work we need to create a union of all the ccmd flags for each directory
-
-1. Split up the dep dir into subdirs (including top level)
+1. Split up the dependency dir into subdirs (including "." if applicable)
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
 import subprocess, re, sys, json, os, traceback, multiprocessing
@@ -29,7 +27,7 @@ def matches_excluded(string: str) -> bool:
             sys.exit(ERR_EXIT)
     return False
 
-def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU]:
+def get_subdir_tus(target_source_dir: str) -> dict[str,SubDirTU]:
     '''
     Return a dict on the form { "subdir_path": subdir_tu }
     using a compile_commands.json as input. The ccdb_args array will
@@ -42,7 +40,7 @@ def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU
         for tu in ccdb:
             # The exclude regex is given on the form "src/sub/.*"
             to_match = tu['directory']\
-                .removeprefix(target_dir).removeprefix("/") + "/"
+                .removeprefix(target_source_dir).removeprefix("/") + "/"
 
             if matches_excluded(to_match):
                 continue
@@ -58,7 +56,7 @@ def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU
 
     return src_subdirs
 
-def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str,
+def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
     subdir: str, subdir_tu: SubDirTU,
     quiet:bool = True, setx:bool=False) -> None:
     '''
@@ -91,7 +89,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str,
     cmd = [ "clang", "-cc1", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
-        SourceFile.get_isystem_flags(list(subdir_tu.files)[0], target_dir) + \
+        SourceFile.get_isystem_flags(list(subdir_tu.files)[0], source_dir) + \
         c_files + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
     if setx:
@@ -167,15 +165,14 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
 
     return arg_states
 
-def state_space_analysis(symbols: list[str], target_source_dir: str,
- target_dir: str):
-    target_name = os.path.basename(target_dir)
+def state_space_analysis(symbols: list[str], target_source_dir: str):
+    target_name = os.path.basename(target_source_dir)
 
     start = time_start(f"Inspecting call sites ({target_name})...")
     outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{target_name}"
     mkdir_p(outdir)
     remove_files_in(outdir)
-    subdir_tus = get_subdir_tus(target_source_dir, target_dir)
+    subdir_tus = get_subdir_tus(target_source_dir)
     if CONFIG.VERBOSITY >= 3:
         print("Subdirectories to analyze: ", end='')
         print([ p.removeprefix(f"{target_source_dir}/")
@@ -186,7 +183,7 @@ def state_space_analysis(symbols: list[str], target_source_dir: str,
             # Run parallel processes for different symbols
             p.map(partial(call_arg_states_plugin,
                 outdir = outdir,
-                target_dir = target_source_dir,
+                source_dir = target_source_dir,
                 subdir = subdir,
                 subdir_tu = subdir_tu,
                 quiet = True),

@@ -34,15 +34,15 @@ def run_autoreconf(path: str, out) -> bool:
 
     return True
 
-def has_valid_compile_db(source_path: str) -> bool:
-    cmds_json = f"{source_path}/compile_commands.json"
+def has_valid_compile_db(source_dir: str) -> bool:
+    cmds_json = f"{source_dir}/compile_commands.json"
 
     if os.path.isfile(cmds_json):
         # If the project has already been built the database will be empty
         f = open(cmds_json, mode="r", encoding = "utf8")
 
         if f.read().startswith("[]"):
-            print_err(f"Empty compile_commands.json found at '{source_path}'")
+            print_err(f"Empty compile_commands.json found at '{source_dir}'")
             f.close()
             os.remove(cmds_json)
             return False
@@ -51,31 +51,31 @@ def has_valid_compile_db(source_path: str) -> bool:
     else:
         return False
 
-def autogen_compile_db(source_path: str) -> bool:
+def autogen_compile_db(source_dir: str) -> bool:
     script_env = CONFIG.get_script_env()
 
-    if has_valid_compile_db(source_path) and not CONFIG.FORCE_CCDB_RECOMPILE:
+    if has_valid_compile_db(source_dir) and not CONFIG.FORCE_CCDB_RECOMPILE:
         return True
     else:
         # If we are creating a compile_commands.json we need to ensure
         # that the project is clean, otherwise nothing will be built
         # and the db will be empty
         # Removing this will cause certain tests to fail
-        make_clean(source_path, script_env, subprocess.DEVNULL)
+        make_clean(source_dir, script_env, subprocess.DEVNULL)
 
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
     # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
     # needs to be manually invoked to create configure
-    if not os.path.isfile(f"{source_path}/configure"):
-        print_err(f"({source_path}): Missing ./configure")
-        run_autoreconf(source_path, out)
+    if not os.path.isfile(f"{source_dir}/configure"):
+        print_err(f"({source_dir}): Missing ./configure")
+        run_autoreconf(source_dir, out)
 
     conf_script = None
-    if os.path.isfile(f"{source_path}/configure"):
-        conf_script = f"{source_path}/configure"
-    elif os.path.isfile(f"{source_path}/Configure"):
-        conf_script = f"{source_path}/Configure"
+    if os.path.isfile(f"{source_dir}/configure"):
+        conf_script = f"{source_dir}/configure"
+    elif os.path.isfile(f"{source_dir}/Configure"):
+        conf_script = f"{source_dir}/Configure"
 
     # 1. Configure the project according to ./configure if applicable
     # CC=goto-cc should NOT be set when generating the ccdb since this
@@ -84,20 +84,20 @@ def autogen_compile_db(source_path: str) -> bool:
         script_env.update(CONFIG.BUILD_ENV)
         script_env.update({"CC": CONFIG.CCDB_CC})
         try:
-            print_info(f"{source_path}: Running {conf_script}...")
+            print_info(f"{source_dir}: Running {conf_script}...")
             (subprocess.run([ conf_script ],
-                cwd = source_path, stdout = out, stderr = out,
+                cwd = source_dir, stdout = out, stderr = out,
                 env = script_env
             )).check_returncode()
         except subprocess.CalledProcessError:
-            check_ccdb_error(source_path)
+            check_ccdb_error(source_dir)
 
     # 3. Run 'make' with 'bear'
-    version = get_bear_version(source_path)
+    version = get_bear_version(source_dir)
 
-    if os.path.isfile(f"{source_path}/Makefile"):
+    if os.path.isfile(f"{source_dir}/Makefile"):
         try:
-            print_info(f"Generating {source_path}/compile_commands.json...")
+            print_info(f"Generating {source_dir}/compile_commands.json...")
             cmd = [ "bear", "--", "make", "-j",
                     str(multiprocessing.cpu_count() - 1),
             ]
@@ -107,25 +107,25 @@ def autogen_compile_db(source_path: str) -> bool:
             elif version <= 2:
                 del cmd[1]
             print("!> " + ' '.join(cmd))
-            (subprocess.run(cmd, cwd = source_path, stdout = out, stderr = out
+            (subprocess.run(cmd, cwd = source_dir, stdout = out, stderr = out
             )).check_returncode()
         except subprocess.CalledProcessError:
-            check_ccdb_error(source_path)
+            check_ccdb_error(source_dir)
 
     # In bear versions prior to v3, there is no output field so we need to
     # manually insert one...
     if version <= 2:
         try:
-            patch_old_bear_db(f"{source_path}/compile_commands.json")
+            patch_old_bear_db(f"{source_dir}/compile_commands.json")
         except:
-            print_err(f"Error patching {source_path}/compile_commands.json")
+            print_err(f"Error patching {source_dir}/compile_commands.json")
             sys.exit(ERR_EXIT)
 
     # 4. Run 'compdb' to insert entries for '.h' files into the database
     if ".h" in CONFIG.SUFFIX_WHITELIST:
-        patch_ccdb_with_headers(source_path)
+        patch_ccdb_with_headers(source_dir)
 
-    return has_valid_compile_db(source_path)
+    return has_valid_compile_db(source_dir)
 
 def patch_old_bear_db(ccdb_path:str):
     new_json = []
@@ -144,20 +144,20 @@ def patch_old_bear_db(ccdb_path:str):
 
     write_ccdb_from_object(ccdb_path, ccdb_json)
 
-def patch_ccdb_with_headers(source_path: str) -> bool:
+def patch_ccdb_with_headers(source_dir: str) -> bool:
     '''
     For some reason... compdb uses a single command string instead of the
     standard arguments array, we need to convert this to maintain
     compatibility with the rest of EUF
     '''
-    ccdb_path = f"{source_path}/compile_commands.json"
+    ccdb_path = f"{source_dir}/compile_commands.json"
 
     if CONFIG.VERBOSITY >= 1:
         print_info("Running compdb...")
     try:
         p = subprocess.Popen(["compdb", "-p", ".", "list"],
             stdout = subprocess.PIPE, stderr = subprocess.DEVNULL,
-            cwd = source_path
+            cwd = source_dir
         )
         json_output = json.load(p.stdout) # type: ignore
         header_entries = []
@@ -210,53 +210,53 @@ def check_ccdb_error(path: str) -> None:
     else:
         print_err(f"An error occurred but {path}/compile_commands.json was created")
 
-def make_clean(dep_source_dir: str, script_env: dict[str,str], out) -> bool:
-    if os.path.isfile(f"{dep_source_dir}/Makefile"):
+def make_clean(source_dir: str, script_env: dict[str,str], out) -> bool:
+    if os.path.isfile(f"{source_dir}/Makefile"):
         try:
             if CONFIG.VERBOSITY >= 1:
                 print("!> make clean")
             subprocess.run([ "make", "clean"],
                 stdout = out, stderr = out,
-                cwd = dep_source_dir, env = script_env
+                cwd = source_dir, env = script_env
             ).check_returncode()
         except subprocess.CalledProcessError:
             traceback.print_exc()
             return False
     return True
 
-def lib_is_gbf(dep_source_dir: str, libpath: str) -> bool:
+def lib_is_gbf(source_dir: str, libpath: str) -> bool:
     script_env = CONFIG.get_script_env()
-    p = subprocess.Popen(["ar", "t", libpath ], cwd = dep_source_dir, env =
+    p = subprocess.Popen(["ar", "t", libpath ], cwd = source_dir, env =
             script_env, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL)
     first_binary = p.stdout.readline().decode('ascii').strip('\n') # type: ignore
-    p = subprocess.Popen(["ar", "p", libpath, first_binary ], cwd = dep_source_dir, env =
+    p = subprocess.Popen(["ar", "p", libpath, first_binary ], cwd = source_dir, env =
             script_env, stdout = subprocess.PIPE)
 
     return p.stdout.read(4) == b'\x7fGBF' # type: ignore
 
-def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
+def build_goto_lib(source_dir: str, git_dir: str, old_version: bool) -> str:
     '''
     Returns the path to the built library or an empty string on failure
     '''
     script_env = CONFIG.get_script_env()
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
-    if os.path.isfile(f"{dep_source_dir}/configure") or \
-       os.path.isfile(f"{dep_source_dir}/Makefile"):
+    if os.path.isfile(f"{source_dir}/configure") or \
+       os.path.isfile(f"{source_dir}/Makefile"):
         # Recompile if the library cannot be found or is on ELF format
-        if (libpath := find(CONFIG.DEPLIB_NAME, dep_dir)) == "" or \
-            not lib_is_gbf(dep_source_dir,libpath) or \
+        if (libpath := find(CONFIG.DEPLIB_NAME, source_dir)) == "" or \
+            not lib_is_gbf(source_dir,libpath) or \
             CONFIG.FORCE_RECOMPILE:
 
             if CONFIG.VERBOSITY > 0:
-                print_info(f"Building GOTO bin library: {dep_dir}")
+                print_info(f"Building GOTO bin library: {source_dir}")
 
             # 1. Clean the project from ELF binaries
-            if not make_clean(dep_source_dir, script_env, out):
+            if not make_clean(source_dir, script_env, out):
                 return ""
 
             # Remove any other extraneous files
-            Repo(dep_dir).git.clean( # type: ignore
+            Repo(git_dir).git.clean( # type: ignore
                 "-df", "--exclude=compile_commands.json", \
                 f"--exclude={CONFIG.HARNESS_DIR}"
             )
@@ -267,14 +267,14 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
             script_env.update(CONFIG.BUILD_ENV)
 
             try:
-                if os.path.isfile(f"{dep_source_dir}/configure"):
+                if os.path.isfile(f"{source_dir}/configure"):
                     if CONFIG.VERBOSITY >= 1:
                         print("!> ./configure")
                     subprocess.run([
                         "./configure", "--host", "none-none-none"
                         ],
                         stdout = out, stderr = out,
-                        cwd = dep_source_dir, env = script_env
+                        cwd = source_dir, env = script_env
                     ).check_returncode()
 
                 if old_version:
@@ -289,26 +289,26 @@ def build_goto_lib(dep_source_dir: str, dep_dir: str, old_version: bool) -> str:
 
                 subprocess.run(cmd,
                     stdout = out, stderr = out,
-                    cwd = dep_source_dir, env = script_env
+                    cwd = source_dir, env = script_env
                 ).check_returncode()
 
             except subprocess.CalledProcessError:
                 traceback.print_exc()
                 return ""
 
-    return find(CONFIG.DEPLIB_NAME, dep_dir)
+    return find(CONFIG.DEPLIB_NAME, source_dir)
 
-def create_ccdb(source_path:str) -> cindex.CompilationDatabase:
+def create_ccdb(source_dir:str) -> cindex.CompilationDatabase:
     '''
     For the AST to contain a resolved view of the symbols
     we need to provide the correct compile commands
     '''
-    if not autogen_compile_db(source_path): sys.exit(ERR_EXIT)
+    if not autogen_compile_db(source_dir): sys.exit(ERR_EXIT)
 
     try:
         ccdb: cindex.CompilationDatabase  = \
-            cindex.CompilationDatabase.fromDirectory(source_path)
+            cindex.CompilationDatabase.fromDirectory(source_dir)
     except cindex.CompilationDatabaseError:
-        print_err(f"Failed to parse {source_path}/compile_commands.json")
+        print_err(f"Failed to parse {source_dir}/compile_commands.json")
         sys.exit(ERR_EXIT)
     return ccdb

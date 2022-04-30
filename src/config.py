@@ -4,11 +4,31 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Config:
+    ''' - - - Obligatory fields - - - '''
+    # .git directory of the main project being analyzed
     _PROJECT_DIR: str = ""
+
+    # .git directory of the dependency being analyzed
+    #
+    # This directory is only used when:
+    #   1. Creating Repo() objects
+    #   2. Working with paths given from git.Diff objects which
+    #   are relative to the .git root
+    # In all other situations the DEP_SOURCE_ROOT is used
     _DEPENDENCY_DIR: str = ""
+
+    # The 'project' directory of the dependency being analyzed
+    # in which compile_commands.json is created
+    # default: same as .git directory
     _DEP_SOURCE_ROOT: str = ""
+
+    # Name of the library to analyze, e.g. libonig.a
     DEPLIB_NAME: str = ""
+
+    # Git hash of the new version of the dependency
     COMMIT_NEW: str = ""
+
+    # Git hash of the old (current) version of the dependency
     COMMIT_OLD: str = ""
 
     # Paths to exclude from all analysis, given as a list
@@ -16,7 +36,7 @@ class Config:
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
 
     # Using 0 will suppress all output except 
-    # the imapact summary and certain errors
+    # the impact summary and certain errors
     VERBOSITY: int = 0
 
     # Impact set output format

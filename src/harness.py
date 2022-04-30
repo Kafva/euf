@@ -9,8 +9,8 @@ from src.types import AnalysisResult, DependencyFunctionChange, \
 from src.util import print_result, time_end, time_start, wait_on_cr, print_err
 
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
-        skip_renaming: set[str],
-        logfile: str= "", quiet:bool = False) -> bool:
+  skip_renaming: set[str],
+  logfile: str= "", quiet:bool = False) -> bool:
     '''
     If a change passes this function, it should be possible 
     to create a harness for it.
@@ -77,33 +77,35 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
     else:
         return True
 
-def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str,
- old_src_dir:str ) -> dict[str,set[str]]:
+def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
+ -> dict[str,set[str]]:
     '''
     Return a dict with paths (prepended with -I) to the directories
     which need to be available with '-I' during goto-cc compilation for each TU
     '''
-    base_paths = { d.new_path: set()   for d in diffs }
-    new_names =  [ d.new_path for d in diffs ]
+    include_paths = { d.filepath_old: set() for d in diffs }
+    filepaths_old =  [ d.filepath_old for d in diffs ]
 
-    with open(f"{old_src_dir}/compile_commands.json", mode='r', encoding='utf8') as f:
+    with open(f"{source_dir_old}/compile_commands.json", mode='r', encoding='utf8') as f:
         for tu in json.load(f):
-            basename = tu['file'].removeprefix(old_dir.rstrip("/")+"/")
-            if basename in new_names:
+            # We assume that all files are given with an abspath in ccdb
+            assert(tu['file'].startswith("/"))
+
+            if tu['file'] in filepaths_old:
                 for arg in tu['arguments']:
                     if arg.startswith("-I"):
                         # Add the include path as an absolute path
-                        base_paths[basename].add(f"-I{tu['directory']}/{arg[2:]}")
+                        include_paths[tu['file']].add(f"-I{tu['directory']}/{arg[2:]}")
 
-    return base_paths
+    return include_paths
 
-def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str,
- iflags: dict[str,set[str]],
-        tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
+def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
+ iflags: dict[str,set[str]], tu_includes: dict[str,tuple[list[str],list[str]]])\
+ -> None:
     '''
-    Adds the set of all the headers that are included into the TU to the provided object
-    that corresponds to the given diff split into headers under /usr/inlcude
-    and project specific headers.
+    Go through all #include directives in the old version of the file in the
+    provided `diff` object and add them to the `tu_includes` array.
+
     The usr headers will be included with <...> in drivers and the others
     will be included using "...", these files will be included using
     the basepath to the dependency which is on the include path of the driver
@@ -116,9 +118,10 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str,
     We give the _impl files the same includes as the first file that
     included them (provided that they lack includes of their own)
     '''
+    os.chdir(diff.compile_dir_old)
     tu_old = cindex.TranslationUnit.from_source(
-            f"{old_dir}/{diff.old_path}",
-            args = diff.old_compile_args
+            diff.filepath_old,
+            args = diff.compile_args_old
     )
     usr_includes = []
     project_includes = []
@@ -130,7 +133,7 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str,
 
         # Record if any .c files are included
         if hdr_path.endswith(".c"):
-            trimmed = hdr_path.removeprefix(old_dir).strip('/')
+            trimmed = hdr_path.removeprefix(source_dir_old).strip('/')
             included_c_files.append(trimmed)
             continue
 
@@ -146,7 +149,7 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str,
 
                 usr_includes.append(hdr_path)
         else:
-            hdr_path = hdr_path.removeprefix(old_src_dir+"/")
+            hdr_path = hdr_path.removeprefix(source_dir_old+"/")
             for include_path in base_include_paths:
                 hdr_path = hdr_path.strip("/").removeprefix(include_path) \
                     .strip("/")
@@ -157,19 +160,17 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str,
                     project_includes.append(hdr_path)
 
     # Add all of the headers from the current TU to the C files
-    # that it includes
-    #
-    # Also add the include flags from the 'parent'
+    # that it includes and the include flags from the 'parent'
     for c_file in included_c_files:
         tu_includes[c_file]    = (usr_includes, project_includes)
-        iflags[c_file]         = iflags[diff.old_path]
+        iflags[c_file]         = iflags[diff.filepath_old]
 
     if len(usr_includes) > 0 or len(project_includes) > 0:
-        tu_includes[diff.old_path] = (usr_includes, project_includes)
+        tu_includes[diff.filepath_old] = (usr_includes, project_includes)
 
 def create_harness(change: DependencyFunctionChange, harness_path: str,
-    includes: tuple[list[str],list[str]], function_state: FunctionState,
-    identity: bool = False) -> None:
+  includes: tuple[list[str],list[str]], function_state: FunctionState,
+  identity: bool = False) -> None:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -363,12 +364,12 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         f.write(f"\n}}\n#endif\n")
 
 def log_harness(filename: str,
-    func_name: str,
-    identity: bool|None,
-    result: AnalysisResult,
-    start_time: datetime|None,
-    driver: str,
-    change: DependencyFunctionChange) -> None:
+  func_name: str,
+  identity: bool|None,
+  result: AnalysisResult,
+  start_time: datetime|None,
+  driver: str,
+  change: DependencyFunctionChange) -> None:
     '''
     We allow None as a parameter for cases where pre-analysis checks fail
     '''
@@ -389,8 +390,8 @@ def log_harness(filename: str,
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
-    driver: str, func_name: str, log_file: str, current: int, total: int,
-    dep_i_flags:str, quiet: bool) -> bool:
+  driver: str, func_name: str, log_file: str, current: int, total: int,
+  dep_i_flags:str, quiet: bool) -> bool:
     '''
     Returns True if the assertion in the harness
     was successful

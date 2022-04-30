@@ -45,8 +45,10 @@ from src.enumerate_globals import get_global_identifiers, write_rename_files
 from src.scm import filter_out_excluded, get_commits, get_source_files, \
         get_source_diffs, create_worktree
 
-def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
+def git_diff_stage(dep_repo: Repo,
+ git_dir_old: str, source_dir_old:str,
  dep_db_old: cindex.CompilationDatabase,
+ git_dir_new: str, source_dir_new:str,
  dep_db_new: cindex.CompilationDatabase) -> list[SourceDiff]:
     ''' Find the objects that correspond to the old and new commit '''
     (commit_old, commit_new) = get_commits(dep_repo)
@@ -55,11 +57,13 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
     # Renamed files still provide us with context information when a
     # change has occurred at the same time as a move operation:
     #   e.g. `foo.c -> src/foo.c`
-    dep_source_diffs = get_source_diffs(commit_old, dep_old, dep_db_old,
-            commit_new, dep_new, dep_db_new)
+    source_diffs = get_source_diffs(
+            commit_old, git_dir_old, source_dir_old, dep_db_old,
+            commit_new, git_dir_new, source_dir_new, dep_db_new
+    )
 
-    dep_source_diffs = filter_out_excluded(dep_source_diffs, \
-            [ d.old_path for d in dep_source_diffs ] )
+    source_diffs = filter_out_excluded(source_diffs, \
+            [ d.filepath_old.removeprefix(git_dir_old+"/") for d in source_diffs ] )
 
     if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
@@ -70,19 +74,26 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
         ))
 
         add_rename_changes_based_on_blame(
-                dep_new, added_diff, dep_source_diffs
+            added_diff, source_diffs,
+            git_dir_old, source_dir_old, dep_db_old,
+            git_dir_new, source_dir_new, dep_db_new
         )
 
     if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
         print_stage("Git Diff")
-        print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
-                for d in dep_source_diffs ]) + "\n")
+        out = ""
+        for d in source_diffs:
+            git_rel_old = d.filepath_old.removeprefix(git_dir_old+"/")
+            git_rel_new = d.filepath_new.removeprefix(git_dir_new+"/")
+            out += f"a/{git_rel_old} -> b/{git_rel_new}\n"
+
+        print(out)
         wait_on_cr()
 
-    return dep_source_diffs
+    return source_diffs
 
-def ast_diff_stage(dep_old:str, dep_new:str,
- dep_source_diffs: list[SourceDiff], log_dir: str) -> list[DependencyFunctionChange]:
+def ast_diff_stage(git_dir_old:str, git_dir_new:str,
+ source_diffs: list[SourceDiff], log_dir: str) -> list[DependencyFunctionChange]:
     '''
     Look through the old and new version of each delta
     using NPROC parallel processes and save
@@ -97,10 +108,10 @@ def ast_diff_stage(dep_old:str, dep_new:str,
         with multiprocessing.Pool(CONFIG.NPROC) as p:
             changed_functions       = flatten(p.map(
                 partial(get_changed_functions_from_diff,
-                    old_root_dir=dep_old,
-                    new_root_dir=dep_new
+                    git_dir_old=git_dir_old,
+                    git_dir_new=git_dir_new
                 ),
-                dep_source_diffs
+                source_diffs
             ))
             changed_functions = list(filter(lambda f: \
                     not f.old.ident.location.name in CONFIG.IGNORE_FUNCTIONS,
@@ -120,13 +131,13 @@ def ast_diff_stage(dep_old:str, dep_new:str,
             print(c.divergence())
         wait_on_cr(always=True)
 
-        for d in dep_source_diffs:
+        for d in source_diffs:
             cmd = ["git", # Force pager for every file
                 "-c", "core.pager=less -+F -c",
                 "diff", "--no-index", "--color=always",
                 "-U20000",
-                f"{dep_old}/{d.old_path}",
-                f"{dep_new}/{d.new_path}" ]
+                d.filepath_old,
+                d.filepath_new ]
             print(' '.join(cmd))
             subprocess.run(cmd)
 
@@ -147,24 +158,24 @@ def ast_diff_stage(dep_old:str, dep_new:str,
 
     return changed_functions
 
-def reduction_stage(dep_new: str, dep_old: str,
- dep_source_root_old:str,
- dep_source_root_new:str,
+def reduction_stage(git_dir_new: str, git_dir_old: str,
+ source_dir_old:str,
+ source_dir_new:str,
  dep_db_old: cindex.CompilationDatabase,
  changed_functions: list[DependencyFunctionChange],
- dep_source_diffs: list[SourceDiff],
+ source_diffs: list[SourceDiff],
  log_file: str):
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
 
-    global_identifiers, skip_renaming = get_global_identifiers(dep_old, dep_db_old)
+    global_identifiers, skip_renaming = get_global_identifiers(source_dir_old, dep_db_old)
     write_rename_files(global_identifiers)
 
     # Compile the old and new version of the dependency as a set of 
     # goto-bin files
-    if (new_lib := build_goto_lib(dep_source_root_new, dep_new, False)) == "":
+    if (new_lib := build_goto_lib(source_dir_new, git_dir_new, False)) == "":
         sys.exit(ERR_EXIT)
-    if (old_lib := build_goto_lib(dep_source_root_old, dep_old, True)) == "":
+    if (old_lib := build_goto_lib(source_dir_old, git_dir_old, True)) == "":
         sys.exit(ERR_EXIT)
 
     # Copy any required headers into the include
@@ -186,7 +197,9 @@ def reduction_stage(dep_new: str, dep_old: str,
     # Retrieve a list of the headers that each TU uses
     # We will need to include these in the driver
     # for types etc. to be defined
-    IFLAGS = get_I_flags_from_tu(dep_source_diffs, dep_old, dep_source_root_old)
+    IFLAGS = get_I_flags_from_tu(source_diffs, source_dir_old)
+    for k in IFLAGS:
+        print(k)
 
     # Exclude functions that we are not going to analyze
     changes_to_analyze = []
@@ -201,18 +214,18 @@ def reduction_stage(dep_new: str, dep_old: str,
     non_static_changes = [ c.old.ident.location.name for c in
             get_non_static(changes_to_analyze) ]
 
-    state_space_analysis(idents_to_analyze, dep_source_root_old, dep_old)
-    state_space_analysis(idents_to_analyze, dep_source_root_new, dep_new)
-    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR)
+    state_space_analysis(idents_to_analyze, source_dir_old)
+    state_space_analysis(idents_to_analyze, source_dir_new)
+    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR)
 
     # Join the results from each analysis
-    old_name    = os.path.basename(dep_old)
-    new_name    = os.path.basename(dep_new)
+    old_name    = os.path.basename(git_dir_old)
+    new_name    = os.path.basename(git_dir_new)
     proj_name   = os.path.basename(CONFIG.PROJECT_DIR)
     ARG_STATES  = join_arg_states_result([ old_name, new_name, proj_name ])
 
     # - - - Harness generation - - - #
-    harness_dir = f"{dep_source_root_old}/{CONFIG.HARNESS_DIR}"
+    harness_dir = f"{source_dir_old}/{CONFIG.HARNESS_DIR}"
     mkdir_p(harness_dir)
 
     TU_INCLUDES = {}
@@ -228,8 +241,8 @@ def reduction_stage(dep_new: str, dep_old: str,
         'CBMC_OPTS_STR': CONFIG.CBMC_OPTS_STR
     })
 
-    for diff in dep_source_diffs:
-        add_includes_from_tu(diff, dep_old, dep_source_root_old, IFLAGS, TU_INCLUDES)
+    for diff in source_diffs:
+        add_includes_from_tu(diff, source_dir_old, IFLAGS, TU_INCLUDES)
 
     start = time_start("Starting change set reduction...")
 
@@ -282,8 +295,8 @@ def reduction_stage(dep_new: str, dep_old: str,
 
     time_end(f"Change set reduction: {total} -> {len(changed_functions)}", start)
 
-def transitive_stage(dep_new: str,
- dep_source_root_new:str,
+def transitive_stage(git_dir_new: str,
+ source_dir_new:str,
  changed_functions: list[DependencyFunctionChange],
  dep_source_files: list[SourceFile], log_dir:str):
     '''
@@ -302,7 +315,7 @@ def transitive_stage(dep_new: str,
         wait_on_cr()
         start = datetime.now()
     TRANSATIVE_CHANGED_FUNCTIONS = {}
-    os.chdir(dep_new)
+    os.chdir(git_dir_new)
 
     for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
@@ -310,7 +323,7 @@ def transitive_stage(dep_new: str,
                 TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
                         changed_functions = changed_functions,
-                        dep_root_dir = dep_source_root_new
+                        source_dir_new = source_dir_new
                     ),
                     dep_source_files
                 ))
@@ -405,17 +418,17 @@ def run(load_libclang:bool = True) -> tuple:
         f"_{CONFIG.COMMIT_OLD[:4]}_{CONFIG.COMMIT_NEW[:4]}"
 
     # Dependency .git directories
-    dep_new = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_NEW[:8]}"
-    dep_old = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_OLD[:8]}"
+    git_dir_new = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_NEW[:8]}"
+    git_dir_old = f"{CONFIG.EUF_CACHE}/{DEP_NAME}-{CONFIG.COMMIT_OLD[:8]}"
 
     # Source code directory (usually same as .git directory)
-    dep_source_root = CONFIG.DEP_SOURCE_ROOT \
+    source_dir = CONFIG.DEP_SOURCE_ROOT \
         .removeprefix(CONFIG.DEPENDENCY_DIR) \
         if CONFIG.DEP_SOURCE_ROOT != "" \
         else ""
 
-    dep_source_root_old = dep_old + dep_source_root
-    dep_source_root_new = dep_new + dep_source_root
+    source_dir_old = git_dir_old + source_dir
+    source_dir_new = git_dir_new + source_dir
     dep_repo = Repo(CONFIG.DEPENDENCY_DIR)
 
     if CONFIG.ENABLE_RESULT_LOG:
@@ -436,42 +449,42 @@ def run(load_libclang:bool = True) -> tuple:
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(dep_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(ERR_EXIT)
-    if not create_worktree(dep_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(ERR_EXIT)
+    if not create_worktree(git_dir_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(ERR_EXIT)
+    if not create_worktree(git_dir_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(ERR_EXIT)
 
     # Attempt to create the compilation database automatically
     # if they do not already exist
-    dep_db_new = create_ccdb(dep_source_root_new)
-    dep_db_old = create_ccdb(dep_source_root_old)
+    dep_db_new = create_ccdb(source_dir_new)
+    dep_db_old = create_ccdb(source_dir_old)
     main_db = create_ccdb(CONFIG.PROJECT_DIR)
 
     # Gather a list of all the source files in the main project
-    project_files = get_source_files(CONFIG.PROJECT_DIR, main_db)
+    project_files = get_source_files(CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR, main_db)
 
     # Create a list of all files from the dependency
     # used for transitive call analysis and state space estimation
-    dep_source_files = get_source_files(dep_old, dep_db_old)
+    dep_source_files = get_source_files(git_dir_old, source_dir_old, dep_db_old)
 
     # - - - Git diff - - - #
-    dep_source_diffs = git_diff_stage(dep_repo,
-        dep_new = dep_new,
-        dep_old = dep_old,
+    source_diffs = git_diff_stage(dep_repo,
+        git_dir_old = git_dir_old, source_dir_old = source_dir_old,
         dep_db_old = dep_db_old,
+        git_dir_new = git_dir_new, source_dir_new = source_dir_new,
         dep_db_new = dep_db_new
     )
     # - - - Change set - - - #
-    changed_functions = ast_diff_stage(dep_old, dep_new, dep_source_diffs, log_dir)
+    changed_functions = ast_diff_stage(git_dir_old, git_dir_new, source_diffs, log_dir)
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
         log_file = f"{log_dir}/cbmc.csv"
         reduction_stage(
-             dep_new, dep_old,
-             dep_source_root_old,
-             dep_source_root_new,
+             git_dir_new, git_dir_old,
+             source_dir_old,
+             source_dir_new,
              dep_db_old,
              changed_functions,
-             dep_source_diffs,
+             source_diffs,
              log_file
         )
         log_changed_functions(changed_functions, f"{log_dir}/reduced_set.csv")
@@ -480,8 +493,8 @@ def run(load_libclang:bool = True) -> tuple:
         return (changed_functions, None)
 
     # - - - Transitive change set propagation - - - #
-    transitive_stage(dep_new,
-        dep_source_root_new,
+    transitive_stage(git_dir_new,
+        source_dir_new,
         changed_functions,
         dep_source_files,
         log_dir

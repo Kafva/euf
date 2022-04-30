@@ -24,9 +24,9 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     return filtered
 
 def get_source_diffs(
- commit_old: Commit, old_dir:str,
+ commit_old: Commit, git_dir_old:str, source_dir_old:str,
  dep_db_old: cindex.CompilationDatabase,
- commit_new: Commit, new_dir:str,
+ commit_new: Commit, git_dir_new:str, source_dir_new:str,
  dep_db_new: cindex.CompilationDatabase) -> list[SourceDiff]:
     COMMIT_DIFF = filter(lambda d: \
                 has_allowed_suffix(d.a_path) and \
@@ -35,12 +35,12 @@ def get_source_diffs(
     )
 
     return [ SourceDiff.new(
-                old_path = d.a_path,
-                old_dir = old_dir,
-                old_ccdb = dep_db_old,
-                new_path = d.b_path,
-                new_dir = new_dir,
-                new_ccdb = dep_db_new
+                filepath_old = f"{git_dir_old}/{d.a_path}",
+                source_dir_old = source_dir_old,
+                ccdb_old = dep_db_old,
+                filepath_new = f"{git_dir_new}/{d.b_path}",
+                source_dir_new = source_dir_new,
+                ccdb_new = dep_db_new
             ) \
         for d in COMMIT_DIFF ]
 
@@ -84,10 +84,10 @@ def create_worktree(target: str, commit: str, repo: Repo) -> bool:
             return False
     return True
 
-def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[SourceFile]:
+def get_source_files(git_dir: str, source_dir: str, ccdb: cindex.CompilationDatabase) -> list[SourceFile]:
     if CONFIG.VERBOSITY >= 1:
-        start = time_start(f"Loading files from {path}...")
-    repo = Repo(path)
+        start = time_start(f"Loading files from {source_dir}...")
+    repo = Repo(git_dir)
     source_files = filter(lambda p: has_allowed_suffix(p),
         [ e.path for e in repo.tree().traverse() ] # type: ignore
     )
@@ -95,13 +95,16 @@ def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[Source
     source_files = []
     for e in repo.tree().traverse(): # type: ignore
         if has_allowed_suffix(e.path):
+            # The path given from the git.Repo() is relative to the git root:
+            #   e.g. expat/lib/xmlparse.c
+            # To get the canonical path we prepend it with the git_dir
             source_files.append(
-                SourceFile.new(e.path,ccdb,path)
+                SourceFile.new(f"{git_dir}/{e.path}", ccdb, source_dir)
             )
 
 
-    path_arr = [ s.new_path for s in source_files ]
+    path_arr = [ s.filepath_new for s in source_files ]
     if CONFIG.VERBOSITY >= 1:
-        time_end(f"Done loading {path}", start) # type: ignore
+        time_end(f"Done loading {source_dir}", start) # type: ignore
     return filter_out_excluded(source_files, path_arr)
 

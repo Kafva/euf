@@ -16,7 +16,7 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             indent += 1
         dump_children(child, indent)
 
-def get_top_level_decls(cursor: cindex.Cursor, root_dir: str) \
+def get_top_level_decls(cursor: cindex.Cursor, source_dir: str) \
 -> list[Identifier]:
     ''' 
     Extract the names of all top level declarations that should be renamed:
@@ -39,7 +39,7 @@ def get_top_level_decls(cursor: cindex.Cursor, root_dir: str) \
         if (is_function_decl or is_var_decl) and \
           not str(child.location.file).startswith("/usr/include"):
             global_decls.append(
-                    Identifier.new_from_cursor(child, root_dir),
+                    Identifier.new_from_cursor(child, source_dir),
             )
 
     return global_decls
@@ -68,7 +68,7 @@ def get_top_level_structs(cursor: cindex.Cursor) -> set[Cstruct]:
 
     return structs;
 
-def get_global_identifiers(root_dir: str, ccdb: cindex.CompilationDatabase) \
+def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
  -> tuple[list[Identifier],set[str]]:
     '''
     Creates a set of all top level symbols (as Identifier objects) in the
@@ -77,7 +77,7 @@ def get_global_identifiers(root_dir: str, ccdb: cindex.CompilationDatabase) \
     of SourceFile objects since this array can be pruned from certain files
     based on the EXCLUDE_REGEXES option
     '''
-    os.chdir(root_dir)
+    os.chdir(source_dir)
 
     global_identifiers: list[Identifier] = []
     structs: set[Cstruct] = set()
@@ -94,17 +94,14 @@ def get_global_identifiers(root_dir: str, ccdb: cindex.CompilationDatabase) \
             if not has_allowed_suffix(filepath):
                 continue
 
-            if not filepath.startswith(root_dir):
-                filepath = root_dir + "/" + filepath
+            if not filepath.startswith(source_dir):
+                filepath = source_dir + "/" + filepath
 
-            if filepath in filepaths:
-                continue # Skip duplicate entries if they somehow appear
-            else:
-                filepaths.add(filepath)
+            filepaths.add(filepath)
 
             try:
                 compile_dir,compile_args = \
-                    SourceFile.get_compile_args(ccdb,filepath,root_dir)
+                    SourceFile.get_compile_args(ccdb,filepath,source_dir)
 
                 os.chdir(compile_dir)
                 tu = cindex.TranslationUnit.from_source(
@@ -113,7 +110,7 @@ def get_global_identifiers(root_dir: str, ccdb: cindex.CompilationDatabase) \
                 )
                 cursor: cindex.Cursor = tu.cursor
                 global_identifiers.extend(
-                        get_top_level_decls(cursor, root_dir)
+                        get_top_level_decls(cursor, source_dir)
                 )
                 structs |= get_top_level_structs(cursor)
 
@@ -124,7 +121,7 @@ def get_global_identifiers(root_dir: str, ccdb: cindex.CompilationDatabase) \
 
     except cindex.CompilationDatabaseError:
         traceback.format_exc()
-        print_err(f"Error parsing {root_dir}/compile_commands.json")
+        print_err(f"Error parsing {source_dir}/compile_commands.json")
 
     idents, skip_renaming = handle_struct_conflicts(structs, global_identifiers)
 

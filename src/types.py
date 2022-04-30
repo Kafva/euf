@@ -38,7 +38,7 @@ class AnalysisResult(Enum):
     # Triggered if a pointer field in a global struct has the same name
     # as a function
     NOT_RENAMED = 84
-    NONE = 255 # Basecase used in `print_result`
+    NONE = 255 # Base case used in `print_result`
 
 @dataclass(init=True)
 class IdentifierLocation:
@@ -153,7 +153,7 @@ class Identifier:
         return (is_const,typing,type_spelling)
 
     @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor, root_dir: str):
+    def new_from_cursor(cls, cursor: cindex.Cursor, git_dir: str):
         '''
         FUNCTIONPROTO is set for DECL_REF_EXPR and FUNCTION_DECL nodes,
         note that it is not set for 'CALL_EXPR' nodes
@@ -192,7 +192,7 @@ class Identifier:
         if re.search(r"^int\**", type_spelling):
             type_spelling = cls.get_type_from_text(cursor, type_spelling)
 
-        filepath = str(cursor.location.file).removeprefix(root_dir).removeprefix("/")
+        filepath = str(cursor.location.file).removeprefix(git_dir).removeprefix("/")
 
         return cls(
             typing = typing,
@@ -358,7 +358,7 @@ class DependencyFunction:
     will have the `invokes_changed_function` attribute set to a non-empty list 
 
     We pair functions based on the key:
-    {diff.new_path}:{diff.old_path}:{child.spelling}
+    {diff.filepath_new}:{diff.filepath_old}:{child.spelling}
     All other attributes could thus differ between the new and old version.
     '''
     displayname: str # Includes the full prototype string
@@ -366,11 +366,11 @@ class DependencyFunction:
     arguments: list[Identifier] # The arguments must be in correct order within the list
 
     @classmethod
-    def new_from_cursor(cls, root_dir: str, cursor: cindex.Cursor):
+    def new_from_cursor(cls, git_dir: str, cursor: cindex.Cursor):
         return cls(
             displayname = cursor.displayname,
-            ident        = Identifier.new_from_cursor(cursor, root_dir),
-            arguments   = [ Identifier.new_from_cursor(arg, root_dir)
+            ident        = Identifier.new_from_cursor(cursor, git_dir),
+            arguments   = [ Identifier.new_from_cursor(arg, git_dir)
                   for arg in cursor.get_arguments() ],
         )
 
@@ -513,12 +513,24 @@ class SourceFile:
     Includes helper functions for creating the compile arguments
     needed by libclang
     '''
-    new_path: str
-    new_compile_args: list[str] = field(default_factory=list)
-    new_compile_dir: str = ""
+
+    # _Absolute path_ to the new version of the file
+    _filepath_new: str
+
+    compile_args_new: list[str] = field(default_factory=list)
+    compile_dir_new: str = ""
+
+    @property
+    def filepath_new(self) -> str:
+        return self._filepath_new
+
+    @filepath_new.setter
+    def filepath_new(self,value):
+        assert(value.startswith("/"))
+        self._filepath_new = value
 
     @classmethod
-    def get_isystem_flags(cls, source_file: str, dep_path: str) -> list:
+    def get_isystem_flags(cls, source_file: str, source_dir: str) -> list:
         '''
         (This should not really be a class function)
         https://clang.llvm.org/docs/FAQ.html#id2
@@ -531,7 +543,7 @@ class SourceFile:
         '''
         isystem_flags = subprocess.check_output(
             f"clang -### {source_file} 2>&1 | sed -E '1,4d; s/\" \"/\", \"/g; s/(.*)(\\(in-process\\))(.*)/\\1\\3/'",
-            shell=True, cwd = dep_path
+            shell=True, cwd = source_dir
         ).decode('ascii').split(",")
 
         out = []
@@ -551,7 +563,7 @@ class SourceFile:
 
     @classmethod
     def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
-        filepath: str, repo_path: str) -> tuple[str,list[str]]:
+        filepath: str, source_dir: str) -> tuple[str,list[str]]:
         ''' 
         Load the compilation configuration for the particular file
         and retrieve the compilation arguments and the directory that
@@ -564,7 +576,7 @@ class SourceFile:
 
             # We need each isystem flag to be passed to clang directly
             # and therefore prefix every argument with -Xclang
-            isystem_flags = cls.get_isystem_flags(filepath,repo_path)
+            isystem_flags = cls.get_isystem_flags(filepath,source_dir)
             xclang_flags = []
             for flag in isystem_flags:
                 xclang_flags.append("-Xclang")
@@ -581,51 +593,66 @@ class SourceFile:
             raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
     @classmethod
-    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, dir_path: str):
-        (new_compile_dir, new_compile_args) = \
-                cls.get_compile_args(ccdb, filepath, dir_path)
-        return cls(
-            new_path = filepath,
-            new_compile_dir = new_compile_dir,
-            new_compile_args = new_compile_args
+    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, source_dir: str):
+        (compile_dir_new, compile_args_new) = \
+                cls.get_compile_args(ccdb, filepath, source_dir)
+        obj = cls(
+            _filepath_new = "/",
+            compile_dir_new = compile_dir_new,
+            compile_args_new = compile_args_new
         )
+        obj.filepath_new = filepath
+        return obj
 
     def __repr__(self) -> str:
-        return f"{self.new_path} [" + ' '.join(self.new_compile_args) + "]"
+        return f"{self.filepath_new} [" + ' '.join(self.compile_args_new) + "]"
 
 @dataclass(init=True)
 class SourceDiff(SourceFile):
-    old_path: str = ""
-    old_compile_args: list[str] = field(default_factory=list)
-    old_compile_dir: str = ""
+    compile_args_old: list[str] = field(default_factory=list)
+    compile_dir_old: str = ""
+
+    # _Absolute path_ to the old version of the file
+    _filepath_old: str = ""
+
+    @property
+    def filepath_old(self) -> str:
+        return self._filepath_old
+
+    @filepath_old.setter
+    def filepath_old(self,value):
+        assert(value.startswith("/"))
+        self._filepath_old = value
 
     @classmethod
-    def new(cls, old_path: str, old_dir: str,
-        old_ccdb: cindex.CompilationDatabase,
-        new_path: str, new_dir:str,
-        new_ccdb: cindex.CompilationDatabase):
+    def new(cls, filepath_old: str, source_dir_old: str,
+       ccdb_old: cindex.CompilationDatabase,
+       filepath_new: str, source_dir_new:str,
+       ccdb_new: cindex.CompilationDatabase):
         '''
         Create a new object using the super() class constructor
         '''
-        (old_compile_dir, old_compile_args) = \
-          cls.get_compile_args(old_ccdb, old_path, old_dir)
+        (compile_dir_old, compile_args_old) = \
+          cls.get_compile_args(ccdb_old, filepath_old, source_dir_old)
 
-        s = super().new(new_path, new_ccdb, new_dir)
+        s = super().new(filepath_new, ccdb_new, source_dir_new)
 
-        return cls(
-            old_path = old_path, old_compile_args = old_compile_args,
-            old_compile_dir = old_compile_dir,
-            new_path = s.new_path, new_compile_args = s.new_compile_args,
-            new_compile_dir = s.new_compile_dir
+        obj = cls(
+            _filepath_old = "/", compile_args_old = compile_args_old,
+            compile_dir_old = compile_dir_old,
+            _filepath_new = "/", compile_args_new = s.compile_args_new,
+            compile_dir_new = s.compile_dir_new
         )
-
+        obj.filepath_old = filepath_old
+        obj.filepath_new = filepath_new
+        return obj
 
 @dataclass(init=True)
 class CursorPair:
     new: cindex.Cursor
     old: cindex.Cursor
-    new_path: str
-    old_path: str
+    filepath_new: str
+    filepath_old: str
 
     def __init__(self):
         self.new = None # type: ignore
