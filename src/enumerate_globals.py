@@ -155,7 +155,7 @@ def handle_struct_conflicts(structs: set[Cstruct],
         print_warn("The following static functions overlap with fields in " +
             "globally defined structs and will be excluded from CBMC analysis:"
         )
-        print(static_overlap)
+        print(static_overlap, flush=True)
 
     illegal_overlap = field_names & non_static_function_names
 
@@ -168,7 +168,7 @@ def handle_struct_conflicts(structs: set[Cstruct],
         for struct in structs:
             if len(illegal_overlap & struct.fields) > 0:
                 pprint(struct)
-        print(illegal_overlap)
+        print(illegal_overlap, flush=True)
 
     # Return all symbols except for functions that are statically
     # defined AND overlap with a field name

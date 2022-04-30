@@ -36,10 +36,10 @@ Every invocation of EUF requires a JSON configuration file as an argument. The f
 # any other resources like custom configs must be manually mounted 
 # when using Docker.
 # Refer to ./scripts/docker-run.sh for development/debugging in Docker
-docker run -h euf \
+docker run \
   -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
   -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
-  euf --config /home/euf/euf/configs/docker.json
+  euf --config tests/configs/docker.json
 ```
 
 Note that running EUF both within and outside Docker on the same repositories is not supported,
