@@ -49,32 +49,50 @@ class IdentifierLocation:
     '''
     line: int
     column: int
-    filepath: str
     name: str
 
+    # Always set to an _absolute path_
+    _filepath: str
+
+    @property
+    def filepath(self) -> str:
+        return self._filepath
+
+    @filepath.setter
+    def filepath(self,value):
+        if not value.startswith("/"):
+            print("!>", value)
+            assert(value.startswith("/"))
+
+        self._filepath = value
+
     @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor):
-        return cls(
+    def new_from_cursor(cls, cursor: cindex.Cursor, filepath:str=""):
+        # !! The file attribute must be converted to
+        # a non-complex type to avoid mp deadlocks o.O
+        obj = cls(
+                _filepath = "",
                 line = cursor.location.line,
                 column = cursor.location.column,
-                # !! The file attribute must be converted to
-                # a non-complex type to avoid mp deadlocks o.O
-                filepath = str(cursor.location.file),
                 name = cursor.spelling
         )
+        obj.filepath = filepath if filepath != "" else str(cursor.location.file)
+        return obj
 
     @classmethod
     def new_from_src_loc(cls, loc: cindex.SourceLocation):
-        return cls(
-            filepath = str(loc.file.name), # type: ignore
+        obj = cls(
+            _filepath = "",
             line = loc.line,
             column = loc.column,
             name = ""
         )
+        obj.filepath = str(loc.file.name) # type: ignore
+        return obj
 
     @classmethod
     def empty(cls):
-        return cls(filepath = "", line = -1, column = -1, name = "")
+        return cls(_filepath = "", line = -1, column = -1, name = "")
 
     @classmethod
     def csv_header(cls, prefix:str="") -> str:
@@ -153,7 +171,7 @@ class Identifier:
         return (is_const,typing,type_spelling)
 
     @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor, git_dir: str):
+    def new_from_cursor(cls, cursor: cindex.Cursor, filepath:str = ""):
         '''
         FUNCTIONPROTO is set for DECL_REF_EXPR and FUNCTION_DECL nodes,
         note that it is not set for 'CALL_EXPR' nodes
@@ -192,7 +210,6 @@ class Identifier:
         if re.search(r"^int\**", type_spelling):
             type_spelling = cls.get_type_from_text(cursor, type_spelling)
 
-        filepath = str(cursor.location.file).removeprefix(git_dir).removeprefix("/")
 
         return cls(
             typing = typing,
@@ -201,12 +218,9 @@ class Identifier:
             is_const = is_const,
             is_function = (is_decl or is_call),
             is_static = str(cursor.storage_class).endswith("STATIC"),
-                location = IdentifierLocation(
-                    filepath=filepath,
-                    line=cursor.location.line,
-                    column=cursor.location.column,
-                    name = cursor.spelling
-                ),
+            location = IdentifierLocation.new_from_cursor(cursor,
+                filepath=filepath
+            )
         )
 
     @classmethod
@@ -366,11 +380,11 @@ class DependencyFunction:
     arguments: list[Identifier] # The arguments must be in correct order within the list
 
     @classmethod
-    def new_from_cursor(cls, git_dir: str, cursor: cindex.Cursor):
+    def new_from_cursor(cls, cursor: cindex.Cursor):
         return cls(
             displayname = cursor.displayname,
-            ident        = Identifier.new_from_cursor(cursor, git_dir),
-            arguments   = [ Identifier.new_from_cursor(arg, git_dir)
+            ident        = Identifier.new_from_cursor(cursor),
+            arguments   = [ Identifier.new_from_cursor(arg)
                   for arg in cursor.get_arguments() ],
         )
 
@@ -430,11 +444,10 @@ class DependencyFunctionChange:
     point_of_divergence: IdentifierLocation = IdentifierLocation.empty()
 
     @classmethod
-    def new_from_cursors(cls, old_root: str, new_root: str,
-            old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):
+    def new_from_cursors(cls, old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):
         return cls(
-            old = DependencyFunction.new_from_cursor(old_root, old_cursor),
-            new = DependencyFunction.new_from_cursor(new_root, new_cursor),
+            old = DependencyFunction.new_from_cursor(old_cursor),
+            new = DependencyFunction.new_from_cursor(new_cursor),
             invokes_changed_functions = []
         )
 

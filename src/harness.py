@@ -82,6 +82,22 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
     '''
     Return a dict with paths (prepended with -I) to the directories
     which need to be available with '-I' during goto-cc compilation for each TU
+    by parsing each entry in the ccdb
+    '''
+    '''
+    base_paths = { d.new_path: set()   for d in diffs }
+    new_names =  [ d.new_path for d in diffs ]
+
+    with open(f"{old_src_dir}/compile_commands.json", mode='r', encoding='utf8') as f:
+        for tu in json.load(f):
+            basename = tu['file'].removeprefix(old_dir.rstrip("/")+"/")
+            if basename in new_names:
+                for arg in tu['arguments']:
+                    if arg.startswith("-I"):
+                        # Add the include path as an absolute path
+                        base_paths[basename].add(f"-I{tu['directory']}/{arg[2:]}")
+
+    return base_paths
     '''
     include_paths = { d.filepath_old: set() for d in diffs }
     filepaths_old =  [ d.filepath_old for d in diffs ]
@@ -98,6 +114,8 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
                         include_paths[tu['file']].add(f"-I{tu['directory']}/{arg[2:]}")
 
     return include_paths
+
+
 
 def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
  iflags: dict[str,set[str]], tu_includes: dict[str,tuple[list[str],list[str]]])\
@@ -126,7 +144,10 @@ def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
     usr_includes = []
     project_includes = []
     included_c_files = []
-    base_include_paths = [ f[2:] for f in iflags ]
+
+    # Extract the base include paths relevant for this TU
+    # [2:] removes '-I' and abspath() is needed to resolve relative paths
+    base_include_paths = [ os.path.abspath(f[2:]) for f in iflags[diff.filepath_old] ]
 
     for inc in tu_old.get_includes():
         hdr_path = inc.include.name
@@ -137,10 +158,11 @@ def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
             included_c_files.append(trimmed)
             continue
 
+
         if hdr_path.startswith("/usr"):
             # Skip system headers under certain specified paths
             if any([ hdr_path.startswith(f"/usr/{skip_header}") \
-                    for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
+               for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
                 continue
 
             if not hdr_path in usr_includes:
@@ -149,6 +171,7 @@ def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
 
                 usr_includes.append(hdr_path)
         else:
+            hdr_path = os.path.abspath(hdr_path)
             hdr_path = hdr_path.removeprefix(source_dir_old+"/")
             for include_path in base_include_paths:
                 hdr_path = hdr_path.strip("/").removeprefix(include_path) \
@@ -225,7 +248,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
         # Project include directives
         for header in includes[1]:
-            f.write(f"#include \"{header}\"\n")
+            f.write(f"#include \"{header.lstrip('./')}\"\n")
 
         # Declaration of the old version of the function
         f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n")

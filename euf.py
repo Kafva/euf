@@ -63,7 +63,8 @@ def git_diff_stage(dep_repo: Repo,
     )
 
     source_diffs = filter_out_excluded(source_diffs, \
-            [ d.filepath_old.removeprefix(git_dir_old+"/") for d in source_diffs ] )
+        [ d.filepath_old.removeprefix(git_dir_old+"/") for d in source_diffs ]
+    )
 
     if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
@@ -93,7 +94,8 @@ def git_diff_stage(dep_repo: Repo,
     return source_diffs
 
 def ast_diff_stage(git_dir_old:str, git_dir_new:str,
- source_diffs: list[SourceDiff], log_dir: str) -> list[DependencyFunctionChange]:
+ source_diffs: list[SourceDiff], log_dir: str) \
+ -> list[DependencyFunctionChange]:
     '''
     Look through the old and new version of each delta
     using NPROC parallel processes and save
@@ -168,7 +170,9 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
 
-    global_identifiers, skip_renaming = get_global_identifiers(source_dir_old, dep_db_old)
+    global_identifiers, skip_renaming = \
+            get_global_identifiers(source_dir_old, dep_db_old)
+
     write_rename_files(global_identifiers)
 
     # Compile the old and new version of the dependency as a set of 
@@ -183,13 +187,15 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
     os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
     # - - - State space - - - #
-    # Derive valid input parameters for each changed function based on invocations
-    # in the old and new version of the dependency as well as the main project
-    # This process is performed using an external clang plugin
+    # Derive valid input parameters for each changed function based 
+    # on invocations in the old and new version of the dependency as 
+    # well as the main project This process is performed using an 
+    # external clang plugin.
     #
-    # FIXME: If the main project has an internal function with the same name as a function
-    # in the change set these will not be differentiated and likely cause
-    # parameters to be set as nondet when they could potentially be det.
+    # FIXME: If the main project has an internal function with the 
+    # same name as a function in the change set these will not 
+    # be differentiated and likely cause parameters to be set as 
+    # nondet when they could potentially be det.
     remove_files_in(CONFIG.ARG_STATES_OUTDIR)
 
     rm_f(log_file)
@@ -198,8 +204,6 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
     # We will need to include these in the driver
     # for types etc. to be defined
     IFLAGS = get_I_flags_from_tu(source_diffs, source_dir_old)
-    for k in IFLAGS:
-        print(k)
 
     # Exclude functions that we are not going to analyze
     changes_to_analyze = []
@@ -207,7 +211,7 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
         if valid_preconds(c,IFLAGS,skip_renaming,logfile="",quiet=True):
             changes_to_analyze.append(c)
 
-    idents_to_analyze = [ c.old.ident.location.name for c in changes_to_analyze ]
+    idents_to_analyze = [c.old.ident.location.name for c in changes_to_analyze]
 
     # Skip the state space analysis for static functions since these
     # cannot be called from the main project
@@ -215,8 +219,8 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
             get_non_static(changes_to_analyze) ]
 
     state_space_analysis(idents_to_analyze, source_dir_old)
-    state_space_analysis(idents_to_analyze, source_dir_new)
-    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR)
+    #state_space_analysis(idents_to_analyze, source_dir_new)
+    #state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR)
 
     # Join the results from each analysis
     old_name    = os.path.basename(git_dir_old)
@@ -257,7 +261,8 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
             continue
 
         # Log the reason for why a change could not be verified
-        if not valid_preconds(change, IFLAGS, skip_renaming, log_file, quiet=False):
+        if not valid_preconds(change, IFLAGS, skip_renaming, \
+           log_file, quiet=False):
             continue
 
         harness_path = f"{harness_dir}/{change.old.ident.location.name}{CONFIG.IDENTITY_HARNESS}.c"
@@ -266,7 +271,7 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
         tu_includes = TU_INCLUDES[change.old.ident.location.filepath] if \
                     change.old.ident.location.filepath in TU_INCLUDES else \
                     ([],[])
-        i_flags     = ' '.join(IFLAGS[change.old.ident.location.filepath]).strip()
+        i_flags = ' '.join(IFLAGS[change.old.ident.location.filepath]).strip()
 
         if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
             pass # Use existing driver
@@ -288,12 +293,15 @@ def reduction_stage(git_dir_new: str, git_dir_old: str,
                     function_state, identity=False
                 )
             # Run the actual harness
-            if run_harness(change, script_env, harness_path, func_name, log_file, \
-               i+1, total, i_flags, quiet = CONFIG.SILENT_VERIFICATION):
-                # Remove the change from the change set if the equivalence check passes
+            if run_harness(change, script_env, harness_path, func_name,
+               log_file, i+1, total, i_flags,
+               quiet = CONFIG.SILENT_VERIFICATION):
+                # Remove the change from the change set 
+                # if the equivalence check passes
                 changed_functions.remove(change)
 
-    time_end(f"Change set reduction: {total} -> {len(changed_functions)}", start)
+    time_end(f"Change set reduction: {total} -> {len(changed_functions)}",
+                                                                          start)
 
 def transitive_stage(git_dir_new: str,
  source_dir_new:str,
@@ -361,7 +369,8 @@ def transitive_stage(git_dir_new: str,
         time_end("Transitive change enumeration", start) # type: ignore
 
 def impact_stage(log_dir:str, project_source_files: list[SourceFile],
- changed_functions: list[DependencyFunctionChange]) -> list[CallSite]:
+ changed_functions: list[DependencyFunctionChange],
+ git_dir_old: str, git_dir_new:str) -> list[CallSite]:
     ''' - - - Impact set - - - '''
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
@@ -393,7 +402,8 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
         pprint(call_sites)
     else:
         if CONFIG.ORDER_BY_CALL_SITE:
-            pretty_print_impact_by_call_site(call_sites)
+            pretty_print_impact_by_call_site(call_sites, git_dir_old, \
+                    git_dir_new)
         else:
             pretty_print_impact_by_dep(call_sites)
     if CONFIG.ENABLE_RESULT_LOG:
@@ -449,8 +459,10 @@ def run(load_libclang:bool = True) -> tuple:
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(git_dir_new, CONFIG.COMMIT_NEW, dep_repo): sys.exit(ERR_EXIT)
-    if not create_worktree(git_dir_old, CONFIG.COMMIT_OLD, dep_repo): sys.exit(ERR_EXIT)
+    if not create_worktree(git_dir_new, CONFIG.COMMIT_NEW, dep_repo):
+        sys.exit(ERR_EXIT)
+    if not create_worktree(git_dir_old, CONFIG.COMMIT_OLD, dep_repo):
+        sys.exit(ERR_EXIT)
 
     # Attempt to create the compilation database automatically
     # if they do not already exist
@@ -459,7 +471,8 @@ def run(load_libclang:bool = True) -> tuple:
     main_db = create_ccdb(CONFIG.PROJECT_DIR)
 
     # Gather a list of all the source files in the main project
-    project_files = get_source_files(CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR, main_db)
+    project_files = get_source_files(CONFIG.PROJECT_DIR, CONFIG.PROJECT_DIR,
+                                                                        main_db)
 
     # Create a list of all files from the dependency
     # used for transitive call analysis and state space estimation
@@ -473,7 +486,8 @@ def run(load_libclang:bool = True) -> tuple:
         dep_db_new = dep_db_new
     )
     # - - - Change set - - - #
-    changed_functions = ast_diff_stage(git_dir_old, git_dir_new, source_diffs, log_dir)
+    changed_functions = ast_diff_stage(git_dir_old, git_dir_new,
+            source_diffs, log_dir)
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
@@ -500,7 +514,8 @@ def run(load_libclang:bool = True) -> tuple:
         log_dir
     )
     # - - - Impact set  - - - #
-    call_sites = impact_stage(log_dir, project_files, changed_functions)
+    call_sites = impact_stage(log_dir, project_files, changed_functions,
+            git_dir_old, git_dir_new)
 
     return (changed_functions, call_sites)
 

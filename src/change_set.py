@@ -152,7 +152,6 @@ def get_changed_functions_from_diff(diff: SourceDiff, git_dir_new: str,
         cursor_new_fn = pair.new
 
         function_change = DependencyFunctionChange.new_from_cursors(
-                git_dir_old, git_dir_new,
                 cursor_old_fn, cursor_new_fn
         )
         src_loc = functions_differ(cursor_old_fn, cursor_new_fn)
@@ -226,13 +225,13 @@ def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
         current_function = \
-            DependencyFunction.new_from_cursor(source_dir_new, cursor)
+            DependencyFunction.new_from_cursor(cursor)
 
     elif str(cursor.kind).endswith("CALL_EXPR") and \
      change_matching_current != None:
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
-        called = DependencyFunction.new_from_cursor(source_dir_new, cursor)
+        called = DependencyFunction.new_from_cursor(cursor)
 
         if change_matching_current.new.eq(called) and \
           current_function.ident.location.name != cursor.spelling:

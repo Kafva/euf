@@ -16,7 +16,7 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             indent += 1
         dump_children(child, indent)
 
-def get_top_level_decls(cursor: cindex.Cursor, source_dir: str) \
+def get_top_level_decls(cursor: cindex.Cursor, compile_dir: str ) \
 -> list[Identifier]:
     ''' 
     Extract the names of all top level declarations that should be renamed:
@@ -36,10 +36,18 @@ def get_top_level_decls(cursor: cindex.Cursor, source_dir: str) \
         is_var_decl = str(child.kind).endswith("VAR_DECL") and \
            not str(child.storage_class).endswith("STATIC")
 
+        location_str = str(child.location.file)
+
         if (is_function_decl or is_var_decl) and \
-          not str(child.location.file).startswith("/usr/include"):
+          not location_str.startswith("/usr/include"):
+
+            if not location_str.startswith("/"):
+                # If a file location is not given as an absolute path
+                # we prepend the directory of the current cursor
+                location_str = f"{compile_dir}/{location_str}"
+
             global_decls.append(
-                    Identifier.new_from_cursor(child, source_dir),
+                    Identifier.new_from_cursor(child,location_str)
             )
 
     return global_decls
@@ -110,7 +118,7 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
                 )
                 cursor: cindex.Cursor = tu.cursor
                 global_identifiers.extend(
-                        get_top_level_decls(cursor, source_dir)
+                        get_top_level_decls(cursor, compile_dir)
                 )
                 structs |= get_top_level_structs(cursor)
 

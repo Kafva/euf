@@ -98,7 +98,8 @@ def log_impact_set(call_sites: list[CallSite], filename: str) -> None:
         with open(f"{filename.removesuffix('.csv')}.json", mode='w', encoding='utf8') as f:
             json.dump([ dataclasses.asdict(c) for c in call_sites ], f)
 
-def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
+def pretty_print_impact_by_call_site(call_sites: list[CallSite],
+ git_dir_old:str, git_dir_new:str) -> None:
     '''
     Print each impact site as its own header with a list of dependency change
     sources beneath it
@@ -113,7 +114,10 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
         # To compile all calls within the same enclosing function
         # together we only use the filepath and name as keys
         # since the line and column will differ
-        key = f"{site.call_location.filepath}:{site.call_location.name}()"
+        git_rel_path = site.call_location.filepath.\
+            removeprefix(git_dir_old+"/").removeprefix(git_dir_new+"/")
+
+        key = f"{git_rel_path}:{site.call_location.name}()"
         called_at = f"({site.call_location.line}:{site.call_location.column}) "
         out_str = called_at + site.called_function_change.__repr__(pretty=True)
 
