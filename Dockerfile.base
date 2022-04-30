@@ -14,8 +14,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 RUN useradd \
   --create-home --shell /bin/bash \
   --gid root -G sudo -u 1000 \
-  --disabled-password --gecos '' \
   euf
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 USER euf
 
 # If the directory is not explicitly created

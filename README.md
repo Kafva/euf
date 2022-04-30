@@ -7,38 +7,43 @@ EUF has four core dependencies:
 * Bear, used to generate compilation databases for libclang
 * CBMC, the core tool for equivalence analysis 
 
-To setup the project, clone all submodules and refer to `./scripts/setup.sh` or build a Docker image.
+To setup the project, clone all submodules and refer to `./scripts/setup.sh` or build the Docker image (recommended).
 
 ```sh
 git clone --recursive https://github.com/Kafva/euf.git
 
-# Automatic setup for Arch or Ubuntu 20.04
+# Semi-automatic setup for Arch or Ubuntu 20.04
 ./scripts/setup.sh
 
-# Docker setup
+# Docker setup:
 # Additional setup steps will likely be necessary
-# to build the projects being analyzed and the docker
+# to build the projects being analyzed and the Docker
 # configuration is therefore split into two separate images
+
+# Base image with all dependencies built
 docker build --rm --tag=euf-base -f Dockerfile.base .
-docker build --rm --tag=euf . # Derived from Dockerfile.base
+
+# Project specific image derived from Dockerfile.base
+docker build --rm --tag=euf . 
 ```
 
 Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
 
-Note that running EUF both within and outside Docker on the same repositories is not supported,
-create seperate directories if this is neccessary.
-
 ```sh
 (venv) ./euf.py --config tests/configs/basic.json
 
-# The dependency (oniguruma) and the main project (jq),
-# need to be manually mounted when using Docker
+# The dependency (oniguruma), the main project (jq) and
+# any other resources like custom configs must be manually mounted 
+# when using Docker.
 # Refer to ./scripts/docker-run.sh for development/debugging in Docker
-docker run -h euf -it \
+docker run -h euf \
   -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
   -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
   euf --config /home/euf/euf/configs/docker.json
 ```
+
+Note that running EUF both within and outside Docker on the same repositories is not supported,
+create separate directories if this is necessary.
 
 ## CBMC fork
 To avoid duplicate symbols a fork of CBMC which adds a suffix to all global symbols has been created. The symbol renaming is triggered by starting `cbmc`, `goto-cc` or any of the other Cprover tools with `USE_SUFFIX` set in the environment.
