@@ -1,8 +1,10 @@
 import os, traceback
 from pprint import pprint
 from clang import cindex
+from src import BASE_DIR
 
-from src.util import flatten, has_allowed_suffix, print_warn, time_start, time_end, print_err
+from src.util import flatten, has_allowed_suffix, print_warn, \
+  time_start, time_end, print_err
 from src.config import CONFIG
 from src.types import Cstruct, Identifier, SourceFile
 
@@ -14,7 +16,8 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
             indent += 1
         dump_children(child, indent)
 
-def get_top_level_decls(cursor: cindex.Cursor, root_dir: str) -> list[Identifier]:
+def get_top_level_decls(cursor: cindex.Cursor, root_dir: str) \
+-> list[Identifier]:
     ''' 
     Extract the names of all top level declarations that should be renamed:
         - Non static global variables
@@ -65,23 +68,22 @@ def get_top_level_structs(cursor: cindex.Cursor) -> set[Cstruct]:
 
     return structs;
 
-def get_global_identifiers(source_files: list[SourceFile], root_dir: str, ccdb: cindex.CompilationDatabase) \
+def get_global_identifiers(root_dir: str, ccdb: cindex.CompilationDatabase) \
  -> tuple[list[Identifier],set[str]]:
     '''
     Creates a set of all top level symbols (as Identifier objects) in the
-    changed files. Each of these need to be given a suffix to avoid conflicts
-    Note: We enumerate globals from files in the NEW version of the dependency, it should
-    not matter which version we pick since removed or added symbols cannot cause
-    conflicts but this is explicitly stated for clarity.
+    dependency. Each of these need to be given a suffix to avoid conflicts
+    Note: We iterate over the files in the ccdb and NOT the our array
+    of SourceFile objects since this array can be pruned from certain files
+    based on the EXCLUDE_REGEXES option
     '''
     os.chdir(root_dir)
-
-    start_time = time_start(f"Enumerating global symbols...")
 
     global_identifiers: list[Identifier] = []
     structs: set[Cstruct] = set()
     filepaths: set[str] = set()
 
+    start_time = time_start(f"Enumerating global symbols...")
     try:
         for ccmds in ccdb.getAllCompileCommands():
             # Depending on how the compile_commands.json is read
@@ -101,10 +103,13 @@ def get_global_identifiers(source_files: list[SourceFile], root_dir: str, ccdb: 
                 filepaths.add(filepath)
 
             try:
-                # Exclude 'cc' [0] and source file [-1] from compile command
+                compile_dir,compile_args = \
+                    SourceFile.get_compile_args(ccdb,filepath,root_dir)
+
+                os.chdir(compile_dir)
                 tu = cindex.TranslationUnit.from_source(
                         filepath,
-                        args = list(ccmds.arguments)[1:-1]
+                        args = compile_args
                 )
                 cursor: cindex.Cursor = tu.cursor
                 global_identifiers.extend(
@@ -121,10 +126,10 @@ def get_global_identifiers(source_files: list[SourceFile], root_dir: str, ccdb: 
         traceback.format_exc()
         print_err(f"Error parsing {root_dir}/compile_commands.json")
 
-
     idents, skip_renaming = handle_struct_conflicts(structs, global_identifiers)
 
     time_end("Global symbol enumeration", start_time)
+    os.chdir(BASE_DIR)
 
     return idents, skip_renaming
 

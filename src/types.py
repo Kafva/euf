@@ -3,11 +3,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from clang import cindex
+from src import ERR_EXIT
 from src.config import CONFIG
 
 class AnalysisResult(Enum):
     SUCCESS = 0 # SUCCESS verification: equivalent change
-    ERROR = 1
+    ERROR = ERR_EXIT
     # SUCCESS verification of equivalent change and failed unwinding assertion
     SUCCESS_UNWIND_FAIL = 73
     # FAILED verification and failed unwinding assertion
@@ -549,7 +550,7 @@ class SourceFile:
         return out
 
     @classmethod
-    def _get_compile_args(cls, compile_db: cindex.CompilationDatabase,
+    def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
         filepath: str, repo_path: str) -> tuple[str,list[str]]:
         ''' 
         Load the compilation configuration for the particular file
@@ -582,12 +583,15 @@ class SourceFile:
     @classmethod
     def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, dir_path: str):
         (new_compile_dir, new_compile_args) = \
-                cls._get_compile_args(ccdb, filepath, dir_path)
+                cls.get_compile_args(ccdb, filepath, dir_path)
         return cls(
             new_path = filepath,
             new_compile_dir = new_compile_dir,
             new_compile_args = new_compile_args
         )
+
+    def __repr__(self) -> str:
+        return f"{self.new_path} [" + ' '.join(self.new_compile_args) + "]"
 
 @dataclass(init=True)
 class SourceDiff(SourceFile):
@@ -604,7 +608,7 @@ class SourceDiff(SourceFile):
         Create a new object using the super() class constructor
         '''
         (old_compile_dir, old_compile_args) = \
-          cls._get_compile_args(old_ccdb, old_path, old_dir)
+          cls.get_compile_args(old_ccdb, old_path, old_dir)
 
         s = super().new(new_path, new_ccdb, new_dir)
 

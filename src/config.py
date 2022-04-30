@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Config:
-    ''' - - - General - - - '''
     _PROJECT_DIR: str = ""
     _DEPENDENCY_DIR: str = ""
     _DEP_SOURCE_ROOT: str = ""
@@ -12,17 +11,13 @@ class Config:
     COMMIT_NEW: str = ""
     COMMIT_OLD: str = ""
 
-    TRANSATIVE_PASSES: int = 1
-    NPROC: int = max(1,multiprocessing.cpu_count() - 1)
-    LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
-    LIBCLANG_FALLBACKS: list[str] = field(default_factory=lambda:[
-        "/usr/local/lib/libclang.so.13.0.1",
-        "/usr/lib/llvm-13/lib/libclang.so.1"
-    ])
-
     # Paths to exclude from all analysis, given as a list
     # of regular expressions
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
+
+    # Using 0 will suppress all output except 
+    # the imapact summary and certain errors
+    VERBOSITY: int = 0
 
     # Impact set output format
     ORDER_BY_CALL_SITE: bool = True
@@ -30,65 +25,26 @@ class Config:
     # Show diff of files in the change set and exit
     SHOW_DIFFS: bool = False
 
-    # A list of strings that should be explicitly given a 
-    # suffix in the old version of the library
-    #
-    # This is useful in scenarios were e.g. a struct has
-    # function pointer fields (which are renamed), causing
-    # conflicts unless the struct is split into two different 
-    # versions (see usb_os_backend in libusb).
-    #
-    # Note that renaming types is only viable if the type in
-    # in question never appears as a function parameter or return value
-    EXPLICIT_RENAME: list[str] = field(default_factory=list)
+    # Name of a specific function to limit analysis during debugging
+    ONLY_ANALYZE: str = ""
 
-    # - - - Verbosity  - - -
-    VERBOSITY: int = 0
+    # Skip the blame correlation performed during the git-diff stage
+    SKIP_BLAME: bool = False
+
+    # Skip call site correlation (exit after CBMC analysis)
+    SKIP_IMPACT: bool = False
+
+    # Log information from each stage to .csv files under RESULTS_DIR
+    ENABLE_RESULT_LOG: bool = True
+
+    # Number of times to look for indirect changes by finding all functions
+    # that call a function with direct or indirect change
+    TRANSATIVE_PASSES: int = 1
 
     # Wait for <Enter> to be pressed before continuing at each stage
     PAUSES: bool = False
 
-    # Name of a specific function to limit analysis during debugging
-    ONLY_ANALYZE: str = ""
-
-    SILENT_IDENTITY_VERIFICATION: bool = False
-    SILENT_VERIFICATION: bool = False
-
-    SKIP_BLAME: bool = False
-    SKIP_IMPACT: bool = False
-    ENABLE_RESULT_LOG: bool = True
-
-    # Functions for which no CBMC analysis should be attempted
-    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
-
-    # Show part of the goto functions before running CBMC analysis
-    # ** NOTE: Overriden by SILENT_VERIFICATION **
-    SHOW_FUNCTIONS: bool = False
-
-    # Generate warnings when inconsistent parameter usage is detected
-    # based on the type field of clang AST nodes
-    # This usually produces a lot of FPs e.g. char_s != char_u
-    STRICT_TYPECHECKS: bool = False
-
-    # - - - Building - - -
-    # Environment variables to set when running `./configure`
-    # during ccdb generation and goto-bin compilation
-    # This will usually involve setting CFLAGS and/or CPPFLAGS to override
-    # specific default values set in AM_CFLAGS and AM_CPPFLAGS 
-    #
-    # It is not necessary to pass `-fvisibility=default` to access
-    # all functions, the CBMC fork is configured to make functions
-    # accessible outside of their TU
-    BUILD_ENV: dict[str,str] = field(default_factory=dict)
-
-    # If set to True, successful verifications will
-    # remove an item from the change set even if
-    # --unwinding-assertions generated a failure
-    REDUCE_INCOMPLETE_UNWIND: bool = True
-
-    FORCE_RECOMPILE: bool = False
-    FORCE_CCDB_RECOMPILE: bool = False
-
+    # - - - Harness generation  - - -
     # System header paths to skip over for the #include directives
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: [
@@ -96,20 +52,28 @@ class Config:
         "local/lib/clang", "include/clang/13.0.0"
     ])
 
-    # Extra compile flags to add for every TU in libclang
-    EXTRA_COMPILE_FLAGS = [
-        "-Wno-unused-function", "-Wno-implicit-int"
-    ]
+    # These prefixes will be removed from headers that are included
+    # with #include <...>
+    SYSTEM_INCLUDE_PREFIXES: list[str] = field(default_factory=lambda: [
+        "/usr/lib", "/usr/local/include", "/usr/include"
+    ])
 
-    # Set to True to echo out all information during the build process
-    # of the ccdb and the goto libs
-    QUIET_BUILD: bool = True
+    # A list of strings that should be explicitly given a 
+    # suffix in the old version of the library
+    #
+    # This can be useful in scenarios were a struct has
+    # renamed fileds, causing conflicts unless the struct is split 
+    # into two different versions
+    #
+    # Renaming types can also have other side effects that cause
+    # failed compilation
+    EXPLICIT_RENAME: list[str] = field(default_factory=list)
 
     # Some projects will declare types inside source files rather
     # than in header files (libexpat and libonig). 
     # If these types are needed as arguments to a
     # function in a driver we need some way of including them
-    # Currently, we simply provide the option of giving a custom header
+    # The current solution is to provide a custom header
     # with the necessary definitions to resolve this
     #
     # Format:
@@ -121,11 +85,11 @@ class Config:
     # a header entry can be provided in this array on the form
     #
     #   src_file: [
-    #      "exact_include_directive" 
+    #      "exact_include_directive_without_abs_path" 
     #   ]
     #
     # EUF will differentiate between the two cases based on if
-    # the value is existent file or not
+    # the value is an existent file or not
     CUSTOM_HEADERS: dict[str,list[str]] = field(default_factory=dict)
 
     # Expat has certain headers which work more like macro definitions
@@ -133,23 +97,76 @@ class Config:
     # errors and it is therefore necessary to blacklist them
     BLACKLISTED_HEADERS: list[str] = field(default_factory=list)
 
-    # - - - CBMC - - -
-    FULL: bool = False # False to skip all CBMC analysis
-    CBMC_OPTS_STR: str = "--object-bits 12 --unwind 10"
+    # - - - Building - - -
+    # Environment variables to set when running `./configure`
+    # It is not necessary to pass `-fvisibility=default` here to access
+    # all functions, the CBMC fork is configured to make 
+    # changed static functions accessible outside of their TU automatically
+    BUILD_ENV: dict[str,str] = field(default_factory=dict)
+
+    # Set to True to echo out all information during the build process
+    # of the ccdb and the goto libs
+    QUIET_BUILD: bool = True
+
+    FORCE_RECOMPILE: bool = False
+    FORCE_CCDB_RECOMPILE: bool = False
+
+    # - - - CBMC analysis - - -
+    # False to skip all CBMC analysis
+    FULL: bool = False
+
+    # Suppress all output from CBMC during ID analysis and/or the main analysis
+    SILENT_IDENTITY_VERIFICATION: bool = False
+    SILENT_VERIFICATION: bool = False
+
+    # Functions for which no CBMC analysis should be attempted
+    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
+
+    # Show part of the goto functions before running CBMC analysis
+    # ** NOTE: Overriden by SILENT_VERIFICATION **
+    SHOW_FUNCTIONS: bool = False
+
+    # If set to True, successful verifications will
+    # remove an item from the change set even if
+    # --unwinding-assertions generated a failure
+    REDUCE_INCOMPLETE_UNWIND: bool = True
+
+    # Options for each cbmc invocation
+    CBMC_OPTS_STR: str = \
+        "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions"
+
+    # Stop execution if a harness cannot be executed or compiled due to errors
     DIE_ON_ERROR: bool = False
 
     # The timeout (seconds) before killing CBMC analysis
     CBMC_TIMEOUT: int = 60
 
-    # Do not generate a new driver if one already exists under .harnesses
-    # allows for manual modifications and custom drivers to be provided
+    # Do not generate a new driver if one already exists under .harnesses.
+    # This allows for manual modifications and provisioning of custom drivers
     USE_EXISTING_DRIVERS: bool = False
+
 
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio
     # [0.5,RENAME_RATIO_LOW]
     RENAME_RATIO_LOW: float = .3
+
+    # Generate warnings when inconsistent parameter usage is detected
+    # based on the type field of clang AST nodes
+    # This usually produces a lot of FPs e.g. char_s != char_u
+    STRICT_TYPECHECKS: bool = False
+
+    LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
+    LIBCLANG_FALLBACKS: list[str] = field(default_factory=lambda:[
+        "/usr/local/lib/libclang.so.13.0.1",
+        "/usr/lib/llvm-13/lib/libclang.so.1"
+    ])
+
+    # Extra compile flags to add for every TU in libclang
+    EXTRA_COMPILE_FLAGS = [
+        "-Wno-unused-function", "-Wno-implicit-int"
+    ]
 
     # Only files with these suffixes are considered during analysis
     # Excluding .h files will disable compdb
@@ -159,6 +176,7 @@ class Config:
 
     # Compiler used during ccdb generation
     CCDB_CC = "clang"
+    NPROC: int = max(1,multiprocessing.cpu_count() - 1)
 
     # The location to store the new version of the dependency
     EUF_CACHE: str = f"{os.path.expanduser('~')}/.cache/euf"

@@ -8,15 +8,6 @@ docker-id(){
   docker ps --format "{{.ID}}  {{.Image}}" | awk '/\s+euf$/{print $1}'
 }
 CONF=${CONF:=tests/configs/docker.json}
-#COMMIT_OLD=$(cat $CONF | jq -rM '.COMMIT_OLD')
-#COMMIT_NEW=$(cat $CONF | jq -rM '.COMMIT_NEW')
-
-#pushd ~/Repos/oniguruma
-#  git worktree remove $HOME/.cache/euf/oniguruma-${COMMIT_OLD:0:8}
-#  git branch -D euf-${COMMIT_OLD:0:8}
-#  git worktree remove $HOME/.cache/euf/oniguruma-${COMMIT_NEW:0:8}
-#  git branch -D euf-${COMMIT_NEW:0:8}
-#popd
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 

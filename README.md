@@ -25,16 +25,19 @@ docker build --rm --tag=euf . # Derived from Dockerfile.base
 
 Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
 
+Note that running EUF both within and outside Docker on the same repositories is not supported,
+create seperate directories if this is neccessary.
+
 ```sh
 (venv) ./euf.py --config tests/configs/basic.json
 
-# The dependency (oniguruma), the main project (jq),
-# and the configuration all need to be mounted when using Docker
-docker run -it \
-  -v /home/jonas/Repos/jq:/home/euf/Repos/jq \
-  -v /home/jonas/Repos/oniguruma:/home/euf/Repos/oniguruma \
-  -v $PWD/tests/configs:/home/euf/configs \
-  euf --config /home/euf/configs/docker.json
+# The dependency (oniguruma) and the main project (jq),
+# need to be manually mounted when using Docker
+# Refer to ./scripts/docker-run.sh for development/debugging in Docker
+docker run -h euf -it \
+  -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
+  -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
+  euf --config /home/euf/euf/configs/docker.json
 ```
 
 ## CBMC fork
@@ -48,9 +51,6 @@ pytest tests/test_*
 
 ## Implementation notes
 EUF compiles the old and new version of the dependency _twice_, once using `bear` to generate a compile commands database and once with `goto-cc` to create a version of the library that CBMC can interact with. Combining these steps would have been preferable but doing so seems unsupported, (no commands are recorded in `compile_commands.json` if `CC` is overriden with `goto-cc`).
-
-Running EUF within and outside Docker on the same repositories is not supported,
-create seperate directories if this is neccessary.
 
 ## Interpreting the output
 EUF can be invoked with a `VERBOSITY` value from 0-3, setting the verbosity to zero will only print errors and a prettified version of the impact set. Higher values will print information regarding each analysis stage. 

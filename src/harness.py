@@ -2,9 +2,10 @@ import os, subprocess, sys, signal, json, shutil
 from datetime import datetime
 from clang import cindex
 
-from src import BASE_DIR
+from src import BASE_DIR, ERR_EXIT
 from src.config import CONFIG
-from src.types import AnalysisResult, DependencyFunctionChange, FunctionState, IdentifierLocation, SourceDiff
+from src.types import AnalysisResult, DependencyFunctionChange, \
+    FunctionState, IdentifierLocation, SourceDiff
 from src.util import print_result, time_end, time_start, wait_on_cr, print_err
 
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
@@ -76,7 +77,8 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
     else:
         return True
 
-def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str ) -> dict[str,set[str]]:
+def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str,
+ old_src_dir:str ) -> dict[str,set[str]]:
     '''
     Return a dict with paths (prepended with -I) to the directories
     which need to be available with '-I' during goto-cc compilation for each TU
@@ -95,7 +97,8 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], old_dir: str, old_src_dir:str )
 
     return base_paths
 
-def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags: dict[str,set[str]],
+def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str,
+ iflags: dict[str,set[str]],
         tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
     Adds the set of all the headers that are included into the TU to the provided object
@@ -138,10 +141,10 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags
                 continue
 
             if not hdr_path in usr_includes:
-                usr_includes.append(
-                    hdr_path.removeprefix("/usr/include/")
-                        .removeprefix("/usr/lib/")
-                )
+                for system_include_prefix in CONFIG.SYSTEM_INCLUDE_PREFIXES:
+                    hdr_path = hdr_path.removeprefix(system_include_prefix+"/")
+
+                usr_includes.append(hdr_path)
         else:
             hdr_path = hdr_path.removeprefix(old_src_dir+"/")
             for include_path in base_include_paths:
@@ -165,7 +168,8 @@ def add_includes_from_tu(diff: SourceDiff, old_dir: str, old_src_dir:str, iflags
         tu_includes[diff.old_path] = (usr_includes, project_includes)
 
 def create_harness(change: DependencyFunctionChange, harness_path: str,
-        includes: tuple[list[str],list[str]], function_state: FunctionState, identity: bool = False) -> None:
+    includes: tuple[list[str],list[str]], function_state: FunctionState,
+    identity: bool = False) -> None:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -228,12 +232,13 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         if not identity:
             # Declaration for the new version of the function
             #
-            # In some cases the function will already be declared in of the headers
-            # but providing a second declaration in the driver does
+            # In some cases the function will already be declared in of 
+            # the headers but providing a second declaration in the driver does
             # not cause issues
             #
-            # NOTE: if the function is declared as 'static' in one of the included
-            # headers we will not be able to access it a warning akin to
+            # NOTE: if the function is declared as 'static' 
+            # in one of the included headers we will not be able to access 
+            # it a warning akin to
             #
             # **** WARNING: no body for function <...>
             #
@@ -270,20 +275,23 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         SUFFIX = CONFIG.SUFFIX
         unequal_inputs = False
 
-        # Note that all checks for e.g. void params are done before calling create_harness()
+        # Note that all checks for e.g. void parameters are 
+        # done before calling create_harness()
         for arg in change.old.arguments:
 
             # If the function takes a parameter whose type has been renamed, 
-            #   e.g. OnigEncodingTypeST or usbi_os_backend
+            #   e.g. OnigEncodingTypeST or (previously) usbi_os_backend
             # we cannot perform any meaningful verification unless we are able
-            # to initialise each separate field and create assumptions for each one
-            # that the _old and regular objects are equal in every way except their
-            # function_ptr fields (TODO)
+            # to initialise each separate field and create assumptions 
+            # for each one that the _old and regular objects are equal in every 
+            # way except their function_ptr fields (TODO)
             #
-            # For now, we just initalise both as nondet(), meaning that a passing equivalence
-            # check would infer a pass for all (unrelated) possible values of the parameter.
-            # A SUCCESS result for this limited harness would still be sound but it would
-            # need to produce the same output regardless of what values the input has
+            # For now, we just initialise both as nondet(), 
+            # meaning that a passing equivalence
+            # check would infer a pass for all (unrelated) possible values 
+            # of the parameter. A SUCCESS result for this limited harness 
+            # would still be sound but it would need to produce the same 
+            # output regardless of what values the input has
             # (since it is no longer synced between the calls)
             base_type = arg.type_spelling.removeprefix("struct").strip(' *')
 
@@ -406,8 +414,10 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     driver_name = os.path.basename(driver)
 
     if CONFIG.CBMC_TIMEOUT <= 0:
-        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,start,driver,change)
-        time_end(f"Execution timed-out for {driver_name}",  start, AnalysisResult.TIMEOUT)
+        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,
+                start,driver,change)
+        time_end(f"Execution timed-out for {driver_name}",
+                start, AnalysisResult.TIMEOUT)
         return False
 
     output = ""
@@ -426,15 +436,19 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     except KeyboardInterrupt:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
-        log_harness(log_file,func_name,identity,AnalysisResult.INTERRUPT,start,driver,change)
+        log_harness(log_file,func_name,identity,AnalysisResult.INTERRUPT,
+                            start,driver,change)
         print("\n")
-        time_end(f"Cancelled execution for {driver_name}",  start, AnalysisResult.INTERRUPT)
+        time_end(f"Cancelled execution for {driver_name}",
+                        start, AnalysisResult.INTERRUPT)
         return False
     except subprocess.TimeoutExpired:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
-        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,start,driver,change)
-        time_end(f"Execution timed-out for {driver_name}",  start, AnalysisResult.TIMEOUT)
+        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,
+                        start,driver,change)
+        time_end(f"Execution timed-out for {driver_name}",
+                    start, AnalysisResult.TIMEOUT)
         return False
 
     match return_code:
@@ -443,16 +457,20 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         case AnalysisResult.NO_VCCS.value:
             msg = f"No verification conditions generated for: {driver}"
         case AnalysisResult.FAILURE.value:
-            msg = f"Identity verification failed: {func_name}" if identity else \
+            msg = f"Identity verification failed: {func_name}" \
+                    if identity else \
                     f"Verification failed: {func_name}"
         case AnalysisResult.SUCCESS.value:
-            msg = f"Identity verification successful: {func_name}" if identity else \
+            msg = f"Identity verification successful: {func_name}" \
+                    if identity else \
                     f"Verification successful: {func_name}"
         case AnalysisResult.SUCCESS_UNWIND_FAIL.value:
-            msg = f"Identity verification successful (incomplete unwinding): {func_name}" if identity else \
+            msg = f"Identity verification successful (incomplete unwinding): {func_name}" \
+                    if identity else \
                     f"Verification successful (incomplete unwinding): {func_name}"
         case AnalysisResult.FAILURE_UNWIND_FAIL.value:
-            msg = f"Identity verification failed (incomplete unwinding): {func_name}" if identity else \
+            msg = f"Identity verification failed (incomplete unwinding): {func_name}" \
+                    if identity else \
                     f"Verification failed (incomplete unwinding): {func_name}"
         case _:
             if return_code == AnalysisResult.STRUCT_CNT_CONFLICT.value:
@@ -468,8 +486,13 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
                 print(output)
                 print_err(msg)
                 sys.exit(return_code)
+    try:
+        analysis_result = AnalysisResult(return_code)
+    except ValueError: # => ERROR
+        print_err(f"Unexpected return code from CBMC: {return_code}")
+        analysis_result = AnalysisResult(ERR_EXIT)
 
-    log_harness(log_file,func_name,identity,AnalysisResult(return_code),start,driver,change)
+    log_harness(log_file,func_name,identity,analysis_result,start,driver,change)
 
     time_end(msg,  start, AnalysisResult(return_code))
 

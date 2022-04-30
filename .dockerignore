@@ -7,7 +7,6 @@ Makefile
 .pytest_cache
 .vscode
 pytest.ini
-tests
 output
 results
 Dockerfile*
