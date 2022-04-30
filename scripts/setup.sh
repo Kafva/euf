@@ -41,7 +41,7 @@ if $SUBMODS; then
 fi
 
 # Clone all projects
-mkdir -p ~/Repos
+mkdir -p ~/Repos/.docker
 
 clone_repo kkos/oniguruma         ~/Repos/oniguruma
 clone_repo libexpat/libexpat      ~/Repos/libexpat
@@ -49,12 +49,22 @@ clone_repo libusb/libusb          ~/Repos/libusb
 clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
 
-if ! [ -e ~/Repos/jq/modules/oniguruma/src/.libs/libonig.so ]; then
-  cd ~/Repos/jq
-    git submodule update --init --recursive
-    cd modules/oniguruma &&
-      autoreconf -vfi && ./configure && make -j4
-fi
+# Seperate repo to avoid errors when running EUF both within and outside docker
+clone_repo stedolan/jq            ~/Repos/.docker/jq
+clone_repo kkos/oniguruma         ~/Repos/.docker/oniguruma
+
+fix_jq(){
+  if ! [ -e $1/modules/oniguruma/src/.libs/libonig.so ]; then
+    cd $1
+      git submodule update --init --recursive
+      cd modules/oniguruma &&
+        autoreconf -vfi && ./configure && make -j4
+  fi
+}
+
+fix_jq ~/Repos/jq
+fix_jq ~/Repos/.docker/jq
+
 
 [ -d "$HOME/Repos/jabberd-2.7.0" ] ||
   ./scripts/get_jabberd2.sh

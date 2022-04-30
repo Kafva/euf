@@ -549,7 +549,7 @@ class SourceFile:
         return out
 
     @classmethod
-    def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
+    def _get_compile_args(cls, compile_db: cindex.CompilationDatabase,
         filepath: str, repo_path: str) -> tuple[str,list[str]]:
         ''' 
         Load the compilation configuration for the particular file
@@ -580,9 +580,9 @@ class SourceFile:
             raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
 
     @classmethod
-    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, dep_path: str):
+    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, dir_path: str):
         (new_compile_dir, new_compile_args) = \
-                cls.get_compile_args(ccdb, filepath, dep_path)
+                cls._get_compile_args(ccdb, filepath, dir_path)
         return cls(
             new_path = filepath,
             new_compile_dir = new_compile_dir,
@@ -594,6 +594,27 @@ class SourceDiff(SourceFile):
     old_path: str = ""
     old_compile_args: list[str] = field(default_factory=list)
     old_compile_dir: str = ""
+
+    @classmethod
+    def new(cls, old_path: str, old_dir: str,
+        old_ccdb: cindex.CompilationDatabase,
+        new_path: str, new_dir:str,
+        new_ccdb: cindex.CompilationDatabase):
+        '''
+        Create a new object using the super() class constructor
+        '''
+        (old_compile_dir, old_compile_args) = \
+          cls._get_compile_args(old_ccdb, old_path, old_dir)
+
+        s = super().new(new_path, new_ccdb, new_dir)
+
+        return cls(
+            old_path = old_path, old_compile_args = old_compile_args,
+            old_compile_dir = old_compile_dir,
+            new_path = s.new_path, new_compile_args = s.new_compile_args,
+            new_compile_dir = s.new_compile_dir
+        )
+
 
 @dataclass(init=True)
 class CursorPair:

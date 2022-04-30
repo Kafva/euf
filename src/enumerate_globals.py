@@ -65,31 +65,22 @@ def get_top_level_structs(cursor: cindex.Cursor) -> set[Cstruct]:
 
     return structs;
 
-def get_global_identifiers(source_files: list[SourceFile], basepath: str, ccdb: cindex.CompilationDatabase) \
+def get_global_identifiers(source_files: list[SourceFile], root_dir: str, ccdb: cindex.CompilationDatabase) \
  -> tuple[list[Identifier],set[str]]:
     '''
-    Reads the compilation database and creates:
-        A set of all top level labels in the changed files that we need to
-        rename with a suffix as IdentifierLocation objects:
-        filepath;global_name;line;col
-    Note that the filepath refers to the file were the symbol was found,
-    it can very well exist in more TUs
+    Creates a set of all top level symbols (as Identifier objects) in the
+    changed files. Each of these need to be given a suffix to avoid conflicts
+    Note: We enumerate globals from files in the NEW version of the dependency, it should
+    not matter which version we pick since removed or added symbols cannot cause
+    conflicts but this is explicitly stated for clarity.
     '''
-    os.chdir(basepath)
+    os.chdir(root_dir)
 
     start_time = time_start(f"Enumerating global symbols...")
 
     global_identifiers: list[Identifier] = []
     structs: set[Cstruct] = set()
     filepaths: set[str] = set()
-
-    # TODO: We already have ccmds for all files from the SourceFile array
-    # use these instead to load each cursor (need to refactor new_path/old_path)
-    #for source_file in source_files:
-    #    (diff.old_compile_dir, diff.old_compile_args) = \
-    #            SourceFile.get_compile_args(ccdb, source_file.new_path, basepath)
-
-
 
     try:
         for ccmds in ccdb.getAllCompileCommands():
@@ -101,8 +92,8 @@ def get_global_identifiers(source_files: list[SourceFile], basepath: str, ccdb: 
             if not has_allowed_suffix(filepath):
                 continue
 
-            if not filepath.startswith(basepath):
-                filepath = basepath + "/" + filepath
+            if not filepath.startswith(root_dir):
+                filepath = root_dir + "/" + filepath
 
             if filepath in filepaths:
                 continue # Skip duplicate entries if they somehow appear
@@ -117,7 +108,7 @@ def get_global_identifiers(source_files: list[SourceFile], basepath: str, ccdb: 
                 )
                 cursor: cindex.Cursor = tu.cursor
                 global_identifiers.extend(
-                        get_top_level_decls(cursor, basepath)
+                        get_top_level_decls(cursor, root_dir)
                 )
                 structs |= get_top_level_structs(cursor)
 
@@ -128,7 +119,7 @@ def get_global_identifiers(source_files: list[SourceFile], basepath: str, ccdb: 
 
     except cindex.CompilationDatabaseError:
         traceback.format_exc()
-        print_err(f"Error parsing {basepath}/compile_commands.json")
+        print_err(f"Error parsing {root_dir}/compile_commands.json")
 
 
     idents, skip_renaming = handle_struct_conflicts(structs, global_identifiers)

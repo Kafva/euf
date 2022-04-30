@@ -55,7 +55,8 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
     # Renamed files still provide us with context information when a
     # change has occurred at the same time as a move operation:
     #   e.g. `foo.c -> src/foo.c`
-    dep_source_diffs = get_source_diffs(commit_old, commit_new)
+    dep_source_diffs = get_source_diffs(commit_old, dep_old, dep_db_old,
+            commit_new, dep_new, dep_db_new)
 
     dep_source_diffs = filter_out_excluded(dep_source_diffs, \
             [ d.old_path for d in dep_source_diffs ] )
@@ -77,13 +78,6 @@ def git_diff_stage(dep_repo: Repo, dep_new: str, dep_old: str,
         print("\n".join([ f"a/{d.old_path} -> b/{d.new_path}" \
                 for d in dep_source_diffs ]) + "\n")
         wait_on_cr()
-
-    # Extract compile flags for each file that was changed
-    for diff in dep_source_diffs:
-        (diff.old_compile_dir, diff.old_compile_args) = \
-                SourceFile.get_compile_args(dep_db_old, diff.old_path, dep_old)
-        (diff.new_compile_dir, diff.new_compile_args) = \
-                SourceFile.get_compile_args(dep_db_new, diff.new_path, dep_new)
 
     return dep_source_diffs
 

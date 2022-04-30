@@ -58,17 +58,19 @@ def get_subdir_tus(target_source_dir: str, target_dir: str) -> dict[str,SubDirTU
 
     return src_subdirs
 
-def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir: str,
-        subdir_tu: SubDirTU, quiet:bool = True, setx:bool=False) -> None:
+def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str,
+    subdir: str, subdir_tu: SubDirTU,
+    quiet:bool = True, setx:bool=False) -> None:
     '''
-    Some of the ccdb arguments are not compatible with the -cc1 frontend and need to
-    be filtered out.
+    Some of the ccdb arguments are not compatible with the -cc1 
+    frontend and need to be filtered out.
 
-    Different output directories can be provided to allow for non-overlapping filenames
-    when analysing old/new versions of a dependency
+    Different output directories can be provided to allow for 
+    non-overlapping filenames when analysing old/new versions of a dependency
     '''
     blacklist = r"|".join(CONFIG.ARG_STATES_COMPILE_FLAG_BLACKLIST)
-    ccdb_filtered  = filter(lambda a: not re.match(blacklist, a), subdir_tu.ccdb_args)
+    ccdb_filtered  = filter(lambda a: not re.match(blacklist, a),
+                                subdir_tu.ccdb_args)
 
     script_env = CONFIG.get_script_env()
     script_env.update({
@@ -84,7 +86,8 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir
     # or more of the c files so we do not explicitly pass them
     c_files = list(filter(lambda f: f.endswith(".c"), subdir_tu.files))
 
-    # We assume that the isystem-flags are the same for all source files in a directory
+    # We assume that the isystem-flags are the same 
+    # for all source files in a directory
     cmd = [ "clang", "-cc1", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
@@ -93,7 +96,8 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, target_dir: str, subdir
 
     if setx:
         print(f"({subdir})> \n", ' '.join(cmd))
-    subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out, env = script_env)
+    subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
+                        env = script_env)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
@@ -163,7 +167,8 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
 
     return arg_states
 
-def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir: str):
+def state_space_analysis(symbols: list[str], target_source_dir: str,
+ target_dir: str):
     target_name = os.path.basename(target_dir)
 
     start = time_start(f"Inspecting call sites ({target_name})...")
@@ -173,7 +178,8 @@ def state_space_analysis(symbols: list[str], target_source_dir: str, target_dir:
     subdir_tus = get_subdir_tus(target_source_dir, target_dir)
     if CONFIG.VERBOSITY >= 3:
         print("Subdirectories to analyze: ", end='')
-        print([ p.removeprefix(f"{target_source_dir}/") for p in subdir_tus.keys()])
+        print([ p.removeprefix(f"{target_source_dir}/")
+                    for p in subdir_tus.keys()])
 
     with multiprocessing.Pool(CONFIG.NPROC) as p:
         for subdir, subdir_tu in subdir_tus.items():

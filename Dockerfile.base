@@ -11,7 +11,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 
 # For git operations to work the UID of the host user that owns
 # all mounted volumes and the container must match
-RUN useradd --create-home --shell /bin/bash --gid root -G sudo -u 1000 euf
+RUN useradd \
+  --create-home --shell /bin/bash \
+  --gid root -G sudo -u 1000 \
+  --disabled-password --gecos '' \
+  euf
 USER euf
 
 # If the directory is not explicitly created

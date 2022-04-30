@@ -23,15 +23,26 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
 
     return filtered
 
-def get_source_diffs(commit_old: Commit, commit_new: Commit) -> list[SourceDiff]:
+def get_source_diffs(
+ commit_old: Commit, old_dir:str,
+ dep_db_old: cindex.CompilationDatabase,
+ commit_new: Commit, new_dir:str,
+ dep_db_new: cindex.CompilationDatabase) -> list[SourceDiff]:
     COMMIT_DIFF = filter(lambda d: \
                 has_allowed_suffix(d.a_path) and \
                 re.match("M|R", d.change_type),
             commit_old.diff(commit_new) # type: ignore
     )
 
-    return [ SourceDiff(new_path = d.b_path, old_path = d.a_path) \
-            for d in COMMIT_DIFF ]
+    return [ SourceDiff.new(
+                old_path = d.a_path,
+                old_dir = old_dir,
+                old_ccdb = dep_db_old,
+                new_path = d.b_path,
+                new_dir = new_dir,
+                new_ccdb = dep_db_new
+            ) \
+        for d in COMMIT_DIFF ]
 
 def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
     commit_old: Commit = None # type: ignore
@@ -53,17 +64,16 @@ def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
     return (commit_old,commit_new)
 
 def create_worktree(target: str, commit: str, repo: Repo) -> bool:
+    branch_name = f"euf-{commit[:8]}"
+
     if not os.path.exists(target):
         print_info(f"Creating worktree at {target}")
-
-        # Remove any stale branches or worktrees that already exist
-        branch_name = f"euf-{commit[:8]}"
-        repo.git.worktree("prune") # type: ignore
         try:
+            # Remove any stale branches and worktrees
+            repo.git.worktree("prune") # type: ignore
             repo.git.branch("-D", branch_name) # type: ignore
         except GitCommandError:
             pass
-
         try:
             # git checkout COMMIT_NEW.hexsha
             # git checkout -b euf-abcdefghi
@@ -88,6 +98,7 @@ def get_source_files(path: str, ccdb: cindex.CompilationDatabase) -> list[Source
             source_files.append(
                 SourceFile.new(e.path,ccdb,path)
             )
+
 
     path_arr = [ s.new_path for s in source_files ]
     if CONFIG.VERBOSITY >= 1:

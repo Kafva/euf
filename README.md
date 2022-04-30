@@ -49,6 +49,9 @@ pytest tests/test_*
 ## Implementation notes
 EUF compiles the old and new version of the dependency _twice_, once using `bear` to generate a compile commands database and once with `goto-cc` to create a version of the library that CBMC can interact with. Combining these steps would have been preferable but doing so seems unsupported, (no commands are recorded in `compile_commands.json` if `CC` is overriden with `goto-cc`).
 
+Running EUF within and outside Docker on the same repositories is not supported,
+create seperate directories if this is neccessary.
+
 ## Interpreting the output
 EUF can be invoked with a `VERBOSITY` value from 0-3, setting the verbosity to zero will only print errors and a prettified version of the impact set. Higher values will print information regarding each analysis stage. 
 
