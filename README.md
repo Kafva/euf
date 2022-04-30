@@ -27,7 +27,7 @@ docker build --rm --tag=euf-base -f Dockerfile.base .
 docker build --rm --tag=euf . 
 ```
 
-Every invocation of EUF requires a JSON config file as an argument. The format of the config file is described in `src/config.py` and there are several examples present in the repository.
+Every invocation of EUF requires a JSON configuration file as an argument. The format of the configuration file is described in `src/config.py` and there are several examples present in the repository.
 
 ```sh
 (venv) ./euf.py --config tests/configs/basic.json
