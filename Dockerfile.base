@@ -10,7 +10,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     python3.10 python3.10-venv python3-pip jq libtool
 
 # For git operations to work the UID of the host user that owns
-# all mounted volumes and the container must match
+# all mounted volumes and the container should match
 RUN useradd \
   --create-home --shell /bin/bash \
   --gid root -G sudo -u 1000 \
