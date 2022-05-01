@@ -53,12 +53,12 @@ To avoid duplicate symbols a fork of CBMC which adds a suffix to all global symb
 # Miscellaneous function tests
 pytest tests/test_misc.py
 
-# Regression tests for each example project
+# Regression tests for each example project.
 # Verifies the generated results against expected
 # output under ./tests/expected
 pytest tests/test_reg.py
 
-# Regression test for docker
+# Regression test for Docker
 VERIFY=true ./scripts/docker-run.sh
 ```
 

@@ -11,11 +11,12 @@ CONF=${CONF:=tests/configs/docker.json}
 VERIFY=${VERIFY:=false}
 
 if $VERIFY; then
-  ENTRYPOINT=./scripts/docker-test.sh
+  ENTRYPOINT="--entrypoint /home/euf/euf/scripts/docker-test.sh euf"
 else
   ENTRYPOINT="euf --config tests/configs/docker.json"
 fi
 
+# Uncomment for debugging
 #ENTRYPOINT="--entrypoint /bin/bash euf"
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
@@ -47,6 +48,7 @@ docker run -h euf -it \
   -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
   -v $PWD/tests/configs:/home/euf/euf/tests/configs \
   -v $PWD/scripts:/home/euf/euf/scripts \
+  -v $PWD/tests:/home/euf/euf/tests \
   -v $PWD/src:/home/euf/euf/src \
   $ENTRYPOINT
 

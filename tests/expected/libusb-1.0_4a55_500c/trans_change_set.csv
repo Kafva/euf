@@ -1,5 +1,5 @@
 direct_change;old_path;old_line;old_col;old_name;new_path;new_line;new_col;new_name
-False;;-1;-1;;libusb/./libusb.h;1585;20;libusb_fill_bulk_stream_transfer
+False;;-1;-1;;libusb/libusb.h;1585;20;libusb_fill_bulk_stream_transfer
 False;;-1;-1;;libusb/core.c;1472;19;libusb_close
 False;;-1;-1;;libusb/core.c;2571;6;usbi_log_v
 False;;-1;-1;;libusb/io.c;1651;5;usbi_handle_transfer_completion

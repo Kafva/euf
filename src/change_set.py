@@ -273,6 +273,7 @@ def find_transative_changes_in_tu(cursor: cindex.Cursor,
     filepath = str(cursor.location.file)
     if not filepath.startswith("/"):
         filepath = f"{compile_dir}/{filepath}"
+        filepath = abspath(filepath)
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
         current_function = \
