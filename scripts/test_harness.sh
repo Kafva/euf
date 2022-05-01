@@ -39,10 +39,10 @@ if $SHOW_DIFF; then
   COMMIT_NEW=$(jq -rM ".COMMIT_NEW" "$1")
   COMMIT_OLD=$(jq -rM ".COMMIT_OLD" "$1")
 
-	git diff --color=always -U9000 --no-index \
+  git diff --color=always -U9000 --no-index \
     ~/.cache/euf/$PROJ-${COMMIT_OLD:0:8}/$FILE \
     ~/.cache/euf/$PROJ-${COMMIT_NEW:0:8}/$FILE \
-		| grep -E -m1 -A $CONTEXT_LINES --color=always  \
+    | grep -E -m1 -A $CONTEXT_LINES --color=always  \
     "^\s*${IDENT}*\s*${IDENT}*\s*$func_name\(" | 
     bat --language diff --style plain
   $EXIT && exit 0

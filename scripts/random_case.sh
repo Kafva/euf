@@ -108,7 +108,7 @@ while :; do
 done
 
 ./euf.py --config \
-	<(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)
+  <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)
 
 echo "=> $OUTNAME"
 

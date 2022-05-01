@@ -14,8 +14,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 RUN useradd \
   --create-home --shell /bin/bash \
   --gid root -G sudo -u 1000 \
-  euf
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+  euf && \
+  echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
 USER euf
 
 # If the directory is not explicitly created
@@ -38,8 +39,8 @@ RUN python3.10 -m pip install -r requirements.txt
 
 # Build submodules ('install' requires root)
 USER root
-RUN git config --global --add safe.directory /home/euf/euf/cbmc
-RUN git config --global --add safe.directory /home/euf/euf/clang-plugins
+RUN git config --global --add safe.directory /home/euf/euf/cbmc && \
+    git config --global --add safe.directory /home/euf/euf/clang-plugins
 
 RUN make -C /home/euf/euf/cbmc install
  
@@ -53,5 +54,5 @@ RUN chown -R euf:root /home/euf
 
 # Hack for projects which have /usr/local/include
 # instead of /usr/include in their ccdb.
-RUN rmdir /usr/local/include
-RUN ln -s /usr/include /usr/local/include
+RUN rmdir /usr/local/include && \
+    ln -s /usr/include /usr/local/include
