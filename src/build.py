@@ -234,7 +234,7 @@ def lib_is_gbf(source_dir: str, libpath: str) -> bool:
 
     return p.stdout.read(4) == b'\x7fGBF' # type: ignore
 
-def build_goto_lib(source_dir: str, git_dir: str, old_version: bool) -> str:
+def build_goto_lib(source_dir: str, new_version: bool) -> str:
     '''
     Returns the path to the built library or an empty string on failure
     '''
@@ -256,7 +256,7 @@ def build_goto_lib(source_dir: str, git_dir: str, old_version: bool) -> str:
                 return ""
 
             # Remove any other extraneous files
-            Repo(git_dir).git.clean( # type: ignore
+            Repo(git_dir(new=new_version)).git.clean( # type: ignore
                 "-df", "--exclude=compile_commands.json", \
                 f"--exclude={CONFIG.HARNESS_DIR}"
             )
@@ -277,7 +277,7 @@ def build_goto_lib(source_dir: str, git_dir: str, old_version: bool) -> str:
                         cwd = source_dir, env = script_env
                     ).check_returncode()
 
-                if old_version:
+                if new_version:
                     # Tell CBMC to add a suffix to every global
                     # symbol when we compile the old version
                     script_env.update({CONFIG.SUFFIX_ENV_FLAG: '1'})

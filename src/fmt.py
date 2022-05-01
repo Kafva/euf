@@ -1,5 +1,6 @@
 from src.config import CONFIG
-from src.types import CallSite, DependencyFunction, DependencyFunctionChange, IdentifierLocation
+from src.types import CallSite, DependencyFunction, \
+    DependencyFunctionChange, IdentifierLocation
 from src.util import git_relative_path
 
 def fmt_location(ident: IdentifierLocation) -> str:

@@ -412,17 +412,15 @@ class DependencyFunction:
 
         return True
 
-
     def prototype_string(self, suffix: str = "") -> str:
-        assert(False)
-        #out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
-        #for arg in self.arguments:
-        #    if suffix != "":
-        #        out += f"{arg.__repr__(use_suffix=True)}, "
-        #    else:
-        #        out += f"{arg}, "
+        out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
+        for arg in self.arguments:
+            if suffix != "":
+                out += f"{arg.__repr__(use_suffix=True)}, "
+            else:
+                out += f"{arg}, "
 
-        #return out.removesuffix(", ") + ")"
+        return out.removesuffix(", ") + ")"
 
     def __hash__(self):
         return hash(self.ident.location.to_csv() + self.displayname)

@@ -8,7 +8,7 @@ from src import ERR_EXIT
 from src.arg_states import matches_excluded
 from src.config import CONFIG
 from src.types import SourceDiff, SourceFile
-from src.util import has_allowed_suffix, print_info, time_end, time_start
+from src.util import git_dir, has_allowed_suffix, print_info, time_end, time_start
 
 def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     '''
@@ -24,9 +24,9 @@ def filter_out_excluded(items: list, path_arr: list[str]) -> list:
     return filtered
 
 def get_source_diffs(
- commit_old: Commit, git_dir_old:str, source_dir_old:str,
+ commit_old: Commit, source_dir_old:str,
  dep_db_old: cindex.CompilationDatabase,
- commit_new: Commit, git_dir_new:str, source_dir_new:str,
+ commit_new: Commit, source_dir_new:str,
  dep_db_new: cindex.CompilationDatabase) -> list[SourceDiff]:
     COMMIT_DIFF = filter(lambda d: \
                 has_allowed_suffix(d.a_path) and \
@@ -35,10 +35,10 @@ def get_source_diffs(
     )
 
     return [ SourceDiff.new(
-                filepath_old = f"{git_dir_old}/{d.a_path}",
+                filepath_old = f"{git_dir(new=False)}/{d.a_path}",
                 source_dir_old = source_dir_old,
                 ccdb_old = dep_db_old,
-                filepath_new = f"{git_dir_new}/{d.b_path}",
+                filepath_new = f"{git_dir(new=True)}/{d.b_path}",
                 source_dir_new = source_dir_new,
                 ccdb_new = dep_db_new
             ) \

@@ -32,12 +32,12 @@
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
-  "ORDER_BY_CALL_SITE": false,
+  "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 1,
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": false,
+  "FULL": true,
   "COMMIT_OLD": "10d34296211f8a1b7a9ac09df0e2983eeb892569",
   "COMMIT_NEW": "f178826bb1e9c8ee23202f1be55ad4ac7b649e84"
 }

@@ -8,6 +8,41 @@ from src import ERR_EXIT
 from src.config import CONFIG
 from src.types import AnalysisResult
 
+def ccdb_dir(new: bool) -> str:
+    '''
+    Retrieve the path to the 'project root' of the old or new version of the 
+    dependency _WITHOUT_ a trailing slash. 
+    The project root is defined as the directory with compile_commands.json 
+    and is usually the same as the .git directory.
+    '''
+    source_dir = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
+        if CONFIG.DEP_SOURCE_ROOT != "" \
+        else ""
+
+    return f"{git_dir(new=new)}/{source_dir.lstrip('/')}".rstrip("/")
+
+def git_dir(new: bool) -> str:
+    '''
+    Retrieve the path to the git worktree of either the new or old version
+    of the dependency being analyzed WITHOUT a trailing "/"
+    '''
+    dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
+
+    return f"{CONFIG.EUF_CACHE}/{dep_name}-{CONFIG.COMMIT_NEW[:8]}" \
+           if new else \
+            f"{CONFIG.EUF_CACHE}/{dep_name}-{CONFIG.COMMIT_OLD[:8]}"
+
+def git_relative_path(abspath: str):
+    '''
+    Returns the provided absolute path as a subpath relative to
+    either the new/old dependency or the main project (depending on
+    its prefix).
+    '''
+    rel_path = abspath.removeprefix(git_dir(new=False)). \
+                   removeprefix(git_dir(new=True)). \
+                   removeprefix(CONFIG.PROJECT_DIR)
+    return rel_path.lstrip("/")
+
 def wait_on_cr(always=False):
     while CONFIG.PAUSES or always:
         print("\033[32m\033[0m ", end='', file = sys.stderr, flush = True)
@@ -60,22 +95,6 @@ def flatten_dict(list_of_dicts: list[dict] ) -> dict:
             flat[key].extend(val)
 
     return flat
-
-def git_dir(new: bool):
-    '''
-    Retrieve the path to the git worktree of either the new or old version
-    of the dependency being analyzed with a trailing "/"
-    '''
-    dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
-
-    return f"{CONFIG.EUF_CACHE}/{dep_name}-{CONFIG.COMMIT_NEW[:8]}/" \
-           if new else \
-            f"{CONFIG.EUF_CACHE}/{dep_name}-{CONFIG.COMMIT_OLD[:8]}/"
-
-def git_relative_path(abspath: str):
-    return abspath.removeprefix(git_dir(new=False)). \
-                   removeprefix(git_dir(new=True)). \
-                   removeprefix(CONFIG.PROJECT_DIR)
 
 def flatten_set(list_of_sets: list[Set]) -> Set:
     flat = set()

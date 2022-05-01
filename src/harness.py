@@ -4,6 +4,7 @@ from clang import cindex
 
 from src import BASE_DIR, ERR_EXIT
 from src.config import CONFIG
+from src.fmt import fmt_change, fmt_location
 from src.types import AnalysisResult, DependencyFunctionChange, \
     FunctionState, IdentifierLocation, SourceDiff
 from src.util import print_result, time_end, time_start, wait_on_cr, print_err
@@ -18,53 +19,60 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
     func_name = change.old.ident.location.name
     result = AnalysisResult.SUCCESS
     fail_msg = ""
+    change_str = fmt_change(change)
+    old_loc_str = fmt_location(change.old.ident.location)
 
     # The function has not been given an '_old' suffix, preventing analysis
     if func_name in skip_renaming or func_name == "compile_enclose_node":
-        fail_msg = f"Renaming {func_name}() could cause conflicts, skipping {change}"
+        fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
+            change_str
         result = AnalysisResult.NOT_RENAMED
 
     # There exists compilation instructions for the TU the function is defined in
     elif not change.old.ident.location.filepath in iflags or \
        len(iflags[change.old.ident.location.filepath]) == 0:
-        fail_msg = f"Skipping {func_name}() due to missing compilation instructions for {change.old.ident.location.filepath}"
+        path = change.old.ident.location.filepath
+        fail_msg = \
+            f"Skipping {func_name}() due to missing compilation instructions for {path}"
         result = AnalysisResult.MISSING_COMPILE
 
     # The number-of arguments and their types have not changed
     elif (old_cnt := len(change.old.arguments)) != \
         (new_cnt := len(change.new.arguments)):
-        fail_msg = f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt} in {change}"
+        fail_msg = f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt} in {change_str}"
         result = AnalysisResult.DIFF_ARG_CNT
 
     # The return-type has not changed
     elif change.old.ident != change.new.ident:
         fail_msg = \
             f"Different return type: a/{change.old.ident.type_spelling} " + \
-            f"-> b/{change.old.ident.type_spelling} in {change}"
+            f"-> b/{change.old.ident.type_spelling} in {change_str}"
         result = AnalysisResult.DIFF_RET
 
     # Function does not have a void return value
     elif change.old.ident.type_spelling == "void":
-        fail_msg = f"Cannot verify function with a 'void' return value: {change.old}"
+        fail_msg = f"Cannot verify function with a 'void' return value: {old_loc_str}"
         result = AnalysisResult.VOID_RET
 
     # Function has at least one parameter
     elif len(change.old.arguments) == 0:
-        fail_msg = f"Cannot verify a function with zero arguments: {change.old}"
+        fail_msg = f"Cannot verify a function with zero arguments: {old_loc_str}"
         result = AnalysisResult.NO_ARGS
     else:
         # The parameter types have not changed
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
-                fail_msg = f"Different argument types: a/{a1} -> b/{a2} in {change}"
+                fail_msg = f"Different argument types: a/{a1} -> b/{a2} in {change_str}"
                 result = AnalysisResult.DIFF_ARG_TYPE
                 break
 
         if result == AnalysisResult.SUCCESS:
-            # We cannot auto-generate harnesses for functions that require void pointers
+            # We cannot auto-generate harnesses for 
+            # functions that require void pointers
             for arg in change.old.arguments:
                 if arg.type_spelling == "void*":
-                    fail_msg = f"Function requires a 'void* {arg.location.name}' argument: {change.old}"
+                    fail_msg = \
+                        f"Function requires a 'void* {arg.location.name}' argument: {old_loc_str}"
                     result = AnalysisResult.VOID_ARG
                     break
 
@@ -199,7 +207,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
     # Write the harness
     with open(harness_path, mode='w', encoding='utf8') as f:
         # Debug information
-        f.write(f"// {change}\n")
+        f.write(f"// {fmt_change(change)}\n")
 
         # ifdef to prevent linting warnings
         f.write("#ifdef CBMC\n")
@@ -258,20 +266,15 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # Entrypoint function
         f.write(f"void {CONFIG.EUF_ENTRYPOINT}() {{\n")
 
-        # Contracts:
-        #   https://github.com/diffblue/cbmc/blob/develop/doc/cprover-manual/contracts-history-variables.md
-        #   https://github.com/diffblue/cbmc/blob/develop/doc/cprover-manual/contracts-assigns.md
-        # Using function constracts abstracts away the actual function body and reduces
-        # the search space to the 'ensures' clause of the contract.
-
         # ~~ Harness components ~~
-        #   https://github.com/model-checking/cbmc-starter-kit/wiki/Frequently-Asked-Questions
+        # https://github.com/model-checking/cbmc-starter-kit/wiki/Frequently-Asked-Questions
         #
-        # We are not bound to the `nondet_` symbols defined by CBMC internally, any function prefixed
-        # with nondet_ is treated as a special case by CBMC and we can thus create our own versions
-        # just by writing a prototype string for them with the return type we desire
+        # We are not bound to the `nondet_` symbols defined by CBMC 
+        # internally, any function prefixed with nondet_ is treated as a special 
+        # case by CBMC and we can thus create our own versions
+        # by writing a prototype string for them with the return type we desire
         #  http://www.cprover.org/cprover-manual/modeling/nondeterminism/ 
-        #   
+
         # 1. Initialization
         # The initialisation involves creating valid, unconstrained and equal
         # data structures that can be passed to the two versions
@@ -328,8 +331,8 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         arg_string = arg_string.removesuffix(", ")
 
         # 2. Preconditions
-        # Create assumptions for any arguments that were identified as only being
-        # called with deterministic values
+        # Create assumptions for any arguments that were identified 
+        # as only being called with deterministic values
         f.write("\n")
         for idx,param in enumerate(function_state.parameters):
             if not param.nondet and len(param.states) > 0:
@@ -412,8 +415,9 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     out = subprocess.PIPE if quiet else sys.stderr
     identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
+    loc_str = fmt_location(change.old.ident.location)
     id_str = '(ID) ' if identity else ''
-    time_start(f"{id_str}Starting CBMC analysis for {change.old}: " +
+    time_start(f"{id_str}Starting CBMC analysis for {loc_str}: " +
                f"{os.path.basename(driver)} ({current}/{total})"
     )
     wait_on_cr()

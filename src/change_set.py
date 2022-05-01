@@ -9,7 +9,7 @@ from git.repo.base import Repo
 from src.config import CONFIG
 from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
-from src.util import get_column_counts, print_info, print_err, time_end, time_start
+from src.util import get_column_counts, git_dir, git_relative_path, print_info, print_err, time_end, time_start
 
 def get_non_static(changed_functions:
  list[DependencyFunctionChange]) -> list[DependencyFunctionChange]:
@@ -20,8 +20,7 @@ def get_non_static(changed_functions:
     return non_static_changes
 
 def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
-    cursor_pairs: dict[str,CursorPair], root_dir:str, is_new: bool) -> None:
-
+ cursor_pairs: dict[str,CursorPair], is_new: bool) -> None:
     if len(list(cursor.get_children())) == 0 and CONFIG.VERBOSITY > 1:
         print_err(f"No data to parse for {cursor.spelling}")
 
@@ -29,7 +28,7 @@ def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
         if str(child.kind).endswith("FUNCTION_DECL") and \
             str(child.type.kind).endswith("FUNCTIONPROTO") and \
             child.is_definition() and \
-            str(child.location.file).startswith(root_dir):
+            str(child.location.file).startswith(git_dir(new=is_new)):
             # Note: A TU can #include other C-files, to properly trace
             # calls in the output we need to store these paths rather than
             # the path to the main file for each function
@@ -84,8 +83,7 @@ def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) \
         if src_loc := functions_differ(child_old,child_new):
             return src_loc
 
-def get_changed_functions_from_diff(diff: SourceDiff, git_dir_new: str,
-    git_dir_old: str) -> list[DependencyFunctionChange]:
+def get_changed_functions_from_diff(diff: SourceDiff) -> list[DependencyFunctionChange]:
     '''
     Walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -122,8 +120,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, git_dir_new: str,
         print_err(f"Failed to load TU: {diff.filepath_new}")
         return []
 
-    git_rel_path_old = diff.filepath_old.removeprefix(git_dir_old+"/")
-    git_rel_path_new = diff.filepath_new.removeprefix(git_dir_new+"/")
+    git_rel_path_old = git_relative_path(diff.filepath_old)
+    git_rel_path_new = git_relative_path(diff.filepath_new)
 
     print_diag_errors(git_rel_path_old,tu_old)
     print_diag_errors(git_rel_path_new,tu_new)
@@ -131,10 +129,8 @@ def get_changed_functions_from_diff(diff: SourceDiff, git_dir_new: str,
     changed_functions: list[DependencyFunctionChange] = list()
     cursor_pairs: dict[str,CursorPair]= {}
 
-    extract_function_decls_to_pairs(diff, cursor_old, cursor_pairs,
-            git_dir_old, is_new=False)
-    extract_function_decls_to_pairs(diff, cursor_new, cursor_pairs,
-            git_dir_new, is_new=True)
+    extract_function_decls_to_pairs(diff, cursor_old, cursor_pairs,is_new=False)
+    extract_function_decls_to_pairs(diff, cursor_new, cursor_pairs,is_new=True)
 
     # If the function pairs differ based on AST traversal,
     # add them to the list of changed_functions.
@@ -258,12 +254,13 @@ def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
         find_transative_changes_in_tu(source_dir_new, child, compile_dir, changed_functions,
             transative_function_calls, current_function)
 
+
 def add_rename_changes_based_on_blame(
  added_diff: list[Diff],
  dep_source_diffs: list[SourceDiff],
- git_dir_old:str, source_dir_old:str,
+ source_dir_old:str,
  dep_db_old: cindex.CompilationDatabase,
- git_dir_new:str, source_dir_new:str,
+ source_dir_new:str,
  dep_db_new: cindex.CompilationDatabase) -> None:
     '''
     In some situations Git is not able to detect a rename across
@@ -277,7 +274,7 @@ def add_rename_changes_based_on_blame(
 
     for added_file in added_diff:
         try:
-            blame_output = Repo(git_dir_new).git. \
+            blame_output = Repo(git_dir(new=True)).git. \
                     blame("-f", added_file.a_path) # type: ignore
         except GitCommandError:
             traceback.print_exc()
@@ -307,7 +304,7 @@ def add_rename_changes_based_on_blame(
                     filepath_origin_new = file_origins[1][0]
                     filepath_origin_old = file_origins[0][0]
 
-                assert( not any( d.filepath_new.removeprefix(git_dir_new+"/") \
+                assert( not any( git_relative_path(d.filepath_new) \
                         == filepath_origin_new \
                         for d in dep_source_diffs)
                 )
@@ -319,10 +316,10 @@ def add_rename_changes_based_on_blame(
                             f"{round(min_ratio,3)}/{round(1-min_ratio,3)}")
 
                 source_diff = SourceDiff.new(
-                          filepath_old = f"{git_dir_old}/{filepath_origin_old}",
+                          filepath_old = f"{git_dir(new=False)}/{filepath_origin_old}",
                           source_dir_old = source_dir_old,
                           ccdb_old = dep_db_old,
-                          filepath_new = f"{git_dir_new}/{filepath_origin_new}",
+                          filepath_new = f"{git_dir(new=True)}/{filepath_origin_new}",
                           source_dir_new = source_dir_new,
                           ccdb_new = dep_db_new
                         )

@@ -103,7 +103,7 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
                 continue
 
             if not filepath.startswith(source_dir):
-                filepath = source_dir + "/" + filepath
+                filepath = f"{source_dir}/{filepath.lstrip('/')}"
 
             filepaths.add(filepath)
 
