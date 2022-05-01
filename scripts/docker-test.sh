@@ -20,15 +20,12 @@ compare(){
 
 ./euf.py --config tests/configs/docker.json
 
-
-echo "====================================="
+echo "=====> Oniguruma <====="
 
 for f in results/libonig_6c88_a3c2/*.csv; do
-
   if echo $f|grep -q cbmc; then
     verify_cbmc $f tests/expected/libonig_6c88_a3c2/$(basename $f)
   else
     compare $f tests/expected/libonig_6c88_a3c2/$(basename $f)
   fi
-
 done

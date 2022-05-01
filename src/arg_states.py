@@ -92,9 +92,13 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
         c_files + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
     if setx:
-        print(f"({subdir})> \n", ' '.join(cmd))
-    subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
-                        env = script_env)
+        print(f"PWD={subdir}\n", ' '.join(cmd))
+    try:
+        subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
+                            env = script_env).check_returncode()
+    except subprocess.CalledProcessError:
+        print_err("State space analysis error:")
+        print(f"PWD={subdir}\n", ' '.join(cmd))
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
@@ -179,7 +183,6 @@ def state_space_analysis(symbols: list[str], target_source_dir: str):
 
     with multiprocessing.Pool(CONFIG.NPROC) as p:
         for subdir, subdir_tu in subdir_tus.items():
-            # Run parallel processes for different symbols
             p.map(partial(call_arg_states_plugin,
                 outdir = outdir,
                 source_dir = target_source_dir,

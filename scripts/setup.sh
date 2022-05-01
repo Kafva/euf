@@ -49,25 +49,31 @@ clone_repo libusb/libusb          ~/Repos/libusb
 clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
 
-# Seperate repo to avoid errors when running EUF both within and outside docker
+# Seperate repos to avoid errors when running EUF both within and outside docker
+clone_repo libexpat/libexpat      ~/Repos/.docker/libexpat
+
 clone_repo stedolan/jq            ~/Repos/.docker/jq
 clone_repo kkos/oniguruma         ~/Repos/.docker/oniguruma
 
+[ -d "$HOME/Repos/jabberd-2.7.0" ] ||
+  ./scripts/get_jabberd2.sh ~/Repos/jabberd-2.7.0
+
+[ -d "$HOME/Repos/.docker/jabberd-2.7.0" ] ||
+  ./scripts/get_jabberd2.sh ~/Repos/.docker/jabberd-2.7.0
+
 fix_jq(){
   if ! [ -e $1/modules/oniguruma/src/.libs/libonig.so ]; then
-    cd $1
+    pushd $1
       git submodule update --init --recursive
-      cd modules/oniguruma &&
+      pushd modules/oniguruma &&
         autoreconf -vfi && ./configure && make -j4
+    popd;popd
   fi
 }
 
 fix_jq ~/Repos/jq
 fix_jq ~/Repos/.docker/jq
 
-
-[ -d "$HOME/Repos/jabberd-2.7.0" ] ||
-  ./scripts/get_jabberd2.sh
 
 # Build python3.10 from source
 if ! $(which python3.10 &> /dev/null); then

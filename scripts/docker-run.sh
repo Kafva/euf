@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# ./euf.py --config tests/configs/docker.json
 die(){ echo -e "$1" >&2 ; exit 1; }
 image_exists(){
   docker images --format "{{.Repository}}" | grep -q "^$1$"
@@ -10,14 +9,23 @@ docker-id(){
 CONF=${CONF:=tests/configs/docker.json}
 VERIFY=${VERIFY:=false}
 
+# ./euf.py --config tests/configs/docker.json
+#DEP=oniguruma
+#PROJECT=jq
+
+# ./euf.py --config tests/configs/expat_docker.json
+DEP=libexpat
+PROJECT=jabberd-2.7.0
+
+
 if $VERIFY; then
   ENTRYPOINT="--entrypoint /home/euf/euf/scripts/docker-test.sh euf"
 else
-  ENTRYPOINT="euf --config tests/configs/docker.json"
+  ENTRYPOINT="euf --config $CONF"
 fi
 
 # Uncomment for debugging
-#ENTRYPOINT="--entrypoint /bin/bash euf"
+ENTRYPOINT="--entrypoint /bin/bash euf"
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 
@@ -44,8 +52,8 @@ SYNC_PID=$!
 # Run with source files mounted to enable live updates
 docker run -h euf -it \
   -u euf:root \
-  -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
-  -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
+  -v $HOME/Repos/.docker/$PROJECT:/home/euf/Repos/$PROJECT \
+  -v $HOME/Repos/.docker/$DEP:/home/euf/Repos/$DEP \
   -v $PWD/tests/configs:/home/euf/euf/tests/configs \
   -v $PWD/scripts:/home/euf/euf/scripts \
   -v $PWD/tests:/home/euf/euf/tests \
