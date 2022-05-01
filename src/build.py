@@ -3,7 +3,7 @@ from clang import cindex
 from git.repo.base import Repo
 from src import ERR_EXIT
 
-from src.util import print_info, find, print_err
+from src.util import git_dir, print_info, find, print_err
 from src.config import CONFIG
 
 def get_bear_version(path: str) -> int:

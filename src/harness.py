@@ -7,7 +7,7 @@ from src.config import CONFIG
 from src.fmt import fmt_change, fmt_location
 from src.types import AnalysisResult, DependencyFunctionChange, \
     FunctionState, IdentifierLocation, SourceDiff
-from src.util import print_result, time_end, time_start, wait_on_cr, print_err
+from src.util import ccdb_dir, print_result, time_end, time_start, wait_on_cr, print_err
 
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
   skip_renaming: set[str],
@@ -109,9 +109,8 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
     return include_paths
 
 
-def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
- iflags: dict[str,set[str]], tu_includes: dict[str,tuple[list[str],list[str]]])\
- -> None:
+def add_includes_from_tu(diff: SourceDiff, iflags: dict[str,set[str]],
+ tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
     Go through all #include directives in the old version of the file in the
     provided `diff` object and add them to the `tu_includes` array.
@@ -136,6 +135,8 @@ def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
     usr_includes = []
     project_includes = []
     included_c_files = []
+
+    source_dir_old = ccdb_dir(new=False)
 
     # Extract the base include paths relevant for this TU
     # [2:] removes '-I' and abspath() is needed to resolve relative paths

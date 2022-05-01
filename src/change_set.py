@@ -9,7 +9,8 @@ from git.repo.base import Repo
 from src.config import CONFIG
 from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
-from src.util import get_column_counts, git_dir, git_relative_path, print_info, print_err, time_end, time_start
+from src.util import ccdb_dir, get_column_counts, git_dir, \
+        git_relative_path, print_info, print_err, time_end, time_start
 
 def get_non_static(changed_functions:
  list[DependencyFunctionChange]) -> list[DependencyFunctionChange]:
@@ -169,7 +170,7 @@ def get_changed_functions_from_diff(diff: SourceDiff) -> list[DependencyFunction
     return changed_functions
 
 def get_transative_changes_from_file(source_file: SourceFile,
- source_dir_new:str, changed_functions: list[DependencyFunctionChange]) \
+ changed_functions: list[DependencyFunctionChange]) \
  -> dict[DependencyFunction,list[str]]:
     '''
     Go through the complete AST of the provided (new) file and save 
@@ -200,13 +201,13 @@ def get_transative_changes_from_file(source_file: SourceFile,
     )
     cursor = translation_unit.cursor
 
-    find_transative_changes_in_tu(source_dir_new, cursor,
+    find_transative_changes_in_tu(cursor,
         source_file.compile_dir_new, changed_functions,
         transative_function_calls, DependencyFunction.empty()
     )
     return transative_function_calls
 
-def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
+def find_transative_changes_in_tu(cursor: cindex.Cursor,
  compile_dir: str, changed_functions: list[DependencyFunctionChange],
  transative_function_calls: dict[DependencyFunction,list[str]],
  current_function: DependencyFunction) -> None:
@@ -251,16 +252,13 @@ def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
             )
 
     for child in cursor.get_children():
-        find_transative_changes_in_tu(source_dir_new, child, compile_dir, changed_functions,
+        find_transative_changes_in_tu(child, compile_dir, changed_functions,
             transative_function_calls, current_function)
-
 
 def add_rename_changes_based_on_blame(
  added_diff: list[Diff],
  dep_source_diffs: list[SourceDiff],
- source_dir_old:str,
  dep_db_old: cindex.CompilationDatabase,
- source_dir_new:str,
  dep_db_new: cindex.CompilationDatabase) -> None:
     '''
     In some situations Git is not able to detect a rename across
@@ -317,10 +315,10 @@ def add_rename_changes_based_on_blame(
 
                 source_diff = SourceDiff.new(
                           filepath_old = f"{git_dir(new=False)}/{filepath_origin_old}",
-                          source_dir_old = source_dir_old,
+                          source_dir_old = ccdb_dir(new=False),
                           ccdb_old = dep_db_old,
                           filepath_new = f"{git_dir(new=True)}/{filepath_origin_new}",
-                          source_dir_new = source_dir_new,
+                          source_dir_new = ccdb_dir(new=True),
                           ccdb_new = dep_db_new
                         )
                 dep_source_diffs.append(source_diff)
