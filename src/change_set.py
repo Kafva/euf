@@ -205,12 +205,13 @@ def get_transative_changes_from_file(source_file: SourceFile,
     cursor = translation_unit.cursor
 
     find_transative_changes_in_tu(source_dir_new, cursor,
-        changed_functions, transative_function_calls, DependencyFunction.empty()
+        source_file.compile_dir_new, changed_functions,
+        transative_function_calls, DependencyFunction.empty()
     )
     return transative_function_calls
 
 def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
- changed_functions: list[DependencyFunctionChange],
+ compile_dir: str, changed_functions: list[DependencyFunctionChange],
  transative_function_calls: dict[DependencyFunction,list[str]],
  current_function: DependencyFunction) -> None:
     '''
@@ -223,16 +224,23 @@ def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
         changed_functions), None \
     )
 
+    # If a file location is not given as an absolute path
+    # we prepend the directory of the current cursor
+    filepath = str(cursor.location.file)
+    if not filepath.startswith("/"):
+        filepath = f"{compile_dir}/{filepath}"
+
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
         current_function = \
-            DependencyFunction.new_from_cursor(cursor)
+            DependencyFunction.new_from_cursor(cursor, filepath=filepath)
 
     elif str(cursor.kind).endswith("CALL_EXPR") and \
      change_matching_current != None:
+
+        called = DependencyFunction.new_from_cursor(cursor, filepath=filepath)
+
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
-        called = DependencyFunction.new_from_cursor(cursor)
-
         if change_matching_current.new.eq(called) and \
           current_function.ident.location.name != cursor.spelling:
             # If the enclosing function is calling itself we do not
@@ -247,7 +255,7 @@ def find_transative_changes_in_tu(source_dir_new: str, cursor: cindex.Cursor,
             )
 
     for child in cursor.get_children():
-        find_transative_changes_in_tu(source_dir_new, child, changed_functions,
+        find_transative_changes_in_tu(source_dir_new, child, compile_dir, changed_functions,
             transative_function_calls, current_function)
 
 def add_rename_changes_based_on_blame(

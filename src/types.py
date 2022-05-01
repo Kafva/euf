@@ -67,14 +67,19 @@ class IdentifierLocation:
         self._filepath = value
 
     @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor, filepath:str=""):
+    def new_from_cursor(cls, cursor: cindex.Cursor, filepath:str="",
+     name:str=""):
+        '''
+        During the impact stage we use the enclosing function name rather
+        the cursor name (which corresponds to the function being called)
+        '''
         # !! The file attribute must be converted to
         # a non-complex type to avoid mp deadlocks o.O
         obj = cls(
                 _filepath = "",
                 line = cursor.location.line,
                 column = cursor.location.column,
-                name = cursor.spelling
+                name = name if name != "" else cursor.spelling
         )
         obj.filepath = filepath if filepath != "" else str(cursor.location.file)
         return obj
@@ -98,13 +103,6 @@ class IdentifierLocation:
     def csv_header(cls, prefix:str="") -> str:
         prefix = f"{prefix}_" if prefix!="" else ""
         return f"{prefix}path;{prefix}line;{prefix}col;{prefix}name"
-
-    def __repr__(self) -> str:
-        if self.name != "":
-            return f"{self.filepath}:{self.line}:{self.column}:{self.name}"
-        else:
-            return f"{self.filepath}:{self.line}:{self.column}"
-
 
     def to_csv(self) -> str:
         return f"{self.filepath};{self.line};{self.column};{self.name}"
@@ -380,11 +378,11 @@ class DependencyFunction:
     arguments: list[Identifier] # The arguments must be in correct order within the list
 
     @classmethod
-    def new_from_cursor(cls, cursor: cindex.Cursor):
+    def new_from_cursor(cls, cursor: cindex.Cursor, filepath: str = ""):
         return cls(
             displayname = cursor.displayname,
-            ident        = Identifier.new_from_cursor(cursor),
-            arguments   = [ Identifier.new_from_cursor(arg)
+            ident        = Identifier.new_from_cursor(cursor, filepath=filepath),
+            arguments   = [ Identifier.new_from_cursor(arg, filepath=filepath)
                   for arg in cursor.get_arguments() ],
         )
 
@@ -414,21 +412,20 @@ class DependencyFunction:
 
         return True
 
-    def __repr__(self):
-        return f"{self.ident.location}()"
 
     def prototype_string(self, suffix: str = "") -> str:
-        out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
-        for arg in self.arguments:
-            if suffix != "":
-                out += f"{arg.__repr__(use_suffix=True)}, "
-            else:
-                out += f"{arg}, "
+        assert(False)
+        #out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
+        #for arg in self.arguments:
+        #    if suffix != "":
+        #        out += f"{arg.__repr__(use_suffix=True)}, "
+        #    else:
+        #        out += f"{arg}, "
 
-        return out.removesuffix(", ") + ")"
+        #return out.removesuffix(", ") + ")"
 
     def __hash__(self):
-        return hash(self.ident.location.__repr__() + self.ident.__repr__() + self.displayname)
+        return hash(self.ident.location.to_csv() + self.displayname)
 
 @dataclass(init=True)
 class DependencyFunctionChange:
@@ -455,54 +452,15 @@ class DependencyFunctionChange:
     def csv_header(cls) -> str:
         return f"direct_change;{IdentifierLocation.csv_header('old')};{IdentifierLocation.csv_header('new')}"
 
-    def divergence(self,with_context:bool=True) -> str:
-        if with_context:
-            return f"{self.__repr__()}\n{CONFIG.INDENT}diverged at \033[4m{self.point_of_divergence}\033[0m"
-        else:
-            return f"\n{CONFIG.INDENT}diverged at \033[4m{self.point_of_divergence}\033[0m"
-
-    def affected_by(self,pretty=True) -> str:
-        out = ""
-        if len(self.invokes_changed_functions) > 0:
-            if pretty:
-                out += "\nAffected by changes to:"
-            else:
-                out += "\n affected by changes to:"
-
-            for trans_call in self.invokes_changed_functions:
-                out += f"\n{CONFIG.INDENT}{trans_call}"
-        return out
-
     def to_csv(self) -> str:
         return f"{self.direct_change};{self.old.ident.location.to_csv()};{self.new.ident.location.to_csv()}"
-
-    def __repr__(self, pretty: bool = False, brief: bool = False):
-        if pretty:
-            out =   "\033[31mDirect\033[0m change: " if self.direct_change else \
-                    "\033[34mIndirect\033[0m change: "
-        else:
-            out =   "direct change: " if self.direct_change else \
-                    "indirect change: "
-        if brief and pretty:
-                out += "\033[33m"
-        if self.old.ident.location.name == "":
-            out += f"b/{self.new}"
-        else:
-            out += f"a/{self.old} -> b/{self.new}"
-        if brief and pretty:
-                out += "\033[0m"
-
-        if not brief:
-            out += self.affected_by(pretty)
-
-        return out
 
     def __hash__(self):
         ''' 
         Note that the hash does not consider the `invokes_changed_functions` 
         list. A set will thus only include one copy of each function
         '''
-        return hash(hash(self.old) + hash(self.new))
+        return hash(self.old.ident.location.to_csv()  + self.new.ident.location.to_csv())
 
 @dataclass(init=True)
 class CallSite:
@@ -516,9 +474,6 @@ class CallSite:
     def to_csv(self):
         return f"{self.call_location.to_csv()};" + \
                f"{self.called_function_change.to_csv()}"
-
-    def __repr__(self):
-        return f"call to {self.called_function_change.new} at {self.call_location}()"
 
 @dataclass(init=True)
 class SourceFile:

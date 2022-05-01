@@ -61,6 +61,22 @@ def flatten_dict(list_of_dicts: list[dict] ) -> dict:
 
     return flat
 
+def git_dir(new: bool):
+    '''
+    Retrieve the path to the git worktree of either the new or old version
+    of the dependency being analyzed with a trailing "/"
+    '''
+    dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
+
+    return f"{CONFIG.EUF_CACHE}/{dep_name}-{CONFIG.COMMIT_NEW[:8]}/" \
+           if new else \
+            f"{CONFIG.EUF_CACHE}/{dep_name}-{CONFIG.COMMIT_OLD[:8]}/"
+
+def git_relative_path(abspath: str):
+    return abspath.removeprefix(git_dir(new=False)). \
+                   removeprefix(git_dir(new=True)). \
+                   removeprefix(CONFIG.PROJECT_DIR)
+
 def flatten_set(list_of_sets: list[Set]) -> Set:
     flat = set()
     for li in list_of_sets:

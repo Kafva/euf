@@ -26,6 +26,7 @@ from git.repo import Repo
 
 from src import BASE_DIR, ERR_EXIT
 from src.config import CONFIG
+from src.fmt import fmt_divergence, print_call_sites, print_changes, print_transistive_changes
 from src.types import DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
     CallSite, SourceDiff, SourceFile
@@ -121,7 +122,7 @@ def ast_diff_stage(git_dir_old:str, git_dir_new:str,
 
             if CONFIG.VERBOSITY >= 1 and \
                CONFIG.ONLY_ANALYZE == "" and not CONFIG.SHOW_DIFFS:
-                pprint(changed_functions)
+                print_changes(changed_functions)
     except Exception:
         traceback.print_exc()
         sys.exit(ERR_EXIT)
@@ -130,7 +131,7 @@ def ast_diff_stage(git_dir_old:str, git_dir_new:str,
 
     if CONFIG.SHOW_DIFFS:
         for c in changed_functions:
-            print(c.divergence())
+            print(fmt_divergence(c))
         wait_on_cr(always=True)
 
         for d in source_diffs:
@@ -340,11 +341,11 @@ def transitive_stage(git_dir_new: str,
             sys.exit(ERR_EXIT)
 
         if CONFIG.VERBOSITY >= 1:
-            pprint(TRANSATIVE_CHANGED_FUNCTIONS)
+            print_transistive_changes(TRANSATIVE_CHANGED_FUNCTIONS)
 
         for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
             try:
-                # Add calls to a function that already has been identified as changed
+                # Add calls to functions that have already been identified as changed
                 if (idx := [ c.new for c in changed_functions ].index(key)):
                     changed_functions[idx].invokes_changed_functions.extend(calls)
             except ValueError:
@@ -365,12 +366,11 @@ def transitive_stage(git_dir_new: str,
 
     if CONFIG.VERBOSITY >= 2:
         print_stage("Complete set")
-        pprint(changed_functions)
+        print_changes(changed_functions)
         time_end("Transitive change enumeration", start) # type: ignore
 
 def impact_stage(log_dir:str, project_source_files: list[SourceFile],
- changed_functions: list[DependencyFunctionChange],
- git_dir_old: str, git_dir_new:str) -> list[CallSite]:
+ changed_functions: list[DependencyFunctionChange]) -> list[CallSite]:
     ''' - - - Impact set - - - '''
     if CONFIG.VERBOSITY >= 1:
         print_stage("Impact set")
@@ -399,11 +399,10 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
     time_end("Finished call site enumeration", start)
 
     if CONFIG.VERBOSITY >= 2 or len(call_sites) == 0:
-        pprint(call_sites)
+        print_call_sites(call_sites)
     else:
         if CONFIG.ORDER_BY_CALL_SITE:
-            pretty_print_impact_by_call_site(call_sites, git_dir_old, \
-                    git_dir_new)
+            pretty_print_impact_by_call_site(call_sites)
         else:
             pretty_print_impact_by_dep(call_sites)
     if CONFIG.ENABLE_RESULT_LOG:
@@ -514,8 +513,7 @@ def run(load_libclang:bool = True) -> tuple:
         log_dir
     )
     # - - - Impact set  - - - #
-    call_sites = impact_stage(log_dir, project_files, changed_functions,
-            git_dir_old, git_dir_new)
+    call_sites = impact_stage(log_dir, project_files, changed_functions)
 
     return (changed_functions, call_sites)
 

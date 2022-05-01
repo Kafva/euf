@@ -1,31 +1,31 @@
-import dataclasses
-import json
-import traceback
+import dataclasses, json, os, traceback
 from typing import Set
 from clang import cindex
 from src.config import CONFIG
+from src.fmt import affected_by, fmt_change, fmt_divergence, fmt_location
 from src.types import DependencyFunction, DependencyFunctionChange, \
         CallSite, IdentifierLocation, SourceFile
-from src.util import print_err
+from src.util import git_relative_path, print_err
 
 def get_call_sites_from_file(source_file: SourceFile,
  changed_functions: Set[DependencyFunctionChange]) -> list[CallSite]:
     '''
-    Return a list of call sites (to the old version of functions) in the 
-    provided source file for the functions in `changed_functions`
+    Return a list of call sites in the provided source file for 
+    the functions in `changed_functions`
     '''
     call_sites = []
 
     try:
-        translation_unit: cindex.TranslationUnit  = \
-            cindex.TranslationUnit.from_source(
-                source_file.filepath_new,
-                args = source_file.compile_args_new
+        os.chdir(source_file.compile_dir_new)
+        tu = cindex.TranslationUnit.from_source(
+           source_file.filepath_new,
+           args = source_file.compile_args_new
         )
-        cursor: cindex.Cursor       = translation_unit.cursor
+        cursor = tu.cursor
         current_enclosing = ""
 
         find_call_sites_in_tu(source_file.filepath_new, cursor,
+            source_file.compile_dir_new,
             changed_functions, call_sites, current_enclosing
         )
     except cindex.TranslationUnitLoadError:
@@ -35,42 +35,49 @@ def get_call_sites_from_file(source_file: SourceFile,
     return call_sites
 
 def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
-  changed_functions: Set[DependencyFunctionChange],
+  compile_dir: str, changed_functions: Set[DependencyFunctionChange],
   call_sites: list[CallSite], current_enclosing: str) -> None:
     '''
     Go through the complete AST of the provided file and save any sites
-    where a changed function is called as an call_site
+    where a changed function is called as a call_site
     '''
-    if str(cursor.location.file).startswith("/usr"):
+    changed_function = next(filter(lambda fn: \
+        fn.new.ident.location.name == cursor.spelling, changed_functions), None
+    )
+
+    filepath = str(cursor.location.file)
+    if filepath.startswith("/usr"):
         # We do not want to track call sites from system headers
         return
+
+    if not filepath.startswith("/"):
+        filepath = f"{compile_dir}/{filepath}"
 
     if str(cursor.kind).endswith("FUNCTION_DECL") and cursor.is_definition():
         # Keep track of the current enclosing function
         current_enclosing = cursor.spelling
 
     if str(cursor.kind).endswith("CALL_EXPR") and \
-        (changed_function := next(filter(lambda fn: \
-        fn.new.ident.location.name == cursor.spelling, changed_functions), None \
-    )):
+       changed_function != None:
+
+        called = DependencyFunction.new_from_cursor(cursor)
+
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
-        called = DependencyFunction.new_from_cursor(CONFIG.PROJECT_DIR, cursor)
-
         if changed_function.new.eq(called):
             call_site = CallSite(
                     called_function_change = changed_function,
-                    call_location = IdentifierLocation(
-                        filepath = str(cursor.location.file),
-                        line = cursor.location.line,
-                        column = cursor.location.column,
-                        name = current_enclosing
-                    )
+                    call_location = \
+                        IdentifierLocation.new_from_cursor(
+                            cursor,
+                            name = current_enclosing
+                        )
             )
             call_sites.append(call_site)
 
     for child in cursor.get_children():
-        find_call_sites_in_tu(filepath, child, changed_functions, call_sites,
+        find_call_sites_in_tu(filepath, child, compile_dir,
+            changed_functions, call_sites,
             current_enclosing
         )
 
@@ -98,8 +105,7 @@ def log_impact_set(call_sites: list[CallSite], filename: str) -> None:
         with open(f"{filename.removesuffix('.csv')}.json", mode='w', encoding='utf8') as f:
             json.dump([ dataclasses.asdict(c) for c in call_sites ], f)
 
-def pretty_print_impact_by_call_site(call_sites: list[CallSite],
- git_dir_old:str, git_dir_new:str) -> None:
+def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
     '''
     Print each impact site as its own header with a list of dependency change
     sources beneath it
@@ -114,17 +120,18 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite],
         # To compile all calls within the same enclosing function
         # together we only use the filepath and name as keys
         # since the line and column will differ
-        git_rel_path = site.call_location.filepath.\
-            removeprefix(git_dir_old+"/").removeprefix(git_dir_new+"/")
+        git_rel_path = \
+            git_relative_path(site.call_location.filepath).lstrip("/")
 
         key = f"{git_rel_path}:{site.call_location.name}()"
         called_at = f"({site.call_location.line}:{site.call_location.column}) "
-        out_str = called_at + site.called_function_change.__repr__(pretty=True)
+        out_str = called_at + \
+                fmt_change(site.called_function_change, pretty=True)
 
         # Show the point of divergence for direct changes
         if site.called_function_change.direct_change:
            out_str += f"{CONFIG.INDENT}" + \
-                    site.called_function_change.divergence(with_context=False)
+            fmt_divergence(site.called_function_change, with_context=False)
 
         if key in location_to_calls_dict:
             location_to_calls_dict[key].add(out_str)
@@ -159,13 +166,15 @@ def pretty_print_impact_by_dep(call_sites: list[CallSite]) -> None:
 
 
     for dep_change,affected in func_change_to_invocations_map.items():
-        print(f"\n=== \033[33m{dep_change.__repr__(pretty=True, brief=True)}\033[0m ===")
+        change_str = fmt_change(dep_change, pretty=True, brief=True)
+        print(f"\n=== \033[33m{change_str}\033[0m ===")
 
-        affected_str = dep_change.affected_by(pretty=True)
+        affected_str = affected_by(dep_change, pretty=True)
         if affected_str!="":
             print(affected_str.lstrip('\n')+"\n")
 
         print("Called from:")
         for site in affected:
-            print(f"{CONFIG.INDENT}{site.call_location}()")
+            location_str = fmt_location(site.call_location).lstrip("/")
+            print(f"{CONFIG.INDENT}{location_str}()")
 

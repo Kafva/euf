@@ -84,21 +84,6 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
     which need to be available with '-I' during goto-cc compilation for each TU
     by parsing each entry in the ccdb
     '''
-    '''
-    base_paths = { d.new_path: set()   for d in diffs }
-    new_names =  [ d.new_path for d in diffs ]
-
-    with open(f"{old_src_dir}/compile_commands.json", mode='r', encoding='utf8') as f:
-        for tu in json.load(f):
-            basename = tu['file'].removeprefix(old_dir.rstrip("/")+"/")
-            if basename in new_names:
-                for arg in tu['arguments']:
-                    if arg.startswith("-I"):
-                        # Add the include path as an absolute path
-                        base_paths[basename].add(f"-I{tu['directory']}/{arg[2:]}")
-
-    return base_paths
-    '''
     include_paths = { d.filepath_old: set() for d in diffs }
     filepaths_old =  [ d.filepath_old for d in diffs ]
 
@@ -114,7 +99,6 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
                         include_paths[tu['file']].add(f"-I{tu['directory']}/{arg[2:]}")
 
     return include_paths
-
 
 
 def add_includes_from_tu(diff: SourceDiff, source_dir_old:str,
