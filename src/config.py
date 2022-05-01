@@ -68,8 +68,13 @@ class Config:
     # System header paths to skip over for the #include directives
     # of the driver
     SKIP_HEADERS_UNDER: list[str] = field(default_factory=lambda: [
-        "include/bits", "include/x86_64-linux-gnu", "lib/clang",
-        "local/lib/clang", "include/clang/13.0.0"
+        "include/bits",
+        "include/x86_64-linux-gnu",
+        "lib/clang",
+        "include/clang/13.0.0",
+
+        "local/lib/clang",
+        "local/include/bits",
     ])
 
     # These prefixes will be removed from headers that are included
@@ -140,7 +145,9 @@ class Config:
     SILENT_VERIFICATION: bool = False
 
     # Functions for which no CBMC analysis should be attempted
-    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: ["main"])
+    IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: [
+            "main"
+    ])
 
     # Show part of the goto functions before running CBMC analysis
     # ** NOTE: Overriden by SILENT_VERIFICATION **

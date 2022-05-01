@@ -9,6 +9,42 @@ SUDMODS=${SUBMODS:=true}
 FULL=${FULL:=false}
 NPROC=$((`nproc`-1))
 
+get_jabberd2(){
+  : '''
+  Hacky way of building the compilation database for jabberd2
+  Using `autoreconf` with the git version does not work but building
+  through the release source does...
+  '''
+  local target=$1
+
+  [ -d "$1" ] && return
+
+  rm -rf /tmp/{jabberd2,jabberd-2.7.0}
+  curl -L https://github.com/jabberd2/jabberd2/releases/download/jabberd-2.7.0/jabberd-2.7.0.tar.gz | 
+    tar xzf - -C $(dirname $target)
+
+  git clone -b jabberd-2.7.0 https://github.com/jabberd2/jabberd2.git /tmp/jabberd2
+
+  pushd /tmp/jabberd2 && git switch -c main
+  mv .git $target
+
+  pushd $target
+    git checkout util/{misc.c,misc.h,pqueue.c,pqueue.h} &&
+      ./configure && bear -- make -j$NPROC
+  popd;popd
+}
+
+fix_jq(){
+  if ! [ -e $1/modules/oniguruma/src/.libs/libonig.so ]; then
+    pushd $1
+      git submodule update --init --recursive
+      pushd modules/oniguruma &&
+        autoreconf -vfi && ./configure && make -j4
+    popd;popd
+  fi
+}
+
+
 if $(which apt &> /dev/null); then
   # EUF dependencies
   sudo apt-get install clang llvm-12 flex bison make \
@@ -55,25 +91,11 @@ clone_repo libexpat/libexpat      ~/Repos/.docker/libexpat
 clone_repo stedolan/jq            ~/Repos/.docker/jq
 clone_repo kkos/oniguruma         ~/Repos/.docker/oniguruma
 
-[ -d "$HOME/Repos/jabberd-2.7.0" ] ||
-  ./scripts/get_jabberd2.sh ~/Repos/jabberd-2.7.0
-
-[ -d "$HOME/Repos/.docker/jabberd-2.7.0" ] ||
-  ./scripts/get_jabberd2.sh ~/Repos/.docker/jabberd-2.7.0
-
-fix_jq(){
-  if ! [ -e $1/modules/oniguruma/src/.libs/libonig.so ]; then
-    pushd $1
-      git submodule update --init --recursive
-      pushd modules/oniguruma &&
-        autoreconf -vfi && ./configure && make -j4
-    popd;popd
-  fi
-}
+get_jabberd2 $HOME/Repos/jabberd-2.7.0
+get_jabberd2 $HOME/Repos/.docker/jabberd-2.7.0
 
 fix_jq ~/Repos/jq
 fix_jq ~/Repos/.docker/jq
-
 
 # Build python3.10 from source
 if ! $(which python3.10 &> /dev/null); then

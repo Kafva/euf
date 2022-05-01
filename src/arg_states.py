@@ -92,13 +92,19 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
         c_files + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
     if setx:
-        print(f"PWD={subdir}\n", ' '.join(cmd))
+        print(f"cd {subdir}\n", ' '.join(cmd))
     try:
         subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env).check_returncode()
     except subprocess.CalledProcessError:
         print_err("State space analysis error:")
-        print(f"PWD={subdir}\n", ' '.join(cmd))
+        print(f"cd {subdir}\n", ' '.join(cmd), flush=True)
+    except FileNotFoundError:
+        # Usually caused by faulty paths in ccdb
+        traceback.print_exc()
+        print_err("This error has likely occured due to invalid entries in " +
+                "compile_commands.json")
+        print(f"cd {subdir}\n", ' '.join(cmd), flush=True)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''

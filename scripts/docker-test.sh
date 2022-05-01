@@ -18,14 +18,25 @@ compare(){
   fi
 }
 
+verify(){
+  for f in $RESULTS/*.csv; do
+    if echo $f|grep -q cbmc; then
+      verify_cbmc $f $EXPECTED/$(basename $f)
+    else
+      compare $f $EXPECTED/$(basename $f)
+    fi
+  done
+}
+
 ./euf.py --config tests/configs/docker.json
-
 echo "=====> Oniguruma <====="
+EXPECTED=tests/expected/libonig_6c88_a3c2
+RESULTS=results/libonig_6c88_a3c2
+verify
 
-for f in results/libonig_6c88_a3c2/*.csv; do
-  if echo $f|grep -q cbmc; then
-    verify_cbmc $f tests/expected/libonig_6c88_a3c2/$(basename $f)
-  else
-    compare $f tests/expected/libonig_6c88_a3c2/$(basename $f)
-  fi
-done
+./euf.py --config tests/configs/expat_docker.json
+
+echo "=====> Expat <====="
+EXPECTED=tests/expected/libexpat_10d3_f178
+RESULTS=results/libexpat_10d3_f178
+verify

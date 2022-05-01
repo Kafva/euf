@@ -295,8 +295,7 @@ def find_transative_changes_in_tu(cursor: cindex.Cursor,
                 transative_function_calls[key] = []
 
             transative_function_calls[key].append(
-                f"{cursor.location.file}:{cursor.location.line}:" +
-                f"{cursor.location.column}:{cursor.spelling}()"
+                fmt_location(called.ident.location)
             )
 
     for child in cursor.get_children():
