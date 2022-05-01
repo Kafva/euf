@@ -52,10 +52,6 @@ def wait_on_cr(always=False):
 def print_info(msg: str):
     print("\033[34m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
-def print_stage(msg: str):
-    print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ",
-        file=sys.stderr, flush=True)
-
 def print_success(msg: str):
     print("[\033[32m+\033[0m] " +  msg, file=sys.stderr, flush=True)
 
@@ -70,6 +66,10 @@ def print_warn(msg: str):
 
 def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg, file=sys.stderr, flush=True)
+
+def print_stage(msg: str):
+    print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ",
+        file=sys.stderr, flush=True)
 
 def set_libclang():
     if not os.path.exists(CONFIG.LIBCLANG):
