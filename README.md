@@ -49,9 +49,17 @@ create separate directories if this is necessary.
 To avoid duplicate symbols a fork of CBMC which adds a suffix to all global symbols has been created. The symbol renaming is triggered by starting `cbmc`, `goto-cc` or any of the other Cprover tools with `USE_SUFFIX` set in the environment.
 
 ## Tests
-Unit tests for the functions of the actual script are ran with
 ```sh
-pytest tests/test_*
+# Miscellaneous function tests
+pytest tests/test_misc.py
+
+# Regression tests for each example project
+# Verifies the generated results against expected
+# output under ./tests/expected
+pytest tests/test_reg.py
+
+# Regression test for docker
+VERIFY=true ./scripts/docker-run.sh
 ```
 
 ## Implementation notes

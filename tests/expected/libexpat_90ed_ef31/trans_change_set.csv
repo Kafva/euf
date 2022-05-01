@@ -1,5 +1,5 @@
 direct_change;old_path;old_line;old_col;old_name;new_path;new_line;new_col;new_name
-False;;-1;-1;;expat/lib/xmlparse.c;901;1;generate_hash_secret_salt
+False;;-1;-1;;expat/lib/xmlparse.c;951;1;startParsing
 False;;-1;-1;;expat/lib/xmlparse.c;965;1;XML_ParserCreate_MM
 False;;-1;-1;;expat/lib/xmlparse.c;1182;1;XML_ParserReset
 False;;-1;-1;;expat/lib/xmlparse.c;1223;1;XML_SetEncoding
@@ -54,6 +54,7 @@ True;expat/lib/xmlparse.c;3702;1;doIgnoreSection;expat/lib/xmlparse.c;4156;1;doI
 True;expat/lib/xmlparse.c;4109;1;doProlog;expat/lib/xmlparse.c;4604;1;doProlog
 True;expat/lib/xmlparse.c;6170;1;dtdCopy;expat/lib/xmlparse.c;6794;1;dtdCopy
 True;expat/lib/xmlparse.c;6067;1;dtdCreate;expat/lib/xmlparse.c;6691;1;dtdCreate
+True;expat/lib/xmlparse.c;812;1;generate_hash_secret_salt;expat/lib/xmlparse.c;901;1;generate_hash_secret_salt
 True;expat/lib/xmlparse.c;6498;1;hashTableIterInit;expat/lib/xmlparse.c;7134;1;hashTableIterInit
 True;expat/lib/xmlparse.c;6394;1;lookup;expat/lib/xmlparse.c;7018;1;lookup
 True;expat/lib/xmlparse.c;6765;1;nextScaffoldPart;expat/lib/xmlparse.c;7401;1;nextScaffoldPart

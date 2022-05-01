@@ -28,13 +28,13 @@
 #include <asm/errno.h>
 #include <asm-generic/errno.h>
 #include <asm-generic/errno-base.h>
-#include <expat_config.h>
 #include <sys/random.h>
 
 
 #include "xmlparse.h"
 
 
+#include "expat_config.h"
 #include "lib/ascii.h"
 #include "lib/expat.h"
 #include "lib/expat_external.h"

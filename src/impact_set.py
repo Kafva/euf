@@ -61,7 +61,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
     if str(cursor.kind).endswith("CALL_EXPR") and \
        changed_function != None:
 
-        called = DependencyFunction.new_from_cursor(cursor)
+        called = DependencyFunction.new_from_cursor(cursor,filepath=filepath)
 
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
@@ -71,7 +71,8 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
                     call_location = \
                         IdentifierLocation.new_from_cursor(
                             cursor,
-                            name = current_enclosing
+                            name = current_enclosing,
+                            filepath = filepath
                         )
             )
             call_sites.append(call_site)

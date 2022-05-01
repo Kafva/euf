@@ -42,7 +42,7 @@
   "VERBOSITY": 2,
   
   "SKIP_BLAME": false,
-  "SKIP_IMPACT": true,
+  "SKIP_IMPACT": false,
   "FULL": true,
   "QUIET_BUILD": true,
   "COMMIT_OLD": "4a5540a925e47923ed20b4ea68aabe550dac976d",

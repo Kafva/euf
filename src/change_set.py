@@ -1,4 +1,5 @@
 import os, traceback
+from posixpath import abspath
 from itertools import zip_longest
 
 from clang import cindex
@@ -50,10 +51,19 @@ def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
         print_err(f"No data to parse for {cursor.spelling}")
 
     for child in cursor.get_children():
+
+        filepath = str(child.location.file)
+
+        # Ensure that the filepath is an abspath
+        if not filepath.startswith("/"):
+            filepath = f"{diff.compile_dir_new}/{filepath}" if is_new \
+                    else f"{diff.compile_dir_old}/{filepath}"
+            filepath = abspath(filepath)
+
         if str(child.kind).endswith("FUNCTION_DECL") and \
             str(child.type.kind).endswith("FUNCTIONPROTO") and \
             child.is_definition() and \
-            str(child.location.file).startswith(git_dir(new=is_new)):
+            filepath.startswith(git_dir(new=is_new)):
             # Note: A TU can #include other C-files, to properly trace
             # calls in the output we need to store these paths rather than
             # the path to the main file for each function
@@ -71,10 +81,10 @@ def extract_function_decls_to_pairs(diff: SourceDiff, cursor: cindex.Cursor,
 
             if is_new:
                 cursor_pairs[key].new = child
-                cursor_pairs[key].filepath_new = str(child.location.file)
+                cursor_pairs[key].filepath_new = filepath
             else:
                 cursor_pairs[key].old = child
-                cursor_pairs[key].filepath_old = str(child.location.file)
+                cursor_pairs[key].filepath_old = filepath
 
 def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) \
  -> cindex.SourceLocation|None:
@@ -173,8 +183,12 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
         cursor_old_fn = pair.old
         cursor_new_fn = pair.new
 
+        # We need to pass the filepaths explicitly in case the path
+        # from the internal cursor is not an abspath
         function_change = DependencyFunctionChange.new_from_cursors(
-                cursor_old_fn, cursor_new_fn
+                cursor_old_fn, cursor_new_fn,
+                filepath_old = pair.filepath_old,
+                filepath_new = pair.filepath_new
         )
         src_loc = functions_differ(cursor_old_fn, cursor_new_fn)
 
@@ -183,8 +197,16 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
                 print(f"Differ: a/{git_rel_path_old} b/{git_rel_path_new}" + \
                         f" {pair.new.spelling}()")
 
+            filepath = str(src_loc.file) # type: ignore
+
+            # Ensure that the filepath is an abspath
+            # The divergence is always given relative to the old version
+            if not filepath.startswith("/"):
+                filepath = f"{diff.compile_dir_old}/{filepath}"
+                filepath = abspath(filepath)
+
             function_change.point_of_divergence = \
-                IdentifierLocation.new_from_src_loc(src_loc) # type: ignore
+                IdentifierLocation.new_from_src_loc(src_loc,filepath=filepath) # type: ignore
 
             changed_functions.append(function_change)
 

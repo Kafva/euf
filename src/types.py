@@ -85,14 +85,14 @@ class IdentifierLocation:
         return obj
 
     @classmethod
-    def new_from_src_loc(cls, loc: cindex.SourceLocation):
+    def new_from_src_loc(cls, loc: cindex.SourceLocation,filepath:str=""):
         obj = cls(
             _filepath = "",
             line = loc.line,
             column = loc.column,
             name = ""
         )
-        obj.filepath = str(loc.file.name) # type: ignore
+        obj.filepath = filepath if filepath != "" else str(loc.file.name) # type: ignore
         return obj
 
     @classmethod
@@ -421,10 +421,13 @@ class DependencyFunctionChange:
     point_of_divergence: IdentifierLocation = IdentifierLocation.empty()
 
     @classmethod
-    def new_from_cursors(cls, old_cursor: cindex.Cursor, new_cursor: cindex.Cursor):
+    def new_from_cursors(cls, old_cursor: cindex.Cursor, new_cursor:
+     cindex.Cursor, filepath_old:str="", filepath_new:str=""):
         return cls(
-            old = DependencyFunction.new_from_cursor(old_cursor),
-            new = DependencyFunction.new_from_cursor(new_cursor),
+            old = \
+            DependencyFunction.new_from_cursor(old_cursor,filepath=filepath_old),
+            new = \
+            DependencyFunction.new_from_cursor(new_cursor,filepath=filepath_new),
             invokes_changed_functions = []
         )
 

@@ -8,6 +8,15 @@ docker-id(){
   docker ps --format "{{.ID}}  {{.Image}}" | awk '/\s+euf$/{print $1}'
 }
 CONF=${CONF:=tests/configs/docker.json}
+VERIFY=${VERIFY:=false}
+
+if $VERIFY; then
+  ENTRYPOINT=./scripts/docker-test.sh
+else
+  ENTRYPOINT="euf --config tests/configs/docker.json"
+fi
+
+#ENTRYPOINT="--entrypoint /bin/bash euf"
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 
@@ -39,7 +48,6 @@ docker run -h euf -it \
   -v $PWD/tests/configs:/home/euf/euf/tests/configs \
   -v $PWD/scripts:/home/euf/euf/scripts \
   -v $PWD/src:/home/euf/euf/src \
-  euf --config tests/configs/docker.json
-  #--entrypoint /bin/bash euf
+  $ENTRYPOINT
 
 kill $SYNC_PID

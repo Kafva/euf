@@ -69,7 +69,7 @@ def print_changes(changed_functions: list[DependencyFunctionChange],
     out = ""
     for change in changed_functions:
         out += fmt_change(change, pretty, brief) + "\n"
-    print(out.rstrip('\n'))
+    print(out.rstrip('\n'), flush=True)
 
 def print_transistive_changes(func_dict: dict[DependencyFunction,list[str]]):
     out = ""

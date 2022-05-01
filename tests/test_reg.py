@@ -2,6 +2,7 @@ import filecmp
 from posixpath import expanduser
 from euf import run
 from src.config import CONFIG
+from src.util import remove_files_in
 from tests import RESULT_DIR, TEST_DIR, check_cbmc_csv
 
 def test_impact_set():
@@ -10,6 +11,7 @@ def test_impact_set():
     in the output (with verbosity=0) if the main project actually calls them
     '''
     CONFIG.update_from_file(f"{TEST_DIR}/configs/expat_impact.json")
+    remove_files_in(f"{RESULT_DIR}/libexpat_90ed_ef31")
     run(load_libclang=False)
 
     assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_90ed_ef31/change_set.csv", \
@@ -24,6 +26,7 @@ def test_impact_set():
 
 def test_usb():
     CONFIG.update_from_file(f"{TEST_DIR}/configs/libusb_4a5540a9_500c64ae.json")
+    remove_files_in(f"{RESULT_DIR}/libusb-1.0_4a55_500c")
     run(load_libclang=False)
 
     assert(filecmp.cmp(f"{RESULT_DIR}/libusb-1.0_4a55_500c/change_set.csv", \
@@ -45,10 +48,12 @@ def test_usb():
 
 def test_expat():
     CONFIG.update_from_file(f"{TEST_DIR}/configs/10d34296_f178826b.json")
+    remove_files_in(f"{RESULT_DIR}/libexpat_10d3_f178")
     run(load_libclang=False)
 
-    assert(filecmp.cmp(f"{expanduser('~')}/.cache/euf/libexpat-10d34296/expat/.harnesses/ENTROPY_DEBUG.c", \
-            f"{TEST_DIR}/expected/ENTROPY_DEBUG.c" )
+    assert(filecmp.cmp(
+        f"{expanduser('~')}/.cache/euf/libexpat-10d34296/expat/.harnesses/ENTROPY_DEBUG.c", \
+        f"{TEST_DIR}/expected/ENTROPY_DEBUG.c" )
     )
 
     assert(filecmp.cmp(f"{RESULT_DIR}/libexpat_10d3_f178/change_set.csv", \
@@ -70,6 +75,7 @@ def test_expat():
 
 def test_onig():
     CONFIG.update_from_file(f"{TEST_DIR}/configs/onig.json")
+    remove_files_in(f"{RESULT_DIR}/libonig_d3d6_6f8c")
     run(load_libclang=False)
 
     assert(filecmp.cmp(f"{RESULT_DIR}/libonig_d3d6_6f8c/change_set.csv", \

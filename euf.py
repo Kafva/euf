@@ -452,7 +452,8 @@ def run(load_libclang:bool = True) -> tuple:
 
     # Create a list of all files from the dependency
     # used for transitive call analysis and state space estimation
-    dep_source_files_new = get_source_files(git_dir(new=True), ccdb_dir(new=True), dep_db_new)
+    dep_source_files_new = get_source_files(git_dir(new=True),
+                                                ccdb_dir(new=True), dep_db_new)
 
     # - - - Git diff - - - #
     source_diffs = git_diff_stage(dep_repo,
