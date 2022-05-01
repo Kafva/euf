@@ -1,4 +1,4 @@
-import re, subprocess
+import re, subprocess, traceback
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -206,8 +206,8 @@ class Identifier:
             is_ptr = False
 
         if re.search(r"^int\**", type_spelling):
-            type_spelling = cls.get_type_from_text(cursor, type_spelling)
-
+            type_spelling = cls.get_type_from_text(cursor, type_spelling,
+                    filepath=filepath)
 
         return cls(
             typing = typing,
@@ -222,14 +222,16 @@ class Identifier:
         )
 
     @classmethod
-    def get_type_from_text(cls, cursor: cindex.Cursor, type_spelling: str) -> str:
+    def get_type_from_text(cls, cursor: cindex.Cursor, type_spelling: str,
+            filepath:str="") -> str:
         '''
         ~~~ Hack ~~~
         Built-in typedefs like size_t do not get resolved properly
         and we resolve them by looking in the actual source file
         '''
+        to_open = filepath if filepath != "" else str(cursor.location.file)
         try:
-            with open(str(cursor.location.file), mode='r', encoding='utf8') as f:
+            with open(to_open, mode='r', encoding='utf8') as f:
                 lines = f.readlines()
 
                 # Get the line of the identifier
@@ -252,6 +254,10 @@ class Identifier:
         except UnicodeDecodeError:
             # Oniguruma has some source files with exotic encodings
             pass
+        except IndexError:
+            traceback.print_exc()
+            print(f"!> Line out of range in {to_open}")
+
 
         return type_spelling
 
