@@ -5,15 +5,15 @@ die(){
   exit 1
 }
 output_formatting(){
-	esc=$(printf "\033[")
-	sed "/^file/d; /^Unwinding/d; /^Not unwinding/d; /^aborting/d
-		s/ SUCCESS$/${esc}1;32m SUCCESS${esc}0m/;
-		s/ FAILURE/${esc}1;31m FAILURE${esc}0m/;
-		"
+  esc=$(printf "\033[")
+  sed "/^file/d; /^Unwinding/d; /^Not unwinding/d; /^aborting/d
+    s/ SUCCESS$/${esc}1;32m SUCCESS${esc}0m/;
+    s/ FAILURE/${esc}1;31m FAILURE${esc}0m/;
+    "
 }
-[[ -z "$OUTDIR" 		 || -z "$DRIVER"  			|| -z "$CBMC_OPTS_STR"    ||
-	 -z "$NEW_LIB"  	 || -z "$OLD_LIB" 			|| -z "$EUF_ENTRYPOINT" 	||
-	 -z "$FUNC_NAME"   || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
+[[ -z "$OUTDIR"      || -z "$DRIVER"        || -z "$CBMC_OPTS_STR"    ||
+   -z "$NEW_LIB"     || -z "$OLD_LIB"       || -z "$EUF_ENTRYPOINT"   ||
+   -z "$FUNC_NAME"   || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
    -z "$DEP_I_FLAGS"
 ]] && die "Missing environment variable(s): The following not set:"
 
@@ -24,8 +24,8 @@ rm -f $OUTFILE
 # of the dependency (with -I flags) that is being analyzed
 
 goto-cc -DCBMC -I $OUTDIR  $DEP_I_FLAGS \
-	$NEW_LIB $OLD_LIB $DRIVER \
- 	-o $OUTFILE 2>&1 | tee $cbmc_output
+  $NEW_LIB $OLD_LIB $DRIVER \
+  -o $OUTFILE 2>&1 | tee $cbmc_output
 
 retval=${PIPESTATUS[0]}
 
@@ -45,8 +45,8 @@ if $SHOW_FUNCTIONS; then
 fi
 
 time cbmc ./$OUTFILE  ${CBMC_OPTS[@]} \
-		--function $EUF_ENTRYPOINT \
-	  --property $EUF_ENTRYPOINT.assertion.1 2>&1 \
+    --function $EUF_ENTRYPOINT \
+    --property $EUF_ENTRYPOINT.assertion.1 2>&1 \
     | output_formatting | tee $cbmc_output
 
 
