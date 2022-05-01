@@ -40,8 +40,23 @@ def git_relative_path(abspath: str):
     '''
     rel_path = abspath.removeprefix(git_dir(new=False)). \
                    removeprefix(git_dir(new=True)). \
-                   removeprefix(CONFIG.PROJECT_DIR)
+                   removeprefix(CONFIG.PROJECT_DIR). \
+                   removeprefix(CONFIG.DEPENDENCY_DIR)
     return rel_path.lstrip("/")
+
+def shorten_path_fields(csv:str, delim:str=";"):
+    '''
+    Attempt to convert each field that starts with a "/"
+    into a git-relative path
+    '''
+    out = ""
+    for field in csv.split(delim):
+        if field.startswith("/"):
+            out += git_relative_path(field) + delim
+        else:
+            out += field + delim
+
+    return out[:-1] # Exclude last ';'
 
 def wait_on_cr(always=False):
     while CONFIG.PAUSES or always:

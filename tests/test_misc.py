@@ -6,7 +6,7 @@ from src.config import CONFIG
 from src.arg_states import call_arg_states_plugin, \
         get_subdir_tus, join_arg_states_result
 
-from src.util import flatten, mkdir_p, remove_files_in, rm_f, set_libclang
+from src.util import mkdir_p, remove_files_in, rm_f, set_libclang
 from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers, patch_old_bear_db
 from euf import run
 from tests import RESULT_DIR, TEST_DIR
@@ -30,9 +30,6 @@ def setup():
         CONFIG.FULL = False
         run(load_libclang=False)
         CONFIG.FULL = True
-
-def test_flatten():
-    assert( flatten([[1,2],[3,4]]) == [1,2,3,4])
 
 def test_patch_old_bear_db():
     ccdb_path = "/tmp/old_bear.json"
@@ -65,7 +62,7 @@ def test_get_source_subdirs():
     expected = [ "lib", "xmlwf" ]
     CONFIG.EXCLUDE_REGEXES = ["expat/tests/.*", "expat/examples/.*"]
 
-    subdirs = get_subdir_tus(EXPAT_SRC_PATH, EXPAT_PATH)
+    subdirs = get_subdir_tus(EXPAT_SRC_PATH)
     assert( set([ key for key in subdirs.keys() ]) ==
             set( [ f"{EXPAT_SRC_PATH}/{subdir}" for subdir in  expected ] )
     )
@@ -78,14 +75,14 @@ def test_join_arg_states_result():
     mkdir_p(outdir)
     remove_files_in(outdir) # !!
 
-    for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH, EXPAT_OLD_PATH).items():
+    for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH).items():
         call_arg_states_plugin(function_name, outdir, EXPAT_OLD_SRC_PATH, subdir, subdir_tu, quiet=True)
 
     result = join_arg_states_result( [ EXPAT_OLD_NAME ] )
     # If one includes the lib/tests/ path the expected set increases to [0,1,2]
     # The increase is a FP of sorts since the call with (1) is a different 
     # static definition of usage()
-    assert( result[function_name].parameters[1].states == set([0,2]) )
+    assert(result[function_name].parameters[1].states == set([0,2]) )
 
 def test_compdb():
     jq_path = f"{expanduser('~')}/Repos/jq"

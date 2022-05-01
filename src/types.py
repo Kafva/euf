@@ -394,24 +394,6 @@ class DependencyFunction:
             arguments   = [],
         )
 
-    def eq(self, other) -> bool:
-        '''
-        Ensure that the arguments and return value of the provided function
-        match that of the current function object. Does not check the filepath
-        '''
-        if (err := self.ident.eq_report(other.ident, return_value=True, check_function=True)) != "":
-            print(err)
-            print(f"definition: {self}\ncall: {other}\n")
-            return False
-
-        for self_arg,other_arg in zip(self.arguments,other.arguments):
-            if (err := self_arg.eq_report(other_arg, return_value=False, check_function=False)) != "":
-                print(err)
-                print(f"definition: {self}\ncall: {other}\n")
-                return False
-
-        return True
-
     def prototype_string(self, suffix: str = "") -> str:
         out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
         for arg in self.arguments:

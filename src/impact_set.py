@@ -1,11 +1,12 @@
 import dataclasses, json, os, traceback
 from typing import Set
 from clang import cindex
+from src.change_set import functions_match
 from src.config import CONFIG
 from src.fmt import affected_by, fmt_change, fmt_divergence, fmt_location
 from src.types import DependencyFunction, DependencyFunctionChange, \
         CallSite, IdentifierLocation, SourceFile
-from src.util import git_relative_path, print_err
+from src.util import git_relative_path, print_err, shorten_path_fields
 
 def get_call_sites_from_file(source_file: SourceFile,
  changed_functions: Set[DependencyFunctionChange]) -> list[CallSite]:
@@ -64,7 +65,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
-        if changed_function.new.eq(called):
+        if functions_match(changed_function.new, called):
             call_site = CallSite(
                     called_function_change = changed_function,
                     call_location = \
@@ -100,7 +101,7 @@ def log_impact_set(call_sites: list[CallSite], filename: str) -> None:
                     reverse=True
             )
             for call_site in sorted_by_type:
-                f.write(f"{call_site.to_csv()}\n")
+                f.write(f"{shorten_path_fields(call_site.to_csv())}\n")
 
         with open(f"{filename.removesuffix('.csv')}.json", mode='w', encoding='utf8') as f:
             json.dump([ dataclasses.asdict(c) for c in call_sites ], f)

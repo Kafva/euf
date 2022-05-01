@@ -7,10 +7,34 @@ from git.exc import GitCommandError
 from git.repo.base import Repo
 
 from src.config import CONFIG
+from src.fmt import fmt_location
 from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
 from src.util import ccdb_dir, get_column_counts, git_dir, \
-        git_relative_path, print_info, print_err, time_end, time_start
+        git_relative_path, print_info, print_err, shorten_path_fields, time_end, time_start
+
+
+def functions_match(match: DependencyFunction, other: DependencyFunction) \
+ -> bool:
+    '''
+    Ensure that the arguments and return value of the provided function
+    match that of the current function object. Does not check the filepath
+    '''
+    match_str = fmt_location(match.ident.location)
+    other_str = fmt_location(other.ident.location)
+
+    if (err := match.ident.eq_report(other.ident, return_value=True, check_function=True)) != "":
+        print(err)
+        print(f"definition: {match_str}\ncall: {other_str}\n")
+        return False
+
+    for self_arg,other_arg in zip(match.arguments,other.arguments):
+        if (err := self_arg.eq_report(other_arg, return_value=False, check_function=False)) != "":
+            print(err)
+            print(f"definition: {match_str}\ncall: {other_str}\n")
+            return False
+
+    return True
 
 def get_non_static(changed_functions:
  list[DependencyFunctionChange]) -> list[DependencyFunctionChange]:
@@ -84,7 +108,8 @@ def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) \
         if src_loc := functions_differ(child_old,child_new):
             return src_loc
 
-def get_changed_functions_from_diff(diff: SourceDiff) -> list[DependencyFunctionChange]:
+def get_changed_functions_from_diff(diff: SourceDiff) \
+ -> list[DependencyFunctionChange]:
     '''
     Walk the AST of the new and old file in parallel and
     consider any divergence (within a function) as a potential change
@@ -238,7 +263,7 @@ def find_transative_changes_in_tu(cursor: cindex.Cursor,
 
         # Ensure that return type and arguments of the call
         # match the prototype in the change set
-        if change_matching_current.new.eq(called) and \
+        if functions_match(change_matching_current.new, called) and \
           current_function.ident.location.name != cursor.spelling:
             # If the enclosing function is calling itself we do not
             # record it as being 'indirectly affected'
@@ -332,7 +357,7 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange],
         with open(filename, mode='w', encoding='utf8') as f:
             f.write(f"direct_change;{IdentifierLocation.csv_header('old')};{IdentifierLocation.csv_header('new')}\n")
             for change in changed_functions:
-                f.write(f"{change.to_csv()}\n")
+                f.write(f"{shorten_path_fields(change.to_csv())}\n")
 
 def print_diag_errors(filepath:str, tu: cindex.TranslationUnit):
     if CONFIG.VERBOSITY >= 3:

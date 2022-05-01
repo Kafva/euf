@@ -7,7 +7,7 @@ from src.config import CONFIG
 from src.fmt import fmt_change, fmt_location
 from src.types import AnalysisResult, DependencyFunctionChange, \
     FunctionState, IdentifierLocation, SourceDiff
-from src.util import ccdb_dir, print_result, time_end, time_start, wait_on_cr, print_err
+from src.util import ccdb_dir, print_result, shorten_path_fields, time_end, time_start, wait_on_cr, print_err
 
 def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
   skip_renaming: set[str],
@@ -397,7 +397,9 @@ def log_harness(filename: str,
         runtime = datetime.now() - start_time if start_time else ""
         identity_str = "" if identity == None else identity
 
-        f.write(f"{func_name};{identity_str};{result.name};{runtime};{driver};{change.old.ident.location.to_csv()};{change.new.ident.location.to_csv()}\n")
+        old_loc = shorten_path_fields(change.old.ident.location.to_csv())
+        new_loc = shorten_path_fields(change.new.ident.location.to_csv())
+        f.write(f"{func_name};{identity_str};{result.name};{runtime};{driver};{old_loc};{new_loc}\n")
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],

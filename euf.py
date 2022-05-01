@@ -298,7 +298,7 @@ def reduction_stage(
 
 def transitive_stage(
  changed_functions: list[DependencyFunctionChange],
- dep_source_files: list[SourceFile], log_dir:str):
+ dep_source_files_new: list[SourceFile], log_dir:str):
     '''
     To include functions that have not had a textual change but call a 
     function that has changed, we perform a configurable number of 
@@ -324,7 +324,7 @@ def transitive_stage(
                     partial(get_transative_changes_from_file,
                         changed_functions = changed_functions,
                     ),
-                    dep_source_files
+                    dep_source_files_new
                 ))
         except Exception:
             traceback.print_exc()
@@ -452,7 +452,7 @@ def run(load_libclang:bool = True) -> tuple:
 
     # Create a list of all files from the dependency
     # used for transitive call analysis and state space estimation
-    dep_source_files = get_source_files(git_dir(new=False), ccdb_dir(new=False), dep_db_old)
+    dep_source_files_new = get_source_files(git_dir(new=True), ccdb_dir(new=True), dep_db_new)
 
     # - - - Git diff - - - #
     source_diffs = git_diff_stage(dep_repo,
@@ -479,7 +479,7 @@ def run(load_libclang:bool = True) -> tuple:
     # - - - Transitive change set propagation - - - #
     transitive_stage(
         changed_functions,
-        dep_source_files,
+        dep_source_files_new,
         log_dir
     )
     # - - - Impact set  - - - #

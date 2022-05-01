@@ -13,7 +13,7 @@ from functools import partial
 from src import ERR_EXIT
 from src.config import CONFIG
 from src.types import SourceFile, FunctionState, SubDirTU
-from src.util import mkdir_p, print_info, print_warn, \
+from src.util import git_relative_path, mkdir_p, print_info, print_warn, \
         print_err, remove_files_in, time_end, time_start
 
 def matches_excluded(string: str) -> bool:
@@ -39,8 +39,7 @@ def get_subdir_tus(target_source_dir: str) -> dict[str,SubDirTU]:
 
         for tu in ccdb:
             # The exclude regex is given on the form "src/sub/.*"
-            to_match = tu['directory']\
-                .removeprefix(target_source_dir).removeprefix("/") + "/"
+            to_match = git_relative_path(tu['directory'])+"/"
 
             if matches_excluded(to_match):
                 continue
