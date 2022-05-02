@@ -145,4 +145,4 @@ usb:
 onig:
 	./euf.py --config examples/libonig_d3d6_6f8c.json $(ARGS)
 expat:
-	./euf.py --config examples/libexpat_10d34296_f178826b.json $(ARGS)
+	./euf.py --config examples/libexpat_10d3_f178.json $(ARGS)

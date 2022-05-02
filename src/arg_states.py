@@ -97,7 +97,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
         subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env).check_returncode()
     except subprocess.CalledProcessError:
-        print_err("State space analysis error:")
+        print_err("Compilation errors during state space analysis:")
         print(f"cd {subdir}\n", ' '.join(cmd), flush=True)
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb

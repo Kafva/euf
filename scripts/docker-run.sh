@@ -2,6 +2,7 @@
 # ./euf.py --config tests/configs/docker.json
 # ./euf.py --config tests/configs/expat_docker.json
 # ./euf.py --config examples/libexpat_docker.json
+# ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG
 die(){ echo -e "$1" >&2 ; exit 1; }
 image_exists(){
   docker images --format "{{.Repository}}" | grep -q "^$1$"
@@ -20,7 +21,7 @@ else
 fi
 
 # Uncomment for debugging
-# ENTRYPOINT="--entrypoint /bin/bash euf"
+ENTRYPOINT="--entrypoint /bin/bash euf"
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 
@@ -44,8 +45,12 @@ done &
 
 SYNC_PID=$!
 
+CONTAINER_NAME=euf$RANDOM
+
+rm -rf .docker_results
+
 # Run with source files mounted to enable live updates
-docker run -h euf -it \
+docker run -h euf --name $CONTAINER_NAME -it \
   -u euf:root \
   -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
   -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
@@ -59,3 +64,10 @@ docker run -h euf -it \
   $ENTRYPOINT
 
 kill $SYNC_PID
+
+# Copy the ./results to .docker_results on the host
+docker cp $CONTAINER_NAME:/home/euf/euf/results .docker_results
+docker cp \
+  $CONTAINER_NAME:/home/euf/.cache/euf/libexpat-10d34296/expat/.harnesses/ENTROPY_DEBUG.c \
+  .docker_results 2> /dev/null
+

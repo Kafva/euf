@@ -6,7 +6,7 @@ an existing config file (usually one from .rand)
 '''
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <cfg.json> <functions...>"
-BASE_DIR=~/Repos/euf
+BASE_DIR=$PWD
 CONF=/tmp/config.json
 DEBUG=${DEBUG:=false}
 CONTEXT_LINES=${CONTEXT_LINES:=15}

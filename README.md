@@ -25,6 +25,10 @@ docker build --rm --tag=euf-base -f Dockerfile.base .
 
 # Project specific image derived from Dockerfile.base
 docker build --rm --tag=euf . 
+
+# Download and setup example projects 
+# (applies for both native and Docker installations)
+./scripts/dl-examples.sh
 ```
 
 Every invocation of EUF requires a JSON configuration file as an argument. The format of the configuration file is described in `src/config.py` and there are several examples present in the repository.

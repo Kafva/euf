@@ -121,7 +121,7 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
     main project, i.e. there can be several site objects that have the same
     enclosing function.
     '''
-    location_to_calls_dict: dict[str,set[str]] = dict()
+    location_to_calls_dict: dict[str,list[str]] = dict()
 
     for site in call_sites:
         # To compile all calls within the same enclosing function
@@ -141,9 +141,13 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
             fmt_divergence(site.called_function_change, with_context=False)
 
         if key in location_to_calls_dict:
-            location_to_calls_dict[key].add(out_str)
+            # Sort with direct changes first
+            if site.called_function_change.direct_change:
+                location_to_calls_dict[key].insert(0, out_str)
+            else:
+                location_to_calls_dict[key].append(out_str)
         else:
-            location_to_calls_dict[key] = set({out_str})
+            location_to_calls_dict[key] = [ out_str ]
 
     for location,calls in location_to_calls_dict.items():
         print(f"\n=== \033[33m{location}\033[0m ===")
