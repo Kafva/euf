@@ -113,8 +113,9 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
             output += p.stderr.read().decode('utf8')  # type: ignore
 
         if p.returncode != 0:
-            print_err("Compilation errors during state space analysis:")
-            print(output)
+            print_err("Compilation errors during state space analysis")
+            if CONFIG.VERBOSITY >= 1 and len(output.splitlines()) > 2:
+                print(output)
 
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb

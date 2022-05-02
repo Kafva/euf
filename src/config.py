@@ -133,7 +133,14 @@ class Config:
     # of the ccdb and the goto libs
     QUIET_BUILD: bool = True
 
+    # Remove all existing GOTO-bin libraries and recompile them
     FORCE_RECOMPILE: bool = False
+
+    # Attempt to re-create the compile_commands.json for each dependency
+    # version and the main project.
+    # Note: This will only delete an existing ccdb if EUF is able to
+    # auto-generate a new version,  manually created ccdbs
+    # for e.g. Cmake projects will thus not be removed.
     FORCE_CCDB_RECOMPILE: bool = False
 
     # - - - CBMC analysis - - -

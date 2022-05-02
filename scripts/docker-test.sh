@@ -41,9 +41,9 @@ RESULTS=results/libonig_6c88_a3c2
 verify
 
 #./euf.py --config examples/libexpat_docker.json
-#./euf.py --config tests/configs/expat_docker.json
-#
-#echo "=====> Expat <====="
-#EXPECTED=tests/expected/libexpat_10d3_f178
-#RESULTS=results/libexpat_10d3_f178
-#verify
+./euf.py --config tests/configs/expat_docker.json
+
+echo "=====> Expat <====="
+EXPECTED=tests/expected/libexpat_10d3_f178
+RESULTS=results/libexpat_10d3_f178
+verify
