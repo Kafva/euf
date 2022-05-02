@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-FULL=${FULL:=false}
-
 get_jabberd2(){
   : '''
   Hacky way of building the compilation database for jabberd2
@@ -42,10 +40,11 @@ clone_repo(){
 
 if $(which apt &> /dev/null); then
   sudo apt-get update -y && 
-    sudo apt-get install libidn11-dev libudns-dev libgsasl7-dev -y
-
+    sudo apt-get install -y libidn11-dev libudns-dev libgsasl7-dev \
+      cmake libusb-1.0-0-dev pkg-config
 elif $(which pacman &> /dev/null); then
-  sudo pacman -Syu libidn udns gsasl --noconfirm 
+  sudo pacman -Syu --noconfirm libidn udns gsasl cmake \
+    libusb-1.0-0-dev pkg-config 
 else
   die "Unsupported package manager"
 fi
@@ -56,7 +55,6 @@ mkdir -p ~/Repos/.docker
 clone_repo kkos/oniguruma         ~/Repos/oniguruma
 clone_repo libexpat/libexpat      ~/Repos/libexpat
 clone_repo libusb/libusb          ~/Repos/libusb
-clone_repo michaelrsweet/libcups  ~/Repos/libcups
 clone_repo stedolan/jq            ~/Repos/jq
 
 # Seperate repos to avoid errors when running EUF both within and outside docker
@@ -71,13 +69,14 @@ get_jabberd2 $HOME/Repos/.docker/jabberd-2.7.0
 fix_jq ~/Repos/jq
 fix_jq ~/Repos/.docker/jq
 
-if $FULL; then
-  clone_repo bminor/binutils-gdb    ~/Repos/gdb
-  # Qemu uses a dedicated build dir (and is huge)
-  clone_repo qemu/qemu ~/Repos/qemu
-  cd ~/Repos/qemu &&
-    ./configure && 
-    bear -- make -C build -j$NPROC
+clone_repo airspy/airspyone_host ~/Repos/airspy
+
+if ! [ -f ~/Repos/airspy/compile_commands.json ]; then
+  cd ~/Repos/airspy
+    # The 'CMAKE_EXPORT_COMPILE_COMMANDS' option uses 'command'
+    # instead of arguments for each entry so we use bear instead
+    mkdir -p build
+    cmake -B build -S . -DINSTALL_UDEV_RULES=OFF &&
+      bear -- make -C build -j$NPROC
   cd -
 fi
-

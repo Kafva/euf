@@ -78,12 +78,8 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
     script_env.update({
         CONFIG.ARG_STATES_OUT_DIR_ENV: outdir
     })
-    if quiet:
-        out = subprocess.DEVNULL
-    else:
-        # Enables debug output for ArgStates.so
-        # script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
-        out = sys.stderr
+
+    out = subprocess.PIPE if quiet else sys.stderr
 
     # We assume all headers that we need to analyze are included by one
     # or more of the c files so we do not explicitly pass them
@@ -104,20 +100,28 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
             if len(cmd_str) > CONFIG.CLANG_PLUGIN_RUN_STR_LIMIT \
             else cmd_str
 
+    output = ""
     if setx:
         print(f"cd {subdir}\n", cmd_str)
     try:
-        subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
-                            env = script_env).check_returncode()
-    except subprocess.CalledProcessError:
-        print_err("Compilation errors during state space analysis:")
-        print(f"cd {subdir}\n", cmd_str, flush=True)
+        p = subprocess.Popen(cmd, cwd = subdir, stdout = out, stderr = out,
+                            env = script_env)
+        if quiet:
+            output = "====> stdout <====\n"
+            output += p.stdout.read().decode('utf8')  # type: ignore
+            output += "====> stderr <====\n"
+            output += p.stderr.read().decode('utf8')  # type: ignore
+
+        if p.returncode != 0:
+            print_err("Compilation errors during state space analysis:")
+            print(output)
+
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb
         traceback.print_exc()
         print_err("This error has likely occured due to invalid entries in " +
                 "compile_commands.json")
-        print(f"cd {subdir}\n", cmd_str, flush=True)
+        print(output)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
