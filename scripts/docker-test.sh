@@ -18,7 +18,7 @@ compare(){
     printf "[\033[31mX\033[0m] FAILURE:\n" >&2
     # The results are copied to .docker_results on the main host
     printf "${1//results/.docker_results} "
-    echo $rhs|grep -q "cbmc.csv$" && 
+    grep -q "cbmc.csv$" <<< $rhs && 
       printf "${2//results/.docker_results}\n" ||
       printf "${2}\n"
   fi
@@ -26,7 +26,7 @@ compare(){
 
 verify(){
   for f in $RESULTS/*.csv; do
-    if echo $f|grep -q cbmc; then
+    if grep -q cbmc <<< $f; then
       verify_cbmc $f $EXPECTED/$(basename $f)
     else
       compare $f $EXPECTED/$(basename $f)

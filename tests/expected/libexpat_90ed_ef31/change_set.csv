@@ -30,7 +30,6 @@ True;expat/lib/xmlparse.c;6170;1;dtdCopy;expat/lib/xmlparse.c;6794;1;dtdCopy
 True;expat/lib/xmlparse.c;6067;1;dtdCreate;expat/lib/xmlparse.c;6691;1;dtdCreate
 True;expat/lib/xmltok_ns.c;90;1;findEncoding;expat/lib/xmltok_ns.c;94;1;findEncoding
 True;expat/lib/xmltok_ns.c;90;1;findEncodingNS;expat/lib/xmltok_ns.c;94;1;findEncodingNS
-True;expat/lib/xmlparse.c;812;1;generate_hash_secret_salt;expat/lib/xmlparse.c;901;1;generate_hash_secret_salt
 True;expat/lib/xmlparse.c;6498;1;hashTableIterInit;expat/lib/xmlparse.c;7134;1;hashTableIterInit
 True;expat/lib/xmltok_impl.c;1007;1;little2_prologTok;expat/lib/xmltok_impl.c;1015;1;little2_prologTok
 True;expat/lib/xmltok_impl.c;562;1;little2_scanAtts;expat/lib/xmltok_impl.c;570;1;little2_scanAtts

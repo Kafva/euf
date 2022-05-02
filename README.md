@@ -64,6 +64,9 @@ pytest tests/test_reg.py
 
 # Regression test for Docker
 VERIFY=true ./scripts/docker-run.sh
+
+# Debug regressions with
+./scripts/check_tests.sh
 ```
 
 ## Implementation notes

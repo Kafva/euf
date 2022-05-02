@@ -110,13 +110,6 @@ def flatten_dict(list_of_dicts: list[dict] ) -> dict:
 
     return flat
 
-def flatten_set(list_of_sets: list[set]) -> set:
-    flat = set()
-    for li in list_of_sets:
-        for item in li:
-            flat.add(item)
-    return flat
-
 def flatten(list_of_lists: list[list]) -> list:
     flat = []
     for li in list_of_lists:
