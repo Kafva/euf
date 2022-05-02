@@ -27,14 +27,14 @@ def matches_excluded(string: str) -> bool:
             sys.exit(ERR_EXIT)
     return False
 
-def get_subdir_tus(target_source_dir: str) -> dict[str,SubDirTU]:
+def get_subdir_tus(source_dir: str) -> dict[str,SubDirTU]:
     '''
     Return a dict on the form { "subdir_path": subdir_tu }
     using a compile_commands.json as input. The ccdb_args array will
     contain the union of all compilation flags used for files in a subdir
     '''
     src_subdirs = dict()
-    with open(f"{target_source_dir}/compile_commands.json", mode = 'r', encoding='utf8') as f:
+    with open(f"{source_dir}/compile_commands.json", mode = 'r', encoding='utf8') as f:
         ccdb = json.load(f)
 
         for tu in ccdb:
@@ -76,6 +76,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
     if quiet:
         out = subprocess.DEVNULL
     else:
+        # Enables debug output for ArgStates.so
         script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
         out = sys.stderr
 
@@ -85,26 +86,33 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
 
     # We assume that the isystem-flags are the same 
     # for all source files in a directory
-    cmd = [ "clang", "-cc1", "-load", CONFIG.ARG_STATS_SO,
+    cmd = [ "clang",
+        "-cc1", "-fcolor-diagnostics", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
         SourceFile.get_isystem_flags(list(subdir_tu.files)[0], source_dir) + \
         c_files + [ "-I", "/usr/include" ] + list(ccdb_filtered)
 
+
+    cmd_str =' '.join(cmd)
+    cmd_str = cmd_str[:CONFIG.CLANG_PLUGIN_RUN_STR_LIMIT] + "..." \
+            if len(cmd_str) > CONFIG.CLANG_PLUGIN_RUN_STR_LIMIT \
+            else cmd_str
+
     if setx:
-        print(f"cd {subdir}\n", ' '.join(cmd))
+        print(f"cd {subdir}\n", cmd_str)
     try:
         subprocess.run(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env).check_returncode()
     except subprocess.CalledProcessError:
         print_err("Compilation errors during state space analysis:")
-        print(f"cd {subdir}\n", ' '.join(cmd), flush=True)
+        print(f"cd {subdir}\n", cmd_str, flush=True)
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb
         traceback.print_exc()
         print_err("This error has likely occured due to invalid entries in " +
                 "compile_commands.json")
-        print(f"cd {subdir}\n", ' '.join(cmd), flush=True)
+        print(f"cd {subdir}\n", cmd_str, flush=True)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
@@ -174,29 +182,28 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
 
     return arg_states
 
-def state_space_analysis(symbols: list[str], target_source_dir: str):
-    target_name = os.path.basename(target_source_dir)
+def state_space_analysis(symbols: list[str], source_dir: str, git_dir: str):
+    target_name = os.path.basename(git_dir)
 
     start = time_start(f"Inspecting call sites ({target_name})...")
     outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{target_name}"
     mkdir_p(outdir)
     remove_files_in(outdir)
-    subdir_tus = get_subdir_tus(target_source_dir)
+    subdir_tus = get_subdir_tus(source_dir)
     if CONFIG.VERBOSITY >= 3:
         print("Subdirectories to analyze: ", end='')
-        print([ p.removeprefix(f"{target_source_dir}/")
+        print([ p.removeprefix(f"{source_dir}/")
                     for p in subdir_tus.keys()])
 
     with multiprocessing.Pool(CONFIG.NPROC) as p:
         for subdir, subdir_tu in subdir_tus.items():
             p.map(partial(call_arg_states_plugin,
                 outdir = outdir,
-                source_dir = target_source_dir,
+                source_dir = source_dir,
                 subdir = subdir,
                 subdir_tu = subdir_tu,
-                quiet = True),
+                quiet = not CONFIG.DEBUG_CLANG_PLUGIN),
                 symbols
             )
 
     time_end(f"State space analysis ({target_name})", start)
-

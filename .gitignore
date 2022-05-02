@@ -1,4 +1,4 @@
-.docker-results
+.docker_results
 .results
 .states
 .pytest-cache

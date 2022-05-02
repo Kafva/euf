@@ -3,7 +3,7 @@ FROM euf-base
 # and additional dependencies may need to be installed as a conseqeunce
 USER root
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-  libidn11-dev libudns-dev libgsasl7-dev neovim
+  libidn11-dev libudns-dev libgsasl7-dev libssl-dev neovim
 
 USER euf
 WORKDIR /home/euf/euf

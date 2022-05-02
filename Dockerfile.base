@@ -56,3 +56,7 @@ RUN chown -R euf:root /home/euf
 # instead of /usr/include in their ccdb.
 RUN rmdir /usr/local/include && \
     ln -s /usr/include /usr/local/include
+
+# Required for debug symbols to be resolved when
+# debugging clang-plugins
+ENV LLVM_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-13

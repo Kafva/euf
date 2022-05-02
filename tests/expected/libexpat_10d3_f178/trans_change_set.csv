@@ -1,5 +1,4 @@
 direct_change;old_path;old_line;old_col;old_name;new_path;new_line;new_col;new_name
-False;;-1;-1;;expat/lib/xmlparse.c;900;1;generate_hash_secret_salt
 False;;-1;-1;;expat/lib/xmlparse.c;964;1;XML_ParserCreate_MM
 False;;-1;-1;;expat/lib/xmlparse.c;1181;1;XML_ParserReset
 False;;-1;-1;;expat/lib/xmlparse.c;1222;1;XML_SetEncoding
@@ -40,7 +39,6 @@ False;;-1;-1;;expat/xmlwf/xmlfile.c;185;1;processStream
 False;;-1;-1;;expat/xmlwf/xmlfile.c;230;1;externalEntityRefStream
 False;;-1;-1;;expat/xmlwf/xmlwf.c;844;1;showVersion
 False;;-1;-1;;expat/xmlwf/xmlwf.c;953;1;main
-True;expat/lib/xmlparse.c;801;1;ENTROPY_DEBUG;expat/lib/xmlparse.c;891;1;ENTROPY_DEBUG
 True;expat/lib/xmlparse.c;2244;1;XML_ErrorString;expat/lib/xmlparse.c;2349;1;XML_ErrorString
 True;expat/lib/xmlparse.c;1148;1;XML_ExternalEntityParserCreate;expat/lib/xmlparse.c;1249;1;XML_ExternalEntityParserCreate
 True;expat/lib/xmlparse.c;1937;1;XML_GetBuffer;expat/lib/xmlparse.c;2037;1;XML_GetBuffer

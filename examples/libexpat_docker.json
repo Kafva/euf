@@ -33,7 +33,7 @@
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
   "ORDER_BY_CALL_SITE": true,
-  "VERBOSITY": 1,
+  "VERBOSITY": 2,
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,

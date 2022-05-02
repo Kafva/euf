@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# ./euf.py --config tests/configs/docker.json
-# ./euf.py --config tests/configs/expat_docker.json
-# ./euf.py --config examples/libexpat_docker.json
-# ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG
 die(){ echo -e "$1" >&2 ; exit 1; }
 image_exists(){
   docker images --format "{{.Repository}}" | grep -q "^$1$"
@@ -20,6 +16,10 @@ else
   ENTRYPOINT="euf --config $CONF"
 fi
 
+# ./euf.py --config tests/configs/docker.json
+# ./euf.py --config tests/configs/expat_docker.json
+# ./euf.py --config examples/libexpat_docker.json
+# ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG
 # Uncomment for debugging
 ENTRYPOINT="--entrypoint /bin/bash euf"
 

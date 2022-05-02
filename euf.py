@@ -211,9 +211,12 @@ def reduction_stage(
     non_static_changes = [ c.old.ident.location.name for c in
             get_non_static(changes_to_analyze) ]
 
-    state_space_analysis(idents_to_analyze, ccdb_dir(new=False))
-    state_space_analysis(idents_to_analyze, ccdb_dir(new=True))
-    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR)
+    state_space_analysis(idents_to_analyze, ccdb_dir(new=False),
+                                            git_dir(new=False))
+    state_space_analysis(idents_to_analyze, ccdb_dir(new=True),
+                                            git_dir(new=True))
+    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
+                                             CONFIG.PROJECT_DIR)
 
     # Join the results from each analysis
     old_name    = os.path.basename(git_dir(new=False))

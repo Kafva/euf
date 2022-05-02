@@ -217,11 +217,15 @@ class Config:
     CBMC_ASSERT_MSG: str = "Equivalent output"
     IDENTITY_HARNESS: str = "_id"
     INDENT: str = " "*2
+    CLANG_PLUGIN_RUN_STR_LIMIT: int = 500
 
     # Compilation flag patterns to exclude from invocations of 
     # clang-plugins/ArgStates
     ARG_STATES_COMPILE_FLAG_BLACKLIST = ["-g", "-c", r"-f.*", r"-W.*"]
     ARG_STATS_SO=f"{BASE_DIR}/clang-plugins/build/lib/libArgStates.so"
+
+    # Print debug information when running ArgStates.so
+    DEBUG_CLANG_PLUGIN: bool = False
 
     # !! DO NOT CHANGE, hardcoded in clang plugin !!
     ARG_STATES_OUT_DIR_ENV = "ARG_STATES_OUT_DIR"
