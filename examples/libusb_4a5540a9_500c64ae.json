@@ -1,5 +1,5 @@
 {
-  "PROJECT_DIR": "~/Repos/qemu",
+  "PROJECT_DIR": "~/Repos/libcups",
   "DEPENDENCY_DIR": "~/Repos/libusb",
   "DEPLIB_NAME": "libusb-1.0.a",
   "CUSTOM_HEADERS": {

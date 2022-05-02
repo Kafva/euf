@@ -340,13 +340,14 @@ def transitive_stage(
             try:
                 # Add calls to functions that have already been identified as changed
                 if (idx := [ c.new for c in changed_functions ].index(key)):
-                    changed_functions[idx].invokes_changed_functions.extend(calls)
+                    changed_functions[idx].invokes_changed_functions |= \
+                        set(calls)
             except ValueError:
                 # Add a new function (with an indirect change) to the changed set
                 changed_function = DependencyFunctionChange(
                         old = DependencyFunction.empty(),
                         new = key,
-                        invokes_changed_functions = calls,
+                        invokes_changed_functions = set(calls),
                         direct_change = False
                 )
                 changed_functions.append(changed_function)

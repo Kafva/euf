@@ -16,12 +16,10 @@ else
   ENTRYPOINT="euf --config $CONF"
 fi
 
-# ./euf.py --config tests/configs/docker.json
-# ./euf.py --config tests/configs/expat_docker.json
 # ./euf.py --config examples/libexpat_docker.json
 # ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG
 # Uncomment for debugging
-ENTRYPOINT="--entrypoint /bin/bash euf"
+# ENTRYPOINT="--entrypoint /bin/bash euf"
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 

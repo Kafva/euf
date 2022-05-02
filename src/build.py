@@ -29,7 +29,7 @@ def run_autoreconf(path: str, out) -> bool:
         except subprocess.CalledProcessError:
             check_ccdb_error(path)
     else:
-        print_err(f"({path}): Missing autoconf files")
+        print_err(f"{path}: Missing autoconf files")
         return False
 
     return True
@@ -68,7 +68,7 @@ def autogen_compile_db(source_dir: str) -> bool:
     # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
     # needs to be manually invoked to create configure
     if not os.path.isfile(f"{source_dir}/configure"):
-        print_err(f"({source_dir}): Missing ./configure")
+        print_err(f"{source_dir}: Missing ./configure")
         run_autoreconf(source_dir, out)
 
     conf_script = None

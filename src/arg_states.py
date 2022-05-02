@@ -66,8 +66,11 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
     non-overlapping filenames when analysing old/new versions of a dependency
     '''
     blacklist = r"|".join(CONFIG.ARG_STATES_COMPILE_FLAG_BLACKLIST)
-    ccdb_filtered  = filter(lambda a: not re.match(blacklist, a),
+    ccdb_arguments  = filter(lambda a: not re.match(blacklist, a),
                                 subdir_tu.ccdb_args)
+
+    # Remove '\' sequences from all options
+    ccdb_arguments = map(lambda a: a.replace('\\', ''), ccdb_arguments)
 
     script_env = CONFIG.get_script_env()
     script_env.update({
@@ -77,7 +80,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
         out = subprocess.DEVNULL
     else:
         # Enables debug output for ArgStates.so
-        script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
+        # script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
         out = sys.stderr
 
     # We assume all headers that we need to analyze are included by one
@@ -91,7 +94,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
         SourceFile.get_isystem_flags(list(subdir_tu.files)[0], source_dir) + \
-        c_files + [ "-I", "/usr/include" ] + list(ccdb_filtered)
+        c_files + [ "-I", "/usr/include" ] + list(ccdb_arguments)
 
 
     cmd_str =' '.join(cmd)

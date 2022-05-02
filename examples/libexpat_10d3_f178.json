@@ -1,5 +1,5 @@
 {
-  "PROJECT_DIR": "~/Repos/qemu",
+  "PROJECT_DIR": "~/Repos/jabberd-2.7.0",
   "DEPENDENCY_DIR": "~/Repos/libexpat",
   "DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
   "DEPLIB_NAME": "libexpat.a",

@@ -217,7 +217,7 @@ class Config:
     CBMC_ASSERT_MSG: str = "Equivalent output"
     IDENTITY_HARNESS: str = "_id"
     INDENT: str = " "*2
-    CLANG_PLUGIN_RUN_STR_LIMIT: int = 500
+    CLANG_PLUGIN_RUN_STR_LIMIT: int = 1500
 
     # Compilation flag patterns to exclude from invocations of 
     # clang-plugins/ArgStates

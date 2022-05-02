@@ -2,8 +2,8 @@
 # This script should be ran INSIDE Docker
 
 verify_cbmc(){
-  local lhs="$RESULTS/${RANDOM}_$(basename $1)"
-  local rhs="$RESULTS/${RANDOM}_$(basename $2)"
+  local lhs="lhs_$RESULTS/${RANDOM}_$(basename $1)"
+  local rhs="rhs_$RESULTS/${RANDOM}_$(basename $2)"
   # Exclude the runtime and harness path fields
   cut -d';' -f4,5 --complement $1 > $lhs
   cut -d';' -f4,5 --complement $2 > $rhs
@@ -34,16 +34,16 @@ verify(){
   done
 }
 
-#./euf.py --config tests/configs/docker.json
-#echo "=====> Oniguruma <====="
-#EXPECTED=tests/expected/libonig_6c88_a3c2
-#RESULTS=results/libonig_6c88_a3c2
-#verify
-
-#./euf.py --config tests/configs/expat_docker.json
-./euf.py --config examples/libexpat_docker.json
-
-echo "=====> Expat <====="
-EXPECTED=tests/expected/libexpat_10d3_f178
-RESULTS=results/libexpat_10d3_f178
+./euf.py --config tests/configs/docker.json
+echo "=====> Oniguruma <====="
+EXPECTED=tests/expected/libonig_6c88_a3c2
+RESULTS=results/libonig_6c88_a3c2
 verify
+
+#./euf.py --config examples/libexpat_docker.json
+#./euf.py --config tests/configs/expat_docker.json
+#
+#echo "=====> Expat <====="
+#EXPECTED=tests/expected/libexpat_10d3_f178
+#RESULTS=results/libexpat_10d3_f178
+#verify

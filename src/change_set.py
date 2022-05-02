@@ -12,8 +12,8 @@ from src.fmt import fmt_location
 from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
 from src.util import ccdb_dir, get_column_counts, git_dir, \
-        git_relative_path, print_info, print_err, shorten_path_fields, time_end, time_start
-
+        git_relative_path, print_info, print_err, \
+        shorten_path_fields, time_end, time_start
 
 def functions_match(match: DependencyFunction, other: DependencyFunction) \
  -> bool:

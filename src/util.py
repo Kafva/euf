@@ -124,7 +124,8 @@ def flatten(list_of_lists: list[list]) -> list:
         flat.extend(li)
     return flat
 
-def get_column_counts(blob: str, column_index:int, sep:str = "") -> list[tuple[str,int]]:
+def get_column_counts(blob: str, column_index:int, sep:str = "") \
+ -> list[tuple[str,int]]:
     ''' 
     Return the number of occurrences of each string in a newline separated file
     for a given separator and column index (zero based). Empty on failure
@@ -189,7 +190,8 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
         case _: # Default to warning
             print_warn(msg)
 
-def time_end(msg: str, start_time: datetime, result: AnalysisResult = AnalysisResult.NONE) -> None:
+def time_end(msg: str, start_time: datetime,
+ result: AnalysisResult = AnalysisResult.NONE) -> None:
     if CONFIG.VERBOSITY >= 1:
         print_result(f"{msg}: {datetime.now() - start_time}", result)
         start_time = datetime.now()

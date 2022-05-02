@@ -8,4 +8,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 USER euf
 WORKDIR /home/euf/euf
 
+# Required to avoid errors when analyzing jabberd with clang-plugins
+RUN sudo ln -s /usr/include/x86_64-linux-gnu/openssl/opensslconf.h \
+               /usr/include/openssl/opensslconf.h
+
 ENTRYPOINT ["./euf.py"]

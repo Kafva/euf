@@ -418,7 +418,7 @@ class DependencyFunctionChange:
     old: DependencyFunction
     new: DependencyFunction
 
-    invokes_changed_functions: list[str]
+    invokes_changed_functions: set[str]
     direct_change: bool = True
 
     # The source code location (in the old version)
@@ -434,7 +434,7 @@ class DependencyFunctionChange:
             DependencyFunction.new_from_cursor(cursor_old,filepath=filepath_old),
             new = \
             DependencyFunction.new_from_cursor(cursor_new,filepath=filepath_new),
-            invokes_changed_functions = []
+            invokes_changed_functions = set()
         )
 
     @classmethod
