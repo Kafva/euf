@@ -110,7 +110,12 @@ def log_impact_set(call_sites: list[CallSite], filename: str) -> None:
                 f.write(f"{shorten_path_fields(call_site.to_csv())}\n")
 
         with open(f"{filename.removesuffix('.csv')}.json", mode='w', encoding='utf8') as f:
-            json.dump([ dataclasses.asdict(c) for c in call_sites ], f)
+            # Dump each DependencyFunctionChange as a dict with its set()
+            # attribute translated to a list (sets are not serializable)
+            json.dump(
+                [ dataclasses.asdict(c) for c in call_sites ], f,
+                default=lambda x: list(x) if isinstance(x, set) else x
+            )
 
 def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
     '''

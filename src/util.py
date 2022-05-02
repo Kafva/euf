@@ -1,6 +1,5 @@
 import sys, os, re
 from datetime import datetime
-from typing import Set
 
 from clang import cindex
 from src import ERR_EXIT
@@ -111,7 +110,7 @@ def flatten_dict(list_of_dicts: list[dict] ) -> dict:
 
     return flat
 
-def flatten_set(list_of_sets: list[Set]) -> Set:
+def flatten_set(list_of_sets: list[set]) -> set:
     flat = set()
     for li in list_of_sets:
         for item in li:
@@ -146,13 +145,6 @@ def get_column_counts(blob: str, column_index:int, sep:str = "") \
             column_stats[column_value] = 1
 
     return list(column_stats.items())
-
-def unique_only(li: list) -> list:
-    uniq = []
-    for item in li:
-        if not item in uniq:
-            uniq.append(item)
-    return uniq
 
 def find(name, path) -> str:
     for root, _, files in os.walk(path):

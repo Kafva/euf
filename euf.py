@@ -323,7 +323,7 @@ def transitive_stage(
     for _ in range(CONFIG.TRANSATIVE_PASSES):
         try:
             with multiprocessing.Pool(CONFIG.NPROC) as p:
-                TRANSATIVE_CHANGED_FUNCTIONS       = flatten_dict(p.map(
+                TRANSATIVE_CHANGED_FUNCTIONS = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
                         changed_functions = changed_functions,
                     ),
@@ -338,16 +338,17 @@ def transitive_stage(
 
         for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
             try:
-                # Add calls to functions that have already been identified as changed
+                # Add calls to functions that have already 
+                # been identified as changed
                 if (idx := [ c.new for c in changed_functions ].index(key)):
                     changed_functions[idx].invokes_changed_functions |= \
-                        set(calls)
+                            set(calls)
             except ValueError:
                 # Add a new function (with an indirect change) to the changed set
                 changed_function = DependencyFunctionChange(
                         old = DependencyFunction.empty(),
                         new = key,
-                        invokes_changed_functions = set(calls),
+                        invokes_changed_functions = calls,
                         direct_change = False
                 )
                 changed_functions.append(changed_function)

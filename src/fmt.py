@@ -77,7 +77,7 @@ def print_transistive_changes(func_dict: dict[DependencyFunction,list[str]]):
         # Indirectly changed function
         out += fmt_location(func.ident.location)
 
-        # List of calls to changed functions 
+        # List of calls to changed functions
         out += ": [\n"
         for call in set(func_dict[func]):
             out += f"{CONFIG.INDENT}{git_relative_path(call)},\n"

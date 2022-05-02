@@ -2,8 +2,8 @@
 # This script should be ran INSIDE Docker
 
 verify_cbmc(){
-  local lhs="lhs_$RESULTS/${RANDOM}_$(basename $1)"
-  local rhs="rhs_$RESULTS/${RANDOM}_$(basename $2)"
+  local lhs="$RESULTS/lhs_${RANDOM}_$(basename $1)"
+  local rhs="$RESULTS/rhs_${RANDOM}_$(basename $2)"
   # Exclude the runtime and harness path fields
   cut -d';' -f4,5 --complement $1 > $lhs
   cut -d';' -f4,5 --complement $2 > $rhs

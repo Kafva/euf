@@ -418,6 +418,10 @@ class DependencyFunctionChange:
     old: DependencyFunction
     new: DependencyFunction
 
+    # NOTE: We need to use a set() since if a header defines a 
+    # function, several TUs may parse the function multiple times, 
+    # causing duplicate entries to be added if the function calls a 
+    # function in the change set. This is not an issue for regular .c files
     invokes_changed_functions: set[str]
     direct_change: bool = True
 
