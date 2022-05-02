@@ -106,7 +106,7 @@ def ast_diff_stage(source_diffs: list[SourceDiff], log_dir: str) \
     changed_functions = []
     try:
         with multiprocessing.Pool(CONFIG.NPROC) as p:
-            changed_functions       = flatten(p.map(
+            changed_functions = flatten(p.map(
                 get_changed_functions_from_diff,
                 source_diffs
             ))

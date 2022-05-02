@@ -69,8 +69,10 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
     ccdb_arguments  = filter(lambda a: not re.match(blacklist, a),
                                 subdir_tu.ccdb_args)
 
-    # Remove '\' sequences from all options
-    ccdb_arguments = map(lambda a: a.replace('\\', ''), ccdb_arguments)
+    # Translate escaped quotes into normal quotes
+    # This removes errors when parsing the db for jabberd-2.7.0
+    # and does not introduce issues with jq
+    ccdb_arguments = map(lambda a: a.replace('\\"', '"'), ccdb_arguments)
 
     script_env = CONFIG.get_script_env()
     script_env.update({

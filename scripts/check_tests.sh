@@ -3,14 +3,6 @@ die(){ echo -e "$1" >&2 ; exit 1; }
 RESULT_DIR=./results
 EXPECTED_DIR=./tests/expected
 
-# Go through each of the files being tested for diffs
-#   1. Print which ones differ
-# Enter loop:
-# v:  View current diff
-# q:  Quit
-# c:  Continue to next diff
-# g:  Replace the expected value with the recieived value
-
 verify_cbmc(){
   local lhs="/tmp/lhs_${RANDOM}_$(basename $1)"
   local rhs="/tmp/rhs_${RANDOM}_$(basename $2)"
