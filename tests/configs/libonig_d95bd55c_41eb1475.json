@@ -45,10 +45,10 @@
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
-      "~/Repos/euf/examples/onig/include/regcomp.h"
+      "~/Repos/euf/examples/include/regcomp.h"
     ],
     "regparse.c": [
-      "~/Repos/euf/examples/onig/include/regparse2.h"
+      "~/Repos/euf/examples/include/regparse2.h"
     ]
   },
   "FORCE_RECOMPILE": true,

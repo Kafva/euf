@@ -72,7 +72,7 @@ else
 
   # Grep out a list of all functions from oniguruma that were called during 
   # the invocation
-  grep -in -f ~/Repos/euf/examples/onig/rename.txt $TRACE_FILE | awk '{print $2}'
+  grep -in -f ~/Repos/euf/tests/data/onig_rename.txt $TRACE_FILE | awk '{print $2}'
 fi
 
 printf "jq: $JQ_VER\n"

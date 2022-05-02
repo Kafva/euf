@@ -38,7 +38,7 @@ def test_patch_old_bear_db():
     assert(filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json"))
 
 def test_mkdirp():
-    make_path = f"{BASE_DIR}/examples/expat/cases/2"
+    make_path = f"{BASE_DIR}/examples/do_not_create"
     mkdir_p(make_path)
 
     result = os.path.isdir(make_path)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ./euf.py --config tests/configs/docker.json
 # ./euf.py --config tests/configs/expat_docker.json
-# ./euf.py --config examples/expat/cases/docker.json
+# ./euf.py --config examples/libexpat_docker.json
 die(){ echo -e "$1" >&2 ; exit 1; }
 image_exists(){
   docker images --format "{{.Repository}}" | grep -q "^$1$"

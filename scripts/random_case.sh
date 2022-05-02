@@ -8,7 +8,7 @@ CMTS=/tmp/commits
 
 case "$1" in
   libusb)
-    BASE_CONF=./examples/usb/base.json
+    BASE_CONF=./examples/base_usb.json
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
@@ -20,7 +20,7 @@ case "$1" in
     #
     # We also need to watch out for changes to structs...
     # This seems to be near un-avoidable with oniguruma...
-    BASE_CONF=./examples/onig/base.json
+    BASE_CONF=./examples/base_onig.json
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
     NOT_BEFORE=$(date -d "2017-01-01" '+%s')
@@ -28,7 +28,7 @@ case "$1" in
     NOT_AFTER=$(date -d "2017-06-25" '+%s')
   ;;
   *)
-    BASE_CONF=./examples/expat/base.json
+    BASE_CONF=./examples/base_expat.json
     DEP_DIR=~/Repos/libexpat
     LIBNAME=libexpat
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')

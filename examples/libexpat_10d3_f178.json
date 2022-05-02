@@ -5,11 +5,14 @@
   "DEPLIB_NAME": "libexpat.a",
   "EXCLUDE_REGEXES": [
     "expat/tests/.*",
-    "expat/examples/.*"
+    "expat/examples/.*",
+    "expat/fuzz/.*",
+    "expat/.*tab.h",
+    "expat/xmlwf/win32.*"
   ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
-      "~/Repos/euf/examples/expat/include/xmlparse.h"
+      "~/Repos/euf/examples/include/xmlparse.h"
     ]
   },
   "BLACKLISTED_HEADERS": [
@@ -18,18 +21,23 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
-  "CBMC_TIMEOUT": 7,
+  "QUIET_BUILD": true,
+  "FORCE_CCDB_RECOMPILE": false,
+  "FORCE_RECOMPILE": false,
+  "USE_EXISTING_DRIVERS": false,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
+  "CBMC_TIMEOUT": 10,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": true,
   "SILENT_IDENTITY_VERIFICATION": true,
+  "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
   "ORDER_BY_CALL_SITE": true,
-  "VERBOSITY": 2,
+  "VERBOSITY": 1,
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
   "FULL": true,
-  "COMMIT_OLD": "6aa6a82d2407ca7ba221299d378cb3803d2cf519",
-  "COMMIT_NEW": "c9e1ac00c6347e86c9ceac5f0a5c840b4de8f7ee"
+  "COMMIT_OLD": "10d34296211f8a1b7a9ac09df0e2983eeb892569",
+  "COMMIT_NEW": "f178826bb1e9c8ee23202f1be55ad4ac7b649e84"
 }

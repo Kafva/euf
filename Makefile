@@ -87,7 +87,7 @@ fp_verify:
 	SHOW_DIFF=true \
 	CONTEXT_LINES=30 \
 	./scripts/test_harness.sh \
-	examples/usb/cases/libusb_5d089e49_f7084fea.json \
+	examples/libusb_5d089e49_f7084fea.json \
 	libusb_attach_kernel_driver
 
 fp_verify2:
@@ -107,7 +107,7 @@ fp_verify3:
 	SHOW_DIFF=true \
 	CONTEXT_LINES=30 \
 	./scripts/test_harness.sh \
-	examples/usb/cases/libusb_5d089e49_f7084fea.json \
+	examples/libusb_5d089e49_f7084fea.json \
 	libusb_claim_interface
 
 onig_verify:
@@ -116,7 +116,7 @@ onig_verify:
 	SHOW_DIFF=true \
 	CONTEXT_LINES=27 \
 	./scripts/test_harness.sh \
-	examples/onig/cases/libonig_d3d6_6f8c.json \
+	examples/libonig_d3d6_6f8c.json \
 	renumber_node_backref
 
 onig_verify2:
@@ -126,7 +126,7 @@ onig_verify2:
 	CONTEXT_LINES=0 \
 	SILENT=false \
 	./scripts/test_harness.sh \
-	examples/onig/cases/libonig_d3d6_6f8c.json \
+	examples/libonig_d3d6_6f8c.json \
 	subexp_recursive_check_trav
 
 onig_verify3:
@@ -135,14 +135,14 @@ onig_verify3:
 	SHOW_DIFF=true \
 	CONTEXT_LINES=30 \
 	./scripts/test_harness.sh \
-	examples/onig/cases/libonig_d3d6_6f8c.json \
+	examples/libonig_d3d6_6f8c.json \
 	unset_addr_list_fix
 
 
 #== test cases ==#
 usb:
-	./euf.py --config examples/usb/cases/libusb_4a5540a9_500c64ae.json $(ARGS)
+	./euf.py --config examples/libusb_4a5540a9_500c64ae.json $(ARGS)
 onig:
-	./euf.py --config examples/onig/cases/libonig_d3d6_6f8c.json $(ARGS)
+	./euf.py --config examples/libonig_d3d6_6f8c.json $(ARGS)
 expat:
-	./euf.py --config examples/expat/cases/10d34296_f178826b.json $(ARGS)
+	./euf.py --config examples/libexpat_10d34296_f178826b.json $(ARGS)

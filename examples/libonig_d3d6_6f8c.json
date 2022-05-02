@@ -41,25 +41,25 @@
   ],
   "EXCLUDE_REGEXES": [
     "sample/.*",
-    "test/.*"
+    "test/.*",
+    "src/regparse.c"
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
-      "~/Repos/euf/examples/onig/include/regcomp.h"
+      "~/Repos/euf/examples/include/regcomp.h"
     ],
     "regparse.c": [
-      "~/Repos/euf/examples/onig/include/regparse2.h"
+      "~/Repos/euf/examples/include/regparse2.h"
     ]
   },
-  "FORCE_CCDB_RECOMPILE": false,
-  "FORCE_RECOMPILE": false,
+  "FORCE_RECOMPILE": true,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
-  "CBMC_TIMEOUT": 240,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
+  "CBMC_TIMEOUT": 7,
   "ENABLE_RESULT_LOG": true,
-  "DIE_ON_ERROR": true,
+  "DIE_ON_ERROR": false,
   "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
   "VERBOSITY": 1,
@@ -68,6 +68,7 @@
   "SKIP_IMPACT": false,
   "FULL": true,
   "QUIET_BUILD": true,
-  "COMMIT_OLD": "d95bd55c96a0e5c7e34302e2ef3f555cf8ba1fae",
-  "COMMIT_NEW": "41eb14754811db788dbdcea38947b9e8b0926be7"
+  "COMMIT_OLD": "d3d6a347913b4b0377b84c9c494b10a831030c17",
+  "COMMIT_NEW": "6f8c56c204a42d592ffa7b1835609d63ebc74301"
 }
+

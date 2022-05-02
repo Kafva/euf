@@ -11,7 +11,7 @@
   ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
-      "~/Repos/euf/examples/expat/include/xmlparse.h"
+      "~/Repos/euf/examples/include/xmlparse.h"
     ]
   },
   "BLACKLISTED_HEADERS": [
