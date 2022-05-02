@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ./euf.py --config tests/configs/docker.json
 # ./euf.py --config tests/configs/expat_docker.json
+# ./euf.py --config examples/expat/cases/docker.json
 die(){ echo -e "$1" >&2 ; exit 1; }
 image_exists(){
   docker images --format "{{.Repository}}" | grep -q "^$1$"
@@ -50,6 +51,7 @@ docker run -h euf -it \
   -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
   -v $HOME/Repos/.docker/jabberd-2.7.0:/home/euf/Repos/jabberd-2.7.0 \
   -v $HOME/Repos/.docker/libexpat:/home/euf/Repos/libexpat \
+  -v $PWD/examples:/home/euf/euf/examples \
   -v $PWD/tests/configs:/home/euf/euf/tests/configs \
   -v $PWD/scripts:/home/euf/euf/scripts \
   -v $PWD/tests:/home/euf/euf/tests \

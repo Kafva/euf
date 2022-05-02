@@ -427,13 +427,13 @@ class DependencyFunctionChange:
     point_of_divergence: IdentifierLocation = IdentifierLocation.empty()
 
     @classmethod
-    def new_from_cursors(cls, old_cursor: cindex.Cursor, new_cursor:
+    def new_from_cursors(cls, cursor_old: cindex.Cursor, cursor_new:
      cindex.Cursor, filepath_old:str="", filepath_new:str=""):
         return cls(
             old = \
-            DependencyFunction.new_from_cursor(old_cursor,filepath=filepath_old),
+            DependencyFunction.new_from_cursor(cursor_old,filepath=filepath_old),
             new = \
-            DependencyFunction.new_from_cursor(new_cursor,filepath=filepath_new),
+            DependencyFunction.new_from_cursor(cursor_new,filepath=filepath_new),
             invokes_changed_functions = []
         )
 

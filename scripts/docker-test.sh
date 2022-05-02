@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 verify_cbmc(){
-  lhs=$(mktemp --suffix .csv)
-  rhs=$(mktemp --suffix .csv)
+  local lhs="/tmp/${RANDOM}_$(basename $1)"
+  local rhs="/tmp/${RANDOM}_$(basename $2)"
   # Exclude the runtime field
   cut -d';' -f4 --complement $1 > $lhs
   cut -d';' -f4 --complement $2 > $rhs
@@ -14,7 +14,8 @@ compare(){
     printf "[\033[32m+\033[0m] SUCCESS $1\n" >&2 
   else
     printf "[\033[31mX\033[0m] FAILURE $1\n" >&2
-    cat $1
+
+    echo "$1 $2"
   fi
 }
 
@@ -28,11 +29,11 @@ verify(){
   done
 }
 
-./euf.py --config tests/configs/docker.json
-echo "=====> Oniguruma <====="
-EXPECTED=tests/expected/libonig_6c88_a3c2
-RESULTS=results/libonig_6c88_a3c2
-verify
+#./euf.py --config tests/configs/docker.json
+#echo "=====> Oniguruma <====="
+#EXPECTED=tests/expected/libonig_6c88_a3c2
+#RESULTS=results/libonig_6c88_a3c2
+#verify
 
 ./euf.py --config tests/configs/expat_docker.json
 

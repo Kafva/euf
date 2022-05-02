@@ -180,17 +180,15 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
                 print(f"New: b/{git_rel_path_new} {pair.new.spelling}()")
             continue
 
-        cursor_old_fn = pair.old
-        cursor_new_fn = pair.new
-
         # We need to pass the filepaths explicitly in case the path
         # from the internal cursor is not an abspath
         function_change = DependencyFunctionChange.new_from_cursors(
-                cursor_old_fn, cursor_new_fn,
+                cursor_old = pair.old,
+                cursor_new = pair.new,
                 filepath_old = pair.filepath_old,
                 filepath_new = pair.filepath_new
         )
-        src_loc = functions_differ(cursor_old_fn, cursor_new_fn)
+        src_loc = functions_differ(pair.old, pair.new)
 
         if type(src_loc) == cindex.SourceLocation:
             if CONFIG.VERBOSITY >= 5:

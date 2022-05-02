@@ -435,15 +435,15 @@ def run(load_libclang:bool = True) -> tuple:
     # To get the full context when parsing source files we need the
     # full source tree (and a compilation database) for both the
     # new and old version of the dependency
-    if not create_worktree(git_dir(new=False), CONFIG.COMMIT_NEW, dep_repo):
+    if not create_worktree(git_dir(new=False), CONFIG.COMMIT_OLD, dep_repo):
         sys.exit(ERR_EXIT)
-    if not create_worktree(git_dir(new=True), CONFIG.COMMIT_OLD, dep_repo):
+    if not create_worktree(git_dir(new=True), CONFIG.COMMIT_NEW, dep_repo):
         sys.exit(ERR_EXIT)
 
     # Attempt to create the compilation database automatically
     # if they do not already exist
-    dep_db_new = create_ccdb(ccdb_dir(new=True))
     dep_db_old = create_ccdb(ccdb_dir(new=False))
+    dep_db_new = create_ccdb(ccdb_dir(new=True))
     main_db = create_ccdb(CONFIG.PROJECT_DIR)
 
     # Gather a list of all the source files in the main project
