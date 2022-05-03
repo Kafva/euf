@@ -145,11 +145,12 @@ def autogen_compile_db(source_dir: str) -> bool:
     return has_valid_compile_db(source_dir)
 
 def remove_dependency_entries_from_project_db(ccdb_path: str):
+    dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
+    print_info(f"Removing entries for '{dep_name}' in {ccdb_path}")
     with open(ccdb_path, mode="r", encoding = "utf8") as f:
         filtered_db = []
         ccdb_json = json.load(f)
         for tu in ccdb_json:
-            dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
             if re.match(rf".*/{dep_name}/.*", tu['file']) == None:
                 filtered_db.append(tu)
 
@@ -191,10 +192,32 @@ def patch_ccdb_with_headers(source_dir: str, ccdb_path:str) -> bool:
         for json_entry in json_output:
             if json_entry['file'].endswith(".h") and \
                not json_entry['file'].startswith("/usr"):
-                json_entry["arguments"] = json_entry['command'].split(' ')
+                # To convert the 'command' string into an arguments array
+                # we cannot rely on .split(' ') since the command can contain
+                # "strings with spaces". We instead split on ' -'
+                # The first item will be the CC, the last item will contain
+                # both the output file and the input file
+                #
+                #   "command": "/usr/bin/gcc -DPACKAGE_NAME=\\\"jq\\\" ... 
+                #                   -o src/.libs/builtin.o src/builtin.c"
+                # compdb has a bug that sometimes puts escaped quotes around
+                # arguments.
+                #
+                # \"-DPACKAGE_STRING=\\\"jq 1.6-147-gf9afa95\\\"\"
+                split_cmds = json_entry['command'].split(" -")
+                arguments = [ split_cmds[0].strip() ]
+
+                for s in split_cmds[1:-1]:
+                    # Occurrences of '\' in the command string will be
+                    # doubly escaped
+                    arguments.append("-"+s.replace('\\\"', '\"'))
+                arguments.append(["-o"] + split_cmds[-1].split())
+
+                json_entry['arguments'] = arguments
                 del json_entry['command']
                 header_entries.append(json_entry)
     except:
+        traceback.print_exc()
         print_err("Failed to patch ccdb with compdb")
         return False
 

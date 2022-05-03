@@ -43,7 +43,6 @@ def get_source_diffs(
             ) \
         for d in COMMIT_DIFF ]
 
-
 def get_commits(dep_repo: Repo) -> tuple[Commit,Commit]:
     commit_old: Commit = None # type: ignore
     commit_new: Commit = None # type: ignore

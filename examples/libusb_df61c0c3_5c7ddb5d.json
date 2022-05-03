@@ -17,6 +17,9 @@
       "libusb/libusbi.h"
     ]
   },
+  "EXTRA_COMPILE_FLAGS": [
+    "-D_inline=inline"
+  ],
   "EXCLUDE_REGEXES": [
     "Xcode/.*",
     "msvc/.*",
@@ -35,6 +38,7 @@
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
 
+  "FORCE_CCDB_RECOMPILE": true,
   "FORCE_RECOMPILE": true,
   "SHOW_FUNCTIONS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
@@ -47,7 +51,7 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL":false,
+  "FULL": true,
   "QUIET_BUILD": true,
   "COMMIT_OLD": "df61c0c3a3de070c7f7a714ef8758a248bf97263",
   "COMMIT_NEW": "5c7ddb5ddf1fe1d9f8c68e7deefe3bd53e1e3e8c"

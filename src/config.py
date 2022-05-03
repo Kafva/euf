@@ -198,9 +198,15 @@ class Config:
     ])
 
     # Extra compile flags to add for every TU in libclang
-    EXTRA_COMPILE_FLAGS = [
-        "-Wno-unused-function", "-Wno-implicit-int"
-    ]
+    # NOTE: This applies both for the main project AND dependencies
+    # there is currently no interface for providing different
+    # extra options
+    EXTRA_COMPILE_FLAGS = []
+
+    # Compilation flag patterns to exclude from invocations of 
+    # the ArgStates clang-plugin, NOTE this can remove entries defined
+    # in EXTRA_COMPILE_FLAGS.
+    ARG_STATES_COMPILE_FLAG_BLACKLIST = ["-g", "-c", r"-f.*"]
 
     # Only files with these suffixes are considered during analysis
     # Excluding .h files will disable compdb
@@ -227,9 +233,6 @@ class Config:
     INDENT: str = " "*2
     CLANG_PLUGIN_RUN_STR_LIMIT: int = 1000
 
-    # Compilation flag patterns to exclude from invocations of 
-    # clang-plugins/ArgStates
-    ARG_STATES_COMPILE_FLAG_BLACKLIST = ["-g", "-c", r"-f.*", r"-W.*"]
     ARG_STATS_SO=f"{BASE_DIR}/clang-plugins/build/lib/libArgStates.so"
 
     # Print debug information when running ArgStates.so

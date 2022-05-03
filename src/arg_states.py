@@ -66,13 +66,16 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     non-overlapping filenames when analysing old/new versions of a dependency
     '''
     blacklist = r"|".join(CONFIG.ARG_STATES_COMPILE_FLAG_BLACKLIST)
+    # Since the ccdb_args for SubDirTU objects is not read from 
+    # SourceFile objects, we need to manually include any EXTRA_COMPILE_FLAGS
     ccdb_arguments  = filter(lambda a: not re.match(blacklist, a),
-                                subdir_tu.ccdb_args)
+                                subdir_tu.ccdb_args |
+                                set(CONFIG.EXTRA_COMPILE_FLAGS)
+                      )
 
     # There should not be a need to modify escaped '\' values
     # inside of ccdb_args, the ccdb has been improperly generated
     # if it solves issues to do so.
-
     script_env = CONFIG.get_script_env()
     script_env.update({
         CONFIG.ARG_STATES_OUT_DIR_ENV: outdir
@@ -108,8 +111,6 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
             else cmd_str
 
     output = ""
-    if setx:
-        print(f"({outdir},{symbol_name})\ncd {subdir}\n", cmd_str)
     try:
         p = subprocess.Popen(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env)
@@ -136,6 +137,9 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
                 "compile_commands.json")
         if quiet:
             print(output,flush=True)
+
+    if setx:
+        print(f"({outdir},{symbol_name})\ncd {subdir}\n", cmd_str)
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''

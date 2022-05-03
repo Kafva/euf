@@ -40,17 +40,6 @@ def test_patch_old_bear_db():
     patch_old_bear_db(ccdb_path)
     assert(filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json"))
 
-def test_remove_dependency_entries_from_project_db():
-    CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"
-    ccdb_path = f"/tmp/compile_commands.json"
-    shutil.copy(f"{TEST_DIR}/expected/jq_compile.json", ccdb_path) # Setup
-
-    remove_dependency_entries_from_project_db(ccdb_path)
-
-    assert( filecmp.cmp(ccdb_path,
-            f"{TEST_DIR}/expected/jq_without_onig_commands.json"
-    ))
-
 def test_isystem_flags():
     isystem_flags = SourceFile.get_isystem_flags(
             f"{EXPAT_SRC_PATH}/lib/xmlparse.c",
@@ -118,7 +107,18 @@ def test_compdb():
     # Check that no 'command' entries remain
     with open(ccdb_path, mode='r', encoding='utf8') as f:
         ccdb = json.load(f)
-        assert(not any( [ 'command' in entry for entry in ccdb ] ))
+        assert(not any([ 'command' in entry for entry in ccdb ]))
+
+def test_remove_dependency_entries_from_project_db():
+    CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"
+    ccdb_path = f"/tmp/compile_commands.json"
+    shutil.copy(f"{TEST_DIR}/expected/jq_compile.json", ccdb_path) # Setup
+
+    remove_dependency_entries_from_project_db(ccdb_path)
+
+    assert( filecmp.cmp(ccdb_path,
+            f"{TEST_DIR}/expected/jq_without_onig_commands.json"
+    ))
 
 def test_autogen_compile_db():
     rm_f(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json")

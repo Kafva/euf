@@ -17,6 +17,9 @@
       "libusb/libusbi.h"
     ]
   },
+  "EXTRA_COMPILE_FLAGS": [
+    "-D_inline=inline"
+  ],
   "EXCLUDE_REGEXES": [
     "android/.*",
     "Xcode/.*",
