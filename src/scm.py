@@ -8,7 +8,7 @@ from src import ERR_EXIT
 from src.arg_states import matches_excluded
 from src.config import CONFIG
 from src.types import SourceDiff, SourceFile
-from src.util import ccdb_dir, git_dir, has_allowed_suffix, \
+from src.util import git_dir, has_allowed_suffix, \
         print_info, time_end, time_start
 
 def filter_out_excluded(items: list, path_arr: list[str]) -> list:
@@ -37,10 +37,8 @@ def get_source_diffs(
 
     return [ SourceDiff.new(
                 filepath_old = f"{git_dir(new=False)}/{d.a_path}",
-                source_dir_old = ccdb_dir(new=False),
                 ccdb_old = dep_db_old,
                 filepath_new = f"{git_dir(new=True)}/{d.b_path}",
-                source_dir_new = ccdb_dir(new=True),
                 ccdb_new = dep_db_new
             ) \
         for d in COMMIT_DIFF ]
@@ -101,7 +99,7 @@ def get_source_files(git_dir: str, source_dir: str,
             #   e.g. expat/lib/xmlparse.c
             # To get the canonical path we prepend it with the git_dir
             source_files.append(
-                SourceFile.new(f"{git_dir}/{e.path}", ccdb, source_dir)
+                SourceFile.new(f"{git_dir}/{e.path}", ccdb)
             )
 
 

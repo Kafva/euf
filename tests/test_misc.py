@@ -5,6 +5,7 @@ from src import BASE_DIR
 from src.config import CONFIG
 from src.arg_states import call_arg_states_plugin, \
         get_subdir_tus, join_arg_states_result
+from src.types import SourceFile
 
 from src.util import mkdir_p, remove_files_in, rm_f, set_libclang
 from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers, patch_old_bear_db
@@ -36,6 +37,15 @@ def test_patch_old_bear_db():
     shutil.copy(f"{TEST_DIR}/expected/old_bear.json", ccdb_path)
     patch_old_bear_db(ccdb_path)
     assert(filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json"))
+
+def test_isystem_flags():
+    isystem_flags = SourceFile.get_isystem_flags(
+            f"{EXPAT_SRC_PATH}/lib/xmlparse.c",
+            f"{EXPAT_SRC_PATH}/lib"
+    )
+    assert( isystem_flags == ['-internal-isystem',
+        '/usr/lib/clang/13.0.1/include', '-internal-isystem',
+        '/usr/local/include'] )
 
 def test_mkdirp():
     make_path = f"{BASE_DIR}/examples/do_not_create"
@@ -76,7 +86,8 @@ def test_join_arg_states_result():
     remove_files_in(outdir) # !!
 
     for subdir, subdir_tu in get_subdir_tus(EXPAT_OLD_SRC_PATH).items():
-        call_arg_states_plugin(function_name, outdir, EXPAT_OLD_SRC_PATH, subdir, subdir_tu, quiet=True)
+        call_arg_states_plugin(function_name, outdir,
+                subdir, subdir_tu, quiet=True)
 
     result = join_arg_states_result( [ EXPAT_OLD_NAME ] )
     # If one includes the lib/tests/ path the expected set increases to [0,1,2]

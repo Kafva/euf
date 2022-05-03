@@ -51,7 +51,7 @@
       "~/Repos/euf/examples/include/regparse2.h"
     ]
   },
-  "FORCE_RECOMPILE": true,
+  "FORCE_RECOMPILE": false,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
   "SHOW_FUNCTIONS": false,
@@ -61,7 +61,7 @@
   "DIE_ON_ERROR": true,
   "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
-  "VERBOSITY": 1,
+  "VERBOSITY": 2,
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,

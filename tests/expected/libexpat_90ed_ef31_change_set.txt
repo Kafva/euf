@@ -1,5 +1,5 @@
-siphash24
 XML_ExternalEntityParserCreate
+siphash24
 appendAttributeValue
 lookup
 processInternalEntity

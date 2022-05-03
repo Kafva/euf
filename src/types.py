@@ -1,4 +1,4 @@
-import re, subprocess, traceback
+import re, subprocess, traceback, os
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -491,72 +491,89 @@ class SourceFile:
         self._filepath_new = value
 
     @classmethod
-    def get_isystem_flags(cls, source_file: str, source_dir: str) -> list:
+    def get_isystem_flags(cls, source_file: str, compile_dir: str) -> list:
         '''
         (This should not really be a class function)
         https://clang.llvm.org/docs/FAQ.html#id2
         The -cc1 flag is used to invoke the clang 'frontend', using only the
         frontend infers that default options are lost, errors like
             'stddef.h' file not found
-        are caused from the fact that the builtin-include path of clang is missing
-        We can see the default frontend options used by clang with
+        are caused from the fact that the builtin-include path of 
+        clang is missing. We can see the default frontend options 
+        used by clang with
             clang -### test/file.cpp
+        Output format (stderr):
+
+        1 <version>
+        2 <target>
+        3 <thread model>
+        4 <installed_dir>
+        5 <default frontend arguments>: "/usr/lib/llvm-13/bin/clang" "-cc1"
+        "-triple" "x86_64-pc-linux-gnu" "-emit-obj" "-mrelax-all"
+        "--mrelax-relocations" ...
+        6 <default linker arguments>: "/usr/bin/ld" "-z" "relro" 
+        "--hash-style=gnu" "--build-id" "--eh-frame-hdr" ...
         '''
-        isystem_flags = subprocess.check_output(
-            f"clang -### {source_file} 2>&1 | sed -E '1,4d; s/\" \"/\", \"/g; s/(.*)(\\(in-process\\))(.*)/\\1\\3/'",
-            shell=True, cwd = source_dir
-        ).decode('ascii').split(",")
+        p = subprocess.Popen(f"{CONFIG.CCDB_CC} -### {source_file}",
+            shell=True, cwd = compile_dir, stderr=subprocess.PIPE
+        )
+        output = p.stderr.read().decode('utf8').splitlines() # type: ignore
+        assert(len(output) == 6)
+
+        items =  [ s.strip("\"") for s in output[4].split() ]
 
         out = []
-        add_next = False
-
-        for flag in isystem_flags:
-            flag = flag.strip().strip('"')
-
-            if flag == '-internal-isystem':
-                out.append(flag)
-                add_next = True
-            elif add_next:
-                out.append(flag)
-                add_next = False
-
+        use_next = False
+        for item in items:
+            if item.startswith("-internal-isystem"):
+                out.append(item)
+                use_next = True
+            elif use_next:
+                # Do not include missing paths
+                if os.path.isdir(item):
+                    out.append(item)
+                else:
+                    out.pop()
+                use_next = False
         return out
 
     @classmethod
     def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
-        filepath: str, source_dir: str) -> tuple[str,list[str]]:
+        filepath: str) -> tuple[str,list[str]]:
         ''' 
         Load the compilation configuration for the particular file
         and retrieve the compilation arguments and the directory that
         the file should be compiled in 
         '''
-        ccmds: cindex.CompileCommands   = compile_db.getCompileCommands(filepath)
+        ccmds: cindex.CompileCommands = compile_db.getCompileCommands(filepath)
         if ccmds:
-            compile_args                    = list(ccmds[0].arguments)
-            compile_dir                     = str(ccmds[0].directory)
+            compile_args = list(ccmds[0].arguments)
+            compile_dir  = str(ccmds[0].directory)
 
             # We need each isystem flag to be passed to clang directly
             # and therefore prefix every argument with -Xclang
-            isystem_flags = cls.get_isystem_flags(filepath,source_dir)
+            isystem_flags = cls.get_isystem_flags(filepath,compile_dir)
             xclang_flags = []
             for flag in isystem_flags:
                 xclang_flags.append("-Xclang")
                 xclang_flags.append(flag)
 
-            # Remove the first (/usr/bin/cc) and last (source_file) arguments from the command list
-            flags = xclang_flags + compile_args[1:-1] + CONFIG.EXTRA_COMPILE_FLAGS
+            # Remove the first (/usr/bin/cc) and last (source_file) 
+            # arguments from the command list
+            flags = xclang_flags + compile_args[1:-1] + \
+                    CONFIG.EXTRA_COMPILE_FLAGS
 
             # Strip away warnings
             flags = list(filter(lambda f: not f.startswith("-W"), flags))
 
             return (compile_dir, flags)
         else:
-            raise Exception(f"Failed to retrieve compilation instructions for {filepath}")
+            raise Exception(f"No compilation instructions for {filepath}")
 
     @classmethod
-    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase, source_dir: str):
+    def new(cls, filepath: str, ccdb: cindex.CompilationDatabase):
         (compile_dir_new, compile_args_new) = \
-                cls.get_compile_args(ccdb, filepath, source_dir)
+                cls.get_compile_args(ccdb, filepath)
         obj = cls(
             _filepath_new = "/",
             compile_dir_new = compile_dir_new,
@@ -586,17 +603,15 @@ class SourceDiff(SourceFile):
         self._filepath_old = value
 
     @classmethod
-    def new(cls, filepath_old: str, source_dir_old: str,
-       ccdb_old: cindex.CompilationDatabase,
-       filepath_new: str, source_dir_new:str,
-       ccdb_new: cindex.CompilationDatabase):
+    def new(cls, filepath_old: str, ccdb_old: cindex.CompilationDatabase,
+      filepath_new: str, ccdb_new: cindex.CompilationDatabase):
         '''
         Create a new object using the super() class constructor
         '''
         (compile_dir_old, compile_args_old) = \
-          cls.get_compile_args(ccdb_old, filepath_old, source_dir_old)
+          cls.get_compile_args(ccdb_old, filepath_old)
 
-        s = super().new(filepath_new, ccdb_new, source_dir_new)
+        s = super().new(filepath_new, ccdb_new)
 
         obj = cls(
             _filepath_old = "/", compile_args_old = compile_args_old,

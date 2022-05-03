@@ -55,7 +55,7 @@ def get_subdir_tus(source_dir: str) -> dict[str,SubDirTU]:
 
     return src_subdirs
 
-def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
+def call_arg_states_plugin(symbol_name: str, outdir:str,
     subdir: str, subdir_tu: SubDirTU,
     quiet:bool = True, setx:bool=False) -> None:
     '''
@@ -69,31 +69,39 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
     ccdb_arguments  = filter(lambda a: not re.match(blacklist, a),
                                 subdir_tu.ccdb_args)
 
-    # Translate escaped quotes into normal quotes
-    # This removes errors when parsing the db for jabberd-2.7.0
-    # and does not introduce issues with jq
-    ccdb_arguments = map(lambda a: a.replace('\\"', '"'), ccdb_arguments)
+    # There should not be a need to modify escaped '\' values
+    # inside of ccdb_args, the ccdb has been improperly generated
+    # if it solves issues to do so.
 
     script_env = CONFIG.get_script_env()
     script_env.update({
         CONFIG.ARG_STATES_OUT_DIR_ENV: outdir
     })
 
-    out = subprocess.PIPE if quiet else sys.stderr
+    if quiet:
+        out = subprocess.PIPE
+    else:
+        script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
+        out = sys.stderr
 
     # We assume all headers that we need to analyze are included by one
     # or more of the c files so we do not explicitly pass them
     c_files = list(filter(lambda f: f.endswith(".c"), subdir_tu.files))
 
+    # Use compile dir relative names to limit output size
+    c_files = list(map(lambda f: f.removeprefix(subdir+"/"), c_files))
+
     # We assume that the isystem-flags are the same 
     # for all source files in a directory
-    cmd = [ "clang",
+    isystem_flags = SourceFile.get_isystem_flags(c_files[0], subdir)
+
+    #
+    cmd = [ CONFIG.CCDB_CC,
         "-cc1", "-fcolor-diagnostics", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
         "-symbol-name", "-plugin-arg-ArgStates", symbol_name ] + \
-        SourceFile.get_isystem_flags(list(subdir_tu.files)[0], source_dir) + \
-        c_files + [ "-I", "/usr/include" ] + list(ccdb_arguments)
-
+         isystem_flags + c_files + [ "-I", "/usr/include" ] + \
+         list(ccdb_arguments)
 
     cmd_str =' '.join(cmd)
     cmd_str = cmd_str[:CONFIG.CLANG_PLUGIN_RUN_STR_LIMIT] + "..." \
@@ -102,10 +110,12 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
 
     output = ""
     if setx:
-        print(f"cd {subdir}\n", cmd_str)
+        print(f"({outdir},{symbol_name})\ncd {subdir}\n", cmd_str)
     try:
         p = subprocess.Popen(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env)
+        p.wait()
+
         if quiet:
             stdout_txt = p.stdout.read().decode('utf8')  # type: ignore
             if len(stdout_txt) > 0:
@@ -116,16 +126,18 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
                 output += "====> stderr <====\n" + stderr_txt
 
         if p.returncode != 0:
-            print_err("Compilation errors occured during state space analysis")
-            if CONFIG.VERBOSITY >= 2 and len(output.splitlines()) > 0:
-                print(output)
-
+            print_err(f"State space analysis failed: " +\
+                    f"{p.returncode}\n({outdir},{symbol_name})")
+            if CONFIG.VERBOSITY >= 2 and len(output.splitlines()) > 0 and quiet:
+                print(output,flush=True)
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb
         traceback.print_exc()
         print_err("This error has likely occured due to invalid entries in " +
                 "compile_commands.json")
-        print(output)
+        if quiet:
+            print(output,flush=True)
+
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
@@ -212,10 +224,10 @@ def state_space_analysis(symbols: list[str], source_dir: str, git_dir: str):
         for subdir, subdir_tu in subdir_tus.items():
             p.map(partial(call_arg_states_plugin,
                 outdir = outdir,
-                source_dir = source_dir,
                 subdir = subdir,
                 subdir_tu = subdir_tu,
-                quiet = not CONFIG.DEBUG_CLANG_PLUGIN),
+                quiet = not CONFIG.DEBUG_CLANG_PLUGIN,
+                setx = False),
                 symbols
             )
 

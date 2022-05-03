@@ -109,7 +109,7 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
 
             try:
                 compile_dir,compile_args = \
-                    SourceFile.get_compile_args(ccdb,filepath,source_dir)
+                    SourceFile.get_compile_args(ccdb,filepath)
 
                 os.chdir(compile_dir)
                 tu = cindex.TranslationUnit.from_source(

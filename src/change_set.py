@@ -360,10 +360,8 @@ def add_rename_changes_based_on_blame(
 
                 source_diff = SourceDiff.new(
                           filepath_old = f"{git_dir(new=False)}/{filepath_origin_old}",
-                          source_dir_old = ccdb_dir(new=False),
                           ccdb_old = dep_db_old,
                           filepath_new = f"{git_dir(new=True)}/{filepath_origin_new}",
-                          source_dir_new = ccdb_dir(new=True),
                           ccdb_new = dep_db_new
                         )
                 dep_source_diffs.append(source_diff)

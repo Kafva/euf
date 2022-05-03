@@ -31,6 +31,7 @@ class Config:
     # Git hash of the old (current) version of the dependency
     COMMIT_OLD: str = ""
 
+    #  - - - - - - - - - - - - - - - - - -
     # Paths to exclude from all analysis, given as a list
     # of regular expressions
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
@@ -179,7 +180,6 @@ class Config:
     # This allows for manual modifications and provisioning of custom drivers
     USE_EXISTING_DRIVERS: bool = False
 
-
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio
@@ -208,8 +208,9 @@ class Config:
 
     UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"
 
-    # Compiler used during ccdb generation
-    CCDB_CC = "clang"
+    # Compiler used during ccdb generation and invocations
+    # of the ArgStates plugin
+    CCDB_CC = "/usr/bin/clang"
     NPROC: int = max(1,multiprocessing.cpu_count() - 1)
 
     # The location to store the new version of the dependency
@@ -224,7 +225,7 @@ class Config:
     CBMC_ASSERT_MSG: str = "Equivalent output"
     IDENTITY_HARNESS: str = "_id"
     INDENT: str = " "*2
-    CLANG_PLUGIN_RUN_STR_LIMIT: int = 1500
+    CLANG_PLUGIN_RUN_STR_LIMIT: int = 1000
 
     # Compilation flag patterns to exclude from invocations of 
     # clang-plugins/ArgStates
