@@ -8,7 +8,9 @@ from src.arg_states import call_arg_states_plugin, \
 from src.types import SourceFile
 
 from src.util import mkdir_p, remove_files_in, rm_f, set_libclang
-from src.build import autogen_compile_db, lib_is_gbf, patch_ccdb_with_headers, patch_old_bear_db
+from src.build import autogen_compile_db, lib_is_gbf, \
+        patch_ccdb_with_headers, patch_old_bear_db, \
+        remove_dependency_entries_from_project_db
 from euf import run
 from tests import RESULT_DIR, TEST_DIR
 
@@ -37,6 +39,17 @@ def test_patch_old_bear_db():
     shutil.copy(f"{TEST_DIR}/expected/old_bear.json", ccdb_path)
     patch_old_bear_db(ccdb_path)
     assert(filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json"))
+
+def test_remove_dependency_entries_from_project_db():
+    CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"
+    ccdb_path = f"/tmp/compile_commands.json"
+    shutil.copy(f"{TEST_DIR}/expected/jq_compile.json", ccdb_path) # Setup
+
+    remove_dependency_entries_from_project_db(ccdb_path)
+
+    assert( filecmp.cmp(ccdb_path,
+            f"{TEST_DIR}/expected/jq_without_onig_commands.json"
+    ))
 
 def test_isystem_flags():
     isystem_flags = SourceFile.get_isystem_flags(
@@ -97,12 +110,13 @@ def test_join_arg_states_result():
 
 def test_compdb():
     jq_path = f"{expanduser('~')}/Repos/jq"
-    shutil.copy(f"{TEST_DIR}/expected/jq_compile_base.json",  f"{jq_path}/compile_commands.json") # Setup
+    ccdb_path = f"{jq_path}/compile_commands.json"
+    shutil.copy(f"{TEST_DIR}/expected/jq_compile_base.json", ccdb_path) # Setup
 
-    assert(patch_ccdb_with_headers(jq_path))
+    assert(patch_ccdb_with_headers(jq_path, ccdb_path))
 
     # Check that no 'command' entries remain
-    with open(f"{jq_path}/compile_commands.json", mode='r', encoding='utf8') as f:
+    with open(ccdb_path, mode='r', encoding='utf8') as f:
         ccdb = json.load(f)
         assert(not any( [ 'command' in entry for entry in ccdb ] ))
 

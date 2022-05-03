@@ -217,6 +217,7 @@ def reduction_stage(
                                             git_dir(new=True))
     state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
                                              CONFIG.PROJECT_DIR)
+    exit()
 
     # Join the results from each analysis
     old_name    = os.path.basename(git_dir(new=False))
@@ -467,6 +468,44 @@ def run(load_libclang:bool = True) -> tuple:
         dep_db_old = dep_db_old,
         dep_db_new = dep_db_new
     )
+
+
+    # Header files will be missing -isystem-flags from their compile_args
+    # property. We patch them with the iflags from an arbitaray C file
+    default_iflags = []
+    for f in dep_source_files_new:
+        if f.filepath_new.endswith(".c"):
+            default_iflags = \
+                SourceFile.get_isystem_flags(f.filepath_new,f.compile_dir_new)
+            break
+
+    assert(default_iflags!=[])
+
+    # Patch headers in the main project
+    for f in project_files:
+        if f.filepath_new.endswith(".h"):
+            _, f.compile_args_new = \
+                SourceFile.get_compile_args(main_db, f.filepath_new,
+                                                                 default_iflags)
+
+    # Patch headers in the source files of the dependency
+    for f in dep_source_files_new:
+        if f.filepath_new.endswith(".h"):
+            _, f.compile_args_new = \
+                SourceFile.get_compile_args(dep_db_new, f.filepath_new,
+                                                                 default_iflags)
+
+    # Patch headers in the diffs of the dependency
+    for d in source_diffs:
+        if d.filepath_new.endswith(".h"):
+            _, d.compile_args_old = \
+                SourceFile.get_compile_args(dep_db_old, d.filepath_old,
+                                                                 default_iflags)
+            _, d.compile_args_new = \
+                SourceFile.get_compile_args(dep_db_new, d.filepath_new,
+                                                                 default_iflags)
+
+
     # - - - Change set - - - #
     changed_functions = ast_diff_stage(source_diffs, log_dir)
 

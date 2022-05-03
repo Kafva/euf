@@ -525,7 +525,7 @@ class SourceFile:
         out = []
         use_next = False
         for item in items:
-            if item.startswith("-internal-isystem"):
+            if item == "-internal-isystem":
                 out.append(item)
                 use_next = True
             elif use_next:
@@ -539,7 +539,7 @@ class SourceFile:
 
     @classmethod
     def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
-        filepath: str) -> tuple[str,list[str]]:
+            filepath: str, isystem_flags: list[str] = []) -> tuple[str,list[str]]:
         ''' 
         Load the compilation configuration for the particular file
         and retrieve the compilation arguments and the directory that
@@ -552,7 +552,8 @@ class SourceFile:
 
             # We need each isystem flag to be passed to clang directly
             # and therefore prefix every argument with -Xclang
-            isystem_flags = cls.get_isystem_flags(filepath,compile_dir)
+            if len(isystem_flags) == 0:
+                isystem_flags = cls.get_isystem_flags(filepath,compile_dir)
             xclang_flags = []
             for flag in isystem_flags:
                 xclang_flags.append("-Xclang")

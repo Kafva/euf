@@ -35,12 +35,12 @@ def run_autoreconf(path: str, out) -> bool:
     return True
 
 def has_valid_compile_db(source_dir: str) -> bool:
-    cmds_json = f"{source_dir}/compile_commands.json"
+    ccdb_path = f"{source_dir}/compile_commands.json"
 
-    if os.path.isfile(cmds_json):
+    if os.path.isfile(ccdb_path):
         # If the project has already been built the database will be empty
         success = True
-        with open(cmds_json, mode="r", encoding = "utf8") as f:
+        with open(ccdb_path, mode="r", encoding = "utf8") as f:
 
             ccdb_json = json.load(f)
 
@@ -53,8 +53,8 @@ def has_valid_compile_db(source_dir: str) -> bool:
                 success = False
 
         if not success:
-            print_info(f"Removing {cmds_json}")
-            os.remove(cmds_json)
+            print_info(f"Removing {ccdb_path}")
+            os.remove(ccdb_path)
 
         return success
     else:
@@ -103,10 +103,11 @@ def autogen_compile_db(source_dir: str) -> bool:
 
     # 3. Run 'make' with 'bear'
     version = get_bear_version(source_dir)
+    ccdb_path = f"{source_dir}/compile_commands.json"
 
     if os.path.isfile(f"{source_dir}/Makefile"):
         try:
-            print_info(f"Generating {source_dir}/compile_commands.json...")
+            print_info(f"Generating {ccdb_path}...")
             cmd = [ "bear", "--", "make", "-j",
                     str(multiprocessing.cpu_count() - 1),
             ]
@@ -132,9 +133,27 @@ def autogen_compile_db(source_dir: str) -> bool:
 
     # 4. Run 'compdb' to insert entries for '.h' files into the database
     if ".h" in CONFIG.SUFFIX_WHITELIST:
-        patch_ccdb_with_headers(source_dir)
+        patch_ccdb_with_headers(source_dir, ccdb_path)
+
+    # 5. If the project being analyzed builds the dependency from source,
+    # e.g. jq and oniguruma, the ccdb for the main project may contain 
+    # entries for the dependency. For our use case, we do not want these
+    # entries present and therefore remove them
+    if source_dir == CONFIG.PROJECT_DIR and os.path.isfile(ccdb_path):
+        remove_dependency_entries_from_project_db(ccdb_path)
 
     return has_valid_compile_db(source_dir)
+
+def remove_dependency_entries_from_project_db(ccdb_path: str):
+    with open(ccdb_path, mode="r", encoding = "utf8") as f:
+        filtered_db = []
+        ccdb_json = json.load(f)
+        for tu in ccdb_json:
+            dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
+            if re.match(rf".*/{dep_name}/.*", tu['file']) == None:
+                filtered_db.append(tu)
+
+    write_ccdb_from_object(ccdb_path, filtered_db)
 
 def patch_old_bear_db(ccdb_path:str):
     new_json = []
@@ -153,14 +172,12 @@ def patch_old_bear_db(ccdb_path:str):
 
     write_ccdb_from_object(ccdb_path, ccdb_json)
 
-def patch_ccdb_with_headers(source_dir: str) -> bool:
+def patch_ccdb_with_headers(source_dir: str, ccdb_path:str) -> bool:
     '''
     For some reason... compdb uses a single command string instead of the
     standard arguments array, we need to convert this to maintain
     compatibility with the rest of EUF
     '''
-    ccdb_path = f"{source_dir}/compile_commands.json"
-
     if CONFIG.VERBOSITY >= 1:
         print_info("Running compdb...")
     try:
@@ -192,9 +209,9 @@ def patch_ccdb_with_headers(source_dir: str) -> bool:
 
 def write_ccdb_from_object(ccdb_path:str, json_db: list[dict]):
     '''
-    To allow for easy testing, we sort the array based on 
+    To allow for easy testing, we sort the array based on
     'output' + 'file',
-    ensuring that the ccdb always looks the same for a project 
+    ensuring that the ccdb always looks the same for a project
     (compdb headers do not have an output, which would
     otherwise be a unique field)
     '''

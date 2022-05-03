@@ -11,7 +11,7 @@ from src.config import CONFIG
 from src.fmt import fmt_location
 from src.types import DependencyFunction, CursorPair, \
     DependencyFunctionChange, IdentifierLocation, SourceDiff, SourceFile
-from src.util import ccdb_dir, get_column_counts, git_dir, \
+from src.util import get_column_counts, git_dir, \
         git_relative_path, print_info, print_err, \
         shorten_path_fields, time_end, time_start
 
@@ -380,7 +380,7 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange],
 def print_diag_errors(filepath:str, tu: cindex.TranslationUnit):
     if CONFIG.VERBOSITY >= 3:
         for d in tu.diagnostics:
-            print_err(str(d))
+            print_err(f"{filepath}: " + str(d))
     elif len(tu.diagnostics) > 0 and CONFIG.VERBOSITY > 1:
         # Header entries from compdb usually generate a lot of errors
         if not filepath.endswith(".h"):

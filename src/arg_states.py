@@ -95,7 +95,6 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     # for all source files in a directory
     isystem_flags = SourceFile.get_isystem_flags(c_files[0], subdir)
 
-    #
     cmd = [ CONFIG.CCDB_CC,
         "-cc1", "-fcolor-diagnostics", "-load", CONFIG.ARG_STATS_SO,
         "-plugin", "ArgStates", "-plugin-arg-ArgStates",
@@ -137,7 +136,6 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
                 "compile_commands.json")
         if quiet:
             print(output,flush=True)
-
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
