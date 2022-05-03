@@ -10,6 +10,9 @@
     "expat/fuzz/.*",
     "expat/xmlwf/win32.*"
   ],
+  "EXTRA_COMPILE_FLAGS": [
+    "-Wno-macro-redefined"
+  ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
       "~/Repos/euf/examples/include/xmlparse.h"

@@ -208,9 +208,14 @@ class Config:
     # in EXTRA_COMPILE_FLAGS.
     ARG_STATES_COMPILE_FLAG_BLACKLIST = ["-g", "-c", r"-f.*"]
 
-    # Only files with these suffixes are considered during analysis
-    # Excluding .h files will disable compdb
-    SUFFIX_WHITELIST = [".c", ".h"]
+    # File suffixes to consider during the git diffing stage
+    SUFFIX_WHITELIST_GIT_DIFF = [".c", ".h"]
+
+    # Only these suffixes will be considered for any type of analysis,
+    # besides git diff.
+    # Attempts were made to support .h files (using compdb) but the feature
+    # was deemed to unstable to include support for it.
+    SUFFIX_WHITELIST = [".c"]
 
     UNRESOLVED_NODES_REGEX: str = r"unnamed at|<dependent type>"
 

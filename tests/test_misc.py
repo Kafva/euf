@@ -1,4 +1,4 @@
-import filecmp, os, json, shutil
+import filecmp, os, shutil
 from os.path import expanduser
 
 from src import BASE_DIR
@@ -8,9 +8,8 @@ from src.arg_states import call_arg_states_plugin, \
 from src.types import SourceFile
 
 from src.util import mkdir_p, remove_files_in, rm_f, set_libclang
-from src.build import autogen_compile_db, lib_is_gbf, \
-        patch_ccdb_with_headers, patch_old_bear_db, \
-        remove_dependency_entries_from_project_db
+from src.build import autogen_compile_db, lib_is_gbf, patch_old_bear_db, \
+    remove_dependency_entries_from_project_db
 from euf import run
 from tests import RESULT_DIR, TEST_DIR
 
@@ -96,18 +95,6 @@ def test_join_arg_states_result():
     # The increase is a FP of sorts since the call with (1) is a different 
     # static definition of usage()
     assert(result[function_name].parameters[1].states == set([0,2]) )
-
-def test_compdb():
-    jq_path = f"{expanduser('~')}/Repos/jq"
-    ccdb_path = f"{jq_path}/compile_commands.json"
-    shutil.copy(f"{TEST_DIR}/expected/jq_compile_base.json", ccdb_path) # Setup
-
-    assert(patch_ccdb_with_headers(jq_path, ccdb_path))
-
-    # Check that no 'command' entries remain
-    with open(ccdb_path, mode='r', encoding='utf8') as f:
-        ccdb = json.load(f)
-        assert(not any([ 'command' in entry for entry in ccdb ]))
 
 def test_remove_dependency_entries_from_project_db():
     CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"

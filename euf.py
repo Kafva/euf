@@ -54,7 +54,7 @@ def git_diff_stage(dep_repo: Repo,
     ''' Find the objects that correspond to the old and new commit '''
     (commit_old, commit_new) = get_commits(dep_repo)
 
-    # Only include modified (M) and renamed (R) '.c' files
+    # Only include modified (M) and renamed (R) source files
     # Renamed files still provide us with context information when a
     # change has occurred at the same time as a move operation:
     #   e.g. `foo.c -> src/foo.c`
@@ -68,8 +68,10 @@ def git_diff_stage(dep_repo: Repo,
 
     if not CONFIG.SKIP_BLAME:
         # Add additional diffs based on git-blame that were not recorded
+        # Note that we limit ourselves to files in SUFFIX_WHITELIST, i.e.
+        # we only consider .c files
         added_diff = list(filter(lambda d: \
-                    has_allowed_suffix(d.a_path) and
+                    has_allowed_suffix(d.a_path, git_diff=False) and
                     'A' == d.change_type,
                 commit_old.diff(commit_new) # type: ignore
         ))
@@ -79,7 +81,21 @@ def git_diff_stage(dep_repo: Repo,
             dep_db_new
         )
 
-    if CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
+
+    if CONFIG.SHOW_DIFFS:
+        for d in source_diffs:
+            cmd = ["git", # Force pager for every file
+                "-c", "core.pager=less -+F -c",
+                "diff", "--no-index", "--color=always",
+                "-U20000",
+                d.filepath_old,
+                d.filepath_new ]
+            print(' '.join(cmd))
+            subprocess.run(cmd)
+        # We also run part of the ast_diff_stage when this option is passed
+        # to show divergences
+
+    elif CONFIG.VERBOSITY >= 1 and CONFIG.ONLY_ANALYZE == "":
         print_stage("Git Diff")
         out = ""
         for d in source_diffs:
@@ -90,7 +106,13 @@ def git_diff_stage(dep_repo: Repo,
         print(out)
         wait_on_cr()
 
-    return source_diffs
+    # Remove any header files from the diff list after passing the
+    # diffing stage
+    source_diffs = filter(lambda d:
+            has_allowed_suffix(d.filepath_new), source_diffs
+    )
+
+    return list(source_diffs)
 
 def ast_diff_stage(source_diffs: list[SourceDiff], log_dir: str) \
  -> list[DependencyFunctionChange]:
@@ -127,18 +149,7 @@ def ast_diff_stage(source_diffs: list[SourceDiff], log_dir: str) \
         for c in changed_functions:
             print(fmt_divergence(c))
         wait_on_cr(always=True)
-
-        for d in source_diffs:
-            cmd = ["git", # Force pager for every file
-                "-c", "core.pager=less -+F -c",
-                "diff", "--no-index", "--color=always",
-                "-U20000",
-                d.filepath_old,
-                d.filepath_new ]
-            print(' '.join(cmd))
-            subprocess.run(cmd)
-
-        sys.exit(0)
+        sys.exit(0) # !!
 
     if CONFIG.VERBOSITY >=1 and CONFIG.ONLY_ANALYZE == "":
         time_end("Finished change set enumeration", start) # type: ignore
@@ -468,43 +479,6 @@ def run(load_libclang:bool = True) -> tuple:
         dep_db_old = dep_db_old,
         dep_db_new = dep_db_new
     )
-
-
-    # Header files will be missing -isystem-flags from their compile_args
-    # property. We patch them with the iflags from an arbitaray C file
-    default_iflags = []
-    for f in dep_source_files_new:
-        if f.filepath_new.endswith(".c"):
-            default_iflags = \
-                SourceFile.get_isystem_flags(f.filepath_new,f.compile_dir_new)
-            break
-
-    assert(default_iflags!=[])
-
-    # Patch headers in the main project
-    for f in project_files:
-        if f.filepath_new.endswith(".h"):
-            _, f.compile_args_new = \
-                SourceFile.get_compile_args(main_db, f.filepath_new,
-                                                                 default_iflags)
-
-    # Patch headers in the source files of the dependency
-    for f in dep_source_files_new:
-        if f.filepath_new.endswith(".h"):
-            _, f.compile_args_new = \
-                SourceFile.get_compile_args(dep_db_new, f.filepath_new,
-                                                                 default_iflags)
-
-    # Patch headers in the diffs of the dependency
-    for d in source_diffs:
-        if d.filepath_new.endswith(".h"):
-            _, d.compile_args_old = \
-                SourceFile.get_compile_args(dep_db_old, d.filepath_old,
-                                                                 default_iflags)
-            _, d.compile_args_new = \
-                SourceFile.get_compile_args(dep_db_new, d.filepath_new,
-                                                                 default_iflags)
-
 
     # - - - Change set - - - #
     changed_functions = ast_diff_stage(source_diffs, log_dir)

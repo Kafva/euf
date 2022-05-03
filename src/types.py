@@ -561,11 +561,13 @@ class SourceFile:
 
             # Remove the first (/usr/bin/cc) and last (source_file) 
             # arguments from the command list
-            flags = xclang_flags + compile_args[1:-1] + \
-                    CONFIG.EXTRA_COMPILE_FLAGS
+            flags = xclang_flags + compile_args[1:-1]
 
             # Strip away warnings
             flags = list(filter(lambda f: not f.startswith("-W"), flags))
+
+            # Add custom flags
+            flags += CONFIG.EXTRA_COMPILE_FLAGS
 
             return (compile_dir, flags)
         else:

@@ -7,20 +7,24 @@
     "expat/tests/.*",
     "expat/examples/.*",
     "expat/.*tab.h",
-    "expat/fuzz/.*"
+    "expat/fuzz/.*",
+    "expat/xmlwf/win32.*"
   ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
       "~/Repos/euf/examples/include/xmlparse.h"
     ]
   },
+  "EXTRA_COMPILE_FLAGS": [
+    "-Wno-macro-redefined"
+  ],
   "BLACKLISTED_HEADERS": [
     "asciitab.h",
     "utf8tab.h",
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
   "CBMC_TIMEOUT": 7,
   "PAUSES": false,
   "ENABLE_RESULT_LOG": true,

@@ -30,7 +30,7 @@ def get_source_diffs(
  commit_new: Commit,
  dep_db_new: cindex.CompilationDatabase) -> list[SourceDiff]:
     COMMIT_DIFF = filter(lambda d: \
-                has_allowed_suffix(d.a_path) and \
+                has_allowed_suffix(d.a_path, git_diff=True) and \
                 re.match("M|R", d.change_type),
             commit_old.diff(commit_new) # type: ignore
     )

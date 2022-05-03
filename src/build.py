@@ -131,16 +131,20 @@ def autogen_compile_db(source_dir: str) -> bool:
             print_err(f"Error patching {source_dir}/compile_commands.json")
             sys.exit(ERR_EXIT)
 
-    # 4. Run 'compdb' to insert entries for '.h' files into the database
-    if ".h" in CONFIG.SUFFIX_WHITELIST:
-        patch_ccdb_with_headers(source_dir, ccdb_path)
-
-    # 5. If the project being analyzed builds the dependency from source,
+    # 4. If the project being analyzed builds the dependency from source,
     # e.g. jq and oniguruma, the ccdb for the main project may contain 
     # entries for the dependency. For our use case, we do not want these
     # entries present and therefore remove them
     if source_dir == CONFIG.PROJECT_DIR and os.path.isfile(ccdb_path):
         remove_dependency_entries_from_project_db(ccdb_path)
+
+    # 5. Read in the ccdb and write it to disk manually to have
+    # a sorted order of the entries
+    json_db = {}
+    with open(ccdb_path, mode = 'r', encoding='utf8') as f:
+        json_db = json.load(f)
+
+    write_ccdb_from_object(ccdb_path, json_db)
 
     return has_valid_compile_db(source_dir)
 
@@ -172,63 +176,6 @@ def patch_old_bear_db(ccdb_path:str):
             new_json.append(tu)
 
     write_ccdb_from_object(ccdb_path, ccdb_json)
-
-def patch_ccdb_with_headers(source_dir: str, ccdb_path:str) -> bool:
-    '''
-    For some reason... compdb uses a single command string instead of the
-    standard arguments array, we need to convert this to maintain
-    compatibility with the rest of EUF
-    '''
-    if CONFIG.VERBOSITY >= 1:
-        print_info("Running compdb...")
-    try:
-        p = subprocess.Popen(["compdb", "-p", ".", "list"],
-            stdout = subprocess.PIPE, stderr = subprocess.DEVNULL,
-            cwd = source_dir
-        )
-        json_output = json.load(p.stdout) # type: ignore
-        header_entries = []
-
-        for json_entry in json_output:
-            if json_entry['file'].endswith(".h") and \
-               not json_entry['file'].startswith("/usr"):
-                # To convert the 'command' string into an arguments array
-                # we cannot rely on .split(' ') since the command can contain
-                # "strings with spaces". We instead split on ' -'
-                # The first item will be the CC, the last item will contain
-                # both the output file and the input file
-                #
-                #   "command": "/usr/bin/gcc -DPACKAGE_NAME=\\\"jq\\\" ... 
-                #                   -o src/.libs/builtin.o src/builtin.c"
-                # compdb has a bug that sometimes puts escaped quotes around
-                # arguments.
-                #
-                # \"-DPACKAGE_STRING=\\\"jq 1.6-147-gf9afa95\\\"\"
-                split_cmds = json_entry['command'].split(" -")
-                arguments = [ split_cmds[0].strip() ]
-
-                for s in split_cmds[1:-1]:
-                    # Occurrences of '\' in the command string will be
-                    # doubly escaped
-                    arguments.append("-"+s.replace('\\\"', '\"'))
-                arguments.append(["-o"] + split_cmds[-1].split())
-
-                json_entry['arguments'] = arguments
-                del json_entry['command']
-                header_entries.append(json_entry)
-    except:
-        traceback.print_exc()
-        print_err("Failed to patch ccdb with compdb")
-        return False
-
-    current_db = []
-    with open(ccdb_path, mode='r', encoding='utf8') as f:
-        current_db = json.load(f)
-        current_db.extend(header_entries)
-
-    write_ccdb_from_object(ccdb_path, current_db)
-
-    return True
 
 def write_ccdb_from_object(ccdb_path:str, json_db: list[dict]):
     '''

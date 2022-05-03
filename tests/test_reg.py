@@ -25,7 +25,7 @@ def test_impact_set():
     )
 
 def test_usb():
-    CONFIG.update_from_file(f"{TEST_DIR}/configs/libusb_4a5540a9_500c64ae.json")
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/libusb.json")
     remove_files_in(f"{RESULT_DIR}/libusb-1.0_4a55_500c")
     run(load_libclang=False)
 
@@ -47,7 +47,7 @@ def test_usb():
     )
 
 def test_expat():
-    CONFIG.update_from_file(f"{TEST_DIR}/configs/10d34296_f178826b.json")
+    CONFIG.update_from_file(f"{TEST_DIR}/configs/expat.json")
     remove_files_in(f"{RESULT_DIR}/libexpat_10d3_f178")
     run(load_libclang=False)
 

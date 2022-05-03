@@ -44,6 +44,12 @@
     "test/.*",
     "src/regparse.c"
   ],
+  "EXTRA_COMPILE_FLAGS": [
+    "-Wno-macro-redefined",
+    "-Wno-unused-parameter",
+    "-Wno-unused-function",
+    "-D__GNUC__"
+  ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
       "~/Repos/euf/examples/include/regcomp.h"

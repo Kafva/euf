@@ -41,6 +41,12 @@
     "OnigEncodingBIG5",
     "OnigEncodingGB18030"
   ],
+  "EXTRA_COMPILE_FLAGS": [
+    "-Wno-macro-redefined",
+    "-Wno-unused-parameter",
+    "-Wno-unused-function",
+    "-D__GNUC__"
+  ],
   "EXCLUDE_REGEXES": [
     "sample/.*",
     "test/.*"

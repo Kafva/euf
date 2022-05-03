@@ -197,8 +197,10 @@ def rm_f(path: str):
     if os.path.isfile(path):
         os.remove(path)
 
-def has_allowed_suffix(string) -> bool:
-    suffixes = "|".join(CONFIG.SUFFIX_WHITELIST).strip("|").replace(".", "\\.")
+def has_allowed_suffix(string, git_diff:bool=False) -> bool:
+    whitelist = CONFIG.SUFFIX_WHITELIST_GIT_DIFF if git_diff \
+            else CONFIG.SUFFIX_WHITELIST
+    suffixes = "|".join(whitelist).strip("|").replace(".", "\\.")
     return re.match(rf".*({suffixes})$", string) != None
 
 def remove_files_in(path: str):

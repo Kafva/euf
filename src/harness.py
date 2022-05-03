@@ -421,7 +421,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     loc_str = fmt_location(change.old.ident.location)
     id_str = '(ID) ' if identity else ''
-    time_start(f"{id_str}Starting CBMC analysis for {loc_str}: " +
+    time_start(f"{id_str}Starting CBMC analysis for {loc_str}(): " +
                f"{os.path.basename(driver)} ({current}/{total})"
     )
     wait_on_cr()
