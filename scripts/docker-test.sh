@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script should be ran INSIDE Docker
+# !! This script should be ran INSIDE Docker !!
 
 verify_cbmc(){
   local lhs="$RESULTS/lhs_${RANDOM}_$(basename $1)"
@@ -35,15 +35,20 @@ verify(){
 }
 
 ./euf.py --config tests/configs/docker.json
-echo "=====> Oniguruma <====="
+echo "=====> Libonig <====="
 EXPECTED=tests/expected/libonig_6c88_a3c2
 RESULTS=results/libonig_6c88_a3c2
 verify
 
-#./euf.py --config examples/libexpat_docker.json
 ./euf.py --config tests/configs/expat_docker.json
-
-echo "=====> Expat <====="
+echo "=====> Libexpat <====="
 EXPECTED=tests/expected/libexpat_10d3_f178
 RESULTS=results/libexpat_10d3_f178
+verify
+
+
+./euf.py --config tests/configs/libusb_docker.json
+echo "=====> Libusb <====="
+EXPECTED=tests/expected/libusb_4a55_500c
+RESULTS=results/libusb_4a55_500c
 verify

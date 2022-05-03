@@ -107,14 +107,17 @@ def call_arg_states_plugin(symbol_name: str, outdir:str, source_dir: str,
         p = subprocess.Popen(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env)
         if quiet:
-            output = "====> stdout <====\n"
-            output += p.stdout.read().decode('utf8')  # type: ignore
-            output += "====> stderr <====\n"
-            output += p.stderr.read().decode('utf8')  # type: ignore
+            stdout_txt = p.stdout.read().decode('utf8')  # type: ignore
+            if len(stdout_txt) > 0:
+                output = "====> stdout <====\n" + stdout_txt + "\n"
+
+            stderr_txt = p.stderr.read().decode('utf8')  # type: ignore
+            if len(stderr_txt) > 0:
+                output += "====> stderr <====\n" + stderr_txt
 
         if p.returncode != 0:
-            print_err("Compilation errors during state space analysis")
-            if CONFIG.VERBOSITY >= 1 and len(output.splitlines()) > 2:
+            print_err("Compilation errors occured during state space analysis")
+            if CONFIG.VERBOSITY >= 2 and len(output.splitlines()) > 0:
                 print(output)
 
     except FileNotFoundError:

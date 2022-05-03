@@ -76,8 +76,12 @@ overview libonig_d3d6_6f8c
 check_results libonig_d3d6_6f8c
 
 RESULT_DIR=.docker_results
+
 overview libonig_6c88_a3c2
 check_results libonig_6c88_a3c2
+
+overview libusb-1.0_4a55_500c
+check_results libusb-1.0_4a55_500c
 
 overview libexpat_10d3_f178
 check_results libexpat_10d3_f178

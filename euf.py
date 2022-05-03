@@ -359,10 +359,12 @@ def transitive_stage(
     )
     log_changed_functions(changed_functions, f"{log_dir}/trans_change_set.csv")
 
+    if CONFIG.VERBOSITY >= 1:
+        time_end("Transitive change enumeration", start) # type: ignore
     if CONFIG.VERBOSITY >= 2:
         print_stage("Complete set")
         print_changes(changed_functions)
-        time_end("Transitive change enumeration", start) # type: ignore
+
 
 def impact_stage(log_dir:str, project_source_files: list[SourceFile],
  changed_functions: list[DependencyFunctionChange]) -> list[CallSite]:

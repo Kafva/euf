@@ -39,15 +39,24 @@ def has_valid_compile_db(source_dir: str) -> bool:
 
     if os.path.isfile(cmds_json):
         # If the project has already been built the database will be empty
-        f = open(cmds_json, mode="r", encoding = "utf8")
+        success = True
+        with open(cmds_json, mode="r", encoding = "utf8") as f:
 
-        if f.read().startswith("[]"):
-            print_err(f"Empty compile_commands.json found at '{source_dir}'")
-            f.close()
+            ccdb_json = json.load(f)
+
+            if len(ccdb_json) == 0:
+                print_err(f"{source_dir}: Empty compile_commands.json found")
+                success = False
+            elif 'command' in ccdb_json[0]:
+                print_err(f"{source_dir}: Invalid compile_commands.json format: found " + \
+                        "'command' key, expected 'arguments' key")
+                success = False
+
+        if not success:
+            print_info(f"Removing {cmds_json}")
             os.remove(cmds_json)
-            return False
 
-        return True
+        return success
     else:
         return False
 

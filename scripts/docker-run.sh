@@ -17,6 +17,7 @@ else
 fi
 
 # ./euf.py --config examples/libexpat_docker.json
+# ./euf.py --config examples/libusb_docker.json
 # ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG
 # Uncomment for debugging
 # ENTRYPOINT="--entrypoint /bin/bash euf"
@@ -50,6 +51,8 @@ rm -rf .docker_results
 # Run with source files mounted to enable live updates
 docker run -h euf --name $CONTAINER_NAME -it \
   -u euf:root \
+  -v $HOME/Repos/.docker/airspy:/home/euf/Repos/airspy \
+  -v $HOME/Repos/.docker/libusb:/home/euf/Repos/libusb \
   -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
   -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
   -v $HOME/Repos/.docker/jabberd-2.7.0:/home/euf/Repos/jabberd-2.7.0 \
