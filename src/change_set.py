@@ -190,7 +190,7 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
         )
         src_loc = functions_differ(pair.old, pair.new)
 
-        if type(src_loc) == cindex.SourceLocation:
+        if isinstance(src_loc, cindex.SourceLocation):
             if CONFIG.VERBOSITY >= 5:
                 print(f"Differ: a/{git_rel_path_old} b/{git_rel_path_new}" + \
                         f" {pair.new.spelling}()")
@@ -347,9 +347,9 @@ def add_rename_changes_based_on_blame(
                     filepath_origin_new = file_origins[1][0]
                     filepath_origin_old = file_origins[0][0]
 
-                assert( not any( git_relative_path(d.filepath_new) \
+                assert not any( git_relative_path(d.filepath_new) \
                         == filepath_origin_new \
-                        for d in dep_source_diffs)
+                        for d in dep_source_diffs
                 )
 
                 if CONFIG.VERBOSITY >= 1:

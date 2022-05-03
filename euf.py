@@ -263,8 +263,7 @@ def reduction_stage(
         # change is considered equivalent
         func_name = change.old.ident.location.name
 
-        if CONFIG.ONLY_ANALYZE != "" and \
-           CONFIG.ONLY_ANALYZE != func_name:
+        if CONFIG.ONLY_ANALYZE != "" and CONFIG.ONLY_ANALYZE != func_name:
             continue
 
         # Log the reason for why a change could not be verified
@@ -375,7 +374,6 @@ def transitive_stage(
     if CONFIG.VERBOSITY >= 3:
         print_stage("Complete set")
         print_changes(changed_functions)
-
 
 def impact_stage(log_dir:str, project_source_files: list[SourceFile],
  changed_functions: list[DependencyFunctionChange]) -> list[CallSite]:
@@ -515,7 +513,9 @@ if __name__ == '__main__':
         default="", help="JSON configuration file, " + \
         "refer to src/config.py for a list of available options.")
     parser.add_argument("-d", "--diff", action='store_true', default=False,
-        help='Print the first point of divergence for each function in the change set followed by the git-diff of the corresponding files and exit')
+     help='Print the first point of divergence for each function in the ' + \
+     "change set followed by the git-diff of the corresponding files and exit'"
+    )
 
     args = parser.parse_args()
     CONFIG.update_from_file(args.config)

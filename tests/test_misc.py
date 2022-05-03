@@ -37,7 +37,7 @@ def test_patch_old_bear_db():
     ccdb_path = "/tmp/old_bear.json"
     shutil.copy(f"{TEST_DIR}/expected/old_bear.json", ccdb_path)
     patch_old_bear_db(ccdb_path)
-    assert(filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json"))
+    assert filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json")
 
 def test_isystem_flags():
     isystem_flags = SourceFile.get_isystem_flags(
@@ -54,11 +54,11 @@ def test_mkdirp():
 
     result = os.path.isdir(make_path)
     os.rmdir(make_path)
-    assert(result)
+    assert result
 
 def test_lib_is_gbf():
-    assert(not lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_elf.a"))
-    assert(lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_gbf.a"))
+    assert not lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_elf.a")
+    assert lib_is_gbf(f"{TEST_DIR}/expected", "libmatrix_gbf.a")
 
 def test_transitive_changes():
     ''' Verifies that the transative change set is not empty for a known case '''
@@ -74,8 +74,8 @@ def test_get_source_subdirs():
     CONFIG.EXCLUDE_REGEXES = ["expat/tests/.*", "expat/examples/.*"]
 
     subdirs = get_subdir_tus(EXPAT_SRC_PATH)
-    assert( set([ key for key in subdirs.keys() ]) ==
-            set( [ f"{EXPAT_SRC_PATH}/{subdir}" for subdir in  expected ] )
+    assert  set([ key for key in subdirs.keys() ]) == \
+            set( [ f"{EXPAT_SRC_PATH}/{subdir}" for subdir in  expected ]
     )
 
 def test_join_arg_states_result():
@@ -94,7 +94,7 @@ def test_join_arg_states_result():
     # If one includes the lib/tests/ path the expected set increases to [0,1,2]
     # The increase is a FP of sorts since the call with (1) is a different 
     # static definition of usage()
-    assert(result[function_name].parameters[1].states == set([0,2]) )
+    assert result[function_name].parameters[1].states == set([0,2])
 
 def test_remove_dependency_entries_from_project_db():
     CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"
@@ -103,17 +103,17 @@ def test_remove_dependency_entries_from_project_db():
 
     remove_dependency_entries_from_project_db(ccdb_path)
 
-    assert( filecmp.cmp(ccdb_path,
+    assert filecmp.cmp(ccdb_path,
             f"{TEST_DIR}/expected/jq_without_onig_commands.json"
-    ))
+    )
 
 def test_autogen_compile_db():
     rm_f(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json")
     CONFIG.update_from_file(f"{TEST_DIR}/configs/libexpat_build_test.json")
     autogen_compile_db(EXPAT_OLD_SRC_PATH)
 
-    assert(filecmp.cmp(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json", \
-            f"{TEST_DIR}/expected/expat_compile.json" )
+    assert filecmp.cmp(f"{EXPAT_OLD_SRC_PATH}/compile_commands.json", \
+            f"{TEST_DIR}/expected/expat_compile.json"
     )
 
 

@@ -99,7 +99,7 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
     with open(f"{source_dir_old}/compile_commands.json", mode='r', encoding='utf8') as f:
         for tu in json.load(f):
             # We assume that all files are given with an abspath in ccdb
-            assert(tu['file'].startswith("/"))
+            assert tu['file'].startswith("/")
 
             if tu['file'] in filepaths_old:
                 for arg in tu['arguments']:

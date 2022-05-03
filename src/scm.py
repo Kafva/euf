@@ -83,12 +83,12 @@ def create_worktree(target: str, commit: str, repo: Repo) -> bool:
             return False
     return True
 
-def get_source_files(git_dir: str, source_dir: str,
+def get_source_files(git_directory: str, source_dir: str,
  ccdb: cindex.CompilationDatabase) -> list[SourceFile]:
     if CONFIG.VERBOSITY >= 1:
         start = time_start(f"Loading files from {source_dir}...")
-    repo = Repo(git_dir)
-    source_files = filter(lambda p: has_allowed_suffix(p),
+    repo = Repo(git_directory)
+    source_files = filter(has_allowed_suffix,
         [ e.path for e in repo.tree().traverse() ] # type: ignore
     )
 
@@ -99,7 +99,7 @@ def get_source_files(git_dir: str, source_dir: str,
             #   e.g. expat/lib/xmlparse.c
             # To get the canonical path we prepend it with the git_dir
             source_files.append(
-                SourceFile.new(f"{git_dir}/{e.path}", ccdb)
+                SourceFile.new(f"{git_directory}/{e.path}", ccdb)
             )
 
 

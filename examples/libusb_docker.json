@@ -14,7 +14,10 @@
     ]
   },
   "EXTRA_COMPILE_FLAGS": [
-    "-D_inline=inline"
+    "-D_inline=inline",
+    "-D__GNUC__",
+    "-Wno-missing-prototypes",
+    "-Wno-macro-redefined"
   ],
   "EXCLUDE_REGEXES": [
     "android/.*",

@@ -1,2 +1,5 @@
 [MESSAGES CONTROL]
-disable=missing-class-docstring,fixme,missing-module-docstring,missing-function-docstring,trailing-newlines,broad-except,logging-fstring-interpolation,trailing-whitespace,invalid-name,subprocess-run-check,multiple-statements,multiple-imports
+disable=missing-class-docstring,fixme,missing-module-docstring,
+  missing-function-docstring,trailing-newlines,broad-except,
+  logging-fstring-interpolation,trailing-whitespace,invalid-name,
+  subprocess-run-check,multiple-statements,multiple-imports,arguments-differ

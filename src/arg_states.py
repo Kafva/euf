@@ -66,10 +66,12 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     non-overlapping filenames when analysing old/new versions of a dependency
     '''
     blacklist = r"|".join(CONFIG.ARG_STATES_COMPILE_FLAG_BLACKLIST)
-    # Since the ccdb_args for SubDirTU objects is not read from 
+
+    # Since the ccdb_args for SubDirTU objects are not read from 
     # SourceFile objects, we need to manually include any EXTRA_COMPILE_FLAGS
-    # Note the usage of a list() and not a set(), it is preferable
-    # for the arguments to provided in the same order that they are written
+    #
+    # Note the use of a list() and not a set(), it is preferable
+    # for the arguments to be provided in the same order that they are written
     ccdb_arguments  = filter(lambda a: not re.match(blacklist, a),
                                 list(subdir_tu.ccdb_args) +
                                 CONFIG.EXTRA_COMPILE_FLAGS

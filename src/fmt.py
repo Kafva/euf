@@ -8,8 +8,8 @@ def fmt_location(ident: IdentifierLocation) -> str:
 
     if ident.name != "":
         return f"{path}:{ident.line}:{ident.column}:{ident.name}"
-    else:
-        return f"{path}:{ident.line}:{ident.column}"
+
+    return f"{path}:{ident.line}:{ident.column}"
 
 def fmt_change(change: DependencyFunctionChange, pretty: bool = False,
  brief: bool = False) -> str:
@@ -21,7 +21,7 @@ def fmt_change(change: DependencyFunctionChange, pretty: bool = False,
         out =   "direct change: " if change.direct_change else \
                 "indirect change: "
     if brief and pretty:
-            out += "\033[33m"
+        out += "\033[33m"
 
     old_func = fmt_location(change.old.ident.location)
     new_func = fmt_location(change.new.ident.location)
@@ -31,7 +31,7 @@ def fmt_change(change: DependencyFunctionChange, pretty: bool = False,
     else:
         out += f"a/{old_func}() -> b/{new_func}()"
     if brief and pretty:
-            out += "\033[0m"
+        out += "\033[0m"
 
     if not brief:
         out += affected_by(change,pretty)
@@ -61,8 +61,8 @@ def fmt_divergence(change: DependencyFunctionChange,
     divergence = fmt_location(change.point_of_divergence)
     if with_context:
         return f"{fmt_change(change)}\n{CONFIG.INDENT}diverged at \033[4m{divergence}\033[0m"
-    else:
-        return f"\n{CONFIG.INDENT}diverged at \033[4m{divergence}\033[0m"
+
+    return f"\n{CONFIG.INDENT}diverged at \033[4m{divergence}\033[0m"
 
 def print_changes(changed_functions: list[DependencyFunctionChange],
  pretty:bool = False, brief:bool = False) -> None:

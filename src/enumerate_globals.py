@@ -74,7 +74,7 @@ def get_top_level_structs(cursor: cindex.Cursor) -> set[Cstruct]:
                     struct.fields.add(field.spelling)
             structs.add(struct)
 
-    return structs;
+    return structs
 
 def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
  -> tuple[list[Identifier],set[str]]:
@@ -91,7 +91,7 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
     structs: set[Cstruct] = set()
     filepaths: set[str] = set()
 
-    start_time = time_start(f"Enumerating global symbols...")
+    start_time = time_start("Enumerating global symbols...")
     try:
         for ccmds in ccdb.getAllCompileCommands():
             # Depending on how the compile_commands.json is read
@@ -149,10 +149,10 @@ def handle_struct_conflicts(structs: set[Cstruct],
     field_names = set(flatten([ list(s.fields) for s in structs ]))
 
     non_static_functions = filter(lambda f: not f.is_static and f.is_function, idents)
-    non_static_function_names = set([ f.location.name for f in non_static_functions ]);
+    non_static_function_names = set([ f.location.name for f in non_static_functions ])
 
     static_functions = filter(lambda f: f.is_static and f.is_function, idents)
-    static_function_names = set([ f.location.name for f in static_functions ]);
+    static_function_names = set([ f.location.name for f in static_functions ])
 
     static_overlap = field_names & static_function_names
 

@@ -62,7 +62,7 @@ class IdentifierLocation:
     def filepath(self,value):
         if not value.startswith("/"):
             print("!>", value)
-            assert(value.startswith("/"))
+            assert value.startswith("/")
 
         self._filepath = value
 
@@ -329,8 +329,8 @@ class Identifier:
                self.is_static == other.is_static
 
         elif re.search(CONFIG.UNRESOLVED_NODES_REGEX, self.type_spelling) or \
-             re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
-                return True
+           re.search(CONFIG.UNRESOLVED_NODES_REGEX, other.type_spelling):
+            return True
 
         # The type spelling usually differs slightly between declarations and
         # call sites, e.g. the call site usually does not have an 'enum' prefix
@@ -365,7 +365,8 @@ class Identifier:
     def dump(self, header:bool = False) -> str:
         fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
         fmt += \
-        f"{self.is_const};{self.is_ptr};{self.is_function};{self.typing};{self.type_spelling};{self.location.name}"
+        f"{self.is_const};{self.is_ptr};{self.is_function};{self.typing};"+\
+        f"{self.type_spelling};{self.location.name}"
         return fmt
 
 @dataclass(init=True)
@@ -443,17 +444,20 @@ class DependencyFunctionChange:
 
     @classmethod
     def csv_header(cls) -> str:
-        return f"direct_change;{IdentifierLocation.csv_header('old')};{IdentifierLocation.csv_header('new')}"
+        return f"direct_change;{IdentifierLocation.csv_header('old')};"+\
+               f"{IdentifierLocation.csv_header('new')}"
 
     def to_csv(self) -> str:
-        return f"{self.direct_change};{self.old.ident.location.to_csv()};{self.new.ident.location.to_csv()}"
+        return f"{self.direct_change};{self.old.ident.location.to_csv()};"+\
+               f"{self.new.ident.location.to_csv()}"
 
     def __hash__(self):
         ''' 
         Note that the hash does not consider the `invokes_changed_functions` 
         list. A set will thus only include one copy of each function
         '''
-        return hash(self.old.ident.location.to_csv()  + self.new.ident.location.to_csv())
+        return hash(self.old.ident.location.to_csv() + \
+               self.new.ident.location.to_csv())
 
 @dataclass(init=True)
 class CallSite:
@@ -462,7 +466,8 @@ class CallSite:
 
     @classmethod
     def csv_header(cls) -> str:
-        return f"{IdentifierLocation.csv_header('impacted')};{DependencyFunctionChange.csv_header()}"
+        return f"{IdentifierLocation.csv_header('impacted')};"+\
+                DependencyFunctionChange.csv_header()
 
     def to_csv(self):
         return f"{self.call_location.to_csv()};" + \
@@ -487,7 +492,7 @@ class SourceFile:
 
     @filepath_new.setter
     def filepath_new(self,value):
-        assert(value.startswith("/"))
+        assert value.startswith("/")
         self._filepath_new = value
 
     @classmethod
@@ -514,32 +519,33 @@ class SourceFile:
         6 <default linker arguments>: "/usr/bin/ld" "-z" "relro" 
         "--hash-style=gnu" "--build-id" "--eh-frame-hdr" ...
         '''
-        p = subprocess.Popen(f"{CONFIG.CCDB_CC} -### {source_file}",
-            shell=True, cwd = compile_dir, stderr=subprocess.PIPE
-        )
-        output = p.stderr.read().decode('utf8').splitlines() # type: ignore
-        assert(len(output) == 6)
-
-        items =  [ s.strip("\"") for s in output[4].split() ]
-
         out = []
-        use_next = False
-        for item in items:
-            if item == "-internal-isystem":
-                out.append(item)
-                use_next = True
-            elif use_next:
-                # Do not include missing paths
-                if os.path.isdir(item):
+        with subprocess.Popen(f"{CONFIG.CCDB_CC} -### {source_file}",
+            shell=True, cwd = compile_dir, stderr=subprocess.PIPE
+            ) as p:
+            output = p.stderr.read().decode('utf8').splitlines() # type: ignore
+            assert len(output) == 6
+
+            items =  [ s.strip("\"") for s in output[4].split() ]
+
+            use_next = False
+            for item in items:
+                if item == "-internal-isystem":
                     out.append(item)
-                else:
-                    out.pop()
-                use_next = False
+                    use_next = True
+                elif use_next:
+                    # Do not include missing paths
+                    if os.path.isdir(item):
+                        out.append(item)
+                    else:
+                        out.pop()
+                    use_next = False
         return out
 
     @classmethod
     def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
-            filepath: str, isystem_flags: list[str] = []) -> tuple[str,list[str]]:
+         filepath: str, isystem_flags: list[str]|None = None) -> \
+    tuple[str,list[str]]:
         ''' 
         Load the compilation configuration for the particular file
         and retrieve the compilation arguments and the directory that
@@ -552,7 +558,7 @@ class SourceFile:
 
             # We need each isystem flag to be passed to clang directly
             # and therefore prefix every argument with -Xclang
-            if len(isystem_flags) == 0:
+            if isystem_flags is None:
                 isystem_flags = cls.get_isystem_flags(filepath,compile_dir)
             xclang_flags = []
             for flag in isystem_flags:
@@ -570,8 +576,8 @@ class SourceFile:
             flags += CONFIG.EXTRA_COMPILE_FLAGS
 
             return (compile_dir, flags)
-        else:
-            raise Exception(f"No compilation instructions for {filepath}")
+
+        raise Exception(f"No compilation instructions for {filepath}")
 
     @classmethod
     def new(cls, filepath: str, ccdb: cindex.CompilationDatabase):
@@ -602,7 +608,7 @@ class SourceDiff(SourceFile):
 
     @filepath_old.setter
     def filepath_old(self,value):
-        assert(value.startswith("/"))
+        assert value.startswith("/")
         self._filepath_old = value
 
     @classmethod
@@ -695,4 +701,4 @@ class Cstruct:
     fields: set[str] = field(default_factory=set)
 
     def __hash__(self):
-        return hash(self.name + ''.join([f for f in self.fields]))
+        return hash(self.name + ''.join(list(self.fields)))

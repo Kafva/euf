@@ -17,6 +17,6 @@ def check_cbmc_csv(path1:str, path2:str):
                 del split1[3]
                 split2 = line2.split(";")
                 del split2[3]
-                assert(''.join(split1) == ''.join(split2))
+                assert ''.join(split1) == ''.join(split2)
 
 
