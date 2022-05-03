@@ -31,7 +31,8 @@
     "libusb/os/freebsd.*",
     "libusb/os/netbsd.*",
     "libusb/os/openbsd.*",
-    "libusb/os/sunos.*"
+    "libusb/os/sunos.*",
+    "libusb/os/threads_windows.h"
   ],
   "FORCE_RECOMPILE": false,
   "FORCE_CCDB_RECOMPILE": false,

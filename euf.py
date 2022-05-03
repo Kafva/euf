@@ -228,7 +228,6 @@ def reduction_stage(
                                             git_dir(new=True))
     state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
                                              CONFIG.PROJECT_DIR)
-    exit()
 
     # Join the results from each analysis
     old_name    = os.path.basename(git_dir(new=False))
@@ -373,7 +372,7 @@ def transitive_stage(
 
     if CONFIG.VERBOSITY >= 1:
         time_end("Transitive change enumeration", start) # type: ignore
-    if CONFIG.VERBOSITY >= 2:
+    if CONFIG.VERBOSITY >= 3:
         print_stage("Complete set")
         print_changes(changed_functions)
 
@@ -407,7 +406,7 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
 
     time_end("Finished call site enumeration", start)
 
-    if CONFIG.VERBOSITY >= 2 or len(call_sites) == 0:
+    if CONFIG.VERBOSITY >= 4 or len(call_sites) == 0:
         print_call_sites(call_sites)
     else:
         if CONFIG.ORDER_BY_CALL_SITE:
@@ -523,6 +522,12 @@ if __name__ == '__main__':
     CONFIG.SHOW_DIFFS = args.diff # Ignored if given in config file
     if CONFIG.VERBOSITY >= 3:
         pprint(CONFIG)
+
+    if CONFIG.COMMIT_NEW == "" or CONFIG.COMMIT_OLD == "" or \
+      CONFIG.PROJECT_DIR == "" or CONFIG.DEPENDENCY_DIR == "":
+        print_err("Missing obligatory option(s) in configuration file")
+        sys.exit(ERR_EXIT)
+
 
     run()
 

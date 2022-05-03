@@ -10,6 +10,9 @@
     "expat/.*tab.h",
     "expat/xmlwf/win32.*"
   ],
+  "EXTRA_COMPILE_FLAGS": [
+    "-Wno-macro-redefined"
+  ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
       "~/euf/examples/include/xmlparse.h"
