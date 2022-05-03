@@ -18,4 +18,6 @@ True;libusb/os/threads_posix.c;53;5;usbi_get_tid;libusb/os/threads_posix.c;61;5;
 True;libusb/io.c;2815;6;usbi_handle_disconnect;libusb/io.c;2816;6;usbi_handle_disconnect
 True;libusb/io.c;1698;5;usbi_handle_transfer_cancellation;libusb/io.c;1699;5;usbi_handle_transfer_cancellation
 True;libusb/io.c;1650;5;usbi_handle_transfer_completion;libusb/io.c;1651;5;usbi_handle_transfer_completion
+True;libusb/core.c;2675;6;usbi_log;libusb/core.c;2675;6;usbi_log
+True;libusb/core.c;2571;6;usbi_log_v;libusb/core.c;2571;6;usbi_log_v
 True;libusb/io.c;1720;6;usbi_signal_transfer_completion;libusb/io.c;1721;6;usbi_signal_transfer_completion
