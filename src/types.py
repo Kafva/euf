@@ -372,7 +372,8 @@ class Identifier:
         return f"{constant}{type_str} {spelling_str}{func}"
 
     def dump(self, header:bool = False) -> str:
-        fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" if header else ''
+        fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" \
+                if header else ''
         fmt += \
         f"{self.is_const};{self.is_ptr};{self.is_function};{self.typing};"+\
         f"{self.type_spelling};{self.location.name}"

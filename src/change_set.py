@@ -23,16 +23,24 @@ def functions_match(match: DependencyFunction, other: DependencyFunction) \
     '''
     match_str = fmt_location(match.ident.location)
     other_str = fmt_location(other.ident.location)
+    err = match.ident.eq_report(other.ident, return_value=True,
+            check_function=True
+    )
 
-    if (err := match.ident.eq_report(other.ident, return_value=True, check_function=True)) != "":
-        print(err)
-        print(f"definition: {match_str}\ncall: {other_str}\n")
+    if err != "":
+        if CONFIG.VERBOSITY >= 1:
+            print(err)
+            print(f"definition: {match_str}\ncall: {other_str}\n")
         return False
 
     for self_arg,other_arg in zip(match.arguments,other.arguments):
-        if (err := self_arg.eq_report(other_arg, return_value=False, check_function=False)) != "":
-            print(err)
-            print(f"definition: {match_str}\ncall: {other_str}\n")
+        err = self_arg.eq_report(other_arg, return_value=False,
+                check_function=False
+        )
+        if err != "":
+            if CONFIG.VERBOSITY >= 1:
+                print(err)
+                print(f"definition: {match_str}\ncall: {other_str}\n")
             return False
 
     return True

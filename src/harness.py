@@ -178,7 +178,7 @@ def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
                 # Otherwise, removeprefix() will not work as intended
                 assert include_path.startswith("/")
 
-                hdr_path = hdr_path.removeprefix(include_path).strip("/")
+                hdr_path = hdr_path.removeprefix(include_path)
 
                 if os.path.basename(hdr_path) in CONFIG.BLACKLISTED_HEADERS:
                     continue
