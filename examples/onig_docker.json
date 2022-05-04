@@ -41,8 +41,7 @@
   ],
   "EXCLUDE_REGEXES": [
     "sample/.*",
-    "test/.*",
-    "src/regparse.c"
+    "test/.*"
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
@@ -52,7 +51,13 @@
       "~/euf/examples/include/regparse2.h"
     ]
   },
-  "FORCE_CCDB_RECOMPILE": true,
+  "EXTRA_COMPILE_FLAGS": [
+    "-Wno-macro-redefined",
+    "-Wno-unused-parameter",
+    "-Wno-unused-function",
+    "-D__GNUC__"
+  ],
+  "FORCE_CCDB_RECOMPILE": false,
   "FORCE_RECOMPILE": false,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,

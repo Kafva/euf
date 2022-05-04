@@ -10,6 +10,8 @@ verify_cbmc(){
   cut -d';' -f4,5 --complement $1 > $lhs
   cut -d';' -f4,5 --complement $2 > $rhs
 
+  # Note: Docker and the main host will sometimes differ
+  # in their results due to being killed by different timeouts
   diff -q $lhs $rhs
 }
 

@@ -13,19 +13,26 @@
       "libusb/libusbi.h"
     ]
   },
+  "EXTRA_COMPILE_FLAGS": [
+    "-DHAVE_TIMERFD",
+    "-D_inline=inline",
+    "-D__GNUC__",
+    "-Wno-missing-prototypes",
+    "-Wno-macro-redefined"
+  ],
   "EXCLUDE_REGEXES": [
     "android/.*",
     "Xcode/.*",
     "msvc/.*",
     "examples/.*",
     "tests/.*",
-    "libusb/os/darwin*",
-    "libusb/os/windows*",
-    "libusb/os/haiku*",
-    "libusb/os/freebsd*",
-    "libusb/os/netbsd*",
-    "libusb/os/openbsd*",
-    "libusb/os/sunos*",
+    "libusb/os/darwin.*",
+    "libusb/os/.*windows.*",
+    "libusb/os/haiku.*",
+    "libusb/os/freebsd.*",
+    "libusb/os/netbsd.*",
+    "libusb/os/openbsd.*",
+    "libusb/os/sunos.*",
     "libusb/os/threads_windows.h"
   ],
   "FORCE_RECOMPILE": false,

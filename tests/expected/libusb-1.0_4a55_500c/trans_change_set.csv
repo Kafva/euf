@@ -45,6 +45,8 @@ False;;-1;-1;;libusb/hotplug.c;223;18;libusb_hotplug_register_callback
 False;;-1;-1;;libusb/hotplug.c;311;19;libusb_hotplug_deregister_callback
 False;;-1;-1;;libusb/hotplug.c;349;20;libusb_hotplug_get_user_data
 False;;-1;-1;;libusb/hotplug.c;375;6;usbi_hotplug_deregister
+False;;-1;-1;;libusb/io.c;1113;5;usbi_io_init
+False;;-1;-1;;libusb/io.c;1325;12;disarm_timerfd
 False;;-1;-1;;libusb/io.c;1651;5;usbi_handle_transfer_completion
 False;;-1;-1;;libusb/io.c;1699;5;usbi_handle_transfer_cancellation
 False;;-1;-1;;libusb/io.c;1757;18;libusb_try_lock_events
@@ -52,6 +54,7 @@ False;;-1;-1;;libusb/io.c;1850;18;libusb_event_handling_ok
 False;;-1;-1;;libusb/io.c;1879;18;libusb_event_handler_active
 False;;-1;-1;;libusb/io.c;1908;19;libusb_interrupt_event_handler
 False;;-1;-1;;libusb/io.c;2020;12;handle_timeouts_locked
+False;;-1;-1;;libusb/io.c;2071;12;handle_timerfd_trigger
 False;;-1;-1;;libusb/io.c;2093;12;handle_events
 False;;-1;-1;;libusb/io.c;2374;18;libusb_handle_events_timeout_completed
 False;;-1;-1;;libusb/io.c;2594;18;libusb_get_next_timeout
@@ -119,6 +122,7 @@ False;;-1;-1;;libusb/os/linux_usbfs.c;2560;12;reap_for_handle
 False;;-1;-1;;libusb/os/linux_usbfs.c;2599;12;op_handle_events
 False;;-1;-1;;libusb/os/poll_posix.c;27;5;usbi_pipe
 True;libusb/io.c;1381;12;add_to_flying_list;libusb/io.c;1382;12;add_to_flying_list
+True;libusb/io.c;1342;12;arm_timerfd_for_next_timeout;libusb/io.c;1343;12;arm_timerfd_for_next_timeout
 True;libusb/io.c;1202;12;calculate_timeout;libusb/io.c;1202;12;calculate_timeout
 True;libusb/core.c;1407;13;do_close;libusb/core.c;1407;13;do_close
 True;libusb/io.c;2004;13;handle_timeout;libusb/io.c;2005;13;handle_timeout

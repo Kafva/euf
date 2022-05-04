@@ -6,7 +6,7 @@ image_exists(){
 docker-id(){ 
   docker ps --format "{{.ID}}  {{.Image}}" | awk '/\s+euf$/{print $1}'
 }
-CONF=${CONF:=tests/configs/docker.json}
+CONF=${CONF:=tests/configs/onig_docker.json}
 VERIFY=${VERIFY:=false}
 
 
@@ -16,6 +16,7 @@ else
   ENTRYPOINT="euf --config $CONF"
 fi
 
+# ./euf.py --config examples/onig_docker.json
 # ./euf.py --config examples/libexpat_docker.json
 # ./euf.py --config examples/libusb_docker.json
 # ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG

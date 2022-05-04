@@ -34,7 +34,7 @@ verify(){
   done
 }
 
-./euf.py --config tests/configs/docker.json
+./euf.py --config tests/configs/onig_docker.json
 echo "=====> Libonig <====="
 EXPECTED=tests/expected/libonig_6c88_a3c2
 RESULTS=results/libonig_6c88_a3c2
