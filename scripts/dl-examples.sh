@@ -36,19 +36,20 @@ fix_jq(){
 
 clone_repo(){
   [ -d "$2" ] || 
-    git clone https://github.com/$1.git "$2"
+    git clone $1.git "$2"
 }
 
 dl(){
   local repo=$1
-  clone_repo kkos/oniguruma        $repo/oniguruma
-  clone_repo libexpat/libexpat     $repo/libexpat
-  clone_repo libusb/libusb         $repo/libusb
+  clone_repo https://github.com/kkos/oniguruma        $repo/oniguruma
+  clone_repo https://github.com/libexpat/libexpat     $repo/libexpat
+  clone_repo https://github.com/libusb/libusb         $repo/libusb
 
-  clone_repo stedolan/jq           $repo/jq
-  clone_repo airspy/airspyone_host $repo/airspy
-  get_jabberd2                     $repo/jabberd-2.7.0
-  fix_jq                           $repo/jq
+  clone_repo https://github.com/stedolan/jq           $repo/jq
+  clone_repo https://github.com/airspy/airspyone_host $repo/airspy
+
+  get_jabberd2 $repo/jabberd-2.7.0
+  fix_jq       $repo/jq
 
   if ! [ -f $repo/airspy/compile_commands.json ]; then
     cd $repo/airspy
@@ -79,6 +80,10 @@ mkdir -p ~/Repos/.docker
 
 dl ~/Repos
 dl ~/Repos/.docker
+
+# Clone basic examples
+clone_repo https://gitlab.com/Kafva/main   ~/Repos/main
+clone_repo https://gitlab.com/Kafva/matrix ~/Repos/matrix
 
 # The paths generated in the ccdb for jabberd and airspy will be correspond
 # to the host path, /home/$USER/Repos/.docker, and need to be patched 
