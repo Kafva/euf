@@ -158,20 +158,24 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
             print_inconclusive(msg)
         case AnalysisResult.FAILURE:
             print_fail(msg)
+        case AnalysisResult.FAILURE_UNWIND_FAIL:
+            print_inconclusive(msg)
+
         case AnalysisResult.NO_VCCS:
             print_fail(msg)
         case AnalysisResult.NO_BODY:
             print_fail(msg)
-        case AnalysisResult.FAILURE_UNWIND_FAIL:
-            print_fail(msg)
+
         case AnalysisResult.STRUCT_CNT_CONFLICT:
             print_err(msg)
         case AnalysisResult.STRUCT_TYPE_CONFLICT:
             print_err(msg)
         case AnalysisResult.ERROR:
             print_err(msg)
+
         case AnalysisResult.NONE:
             print_info(msg)
+
         case _: # Default to warning
             print_warn(msg)
 

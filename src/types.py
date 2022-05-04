@@ -38,6 +38,9 @@ class AnalysisResult(Enum):
     # Triggered if a pointer field in a global struct has the same name
     # as a function
     NOT_RENAMED = 84
+    # Array arguments are not supported for verification
+    # (adding partial support should not be to compliated however)
+    ARRAY_ARG = 85
     NONE = 255 # Base case used in `print_result`
 
 @dataclass(init=True)

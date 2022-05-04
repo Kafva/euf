@@ -10,7 +10,8 @@ from src.types import AnalysisResult, DependencyFunctionChange, \
 from src.util import ccdb_dir, print_result, shorten_path_fields, \
         time_end, time_start, wait_on_cr, print_err
 
-def valid_preconds(change: DependencyFunctionChange, include_paths: dict[str,set[str]],
+def valid_preconds(change: DependencyFunctionChange,
+  include_paths: dict[str,set[str]],
   skip_renaming: set[str],
   logfile: str= "", quiet:bool = False) -> bool:
     '''
@@ -24,23 +25,26 @@ def valid_preconds(change: DependencyFunctionChange, include_paths: dict[str,set
     old_loc_str = fmt_location(change.old.ident.location)
 
     # The function has not been given an '_old' suffix, preventing analysis
-    if func_name in skip_renaming or func_name == "compile_enclose_node":
+    if func_name in skip_renaming:
         fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
             change_str
         result = AnalysisResult.NOT_RENAMED
 
-    # There exists compilation instructions for the TU the function is defined in
+    # Compilation instructions for the TU the 
+    # function is defined in do not exist
     elif not change.old.ident.location.filepath in include_paths or \
        len(include_paths[change.old.ident.location.filepath]) == 0:
         path = change.old.ident.location.filepath
         fail_msg = \
-            f"Skipping {func_name}() due to missing compilation instructions for {path}"
+            f"Skipping {func_name}() due to missing compilation "\
+            f"instructions for {path}"
         result = AnalysisResult.MISSING_COMPILE
 
     # The number-of arguments and their types have not changed
     elif (old_cnt := len(change.old.arguments)) != \
         (new_cnt := len(change.new.arguments)):
-        fail_msg = f"Differing number of arguments: a/{old_cnt} -> b/{new_cnt} in {change_str}"
+        fail_msg = f"Differing number of arguments: a/{old_cnt} -> "\
+                   f"b/{new_cnt} in {change_str}"
         result = AnalysisResult.DIFF_ARG_CNT
 
     # The return-type has not changed
@@ -52,18 +56,25 @@ def valid_preconds(change: DependencyFunctionChange, include_paths: dict[str,set
 
     # Function does not have a void return value
     elif change.old.ident.type_spelling == "void":
-        fail_msg = f"Cannot verify function with a 'void' return value: {old_loc_str}"
+        fail_msg = f"Cannot verify function with a 'void' "\
+                   f"return value: {old_loc_str}"
         result = AnalysisResult.VOID_RET
 
     # Function has at least one parameter
     elif len(change.old.arguments) == 0:
-        fail_msg = f"Cannot verify a function with zero arguments: {old_loc_str}"
+        fail_msg = f"Cannot verify a function with zero arguments: "\
+                   f"{old_loc_str}"
         result = AnalysisResult.NO_ARGS
+    elif any(str(a).find("[") != -1 for a in change.old.arguments):
+        fail_msg = f"Verifying functions with array '[]' parameter(s) is "\
+                   f"not supported: {old_loc_str}"
+        result = AnalysisResult.ARRAY_ARG
     else:
         # The parameter types have not changed
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
-                fail_msg = f"Different argument types: a/{a1} -> b/{a2} in {change_str}"
+                fail_msg = f"Different argument types: a/{a1} -> b/{a2} "\
+                           f"in {change_str}"
                 result = AnalysisResult.DIFF_ARG_TYPE
                 break
 
@@ -73,7 +84,8 @@ def valid_preconds(change: DependencyFunctionChange, include_paths: dict[str,set
             for arg in change.old.arguments:
                 if arg.type_spelling == "void*":
                     fail_msg = \
-                        f"Function requires a 'void* {arg.location.name}' argument: {old_loc_str}"
+                        f"Function requires a 'void* {arg.location.name}' "\
+                        f"argument: {old_loc_str}"
                     result = AnalysisResult.VOID_ARG
                     break
 
