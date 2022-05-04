@@ -49,6 +49,6 @@ verify
 
 ./euf.py --config tests/configs/libusb_docker.json
 echo "=====> Libusb <====="
-EXPECTED=tests/expected/libusb_4a55_500c
-RESULTS=results/libusb_4a55_500c
+EXPECTED=tests/expected/libusb-1.0_4a55_500c
+RESULTS=results/libusb-1.0_4a55_500c
 verify

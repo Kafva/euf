@@ -65,7 +65,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
         current_enclosing = cursor.spelling
 
     if str(cursor.kind).endswith("CALL_EXPR") and \
-       changed_function != None:
+       changed_function is not None:
 
         called = DependencyFunction.new_from_cursor(cursor,filepath=filepath)
 
@@ -127,7 +127,7 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
     main project, i.e. there can be several site objects that have the same
     enclosing function.
     '''
-    location_to_calls_dict: dict[str,list[str]] = dict()
+    location_to_calls_dict: dict[str,list[str]] = {}
 
     for site in call_sites:
         # To compile all calls within the same enclosing function
@@ -143,7 +143,7 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
 
         # Show the point of divergence for direct changes
         if site.called_function_change.direct_change:
-           out_str += f"{CONFIG.INDENT}" + \
+            out_str += f"{CONFIG.INDENT}" + \
             fmt_divergence(site.called_function_change, with_context=False)
 
         if key in location_to_calls_dict:
@@ -176,7 +176,7 @@ def pretty_print_impact_by_dep(call_sites: list[CallSite]) -> None:
 
     for site in call_sites:
         key = site.called_function_change
-        if key in func_change_to_invocations_map.keys():
+        if key in func_change_to_invocations_map:
             func_change_to_invocations_map[key].append(site)
         else:
             func_change_to_invocations_map[key] = [ site ]

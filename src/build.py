@@ -57,20 +57,20 @@ def has_valid_compile_db(source_dir: str) -> bool:
             os.remove(ccdb_path)
 
         return success
-    else:
-        return False
+
+    return False
 
 def autogen_compile_db(source_dir: str) -> bool:
     script_env = CONFIG.get_script_env()
 
     if has_valid_compile_db(source_dir) and not CONFIG.FORCE_CCDB_RECOMPILE:
         return True
-    else:
-        # If we are creating a compile_commands.json we need to ensure
-        # that the project is clean, otherwise nothing will be built
-        # and the db will be empty
-        # Removing this will cause certain tests to fail
-        make_clean(source_dir, script_env, subprocess.DEVNULL)
+
+    # If we are creating a compile_commands.json we need to ensure
+    # that the project is clean, otherwise nothing will be built
+    # and the db will be empty
+    # Removing this will cause certain tests to fail
+    make_clean(source_dir, script_env, subprocess.DEVNULL)
 
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
@@ -114,8 +114,9 @@ def autogen_compile_db(source_dir: str) -> bool:
             if version <= 0:
                 print_err("Unknown version or non-existent 'bear' executable")
                 return False
-            elif version <= 2:
+            if version <= 2:
                 del cmd[1]
+
             print("!> " + ' '.join(cmd))
             (subprocess.run(cmd, cwd = source_dir, stdout = out, stderr = out
             )).check_returncode()
@@ -127,7 +128,8 @@ def autogen_compile_db(source_dir: str) -> bool:
     if version <= 2:
         try:
             patch_old_bear_db(f"{source_dir}/compile_commands.json")
-        except:
+        except Exception:
+            traceback.print_exc()
             print_err(f"Error patching {source_dir}/compile_commands.json")
             sys.exit(ERR_EXIT)
 
@@ -158,14 +160,14 @@ def remove_dependency_entries_from_project_db(ccdb_path: str):
         filtered_db = []
         ccdb_json = json.load(f)
         for tu in ccdb_json:
-            if re.match(rf".*/{dep_name}/.*", tu['file']) == None:
+            if re.match(rf".*/{dep_name}/.*", tu['file']) is None:
                 filtered_db.append(tu)
 
     write_ccdb_from_object(ccdb_path, filtered_db)
 
 def patch_old_bear_db(ccdb_path:str):
     new_json = []
-    with open(ccdb_path, mode='r') as f:
+    with open(ccdb_path, mode='r', encoding='utf8') as f:
         ccdb_json = json.load(f)
         for tu in ccdb_json:
             # Find the [-o] flag and extract the target name after it
@@ -262,13 +264,15 @@ def make_clean(source_dir: str, script_env: dict[str,str], out) -> bool:
 
 def lib_is_gbf(source_dir: str, libpath: str) -> bool:
     script_env = CONFIG.get_script_env()
-    p = subprocess.Popen(["ar", "t", libpath ], cwd = source_dir, env =
-            script_env, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL)
-    first_binary = p.stdout.readline().decode('ascii').strip('\n') # type: ignore
-    p = subprocess.Popen(["ar", "p", libpath, first_binary ], cwd = source_dir, env =
-            script_env, stdout = subprocess.PIPE)
 
-    return p.stdout.read(4) == b'\x7fGBF' # type: ignore
+    with subprocess.Popen(["ar", "t", libpath ], cwd = source_dir, env =
+      script_env, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL) as p:
+        first_binary = p.stdout.readline().decode('ascii').strip('\n') # type: ignore
+
+    with subprocess.Popen(["ar", "p", libpath, first_binary ],
+         cwd = source_dir, env = script_env, stdout = subprocess.PIPE) as p:
+
+        return p.stdout.read(4) == b'\x7fGBF' # type: ignore
 
 def build_goto_lib(source_dir: str, new_version: bool) -> str:
     '''

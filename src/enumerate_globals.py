@@ -149,10 +149,10 @@ def handle_struct_conflicts(structs: set[Cstruct],
     field_names = set(flatten([ list(s.fields) for s in structs ]))
 
     non_static_functions = filter(lambda f: not f.is_static and f.is_function, idents)
-    non_static_function_names = set([ f.location.name for f in non_static_functions ])
+    non_static_function_names = { f.location.name for f in non_static_functions }
 
     static_functions = filter(lambda f: f.is_static and f.is_function, idents)
-    static_function_names = set([ f.location.name for f in static_functions ])
+    static_function_names = { f.location.name for f in static_functions }
 
     static_overlap = field_names & static_function_names
 
@@ -194,7 +194,7 @@ def write_rename_files(global_identifiers: list[Identifier]):
     Dump a list of global_name;line;col names to disk 
     along with a newline separated file containing just the global names 
     '''
-    ident_locations = set([ g.location for g in global_identifiers ])
+    ident_locations = { g.location for g in global_identifiers }
 
     # Only produced for debugging purposes
     with open(CONFIG.RENAME_CSV, "w", encoding="utf8") as f:
@@ -207,7 +207,7 @@ def write_rename_files(global_identifiers: list[Identifier]):
 
     # Used by CBMC when invoked with 'USE_SUFFIX'
     # In this version we strip out any duplicate occurrences of the same name
-    global_names = set([ g.location.name for g in global_identifiers ])
+    global_names = { g.location.name for g in global_identifiers }
 
     with open(CONFIG.RENAME_TXT, "w", encoding="utf8") as f:
         for name in global_names:
