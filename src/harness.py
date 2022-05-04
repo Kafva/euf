@@ -156,9 +156,13 @@ def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
 
     # Extract the base include paths relevant for this TU
     # [2:] removes '-I' and abspath() is needed to resolve relative paths
-    base_include_paths = [ os.path.abspath(f[2:])
+    include_paths_for_tu = [ os.path.abspath(f[2:])
             for f in include_paths[diff.filepath_old]
     ]
+
+    # Unless we sort the include paths in a canonical manner, the #include
+    # paths in harnesses can differ between runs which can be confusing
+    sorted_include_paths = sorted(list(include_paths_for_tu))
 
     for inc in tu_old.get_includes():
         hdr_path = inc.include.name
@@ -187,8 +191,7 @@ def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
             # of the function to work correctly
             hdr_path = os.path.abspath(hdr_path)
 
-            for include_path in base_include_paths:
-
+            for include_path in sorted_include_paths:
                 if os.path.basename(hdr_path) in CONFIG.BLACKLISTED_HEADERS:
                     break
 
