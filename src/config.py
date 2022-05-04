@@ -1,6 +1,11 @@
 import os, json, multiprocessing
-from src import BASE_DIR
 from dataclasses import dataclass, field
+from src import BASE_DIR
+
+def _parse_path(value) -> str:
+    if value != "":
+        return os.path.abspath(os.path.expanduser(value))
+    return ""
 
 @dataclass
 class Config:
@@ -254,11 +259,6 @@ class Config:
     SUFFIX_ENV_FLAG: str = "USE_SUFFIX"
 
     # - - - Property setters
-    def _parse_path(self, value) -> str:
-        if value != "":
-            return os.path.abspath(os.path.expanduser(value))
-        else:
-            return ""
 
     def get_script_env(self) -> dict:
         '''
@@ -289,22 +289,22 @@ class Config:
 
     @PROJECT_DIR.setter
     def PROJECT_DIR(self,value):
-        self._PROJECT_DIR = self._parse_path(value)
+        self._PROJECT_DIR = _parse_path(value)
     @DEPENDENCY_DIR.setter
     def DEPENDENCY_DIR(self,value):
-        self._DEPENDENCY_DIR = self._parse_path(value)
+        self._DEPENDENCY_DIR = _parse_path(value)
     @DEP_SOURCE_ROOT.setter
     def DEP_SOURCE_ROOT(self,value):
-        self._DEP_SOURCE_ROOT = self._parse_path(value)
+        self._DEP_SOURCE_ROOT = _parse_path(value)
 
     def update_from_file(self, filepath: str):
         ''' If we create a new object the CONFIG object wont be shared '''
         self.reset()
         with open(filepath, mode = "r", encoding = "utf8") as f:
-           dct = json.load(f)
-           for key,val in dct.items():
-            if key in dct:
-                setattr(self, key, val) # Respects .setters
+            dct = json.load(f)
+            for key,val in dct.items():
+                if key in dct:
+                    setattr(self, key, val) # Respects .setters
 
     def reset(self):
         '''

@@ -83,8 +83,8 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
         if not quiet:
             print_result(fail_msg, result)
         return False
-    else:
-        return True
+
+    return True
 
 def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
  -> dict[str,set[str]]:
@@ -155,8 +155,8 @@ def add_includes_from_tu(diff: SourceDiff, iflags: dict[str,set[str]],
 
         if hdr_path.startswith("/usr"):
             # Skip system headers under certain specified paths
-            if any([ hdr_path.startswith(f"/usr/{skip_header}") \
-               for skip_header in CONFIG.SKIP_HEADERS_UNDER ]):
+            if any( hdr_path.startswith(f"/usr/{skip_header}") \
+               for skip_header in CONFIG.SKIP_HEADERS_UNDER):
                 continue
 
             if not hdr_path in usr_includes:
@@ -378,7 +378,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 f"\"{CONFIG.CBMC_ASSERT_MSG}\");")
 
         # Enclose driver function
-        f.write(f"\n}}\n#endif\n")
+        f.write("\n}\n#endif\n")
 
 def log_harness(filename: str,
   func_name: str,
@@ -401,11 +401,12 @@ def log_harness(filename: str,
             f = open(filename, mode='a', encoding='utf8')
 
         runtime = datetime.now() - start_time if start_time else ""
-        identity_str = "" if identity == None else identity
+        identity_str = "" if identity is None else identity
 
         old_loc = shorten_path_fields(change.old.ident.location.to_csv())
         new_loc = shorten_path_fields(change.new.ident.location.to_csv())
-        f.write(f"{func_name};{identity_str};{result.name};{runtime};{driver};{old_loc};{new_loc}\n")
+        f.write(f"{func_name};{identity_str};{result.name};{runtime};"
+                f"{driver};{old_loc};{new_loc}\n")
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
@@ -495,9 +496,9 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
                     f"Verification failed (incomplete unwinding): {func_name}"
         case _:
             if return_code == AnalysisResult.STRUCT_CNT_CONFLICT.value:
-                msg = f"Differing member count in one or more structs"
+                msg = "Differing member count in one or more structs"
             elif return_code == AnalysisResult.STRUCT_TYPE_CONFLICT.value:
-                msg = f"Type conflict in one or more structs"
+                msg = "Type conflict in one or more structs"
             elif not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
                 msg = f"An error occurred during goto-cc compilation of {driver}"
             else:

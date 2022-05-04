@@ -95,7 +95,7 @@ def set_libclang():
                 break
 
         if not found:
-            print_err(f"Missing path to libclang")
+            print_err("Missing path to libclang")
             sys.exit(ERR_EXIT)
 
     cindex.Config.set_library_file(CONFIG.LIBCLANG)
@@ -132,7 +132,7 @@ def get_column_counts(blob: str, column_index:int, sep:str = "") \
                 column_value = line.split()[column_index]
         except (ValueError,IndexError):
             return []
-        if column_value in column_stats.keys():
+        if column_value in column_stats:
             column_stats[column_value] += 1
         else:
             column_stats[column_value] = 1
@@ -201,7 +201,7 @@ def has_allowed_suffix(string, git_diff:bool=False) -> bool:
     whitelist = CONFIG.SUFFIX_WHITELIST_GIT_DIFF if git_diff \
             else CONFIG.SUFFIX_WHITELIST
     suffixes = "|".join(whitelist).strip("|").replace(".", "\\.")
-    return re.match(rf".*({suffixes})$", string) != None
+    return re.match(rf".*({suffixes})$", string) is not None
 
 def remove_files_in(path: str):
     if os.path.isdir(path):

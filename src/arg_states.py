@@ -33,7 +33,7 @@ def get_subdir_tus(source_dir: str) -> dict[str,SubDirTU]:
     using a compile_commands.json as input. The ccdb_args array will
     contain the union of all compilation flags used for files in a subdir
     '''
-    src_subdirs = dict()
+    src_subdirs = {}
     with open(f"{source_dir}/compile_commands.json", mode = 'r', encoding='utf8') as f:
         ccdb = json.load(f)
 
@@ -88,7 +88,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     if quiet:
         out = subprocess.PIPE
     else:
-        script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" });
+        script_env.update({ CONFIG.ARG_STATES_DEBUG_ENV: "1" })
         out = sys.stderr
 
     # We assume all headers that we need to analyze are included by one
@@ -148,8 +148,9 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
-    The argStates clang plugin will produce one output file per TU for each CHANGED_FUNCTION
-    (provided that the function in question was actually called in the TU) on the format
+    The argStates clang plugin will produce one output file per TU for each 
+    CHANGED_FUNCTION (provided that the function in question was actually 
+    called in the TU) on the format
     <function_name>_<filename>.json:
 
         {
@@ -159,12 +160,13 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
           }
         }
 
-    If the same function is called from several files (in different subdirs), we need to combine
-    these json objects into one. NOTE that an empty array means that the parameter was determined to be
-    nondet(). The combined json will thus only have the union of fields if neither one is empty
+    If the same function is called from several files (in different subdirs), 
+    we need to combine these json objects into one. NOTE that an empty array 
+    means that the parameter was determined to be nondet(). The combined json 
+    will thus only have the union of fields if neither one is empty
 
-    We limit the analysis to explicitly specified subdirectories to avoid issues when analysing
-    multiple projects
+    We limit the analysis to explicitly specified subdirectories to avoid 
+    issues when analysing multiple projects
     '''
 
     arg_states: dict[str,FunctionState] = {}
@@ -204,7 +206,7 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
         INDENT = CONFIG.INDENT
 
         for func_name,func_state in arg_states.items():
-            if any([ not p.nondet for p in func_state.parameters ]):
+            if any(not p.nondet for p in func_state.parameters):
                 print(f"{func_name}()")
 
             for idx,param in enumerate(func_state.parameters):
@@ -225,7 +227,7 @@ def state_space_analysis(symbols: list[str], source_dir: str, git_dir: str):
     if CONFIG.VERBOSITY >= 3:
         print("Subdirectories to analyze: ", end='')
         print([ p.removeprefix(f"{source_dir}/")
-                    for p in subdir_tus.keys()])
+                    for p in subdir_tus])
 
     with multiprocessing.Pool(CONFIG.NPROC) as p:
         for subdir, subdir_tu in subdir_tus.items():

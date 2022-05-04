@@ -74,9 +74,8 @@ def test_get_source_subdirs():
     CONFIG.EXCLUDE_REGEXES = ["expat/tests/.*", "expat/examples/.*"]
 
     subdirs = get_subdir_tus(EXPAT_SRC_PATH)
-    assert  set([ key for key in subdirs.keys() ]) == \
-            set( [ f"{EXPAT_SRC_PATH}/{subdir}" for subdir in  expected ]
-    )
+    assert  set(subdirs) == \
+            { f"{EXPAT_SRC_PATH}/{subdir}" for subdir in  expected }
 
 def test_join_arg_states_result():
     function_name = "usage"
@@ -98,7 +97,7 @@ def test_join_arg_states_result():
 
 def test_remove_dependency_entries_from_project_db():
     CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"
-    ccdb_path = f"/tmp/compile_commands.json"
+    ccdb_path = "/tmp/compile_commands.json"
     shutil.copy(f"{TEST_DIR}/expected/jq_compile.json", ccdb_path) # Setup
 
     remove_dependency_entries_from_project_db(ccdb_path)
