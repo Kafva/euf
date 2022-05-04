@@ -353,9 +353,6 @@ class Identifier:
         #
         base_type = self.type_spelling.removeprefix("struct") \
             .strip(' *')
-        # Arrays will have '[]' within their type string (rather than
-        # the symbol name).
-
 
         if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
             struct = "struct " if self.type_spelling.startswith("struct") else ''
@@ -368,6 +365,12 @@ class Identifier:
         else:
             type_str = self.type_spelling
             spelling_str = self.location.name
+
+        # Arrays will have '[]' within their type string (rather than
+        # the symbol name)
+        if (bracket_idx := type_str.strip().find("[]")) >= 0:
+            type_str = type_str.strip()[0:bracket_idx]
+            spelling_str += "[]"
 
         return f"{constant}{type_str} {spelling_str}{func}"
 
@@ -392,7 +395,8 @@ class DependencyFunction:
     '''
     displayname: str # Includes the full prototype string
     ident: Identifier # Function name and return type
-    arguments: list[Identifier] # The arguments must be in correct order within the list
+    # The arguments must be in correct order within the list
+    arguments: list[Identifier]
 
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor, filepath: str = ""):

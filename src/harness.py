@@ -104,8 +104,10 @@ def get_include_paths_for_tu(diffs: list[SourceDiff], source_dir_old:str) \
             if tu['file'] in filepaths_old:
                 for arg in tu['arguments']:
                     if arg.startswith("-I"):
-                        # Add the include path as an absolute path
-                        include_path = f"-I{tu['directory']}/{arg[2:]}"
+                        if arg[2] == "/": # abspath
+                            include_path = f"-I{arg[2:]}"
+                        else: # Translate relative to absolute
+                            include_path = f"-I{tu['directory']}/{arg[2:]}"
                         include_paths[tu['file']].add(include_path)
 
     return include_paths
@@ -174,17 +176,21 @@ def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
             hdr_path = os.path.abspath(hdr_path)
 
             for include_path in base_include_paths:
-                # Each 'include_path' must be an absolute path
-                # Otherwise, removeprefix() will not work as intended
-                assert include_path.startswith("/")
-
-                hdr_path = hdr_path.removeprefix(include_path)
 
                 if os.path.basename(hdr_path) in CONFIG.BLACKLISTED_HEADERS:
-                    continue
+                    break
 
-                if not hdr_path in project_includes:
-                    project_includes.append(hdr_path)
+                # Each 'include_path' must be an absolute path
+                # Otherwise, startswith() will not work as intended
+                if hdr_path.startswith(include_path+"/"):
+                    # We use +'/' since the include path does not have a 
+                    # trailing slash, without this we will get incorrect paths
+                    #   e.g.    "/lib/st.h" rather than "lib/st.h"
+                    hdr_path = hdr_path.removeprefix(include_path+"/")
+
+                    if hdr_path not in project_includes:
+                        project_includes.append(hdr_path)
+                    break
 
     # Add all of the headers from the current TU to the C files
     # that it includes and the include flags from the 'parent'
