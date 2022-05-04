@@ -154,8 +154,8 @@ class Config:
     FULL: bool = False
 
     # Suppress all output from CBMC during ID analysis and/or the main analysis
-    SILENT_IDENTITY_VERIFICATION: bool = False
-    SILENT_VERIFICATION: bool = False
+    SILENT_IDENTITY_VERIFICATION: bool = True
+    SILENT_VERIFICATION: bool = True
 
     # Functions for which no CBMC analysis should be attempted
     IGNORE_FUNCTIONS: list[str] = field(default_factory=lambda: [
@@ -211,7 +211,9 @@ class Config:
     # Compilation flag patterns to exclude from invocations of 
     # the ArgStates clang-plugin, NOTE this can remove entries defined
     # in EXTRA_COMPILE_FLAGS.
-    ARG_STATES_COMPILE_FLAG_BLACKLIST = ["-g", "-c", r"-f.*"]
+    ARG_STATES_COMPILE_FLAG_BLACKLIST = [
+        "-g", "-c", r"-f.*"
+    ]
 
     # File suffixes to consider during the git diffing stage
     SUFFIX_WHITELIST_GIT_DIFF = [".c", ".h"]

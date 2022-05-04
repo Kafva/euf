@@ -142,15 +142,19 @@ class Identifier:
     @classmethod
     def get_type_data(cls, clang_type: cindex.Type) -> tuple[bool,str,str]:
         '''
-        To determine if a function is being called with the same types of arguments
-        as those specified in the prototype we need to resolve all typedefs into
-        their canonical representation. This infers that the declarations created
-        inside harnesses may look slightly different from those in the original source code
-        This should not be an issue though since the "parent" type resolves in the same way
+        To determine if a function is being called with the same types of 
+        arguments as those specified in the prototype we need to resolve 
+        all typedefs into their canonical representation. This infers that 
+        the declarations created inside harnesses may look slightly different 
+        from those in the original source code
+        This should not be an issue though since the "parent" type resolves 
+        in the same way.
 
-        Some types are not properly resolved, for these we fallback to the current value
+        Some types are not properly resolved, for these we fallback to 
+        the current value
         '''
-        if re.search(CONFIG.UNRESOLVED_NODES_REGEX, clang_type.get_canonical().spelling):
+        if re.search(CONFIG.UNRESOLVED_NODES_REGEX,
+         clang_type.get_canonical().spelling):
             canonical = clang_type
         else:
             canonical = clang_type.get_canonical()
@@ -346,7 +350,12 @@ class Identifier:
 
         # Types that should be explicitly renamed will be given a suffix
         # with their type string and spelling if the use_suffix flag is set
-        base_type = self.type_spelling.removeprefix("struct").strip(' *')
+        #
+        base_type = self.type_spelling.removeprefix("struct") \
+            .strip(' *')
+        # Arrays will have '[]' within their type string (rather than
+        # the symbol name).
+
 
         if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
             struct = "struct " if self.type_spelling.startswith("struct") else ''

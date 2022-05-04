@@ -524,7 +524,8 @@ if __name__ == '__main__':
         pprint(CONFIG)
 
     if CONFIG.COMMIT_NEW == "" or CONFIG.COMMIT_OLD == "" or \
-      CONFIG.PROJECT_DIR == "" or CONFIG.DEPENDENCY_DIR == "":
+      CONFIG.PROJECT_DIR == "" or CONFIG.DEPENDENCY_DIR == "" or \
+      CONFIG.DEPLIB_NAME == "":
         print_err("Missing obligatory option(s) in configuration file")
         sys.exit(ERR_EXIT)
 

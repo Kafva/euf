@@ -3,7 +3,7 @@ from clang import cindex
 from git.repo.base import Repo
 from src import ERR_EXIT
 
-from src.util import git_dir, has_allowed_suffix, print_info, find, print_err
+from src.util import git_dir, print_info, find, print_err
 from src.config import CONFIG
 
 def get_bear_version(path: str) -> int:
@@ -34,37 +34,46 @@ def run_autoreconf(path: str, out) -> bool:
 
     return True
 
-def has_valid_compile_db(source_dir: str) -> bool:
+def has_non_empty_compile_db(source_dir: str) -> bool:
+    '''
+    Returns true if a non-empty ccdb without "command" keys is given.
+    Note: This does not verify all internal assumptions for the ccdb, 
+    these assumptions are asserted to be true (or fixed if false) 
+    in `write_canoncial_ccdb`.
+    '''
     ccdb_path = f"{source_dir}/compile_commands.json"
+    success = False
 
     if os.path.isfile(ccdb_path):
         # If the project has already been built the database will be empty
-        success = True
         with open(ccdb_path, mode="r", encoding = "utf8") as f:
-
             ccdb_json = json.load(f)
 
             if len(ccdb_json) == 0:
                 print_err(f"{source_dir}: Empty compile_commands.json found")
                 success = False
             elif 'command' in ccdb_json[0]:
-                print_err(f"{source_dir}: Invalid compile_commands.json format: found "
-                        "'command' key, expected 'arguments' key")
+                print_err(f"{source_dir}: Invalid compile_commands.json format:"
+                           " found 'command' key, expected 'arguments' key"
+                )
                 success = False
+            else:
+                success = True
 
         if not success:
             print_info(f"Removing {ccdb_path}")
             os.remove(ccdb_path)
 
-        return success
-
-    return False
+    return success
 
 def autogen_compile_db(source_dir: str) -> bool:
     script_env = CONFIG.get_script_env()
+    ccdb_path = f"{source_dir}/compile_commands.json"
 
-    if has_valid_compile_db(source_dir) and not CONFIG.FORCE_CCDB_RECOMPILE:
-        return True
+    # Check if a compile_commands.json already exists, if so
+    # write it on canonical form to disk
+    if has_non_empty_compile_db(source_dir) and not CONFIG.FORCE_CCDB_RECOMPILE:
+        return write_canoncial_ccdb(source_dir, ccdb_path)
 
     # If we are creating a compile_commands.json we need to ensure
     # that the project is clean, otherwise nothing will be built
@@ -103,7 +112,6 @@ def autogen_compile_db(source_dir: str) -> bool:
 
     # 3. Run 'make' with 'bear'
     version = get_bear_version(source_dir)
-    ccdb_path = f"{source_dir}/compile_commands.json"
 
     if os.path.isfile(f"{source_dir}/Makefile"):
         try:
@@ -123,92 +131,95 @@ def autogen_compile_db(source_dir: str) -> bool:
         except subprocess.CalledProcessError:
             check_ccdb_error(source_dir)
 
+    # Read in the ccdb and write it back to disk on a format that adheres
+    # with internal assumptions of EUF
+    return write_canoncial_ccdb(source_dir, ccdb_path)
+
+def remove_dependency_entries_from_project_db(ccdb_json: list[dict],
+ ccdb_path:str) -> list[dict]:
+    dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
+    print_info(f"Removing entries from '{dep_name}' in {ccdb_path}")
+
+    filtered_db = []
+    for tu in ccdb_json:
+        if re.match(rf".*/{dep_name}/.*", tu['file']) is None:
+            filtered_db.append(tu)
+
+    return filtered_db
+
+def assert_abspaths(ccdb_json: list[dict]) -> list[dict]:
+    '''
+    Ensure that the "output" and "file" keys all specify files using 
+    absolute paths. If no "output" field exists, add one based on the
+    assumption that the output is given right after the -o flag.
+    '''
+    for tu in ccdb_json:
+        if 'output' not in tu:
+            try:
+                # Find the [-o] flag and extract the target name after it
+                out_idx = tu['arguments'].index("-o")
+                out_val = tu['arguments'][out_idx+1]
+            except (ValueError,IndexError):
+                print_err("Invalid entry in compile_commands.json: "
+                         f"'{tu['file']}'"
+                )
+                sys.exit(ERR_EXIT)
+        else:
+            out_val = tu['output']
+
+        if not out_val.startswith("/"):
+            tu['output'] = tu['directory'] + "/" + out_val
+
+        if not tu['file'].startswith("/"):
+            tu['file'] = tu['directory'] + "/" + tu['file']
+
+    return ccdb_json
+
+def write_canoncial_ccdb(source_dir:str, ccdb_path:str) -> bool:
+    '''
+    Read in the ccdb and write it back on a format that adheres
+    with internal assumptions
+    '''
+    with open(ccdb_path, mode = 'r', encoding='utf8') as f:
+        ccdb_json = json.load(f)
+
     # In bear versions prior to v3, there is no output field so we need to
     # manually insert one...
-    if version <= 2:
-        try:
-            patch_old_bear_db(f"{source_dir}/compile_commands.json")
-        except Exception:
-            traceback.print_exc()
-            print_err(f"Error patching {source_dir}/compile_commands.json")
-            sys.exit(ERR_EXIT)
+    ccdb_json = assert_abspaths(ccdb_json)
 
-    # 4. If the project being analyzed builds the dependency from source,
+    # If the project being analyzed builds the dependency from source,
     # e.g. jq and oniguruma, the ccdb for the main project may contain 
     # entries for the dependency. For our use case, we do not want these
     # entries present and therefore remove them
-    if source_dir == CONFIG.PROJECT_DIR and os.path.isfile(ccdb_path):
-        remove_dependency_entries_from_project_db(ccdb_path)
+    if source_dir is CONFIG.PROJECT_DIR and os.path.isfile(ccdb_path):
+        ccdb_json = remove_dependency_entries_from_project_db(ccdb_json,
+                ccdb_path)
 
-    # 5. Read in the ccdb and write it to disk manually to ensure
-    # a sorted order of the entries. We also reorder the arguments
-    # array so that it always conforms to the assumotion that the 
-    # last four arguments will be
-    #  "-c" "-o" "<.o>" "<.c>"
-    json_db = {}
-    with open(ccdb_path, mode = 'r', encoding='utf8') as f:
-        json_db = json.load(f)
+    # Include paths and define statements must be given
+    #  as a single item "-I", "include" -> "-Iinclude"
+    combine_with_next = False
 
-    write_ccdb_from_object(ccdb_path, json_db)
+    for tu in ccdb_json:
+        for i,_ in enumerate(tu['arguments']):
+            if combine_with_next:
+                tu['arguments'][i-1] += tu['arguments'][i]
+                del tu['arguments'][i]
+                combine_with_next = False
 
-    return has_valid_compile_db(source_dir)
-
-def remove_dependency_entries_from_project_db(ccdb_path: str):
-    dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
-    print_info(f"Removing entries from '{dep_name}' in {ccdb_path}")
-    with open(ccdb_path, mode="r", encoding = "utf8") as f:
-        filtered_db = []
-        ccdb_json = json.load(f)
-        for tu in ccdb_json:
-            if re.match(rf".*/{dep_name}/.*", tu['file']) is None:
-                filtered_db.append(tu)
-
-    write_ccdb_from_object(ccdb_path, filtered_db)
-
-def patch_old_bear_db(ccdb_path:str):
-    new_json = []
-    with open(ccdb_path, mode='r', encoding='utf8') as f:
-        ccdb_json = json.load(f)
-        for tu in ccdb_json:
-            # Find the [-o] flag and extract the target name after it
-            out_idx = tu['arguments'].index("-o")
-            tu['output'] = tu['directory'] + f"/{tu['arguments'][out_idx+1]}"
-            # Also, insert the full directory path in the file field
-            # if it is not already an absolute path
-            if not tu['file'].startswith("/"):
-                tu['file'] = tu['directory'] + "/" + tu['file']
-
-            new_json.append(tu)
-
-    write_ccdb_from_object(ccdb_path, ccdb_json)
-
-def write_ccdb_from_object(ccdb_path:str, json_db: list[dict]):
-    '''
-    To allow for easy testing, we sort the array based on
-    'output' + 'file',
-    ensuring that the ccdb always looks the same for a project
-    (compdb headers do not have an output, which would
-    otherwise be a unique field)
-    '''
-    json_db = sorted(json_db, key = lambda entry:
-            entry['file'] + (entry['output'] if 'output' in entry else '')
-    )
+            # Check if the argument is -I or -D AFTER any
+            # potential combination, otherwise we can skip
+            # entries by mistake
+            if tu['arguments'][i] in ("-I", "-D"):
+                combine_with_next = True
 
     # Open up each arguments array and find the index of "-o" and "-c".
     # Place these along with the item following "-o" and the source file 
     # last in the array
-    for tu in json_db:
-        src_files = list(filter(lambda a: \
-                    has_allowed_suffix(a) and \
-                    (
-                        os.path.isfile(tu['directory']+"/"+a) or
-                        os.path.isfile(a)
-                    ),
-                    tu['arguments']
-                ))
-        try:
-            src_file = src_files[len(src_files)-1]
+    for tu in ccdb_json:
 
+        src_file = tu['file'].removeprefix(tu['directory']+"/")
+
+        try:
             o_flag_idx = tu['arguments'].index("-o")
             del tu['arguments'][o_flag_idx]
 
@@ -216,26 +227,38 @@ def write_ccdb_from_object(ccdb_path:str, json_db: list[dict]):
             output_file = tu['arguments'][o_flag_idx]
             del tu['arguments'][o_flag_idx]
 
-            c_flag_idx = tu['arguments'].index("-c")
-            del tu['arguments'][c_flag_idx]
-
             src_idx = tu['arguments'].index(src_file)
             del tu['arguments'][src_idx]
-        except (ValueError,IndexError):
+
+        except ValueError:
             traceback.print_exc()
-            print_err(f"Failed to create {ccdb_path}")
-            sys.exit(ERR_EXIT)
+            return False
 
-        tu['arguments'].extend(["-c", "-o", output_file, src_file])
+        # (-c is optional)
+        try:
+            c_flag_idx = tu['arguments'].index("-c")
+            del tu['arguments'][c_flag_idx]
+            tu['arguments'].extend(["-c", "-o", output_file, src_file])
+        except ValueError:
+            tu['arguments'].extend(["-o", output_file, src_file])
 
+    # Sort the array based on 'output' + 'file' to 
+    # ensure that the ccdb always looks the same for a project
+    ccdb_json = sorted(ccdb_json, key = lambda entry:
+            entry['file'] + (entry['output'] if 'output' in entry else '')
+    )
+
+    # Write back the verified version of the ccdb to disk
     with open(ccdb_path, mode='w', encoding='utf8') as f:
-        json.dump(json_db, f, ensure_ascii=True, indent=4, sort_keys=True)
+        json.dump(ccdb_json, f, ensure_ascii=True, indent=4, sort_keys=True)
         f.write('\n')
+
+    return True
 
 def check_ccdb_error(path: str) -> None:
     ''' Exits the program if the ccdb is empty or does not exist '''
     backtrace = traceback.format_exc()
-    if not has_valid_compile_db(path):
+    if not has_non_empty_compile_db(path):
         if not re.match("^NoneType: None$", backtrace):
             print(backtrace)
         print_err(f"Failed to parse or create {path}/compile_commands.json\n"
@@ -247,6 +270,22 @@ def check_ccdb_error(path: str) -> None:
     else:
         print_err(f"An error occurred but {path}/compile_commands.json "
                 "was created")
+
+def create_ccdb(source_dir:str) -> cindex.CompilationDatabase:
+    '''
+    For the AST to contain a resolved view of the symbols
+    we need to provide the correct compile commands
+    '''
+    if not autogen_compile_db(source_dir):
+        sys.exit(ERR_EXIT)
+
+    try:
+        ccdb: cindex.CompilationDatabase  = \
+            cindex.CompilationDatabase.fromDirectory(source_dir)
+    except cindex.CompilationDatabaseError:
+        print_err(f"Failed to parse {source_dir}/compile_commands.json")
+        sys.exit(ERR_EXIT)
+    return ccdb
 
 def make_clean(source_dir: str, script_env: dict[str,str], out) -> bool:
     if os.path.isfile(f"{source_dir}/Makefile"):
@@ -338,17 +377,3 @@ def build_goto_lib(source_dir: str, new_version: bool) -> str:
 
     return find(CONFIG.DEPLIB_NAME, source_dir)
 
-def create_ccdb(source_dir:str) -> cindex.CompilationDatabase:
-    '''
-    For the AST to contain a resolved view of the symbols
-    we need to provide the correct compile commands
-    '''
-    if not autogen_compile_db(source_dir): sys.exit(ERR_EXIT)
-
-    try:
-        ccdb: cindex.CompilationDatabase  = \
-            cindex.CompilationDatabase.fromDirectory(source_dir)
-    except cindex.CompilationDatabaseError:
-        print_err(f"Failed to parse {source_dir}/compile_commands.json")
-        sys.exit(ERR_EXIT)
-    return ccdb

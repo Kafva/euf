@@ -32,6 +32,9 @@ def get_subdir_tus(source_dir: str) -> dict[str,SubDirTU]:
     Return a dict on the form { "subdir_path": subdir_tu }
     using a compile_commands.json as input. The ccdb_args array will
     contain the union of all compilation flags used for files in a subdir
+
+    Note: This assumes that the ccdb has flags with arguments, e.g.
+    "-I include" given as a single item "-Iinclude"
     '''
     src_subdirs = {}
     with open(f"{source_dir}/compile_commands.json", mode = 'r', encoding='utf8') as f:
@@ -76,7 +79,6 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
                                 list(subdir_tu.ccdb_args) +
                                 CONFIG.EXTRA_COMPILE_FLAGS
                       )
-
     # There should not be a need to modify escaped '\' values
     # inside of ccdb_args, the ccdb has been improperly generated
     # if it solves issues to do so.

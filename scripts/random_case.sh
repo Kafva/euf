@@ -2,6 +2,7 @@
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <...>"
 helpStr=""
+TIMEOUT=${TIMEOUT:=60}
 
 #----------------------------#
 CMTS=/tmp/commits
@@ -16,10 +17,6 @@ case "$1" in
     NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
   libonig)
-    # Oniguruma fails after ~ e8bd631e: Mon Jun 26 12:53:19 2017 +0900
-    #
-    # We also need to watch out for changes to structs...
-    # This seems to be near un-avoidable with oniguruma...
     BASE_CONF=./examples/base_onig.json
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
@@ -86,7 +83,8 @@ cat << EOF > /tmp/random.json
 {
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
-  "QUIET_BUILD": true
+  "QUIET_BUILD": true,
+  "CBMC_TIMOUT": "$TIMEOUT"
 }
 EOF
 
@@ -111,4 +109,3 @@ done
   <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)
 
 echo "=> $OUTNAME"
-

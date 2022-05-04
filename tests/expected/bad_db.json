@@ -17,6 +17,7 @@
             "-Wstrict-prototypes",
             "-pedantic",
             "-Wduplicated-cond",
+            "chardata.c",
             "-Wduplicated-branches",
             "-Wlogical-op",
             "-Wrestrict",

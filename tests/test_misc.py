@@ -8,8 +8,8 @@ from src.arg_states import call_arg_states_plugin, \
 from src.types import SourceFile
 
 from src.util import mkdir_p, remove_files_in, rm_f, set_libclang
-from src.build import autogen_compile_db, lib_is_gbf, patch_old_bear_db, \
-    remove_dependency_entries_from_project_db
+from src.build import autogen_compile_db, lib_is_gbf, \
+    write_canoncial_ccdb
 from euf import run
 from tests import RESULT_DIR, TEST_DIR
 
@@ -33,11 +33,14 @@ def setup():
         run(load_libclang=False)
         CONFIG.FULL = True
 
-def test_patch_old_bear_db():
-    ccdb_path = "/tmp/old_bear.json"
-    shutil.copy(f"{TEST_DIR}/expected/old_bear.json", ccdb_path)
-    patch_old_bear_db(ccdb_path)
-    assert filecmp.cmp(ccdb_path,f"{TEST_DIR}/expected/old_fixed.json")
+def test_write_canonical_ccdb():
+    CONFIG.PROJECT_DIR = "NO_REPO_NAME_MATCHES_THIS"
+    ccdb_path = "/tmp/bad_db.json"
+    shutil.copy(f"{TEST_DIR}/expected/bad_db.json", ccdb_path)
+
+    assert write_canoncial_ccdb("/tmp", ccdb_path)
+
+    assert filecmp.cmp(ccdb_path, f"{TEST_DIR}/expected/bad_fixed.json")
 
 def test_isystem_flags():
     isystem_flags = SourceFile.get_isystem_flags(
@@ -96,11 +99,13 @@ def test_join_arg_states_result():
     assert result[function_name].parameters[1].states == set([0,2])
 
 def test_remove_dependency_entries_from_project_db():
+    CONFIG.PROJECT_DIR = f"{expanduser('~')}/Repos/jq"
     CONFIG.DEPENDENCY_DIR = f"{expanduser('~')}/Repos/oniguruma"
     ccdb_path = "/tmp/compile_commands.json"
+
     shutil.copy(f"{TEST_DIR}/expected/jq_compile.json", ccdb_path) # Setup
 
-    remove_dependency_entries_from_project_db(ccdb_path)
+    write_canoncial_ccdb(CONFIG.PROJECT_DIR, ccdb_path)
 
     assert filecmp.cmp(ccdb_path,
             f"{TEST_DIR}/expected/jq_without_onig_commands.json"
