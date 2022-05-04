@@ -35,8 +35,9 @@ def get_call_sites_from_file(source_file: SourceFile,
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb
         traceback.print_exc()
-        print_err("This error has likely occured due to invalid entries in " +
-                "compile_commands.json")
+        print_err("This error has likely occured due to invalid entries in "
+                  "compile_commands.json"
+        )
 
     return call_sites
 

@@ -443,8 +443,8 @@ def run(load_libclang:bool = True) -> tuple:
     try:
         _ = dep_repo.active_branch
     except TypeError as e:
-        print_err("Unable to read current branch name for" + \
-            f" {CONFIG.DEPENDENCY_DIR}\n{e}"
+        print_err("Unable to read current branch name for "
+            f"{CONFIG.DEPENDENCY_DIR}\n{e}"
         )
         sys.exit(1)
 
@@ -510,10 +510,10 @@ if __name__ == '__main__':
     "A 'compile_commands.json' database must be generated for both the project and the dependency."
     )
     parser.add_argument("-c", "--config", metavar="json", type=str, required=True,
-        default="", help="JSON configuration file, " + \
+        default="", help="JSON configuration file, "
         "refer to src/config.py for a list of available options.")
     parser.add_argument("-d", "--diff", action='store_true', default=False,
-     help='Print the first point of divergence for each function in the ' + \
+     help='Print the first point of divergence for each function in the '
      "change set followed by the git-diff of the corresponding files and exit'"
     )
 

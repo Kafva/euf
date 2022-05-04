@@ -46,7 +46,7 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
     # The return-type has not changed
     elif change.old.ident != change.new.ident:
         fail_msg = \
-            f"Different return type: a/{change.old.ident.type_spelling} " + \
+            f"Different return type: a/{change.old.ident.type_spelling} " \
             f"-> b/{change.old.ident.type_spelling} in {change_str}"
         result = AnalysisResult.DIFF_RET
 
@@ -344,8 +344,10 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 out_string = ""
                 # Sort the states to enable file-diff regression testing
                 for state in sorted(param.states):
-                    state_val  = state if str(state).isnumeric() else f"\"{state}\""
-                    out_string += f"{INDENT}{INDENT}{arg_name} == {state_val} ||\n"
+                    state_val  = state if str(state).isnumeric() \
+                                       else f"\"{state}\""
+                    out_string += f"{INDENT}{INDENT}{arg_name} == " \
+                                  f"{state_val} ||\n"
 
                 out_string = out_string.removesuffix(" ||\n")
 
@@ -359,18 +361,21 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             f.write(f"{INDENT}// Unequal input comparison!\n")
 
         f.write(f"{INDENT}{ret_type} ret_old = ")
-        f.write(f"{change.old.ident.location.name}{SUFFIX}({arg_string_old});\n")
+        f.write(f"{change.old.ident.location.name}{SUFFIX}"
+                f"({arg_string_old});\n")
 
         f.write(f"{INDENT}{ret_type} ret = ")
         if identity:
-            f.write(f"{change.new.ident.location.name}{SUFFIX}({arg_string_old});\n\n")
+            f.write(f"{change.new.ident.location.name}{SUFFIX}"
+                    f"({arg_string_old});\n\n")
         else:
             f.write(f"{change.new.ident.location.name}({arg_string});\n\n")
 
 
         # 4. Postconditions
         #   Verify equivalence with one or more assertions
-        f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, \"{CONFIG.CBMC_ASSERT_MSG}\");")
+        f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, "
+                f"\"{CONFIG.CBMC_ASSERT_MSG}\");")
 
         # Enclose driver function
         f.write(f"\n}}\n#endif\n")

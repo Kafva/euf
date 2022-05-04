@@ -48,7 +48,7 @@ def has_valid_compile_db(source_dir: str) -> bool:
                 print_err(f"{source_dir}: Empty compile_commands.json found")
                 success = False
             elif 'command' in ccdb_json[0]:
-                print_err(f"{source_dir}: Invalid compile_commands.json format: found " + \
+                print_err(f"{source_dir}: Invalid compile_commands.json format: found "
                         "'command' key, expected 'arguments' key")
                 success = False
 
@@ -236,12 +236,15 @@ def check_ccdb_error(path: str) -> None:
     if not has_valid_compile_db(path):
         if not re.match("^NoneType: None$", backtrace):
             print(backtrace)
-        print_err(f"Failed to parse or create {path}/compile_commands.json\n" +
-        "The compilation database can be manually created using `bear -- <build command>` e.g. `bear -- make`\n" +
-        "Consult the documentation for your particular dependency for additional build instructions.")
+        print_err(f"Failed to parse or create {path}/compile_commands.json\n"
+        "The compilation database can be manually created using "
+        "`bear -- <build command>` e.g. `bear -- make`\n"
+        "Consult the documentation for your particular dependency for "
+        "additional build instructions.")
         sys.exit(ERR_EXIT)
     else:
-        print_err(f"An error occurred but {path}/compile_commands.json was created")
+        print_err(f"An error occurred but {path}/compile_commands.json "
+                "was created")
 
 def make_clean(source_dir: str, script_env: dict[str,str], out) -> bool:
     if os.path.isfile(f"{source_dir}/Makefile"):

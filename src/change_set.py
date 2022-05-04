@@ -197,8 +197,8 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
 
         if isinstance(src_loc, cindex.SourceLocation):
             if CONFIG.VERBOSITY >= 5:
-                print(f"Differ: a/{git_rel_path_old} b/{git_rel_path_new}" + \
-                        f" {pair.new.spelling}()")
+                print(f"Differ: a/{git_rel_path_old} b/{git_rel_path_new} "
+                      f"{pair.new.spelling}()")
 
             filepath = str(src_loc.file) # type: ignore
 
@@ -214,8 +214,8 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
             changed_functions.append(function_change)
 
         elif CONFIG.VERBOSITY >= 5:
-            print(f"Same: a/{git_rel_path_old} b/{git_rel_path_new}" + \
-                    f" {pair.new.spelling}()")
+            print(f"Same: a/{git_rel_path_old} b/{git_rel_path_new} "
+                  f"{pair.new.spelling}()")
 
     return changed_functions
 
@@ -358,10 +358,11 @@ def add_rename_changes_based_on_blame(
                 )
 
                 if CONFIG.VERBOSITY >= 1:
-                    print_info(f"Adding a/{filepath_origin_old} -> " + \
-                                      f"b/{filepath_origin_new} as a " + \
-                            "diff based on blame ratio: " + \
-                            f"{round(min_ratio,3)}/{round(1-min_ratio,3)}")
+                    print_info(f"Adding a/{filepath_origin_old} -> "
+                       f"b/{filepath_origin_new} as a "
+                       "diff based on blame ratio: "
+                       f"{round(min_ratio,3)}/{round(1-min_ratio,3)}"
+                    )
 
                 source_diff = SourceDiff.new(
                           filepath_old = f"{git_dir(new=False)}/{filepath_origin_old}",
@@ -378,7 +379,7 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange],
  filename: str):
     if CONFIG.ENABLE_RESULT_LOG:
         with open(filename, mode='w', encoding='utf8') as f:
-            f.write(f"direct_change;{IdentifierLocation.csv_header('old')};"+\
+            f.write(f"direct_change;{IdentifierLocation.csv_header('old')};"
                     f"{IdentifierLocation.csv_header('new')}\n")
             for change in changed_functions:
                 f.write(f"{shorten_path_fields(change.to_csv())}\n")

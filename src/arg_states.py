@@ -130,8 +130,9 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
                 output += "====> stderr <====\n" + stderr_txt
 
         if p.returncode != 0:
-            print_err(f"State space analysis failed: " +\
-                    f"{p.returncode}\n({outdir},{symbol_name})")
+            print_err(f"State space analysis failed: "
+                      f"{p.returncode}\n({outdir},{symbol_name})"
+            )
             if CONFIG.VERBOSITY >= 2 and len(output.splitlines()) > 0 and quiet:
                 print(output,flush=True)
     except FileNotFoundError:
