@@ -1,6 +1,6 @@
 {
   "COMMIT_OLD": "d85085cb4f92eefd237fd069a7a7111ec1e431c4",
-  "COMMIT_NEW": "867b658122ba1292212bf54f882b15b247c48723",
+  "COMMIT_NEW": "8b39495d97efed354e93b68ed4be795d461b1258",
   "PROJECT_DIR": "~/Repos/main",
   "DEPENDENCY_DIR": "~/Repos/matrix",
   "DEPLIB_NAME": "libmatrix.a",
@@ -22,3 +22,4 @@
   "FULL": true,
   "FORCE_RECOMPILE": false
 }
+

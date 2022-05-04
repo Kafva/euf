@@ -25,7 +25,7 @@
     "latin1tab.h"
   ],
   "QUIET_BUILD": true,
-  "FORCE_CCDB_RECOMPILE": true,
+  "FORCE_CCDB_RECOMPILE": false,
   "FORCE_RECOMPILE": false,
   "USE_EXISTING_DRIVERS": false,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",

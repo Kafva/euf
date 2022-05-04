@@ -10,7 +10,7 @@ from src.types import AnalysisResult, DependencyFunctionChange, \
 from src.util import ccdb_dir, print_result, shorten_path_fields, \
         time_end, time_start, wait_on_cr, print_err
 
-def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
+def valid_preconds(change: DependencyFunctionChange, include_paths: dict[str,set[str]],
   skip_renaming: set[str],
   logfile: str= "", quiet:bool = False) -> bool:
     '''
@@ -30,8 +30,8 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
         result = AnalysisResult.NOT_RENAMED
 
     # There exists compilation instructions for the TU the function is defined in
-    elif not change.old.ident.location.filepath in iflags or \
-       len(iflags[change.old.ident.location.filepath]) == 0:
+    elif not change.old.ident.location.filepath in include_paths or \
+       len(include_paths[change.old.ident.location.filepath]) == 0:
         path = change.old.ident.location.filepath
         fail_msg = \
             f"Skipping {func_name}() due to missing compilation instructions for {path}"
@@ -86,7 +86,7 @@ def valid_preconds(change: DependencyFunctionChange, iflags: dict[str,set[str]],
 
     return True
 
-def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
+def get_include_paths_for_tu(diffs: list[SourceDiff], source_dir_old:str) \
  -> dict[str,set[str]]:
     '''
     Return a dict with paths (prepended with -I) to the directories
@@ -105,18 +105,19 @@ def get_I_flags_from_tu(diffs: list[SourceDiff], source_dir_old:str) \
                 for arg in tu['arguments']:
                     if arg.startswith("-I"):
                         # Add the include path as an absolute path
-                        include_paths[tu['file']].add(f"-I{tu['directory']}/{arg[2:]}")
+                        include_path = f"-I{tu['directory']}/{arg[2:]}"
+                        include_paths[tu['file']].add(include_path)
 
     return include_paths
 
 
-def add_includes_from_tu(diff: SourceDiff, iflags: dict[str,set[str]],
+def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
  tu_includes: dict[str,tuple[list[str],list[str]]]) -> None:
     '''
     Go through all #include directives in the old version of the file in the
     provided `diff` object and add them to the `tu_includes` array.
 
-    The usr headers will be included with <...> in drivers and the others
+    /usr headers will be included with <...> in drivers and the others
     will be included using "...", these files will be included using
     the basepath to the dependency which is on the include path of the driver
 
@@ -141,7 +142,9 @@ def add_includes_from_tu(diff: SourceDiff, iflags: dict[str,set[str]],
 
     # Extract the base include paths relevant for this TU
     # [2:] removes '-I' and abspath() is needed to resolve relative paths
-    base_include_paths = [ os.path.abspath(f[2:]) for f in iflags[diff.filepath_old] ]
+    base_include_paths = [ os.path.abspath(f[2:])
+            for f in include_paths[diff.filepath_old]
+    ]
 
     for inc in tu_old.get_includes():
         hdr_path = inc.include.name
@@ -165,11 +168,18 @@ def add_includes_from_tu(diff: SourceDiff, iflags: dict[str,set[str]],
 
                 usr_includes.append(hdr_path)
         else:
+            # Translate the header to an abspath(),
+            # reliant on the os.chdir() command at the start
+            # of the function to work correctly
             hdr_path = os.path.abspath(hdr_path)
-            hdr_path = hdr_path.removeprefix(source_dir_old+"/")
+
             for include_path in base_include_paths:
-                hdr_path = hdr_path.strip("/").removeprefix(include_path) \
-                    .strip("/")
+                # Each 'include_path' must be an absolute path
+                # Otherwise, removeprefix() will not work as intended
+                assert include_path.startswith("/")
+
+                hdr_path = hdr_path.removeprefix(include_path).strip("/")
+
                 if os.path.basename(hdr_path) in CONFIG.BLACKLISTED_HEADERS:
                     continue
 
@@ -180,7 +190,7 @@ def add_includes_from_tu(diff: SourceDiff, iflags: dict[str,set[str]],
     # that it includes and the include flags from the 'parent'
     for c_file in included_c_files:
         tu_includes[c_file]    = (usr_includes, project_includes)
-        iflags[c_file]         = iflags[diff.filepath_old]
+        include_paths[c_file]  = include_paths[diff.filepath_old]
 
     if len(usr_includes) > 0 or len(project_includes) > 0:
         tu_includes[diff.filepath_old] = (usr_includes, project_includes)

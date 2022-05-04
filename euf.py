@@ -33,7 +33,7 @@ from src.types import DependencyFunction, \
     CallSite, SourceDiff, SourceFile
 from src.arg_states import join_arg_states_result, state_space_analysis
 from src.harness import valid_preconds, create_harness, \
-        get_I_flags_from_tu, run_harness, add_includes_from_tu
+        get_include_paths_for_tu, run_harness, add_includes_from_tu
 from src.util import ccdb_dir, flatten, flatten_dict, \
         git_dir, git_relative_path, has_allowed_suffix, \
         mkdir_p, print_stage, remove_files_in, rm_f, time_end, time_start, \
@@ -207,12 +207,12 @@ def reduction_stage(
     # Retrieve a list of the headers that each TU uses
     # We will need to include these in the driver
     # for types etc. to be defined
-    IFLAGS = get_I_flags_from_tu(source_diffs, ccdb_dir(new=False))
+    include_paths = get_include_paths_for_tu(source_diffs, ccdb_dir(new=False))
 
     # Exclude functions that we are not going to analyze
     changes_to_analyze = []
     for c in changed_functions:
-        if valid_preconds(c,IFLAGS,skip_renaming,logfile="",quiet=True):
+        if valid_preconds(c,include_paths,skip_renaming,logfile="",quiet=True):
             changes_to_analyze.append(c)
 
     idents_to_analyze = [c.old.ident.location.name for c in changes_to_analyze]
@@ -239,7 +239,10 @@ def reduction_stage(
     harness_dir = f"{ccdb_dir(new=False)}/{CONFIG.HARNESS_DIR}"
     mkdir_p(harness_dir)
 
-    TU_INCLUDES = {}
+    # Holds a mapping from each source file in the dependency onto a list
+    # of header files to include. The header files should be given with 
+    # paths relative to one of the '-I' paths for the TU in question
+    tu_includes_dict = {}
     total = len(changed_functions)
 
     script_env = CONFIG.get_script_env()
@@ -253,7 +256,7 @@ def reduction_stage(
     })
 
     for diff in source_diffs:
-        add_includes_from_tu(diff, IFLAGS, TU_INCLUDES)
+        add_includes_from_tu(diff, include_paths, tu_includes_dict)
 
     start = time_start("Starting change set reduction...")
 
@@ -267,17 +270,20 @@ def reduction_stage(
             continue
 
         # Log the reason for why a change could not be verified
-        if not valid_preconds(change, IFLAGS, skip_renaming, \
+        if not valid_preconds(change, include_paths, skip_renaming, \
            log_file, quiet=False):
             continue
 
-        harness_path = f"{harness_dir}/{change.old.ident.location.name}{CONFIG.IDENTITY_HARNESS}.c"
+        filepath_old = change.old.ident.location.filepath
+
+        harness_path = f"{harness_dir}/{change.old.ident.location.name}"\
+                       f"{CONFIG.IDENTITY_HARNESS}.c"
         function_state = ARG_STATES[func_name] if func_name in ARG_STATES \
                 else FunctionState()
-        tu_includes = TU_INCLUDES[change.old.ident.location.filepath] if \
-                    change.old.ident.location.filepath in TU_INCLUDES else \
+        tu_includes = tu_includes_dict[filepath_old] if \
+                    filepath_old in tu_includes_dict else \
                     ([],[])
-        i_flags = ' '.join(IFLAGS[change.old.ident.location.filepath]).strip()
+        run_include_paths = ' '.join(include_paths[filepath_old]).strip()
 
         if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
             pass # Use existing driver
@@ -287,7 +293,7 @@ def reduction_stage(
             )
         # Run the identity harness
         if run_harness(change, script_env, harness_path, func_name, \
-           log_file, i+1, total, i_flags, \
+           log_file, i+1, total, run_include_paths, \
            quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
 
             harness_path = f"{harness_dir}/{change.old.ident.location.name}.c"
@@ -300,7 +306,7 @@ def reduction_stage(
                 )
             # Run the actual harness
             if run_harness(change, script_env, harness_path, func_name,
-               log_file, i+1, total, i_flags,
+               log_file, i+1, total, run_include_paths,
                quiet = CONFIG.SILENT_VERIFICATION):
                 # Remove the change from the change set 
                 # if the equivalence check passes

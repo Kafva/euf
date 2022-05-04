@@ -52,7 +52,7 @@
       "~/Repos/euf/examples/include/regparse2.h"
     ]
   },
-  "FORCE_CCDB_RECOMPILE": true,
+  "FORCE_CCDB_RECOMPILE": false,
   "FORCE_RECOMPILE": false,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
