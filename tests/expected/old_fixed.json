@@ -2,7 +2,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -29,6 +28,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "elements.o",
             "elements.c"
@@ -40,7 +40,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -67,6 +66,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "outline.o",
             "outline.c"
@@ -78,7 +78,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -106,6 +105,7 @@
             "-O2",
             "-fPIC",
             "-DPIC",
+            "-c",
             "-o",
             ".libs/xmlparse.o",
             "xmlparse.c"
@@ -117,7 +117,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -143,6 +142,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmlparse.o",
             "xmlparse.c"
@@ -154,7 +154,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -182,6 +181,7 @@
             "-O2",
             "-fPIC",
             "-DPIC",
+            "-c",
             "-o",
             ".libs/xmlrole.o",
             "xmlrole.c"
@@ -193,7 +193,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -219,6 +218,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmlrole.o",
             "xmlrole.c"
@@ -230,7 +230,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -258,6 +257,7 @@
             "-O2",
             "-fPIC",
             "-DPIC",
+            "-c",
             "-o",
             ".libs/xmltok.o",
             "xmltok.c"
@@ -269,7 +269,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -295,6 +294,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmltok.o",
             "xmltok.c"
@@ -306,7 +306,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I../..",
@@ -333,6 +332,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "benchmark.o",
             "benchmark.c"
@@ -344,7 +344,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -371,6 +370,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "chardata.o",
             "chardata.c"
@@ -382,7 +382,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -409,6 +408,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "memcheck.o",
             "memcheck.c"
@@ -420,7 +420,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -447,6 +446,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "minicheck.o",
             "minicheck.c"
@@ -458,7 +458,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -485,6 +484,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "structdata.o",
             "structdata.c"
@@ -496,7 +496,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -523,6 +522,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmlwf-codepage.o",
             "codepage.c"
@@ -534,7 +534,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -561,6 +560,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmlwf-unixfilemap.o",
             "unixfilemap.c"
@@ -572,7 +572,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -599,6 +598,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmlwf-xmlfile.o",
             "xmlfile.c"
@@ -610,7 +610,6 @@
     {
         "arguments": [
             "gcc",
-            "-c",
             "-DHAVE_CONFIG_H",
             "-I.",
             "-I..",
@@ -637,6 +636,7 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
+            "-c",
             "-o",
             "xmlwf-xmlwf.o",
             "xmlwf.c"

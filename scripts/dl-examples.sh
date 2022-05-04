@@ -54,6 +54,7 @@ dl(){
     cd $repo/airspy
       # The 'CMAKE_EXPORT_COMPILE_COMMANDS' option uses 'command'
       # instead of arguments for each entry so we use bear instead
+      rm -rf build
       mkdir -p build
       cmake -B build -S . -DINSTALL_UDEV_RULES=OFF &&
         bear -- make -C build -j$NPROC

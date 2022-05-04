@@ -143,6 +143,8 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
         cursor_old: cindex.Cursor = tu_old.cursor
     except cindex.TranslationUnitLoadError:
         print_err(f"Failed to load TU: {diff.filepath_old}")
+        if CONFIG.VERBOSITY >= 3:
+            print(' '.join(diff.compile_args_old))
         return []
 
     try:
@@ -154,6 +156,9 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
         cursor_new: cindex.Cursor = tu_new.cursor
     except cindex.TranslationUnitLoadError:
         print_err(f"Failed to load TU: {diff.filepath_new}")
+        if CONFIG.VERBOSITY >= 3:
+            print(diff.compile_args_new)
+
         return []
 
     git_rel_path_old = git_relative_path(diff.filepath_old)
@@ -162,7 +167,7 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
     print_diag_errors(git_rel_path_old,tu_old)
     print_diag_errors(git_rel_path_new,tu_new)
 
-    changed_functions: list[DependencyFunctionChange] = list()
+    changed_functions: list[DependencyFunctionChange] = []
     cursor_pairs: dict[str,CursorPair]= {}
 
     extract_function_decls_to_pairs(diff, cursor_old, cursor_pairs,is_new=False)
@@ -278,7 +283,7 @@ def find_transative_changes_in_tu(cursor: cindex.Cursor,
             DependencyFunction.new_from_cursor(cursor, filepath=filepath)
 
     elif str(cursor.kind).endswith("CALL_EXPR") and \
-     change_matching_current != None:
+     change_matching_current is not None:
 
         called = DependencyFunction.new_from_cursor(cursor, filepath=filepath)
 
@@ -337,7 +342,7 @@ def add_rename_changes_based_on_blame(
             min_ratio = min(file_origins[0][1] / total, file_origins[1][1] /
                                                                           total)
 
-            if .5 > min_ratio and min_ratio > CONFIG.RENAME_RATIO_LOW:
+            if .5 > min_ratio > CONFIG.RENAME_RATIO_LOW:
                 # Create a new source diff object for the two files in question
                 # provided that an entry does not already exist
                 if file_origins[0][0] == added_file.a_path:
@@ -355,7 +360,7 @@ def add_rename_changes_based_on_blame(
                 if CONFIG.VERBOSITY >= 1:
                     print_info(f"Adding a/{filepath_origin_old} -> " + \
                                       f"b/{filepath_origin_new} as a " + \
-                            f"diff based on blame ratio: " + \
+                            "diff based on blame ratio: " + \
                             f"{round(min_ratio,3)}/{round(1-min_ratio,3)}")
 
                 source_diff = SourceDiff.new(
@@ -373,7 +378,8 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange],
  filename: str):
     if CONFIG.ENABLE_RESULT_LOG:
         with open(filename, mode='w', encoding='utf8') as f:
-            f.write(f"direct_change;{IdentifierLocation.csv_header('old')};{IdentifierLocation.csv_header('new')}\n")
+            f.write(f"direct_change;{IdentifierLocation.csv_header('old')};"+\
+                    f"{IdentifierLocation.csv_header('new')}\n")
             for change in changed_functions:
                 f.write(f"{shorten_path_fields(change.to_csv())}\n")
 

@@ -20,7 +20,7 @@ fi
 # ./euf.py --config examples/libusb_docker.json
 # ./scripts/test_harness.sh examples/libexpat_docker.json ENTROPY_DEBUG
 # Uncomment for debugging
-ENTRYPOINT="--entrypoint /bin/bash euf"
+# ENTRYPOINT="--entrypoint /bin/bash euf"
 
 docker ps --format "{{.Image}}"|grep -q "euf" && die "Already running"
 

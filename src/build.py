@@ -3,7 +3,7 @@ from clang import cindex
 from git.repo.base import Repo
 from src import ERR_EXIT
 
-from src.util import git_dir, print_info, find, print_err
+from src.util import git_dir, has_allowed_suffix, print_info, find, print_err
 from src.config import CONFIG
 
 def get_bear_version(path: str) -> int:
@@ -138,8 +138,11 @@ def autogen_compile_db(source_dir: str) -> bool:
     if source_dir == CONFIG.PROJECT_DIR and os.path.isfile(ccdb_path):
         remove_dependency_entries_from_project_db(ccdb_path)
 
-    # 5. Read in the ccdb and write it to disk manually to have
-    # a sorted order of the entries
+    # 5. Read in the ccdb and write it to disk manually to ensure
+    # a sorted order of the entries. We also reorder the arguments
+    # array so that it always conforms to the assumotion that the 
+    # last four arguments will be
+    #  "-c" "-o" "<.o>" "<.c>"
     json_db = {}
     with open(ccdb_path, mode = 'r', encoding='utf8') as f:
         json_db = json.load(f)
@@ -150,7 +153,7 @@ def autogen_compile_db(source_dir: str) -> bool:
 
 def remove_dependency_entries_from_project_db(ccdb_path: str):
     dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
-    print_info(f"Removing entries for '{dep_name}' in {ccdb_path}")
+    print_info(f"Removing entries from '{dep_name}' in {ccdb_path}")
     with open(ccdb_path, mode="r", encoding = "utf8") as f:
         filtered_db = []
         ccdb_json = json.load(f)
@@ -188,6 +191,40 @@ def write_ccdb_from_object(ccdb_path:str, json_db: list[dict]):
     json_db = sorted(json_db, key = lambda entry:
             entry['file'] + (entry['output'] if 'output' in entry else '')
     )
+
+    # Open up each arguments array and find the index of "-o" and "-c".
+    # Place these along with the item following "-o" and the source file 
+    # last in the array
+    for tu in json_db:
+        src_files = list(filter(lambda a: \
+                    has_allowed_suffix(a) and \
+                    (
+                        os.path.isfile(tu['directory']+"/"+a) or
+                        os.path.isfile(a)
+                    ),
+                    tu['arguments']
+                ))
+        try:
+            src_file = src_files[len(src_files)-1]
+
+            o_flag_idx = tu['arguments'].index("-o")
+            del tu['arguments'][o_flag_idx]
+
+            # Delete the output file entry
+            output_file = tu['arguments'][o_flag_idx]
+            del tu['arguments'][o_flag_idx]
+
+            c_flag_idx = tu['arguments'].index("-c")
+            del tu['arguments'][c_flag_idx]
+
+            src_idx = tu['arguments'].index(src_file)
+            del tu['arguments'][src_idx]
+        except (ValueError,IndexError):
+            traceback.print_exc()
+            print_err(f"Failed to create {ccdb_path}")
+            sys.exit(ERR_EXIT)
+
+        tu['arguments'].extend(["-c", "-o", output_file, src_file])
 
     with open(ccdb_path, mode='w', encoding='utf8') as f:
         json.dump(json_db, f, ensure_ascii=True, indent=4, sort_keys=True)

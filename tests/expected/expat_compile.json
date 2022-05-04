@@ -103,9 +103,9 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
-            "-c",
             "-fPIC",
             "-DPIC",
+            "-c",
             "-o",
             ".libs/xmlparse.o",
             "xmlparse.c"
@@ -179,9 +179,9 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
-            "-c",
             "-fPIC",
             "-DPIC",
+            "-c",
             "-o",
             ".libs/xmlrole.o",
             "xmlrole.c"
@@ -255,9 +255,9 @@
             "-fvisibility=hidden",
             "-g",
             "-O2",
-            "-c",
             "-fPIC",
             "-DPIC",
+            "-c",
             "-o",
             ".libs/xmltok.o",
             "xmltok.c"
