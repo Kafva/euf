@@ -24,70 +24,19 @@
 '''
 import sys, os
 import matplotlib.pyplot as plt
-from dataclasses import dataclass, field
-from datetime import datetime
+from itertools import compress
+from textwrap import wrap
 
-# '.' is needed to run the script from ./scripts
+# '.' is needed to run from the visualise directory 
 sys.path.extend(['..','.'])
 
+from visualise.types import CbmcResult, FunctionResult
 from src.config import CONFIG
-from src.types import AnalysisResult, IdentifierLocation
+from src.types import AnalysisResult
 from src.util import print_info, print_stage
 
-@dataclass(init=True)
-class CbmcResult:
-    func_name:str
-    identity:bool
-    result: AnalysisResult
-    runtime: datetime
-    driver: str
-    location_old: IdentifierLocation
-    location_new: IdentifierLocation
-
-    @classmethod
-    def new(cls, items:list):
-        assert len(items) == 13
-        return cls(
-            func_name = items[0],
-            identity = items[1] == "True",
-            result = AnalysisResult[items[2]],
-            runtime = datetime.now(),
-            driver = items[4],
-            location_old = IdentifierLocation(
-                _filepath = items[5],
-                line = items[6],
-                column = items[7],
-                name = items[8].strip()
-            ),
-            location_new = IdentifierLocation(
-                _filepath = items[9],
-                line = items[10],
-                column = items[11],
-                name = items[12].strip()
-            ),
-        )
-
-@dataclass(init=True)
-class FunctionResult:
-    '''
-    A list of all the analysis results recorded for a perticular
-    function. By using a list with duplicate entries we can
-    see the distrubtion of results and fetch a set()
-    '''
-    func_name: str
-    results: list[AnalysisResult]    = field(default_factory=list)
-    results_id: list[AnalysisResult] = field(default_factory=list)
-
-    def pretty(self,ident:bool=False) -> str:
-        out = f"{self.func_name}: [\n"
-        res = self.results_id if ident else self.results
-        for r in set(res):
-            cnt = res.count(r)
-            out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
-        return out.strip(",\n")+"\n]"
-
 def get_function_results(name:str) -> \
-tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
+ tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
     print_stage(name)
     function_results = {}
     cbmc_results = {}
@@ -147,9 +96,8 @@ def brief(function_results: dict[str,FunctionResult]):
     print_info(f"Failures: {len(failures)}")
     print_info(f"Errors: {len(errors)}")
 
-def plot_result_distribution(
- cbmc_results: dict[str,list[CbmcResult]],
- ident:bool=False):
+def get_result_distribution(cbmc_results: dict[str,list[CbmcResult]],
+ ident:bool=False) -> tuple[list[str],list[int]]:
     '''
     Create a plot showing the distribution of results from each item
     in the provided cbmc_results list
@@ -160,9 +108,6 @@ def plot_result_distribution(
         for c in filtered:
             result_cnts[c.result.name] += 1
 
-    # Exclude results that never occured
-    result_cnts = { key: val for key,val in result_cnts.items() if val != 0 }
-
     # Combine _unwind cases
     result_cnts[AnalysisResult.SUCCESS.name] += \
         result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
@@ -171,20 +116,65 @@ def plot_result_distribution(
     del result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
     del result_cnts[AnalysisResult.FAILURE_UNWIND_FAIL.name]
 
-    # Color each bar based on the case
+    # Exclude results that never occured in any of the cases
+    #result_cnts = { key: val for key,val in result_cnts.items() if val != 0 }
 
-    plt.bar(
-        list(result_cnts.keys()),
-        list(result_cnts.values())
-    )
+    bar_names = list(result_cnts.keys())
+
+    # Wrap the bar name text to X chars
+    bar_names = [ '\n'.join(wrap(l, 10)) for l in bar_names ]
+
+    bar_values = list(result_cnts.values())
+    return bar_names, bar_values
+
+def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
+    '''
+    Exclude AnalysisResult cases which had zero occurrences 
+    for all cases
+    '''
+    non_zero_fields = [ a!=0 or b!=0 or c!=0 for a,b,c in
+            zip(onig_cnts,expat_cnts,usb_cnts) ]
+
+    bar_names  = list(compress(bar_names, non_zero_fields))
+    onig_cnts  = list(compress(onig_cnts, non_zero_fields))
+    expat_cnts = list(compress(expat_cnts, non_zero_fields))
+    usb_cnts   = list(compress(usb_cnts, non_zero_fields))
+
+    _, axes = plt.subplots()
+
+    # Color-code a bar plot for each case
+    width = 0.35
+    axes.bar(bar_names, onig_cnts, width,  label='libonig')
+    axes.bar(bar_names, expat_cnts, width, label='libexpat')
+    axes.bar(bar_names, usb_cnts, width, label='libusb')
+
+    axes.set_ylabel('Occurrences')
+    axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis results")
+    axes.legend()
+
+
+    plt.xticks(fontsize=10)
     plt.show()
 
 if __name__ == '__main__':
     CONFIG.RESULTS_DIR = ".results"
-    onig_results, onig_cbmc = get_function_results("libonig")
-    expat_results, expat_cbmc = get_function_results("libexpat")
-    usb_results, usb_cbmc = get_function_results("libusb")
+    onig_results, ONIG_CBMC = get_function_results("libonig")
+    expat_results, EXPAT_CBMC = get_function_results("libexpat")
+    usb_results, USB_CBMC = get_function_results("libusb")
 
+    # Plotting the mean for each type of result from each case could be somewhat
+    # interesting as well
 
     brief(onig_results)
-    plot_result_distribution(onig_cbmc)
+    bar_names, onig_cnts = get_result_distribution(ONIG_CBMC)
+    _, expat_cnts = get_result_distribution(EXPAT_CBMC)
+    _, usb_cnts = get_result_distribution(USB_CBMC)
+
+    result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts)
+
+    bar_names, onig_cnts = get_result_distribution(ONIG_CBMC,ident=True)
+    _, expat_cnts = get_result_distribution(EXPAT_CBMC,ident=True)
+    _, usb_cnts = get_result_distribution(USB_CBMC,ident=True)
+
+    result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident=True)
+
