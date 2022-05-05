@@ -92,7 +92,7 @@ cat << EOF > /tmp/random.json
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
   "QUIET_BUILD": true,
-  "CBMC_TIMOUT": "$TIMEOUT"
+  "CBMC_TIMEOUT": $TIMEOUT
 }
 EOF
 
