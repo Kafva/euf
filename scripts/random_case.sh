@@ -31,23 +31,23 @@ case "$1" in
     LIBNAME=libonig
     # GOTO-bin compilation stops working in oniguruma
     # after 2018-09-20 (69b64fba1735c4)
-    # outside these ranges
-    NOT_BEFORE=$(date -d "2017-05-01" '+%s')
+    # Asserted to work in 2017-04-06 (83aaca7)
+    NOT_BEFORE=$(date -d "2017-04-06" '+%s')
     NOT_AFTER=$(date -d "2018-09-19" '+%s')
   ;;
   libexpat)
     BASE_CONF=./examples/base_expat.json
     DEP_DIR=~/Repos/libexpat
     LIBNAME=libexpat
-    NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-    NOT_AFTER=$(date -d "2022-06-01" '+%s')
+    NOT_BEFORE=$(date -d "2020-04-06" '+%s')
+    NOT_AFTER=$(date -d "2021-09-19" '+%s')
   ;;
   libusb)
     BASE_CONF=./examples/base_usb.json
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
-    NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-    NOT_AFTER=$(date -d "2022-06-01" '+%s')
+    NOT_BEFORE=$(date -d "2020-04-06" '+%s')
+    NOT_AFTER=$(date -d "2021-09-19" '+%s')
   ;;
   *)
     die "$usage"
