@@ -71,6 +71,6 @@ class FunctionResult:
         res = self.results_id if ident else self.results
         for r in set(res):
             cnt = res.count(r)
-            out += f"{CONFIG.INDENT}- {r.name} ({cnt})\n"
+            out += f"> {r.name} ({cnt})\n"
         return out
 

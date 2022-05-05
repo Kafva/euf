@@ -5,7 +5,7 @@ helpStr=""
 TIMEOUT=${TIMEOUT:=60}
 BATCH=${BATCH:=false}
 CMTS=/tmp/commits
-MAX_DISTANCE=$(( 24*60*60 * 120))
+MAX_DISTANCE=$(( 24*60*60 * 240))
 MIN_DISTANCE=$(( 24*60*60 * 30))
 
 get_pair(){

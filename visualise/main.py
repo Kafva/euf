@@ -181,19 +181,13 @@ def write_md():
                     f.write("```bash\n")
                     for cbmc_result in TEST_CASE_CBMCS[i].values():
                         for r in cbmc_result:
-                            if r.func_name == func_result.func_name:
-
-                                if os.path.isfile(r.driver):
-                                    with open(r.driver, mode='r',
-                                            encoding='utf8') as driver:
-                                        f.write(f"# "
-                                                f"{driver.readline()[2:]}\n")
-
+                            if r.func_name == func_result.func_name and not r.identity:
                                 f.write(f"./scripts/analyze_function.sh "
                                     f"{TEST_LIBS[i].removeprefix('lib')} "
                                     f"{r.func_name} "
                                     f"{r.commit_old} {r.commit_new}\n"
                                 )
+                                f.write(f"# => {r.driver}\n")
                     f.write("```\n")
                     f.write("\n\n")
 
