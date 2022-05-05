@@ -29,10 +29,11 @@ case "$1" in
     BASE_CONF=./examples/base_onig.json
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
-    # GOTO-bin compilation often fails for oniguruma 
+    # GOTO-bin compilation stops working in oniguruma
+    # after 2018-09-20 (69b64fba1735c4)
     # outside these ranges
     NOT_BEFORE=$(date -d "2017-05-01" '+%s')
-    NOT_AFTER=$(date -d "2018-06-01" '+%s')
+    NOT_AFTER=$(date -d "2018-09-19" '+%s')
   ;;
   libexpat)
     BASE_CONF=./examples/base_expat.json
