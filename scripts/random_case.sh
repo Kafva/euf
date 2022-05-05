@@ -31,7 +31,7 @@ case "$1" in
     LIBNAME=libonig
     # GOTO-bin compilation often fails for oniguruma 
     # outside these ranges
-    NOT_BEFORE=$(date -d "2017-01-01" '+%s')
+    NOT_BEFORE=$(date -d "2017-05-01" '+%s')
     NOT_AFTER=$(date -d "2018-06-01" '+%s')
   ;;
   libexpat)
