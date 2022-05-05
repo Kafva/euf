@@ -419,7 +419,7 @@ def log_harness(filename: str,
   driver: str,
   change: DependencyFunctionChange) -> None:
     '''
-    We allow None as a parameter for cases where pre-analysis checks fail
+    None is allowed as a parameter for cases where pre-analysis checks fail
     '''
     if CONFIG.ENABLE_RESULT_LOG:
         if not os.path.exists(filename):
