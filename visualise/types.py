@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
+import re
 from src.config import CONFIG
 from src.types import AnalysisResult, IdentifierLocation
 
@@ -12,10 +13,18 @@ class CbmcResult:
     driver: str
     location_old: IdentifierLocation
     location_new: IdentifierLocation
+    commit_old: str
+    commit_new: str
 
     @classmethod
-    def new(cls, items:list):
+    def new(cls, items:list, directory:str):
         assert len(items) == 13
+
+        commit_old = re.search(r"_[a-z0-9]{4}_", directory).\
+                group(0)[1:-1] # type: ignore
+        commit_new = re.search(r"_[a-z0-9]{4}$", directory).\
+                group(0)[1:] # type: ignore
+
         return cls(
             func_name = items[0],
             identity = False if items[1] == "False" else True,
@@ -34,6 +43,8 @@ class CbmcResult:
                 column = items[11],
                 name = items[12].strip()
             ),
+            commit_old = commit_old,
+            commit_new = commit_new
         )
 
 @dataclass(init=True)
@@ -61,5 +72,5 @@ class FunctionResult:
         for r in set(res):
             cnt = res.count(r)
             out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
-        return out.strip(",\n")+"\n]\n```\n\n"
+        return out.strip(",\n")+"\n]\n```\n"
 

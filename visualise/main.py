@@ -58,7 +58,9 @@ def get_results_from_csv(name:str) -> \
             if os.path.isfile(f"{dirpath}/cbmc.csv"):
                 with open(f"{dirpath}/cbmc.csv", mode = 'r', encoding='utf8') as f:
                     for line in f.readlines()[1:]:
-                        cbmc_results[dirpath].append(CbmcResult.new(line.split(";")))
+                        cbmc_results[dirpath].append(
+                            CbmcResult.new(line.split(";"), dirpath)
+                        )
 
                         # Add a key for each function name
                         func_name = cbmc_results[dirpath][-1].func_name
@@ -165,7 +167,7 @@ def write_md():
     ''' Make a MD template for the correctness analysis '''
     with open("correctness.md", mode = 'w', encoding='utf8') as f:
         for i,test_case_result in enumerate(TEST_CASE_RESULTS):
-            f.write(f"# {TEST_LIBS[i]}\n\n")
+            f.write(f"# {TEST_LIBS[i]}\n")
             for _, func_result in test_case_result.items():
                 overlap = set(func_result.results) & {AnalysisResult.SUCCESS,
                    AnalysisResult.SUCCESS_UNWIND_FAIL,
@@ -173,6 +175,17 @@ def write_md():
                    AnalysisResult.FAILURE}
                 if len(overlap) > 0:
                     f.write(func_result.pretty_md())
+                    # Find all commits where a CBMC result
+                    # was present for the current function
+                    # and print an analysis command for each one
+                    for cbmc_result in TEST_CASE_CBMCS[i].values():
+                        for r in cbmc_result:
+                            if r.func_name == func_result.func_name:
+                                f.write(f"> ./scripts/analyze_function.sh "
+                                    f"{r.func_name} "
+                                    f"{r.commit_old} {r.commit_new}\n"
+                                )
+                    f.write("\n\n")
 
 def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
     '''
@@ -188,9 +201,9 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
     usb_cnts   = list(compress(usb_cnts, non_zero_fields))
 
     _, axes = plt.subplots()
+    width = 0.35
 
     # Color-code a bar plot for each case
-    width = 0.35
     axes.bar(bar_names, onig_cnts,  width,  label='libonig')
     axes.bar(bar_names, expat_cnts, width,  label='libexpat')
     axes.bar(bar_names, usb_cnts,   width,  label='libusb')
@@ -206,7 +219,7 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
 if __name__ == '__main__':
     PLOT = True
     DUMP_SUCCESS = True
-    CONFIG.RESULTS_DIR = "._results"
+    CONFIG.RESULTS_DIR = ".results/1"
 
     onig_results, ONIG_CBMC = get_results_from_csv("libonig")
     correctness_per_function("libonig", onig_results, ident=False)
@@ -222,6 +235,8 @@ if __name__ == '__main__':
 
     TEST_LIBS = ["libonig", "libexpat", "libusb"]
     TEST_CASE_RESULTS = [onig_results, expat_results, usb_results]
+    TEST_CASE_CBMCS = [ONIG_CBMC, EXPAT_CBMC, USB_CBMC]
+    write_md()
 
     if PLOT:
         bar_names, onig_cnts = get_result_distribution(ONIG_CBMC)
