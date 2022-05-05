@@ -154,9 +154,9 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
 
     # Color-code a bar plot for each case
     width = 0.35
-    axes.bar(bar_names, onig_cnts, width,  label='libonig')
-    axes.bar(bar_names, expat_cnts, width, label='libexpat')
-    axes.bar(bar_names, usb_cnts, width, label='libusb')
+    axes.bar(bar_names, onig_cnts,  width,  label='libonig')
+    axes.bar(bar_names, expat_cnts, width,  label='libexpat')
+    axes.bar(bar_names, usb_cnts,   width,  label='libusb')
 
     axes.set_ylabel('Occurrences')
     axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis results")
