@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 '''
+  Correctness
+  ============
   * Run X random cases for each project
 
   * Grep out the subset of equivalent (`SUCCESS`) (TN|FN) cases, 
@@ -13,13 +15,21 @@
        - function_name;dependency;results;trusted
     - "results" should hold all recorded results for this function
     - "trusted" should be set as True, True(unwind) False or Inconclusive
-    - "description" should motivate the trusted column"s value (seperate
+    - "description" should motivate the trusted column"s value (separate
       markdown doc, with pictures)
 
+  * With some form of correctness assessment for each function, we can show a
+    plot of what percentage of the analysis could be considered reliable
+    (CSV entries for functions that are not reliable -> False else True)
 
-  * Plotting (per case):
-      Bar diagram with AnalysisResult distrubtion (with and without
-              *_unwind joint togheter)
+  Plots
+  ======
+  * How many of each type of results were derived from each analysis?
+      * Plotting the mean for each type of result from each case could be somewhat
+        interesting as well
+  * Reduction in change and impact set (mean,lowest,highest graph)
+  * Table of the SUCCESS and FAILURE analyzed functions
+
 
 '''
 import sys, os
@@ -74,7 +84,7 @@ def get_function_results(name:str) -> \
 
     return function_results, cbmc_results
 
-def brief(function_results: dict[str,FunctionResult]):
+def correctness_per_function(function_results: dict[str,FunctionResult]):
     successes = list(filter(lambda v:
             AnalysisResult.SUCCESS in v.results or
             AnalysisResult.SUCCESS_UNWIND_FAIL in v.results,
@@ -91,7 +101,7 @@ def brief(function_results: dict[str,FunctionResult]):
             function_results.values()
     ))
 
-    #for s in successes: print(s.pretty(ident=True))
+    for s in successes: print(s.pretty(ident=True))
     print_info(f"Successes: {len(successes)}")
     print_info(f"Failures: {len(failures)}")
     print_info(f"Errors: {len(errors)}")
@@ -157,24 +167,39 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
     plt.show()
 
 if __name__ == '__main__':
+    PLOT = False
     CONFIG.RESULTS_DIR = ".results"
+
     onig_results, ONIG_CBMC = get_function_results("libonig")
+    correctness_per_function(onig_results)
+
     expat_results, EXPAT_CBMC = get_function_results("libexpat")
+    correctness_per_function(expat_results)
+
     usb_results, USB_CBMC = get_function_results("libusb")
+    correctness_per_function(usb_results)
 
-    # Plotting the mean for each type of result from each case could be somewhat
-    # interesting as well
+    test_libs = ["libonig", "libexpat", "libusb"]
+    test_results = [onig_results, expat_results, usb_results]
 
-    brief(onig_results)
-    bar_names, onig_cnts = get_result_distribution(ONIG_CBMC)
-    _, expat_cnts = get_result_distribution(EXPAT_CBMC)
-    _, usb_cnts = get_result_distribution(USB_CBMC)
+    # Make a MD template for the correctness analysis
+    with open("correctness.md", mode = 'w', encoding='utf8') as f:
+        for lib in test_libs:
+            f.write(f"# {lib}\n\n")
+            for func_name in test_results:
+                f.write(f"## `{func_name}()`\n")
 
-    result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts)
 
-    bar_names, onig_cnts = get_result_distribution(ONIG_CBMC,ident=True)
-    _, expat_cnts = get_result_distribution(EXPAT_CBMC,ident=True)
-    _, usb_cnts = get_result_distribution(USB_CBMC,ident=True)
+    if PLOT:
+        bar_names, onig_cnts = get_result_distribution(ONIG_CBMC)
+        _, expat_cnts = get_result_distribution(EXPAT_CBMC)
+        _, usb_cnts = get_result_distribution(USB_CBMC)
 
-    result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident=True)
+        result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts)
+
+        bar_names, onig_cnts = get_result_distribution(ONIG_CBMC,ident=True)
+        _, expat_cnts = get_result_distribution(EXPAT_CBMC,ident=True)
+        _, usb_cnts = get_result_distribution(USB_CBMC,ident=True)
+
+        result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident=True)
 

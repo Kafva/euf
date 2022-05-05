@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-CASE_CNT=19
+CASE_CNT=10
 export TIMEOUT=60
 export BATCH=true
 
