@@ -23,6 +23,7 @@
 
 '''
 import sys, os
+import matplotlib.pyplot as plt
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -85,45 +86,46 @@ class FunctionResult:
             out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
         return out.strip(",\n")+"\n]"
 
-def get_case(name:str):
+def get_function_results(name:str) -> \
+tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
     print_stage(name)
-
     function_results = {}
+    cbmc_results = {}
 
     for item in os.listdir(CONFIG.RESULTS_DIR):
-
-        cbmc_results = []
         dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
+        cbmc_results[dirpath] = []
 
         if os.path.isdir(dirpath) and item.startswith(name):
-
             if os.path.isfile(f"{dirpath}/cbmc.csv"):
                 with open(f"{dirpath}/cbmc.csv", mode = 'r', encoding='utf8') as f:
                     for line in f.readlines()[1:]:
-                        cbmc_results.append(CbmcResult.new(line.split(";")))
+                        cbmc_results[dirpath].append(CbmcResult.new(line.split(";")))
 
                         # Add a key for each function name
-                        func_name = cbmc_results[-1].func_name
+                        func_name = cbmc_results[dirpath][-1].func_name
                         if func_name not in function_results:
                             function_results[func_name] =\
                             FunctionResult(func_name=func_name)
-
 
         # Join entries with for the same function into one
         for func_name,func_result in function_results.items():
             func_result.results.extend(
                 map(lambda a: a.result, filter(lambda c:
                     not c.identity and c.func_name == func_name,
-                    cbmc_results
+                    cbmc_results[dirpath]
                 )
             ))
             func_result.results_id.extend(
                 map(lambda a: a.result, filter(lambda c:
                     c.identity and c.func_name == func_name,
-                    cbmc_results
+                    cbmc_results[dirpath]
                 )
             ))
 
+    return function_results, cbmc_results
+
+def brief(function_results: dict[str,FunctionResult]):
     successes = list(filter(lambda v:
             AnalysisResult.SUCCESS in v.results or
             AnalysisResult.SUCCESS_UNWIND_FAIL in v.results,
@@ -141,16 +143,48 @@ def get_case(name:str):
     ))
 
     #for s in successes: print(s.pretty(ident=True))
-
     print_info(f"Successes: {len(successes)}")
     print_info(f"Failures: {len(failures)}")
     print_info(f"Errors: {len(errors)}")
 
-def plot_results(function_results: list[FunctionResult]):
-    pass
+def plot_result_distribution(
+ cbmc_results: dict[str,list[CbmcResult]],
+ ident:bool=False):
+    '''
+    Create a plot showing the distribution of results from each item
+    in the provided cbmc_results list
+    '''
+    result_cnts = { e.name: 0 for e in AnalysisResult }
+    for cbmc_list in cbmc_results.values():
+        filtered = filter(lambda x: x.identity == ident, cbmc_list)
+        for c in filtered:
+            result_cnts[c.result.name] += 1
+
+    # Exclude results that never occured
+    result_cnts = { key: val for key,val in result_cnts.items() if val != 0 }
+
+    # Combine _unwind cases
+    result_cnts[AnalysisResult.SUCCESS.name] += \
+        result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
+    result_cnts[AnalysisResult.FAILURE.name] += \
+        result_cnts[AnalysisResult.FAILURE_UNWIND_FAIL.name]
+    del result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
+    del result_cnts[AnalysisResult.FAILURE_UNWIND_FAIL.name]
+
+    # Color each bar based on the case
+
+    plt.bar(
+        list(result_cnts.keys()),
+        list(result_cnts.values())
+    )
+    plt.show()
 
 if __name__ == '__main__':
     CONFIG.RESULTS_DIR = ".results"
-    get_case("libonig")
-    get_case("libexpat")
-    get_case("libusb")
+    onig_results, onig_cbmc = get_function_results("libonig")
+    expat_results, expat_cbmc = get_function_results("libexpat")
+    usb_results, usb_cbmc = get_function_results("libusb")
+
+
+    brief(onig_results)
+    plot_result_distribution(onig_cbmc)
