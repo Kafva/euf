@@ -15,6 +15,12 @@
     - "trusted" should be set as True, True(unwind) False or Inconclusive
     - "description" should motivate the trusted column"s value (seperate
       markdown doc, with pictures)
+
+
+  * Plotting (per case):
+      Bar diagram with AnalysisResult distrubtion (with and without
+              *_unwind joint togheter)
+
 '''
 import sys, os
 from dataclasses import dataclass, field
@@ -62,17 +68,22 @@ class CbmcResult:
 
 @dataclass(init=True)
 class FunctionResult:
-    # A list of all the analysis results recorded for a perticular
-    # function. By using a list with duplicate entries we can
-    # see the distrubtion of results and fetch a set()
+    '''
+    A list of all the analysis results recorded for a perticular
+    function. By using a list with duplicate entries we can
+    see the distrubtion of results and fetch a set()
+    '''
     func_name: str
-    results: list[AnalysisResult] = field(default_factory=list)
+    results: list[AnalysisResult]    = field(default_factory=list)
     results_id: list[AnalysisResult] = field(default_factory=list)
 
-
-    #@classmethod
-    #def new(cls, list[CbmcResult]):
-
+    def pretty(self,ident:bool=False) -> str:
+        out = f"{self.func_name}: [\n"
+        res = self.results_id if ident else self.results
+        for r in set(res):
+            cnt = res.count(r)
+            out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
+        return out.strip(",\n")+"\n]"
 
 def get_case(name:str):
     print_stage(name)
@@ -118,10 +129,28 @@ def get_case(name:str):
             AnalysisResult.SUCCESS_UNWIND_FAIL in v.results,
             function_results.values()
     ))
+    failures = list(filter(lambda v:
+            AnalysisResult.FAILURE in v.results or
+            AnalysisResult.FAILURE_UNWIND_FAIL in v.results,
+            function_results.values()
+    ))
 
-    __import__('pprint').pprint(successes)
+    errors = list(filter(lambda v:
+            AnalysisResult.ERROR in v.results,
+            function_results.values()
+    ))
 
-    #print_info(f"Failures: {len(failures)}")
+    #for s in successes: print(s.pretty(ident=True))
+
     print_info(f"Successes: {len(successes)}")
+    print_info(f"Failures: {len(failures)}")
+    print_info(f"Errors: {len(errors)}")
 
-get_case("libonig")
+def plot_results(function_results: list[FunctionResult]):
+    pass
+
+if __name__ == '__main__':
+    CONFIG.RESULTS_DIR = ".results"
+    get_case("libonig")
+    get_case("libexpat")
+    get_case("libusb")

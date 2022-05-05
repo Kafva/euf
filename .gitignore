@@ -1,5 +1,6 @@
 .docker_results
 .results
+._results
 .states
 .pytest-cache
 results

@@ -68,10 +68,10 @@
   "SILENT_VERIFICATION": true,
   "USE_EXISTING_DRIVERS": false,
   "ORDER_BY_CALL_SITE": true,
-  "VERBOSITY": 2,
+  "VERBOSITY": 1,
   
   "SKIP_BLAME": false,
-  "SKIP_IMPACT": true,
+  "SKIP_IMPACT": false,
   "FULL": true,
   "QUIET_BUILD": true
 }
