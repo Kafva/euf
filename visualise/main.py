@@ -45,9 +45,8 @@ from src.config import CONFIG
 from src.types import AnalysisResult
 from src.util import print_info, print_stage
 
-def get_function_results(name:str) -> \
+def get_results_from_csv(name:str) -> \
  tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
-    print_stage(name)
     function_results = {}
     cbmc_results = {}
 
@@ -84,24 +83,49 @@ def get_function_results(name:str) -> \
 
     return function_results, cbmc_results
 
-def correctness_per_function(function_results: dict[str,FunctionResult]):
-    successes = list(filter(lambda v:
-            AnalysisResult.SUCCESS in v.results or
-            AnalysisResult.SUCCESS_UNWIND_FAIL in v.results,
-            function_results.values()
-    ))
-    failures = list(filter(lambda v:
-            AnalysisResult.FAILURE in v.results or
-            AnalysisResult.FAILURE_UNWIND_FAIL in v.results,
-            function_results.values()
-    ))
+def correctness_per_function(name:str,
+ function_results: dict[str,FunctionResult], ident:bool=False):
+    msg = name + (" (identity)" if ident else '')
+    print_stage(msg)
 
-    errors = list(filter(lambda v:
-            AnalysisResult.ERROR in v.results,
-            function_results.values()
-    ))
+    if ident:
+        successes = list(filter(lambda v:
+                AnalysisResult.SUCCESS in v.results_id or
+                AnalysisResult.SUCCESS_UNWIND_FAIL in v.results_id,
+                function_results.values()
+        ))
+        failures = list(filter(lambda v:
+                AnalysisResult.FAILURE in v.results_id or
+                AnalysisResult.FAILURE_UNWIND_FAIL in v.results_id,
+                function_results.values()
+        ))
+        errors = list(filter(lambda v:
+                AnalysisResult.ERROR in v.results or
+                AnalysisResult.STRUCT_CNT_CONFLICT in v.results_id or
+                AnalysisResult.STRUCT_TYPE_CONFLICT in v.results_id,
+                function_results.values()
+        ))
+    else:
+        successes = list(filter(lambda v:
+                AnalysisResult.SUCCESS in v.results or
+                AnalysisResult.SUCCESS_UNWIND_FAIL in v.results,
+                function_results.values()
+        ))
+        failures = list(filter(lambda v:
+                AnalysisResult.FAILURE in v.results or
+                AnalysisResult.FAILURE_UNWIND_FAIL in v.results,
+                function_results.values()
+        ))
+        errors = list(filter(lambda v:
+                AnalysisResult.ERROR in v.results or
+                AnalysisResult.STRUCT_CNT_CONFLICT in v.results or
+                AnalysisResult.STRUCT_TYPE_CONFLICT in v.results,
+                function_results.values()
+        ))
 
-    for s in successes: print(s.pretty(ident=True))
+
+    if DUMP_SUCCESS:
+        for s in successes: print(s.pretty(ident=ident))
     print_info(f"Successes: {len(successes)}")
     print_info(f"Failures: {len(failures)}")
     print_info(f"Errors: {len(errors)}")
@@ -137,6 +161,19 @@ def get_result_distribution(cbmc_results: dict[str,list[CbmcResult]],
     bar_values = list(result_cnts.values())
     return bar_names, bar_values
 
+def write_md():
+    ''' Make a MD template for the correctness analysis '''
+    with open("correctness.md", mode = 'w', encoding='utf8') as f:
+        for i,test_case_result in enumerate(TEST_CASE_RESULTS):
+            f.write(f"# {TEST_LIBS[i]}\n\n")
+            for _, func_result in test_case_result.items():
+                overlap = set(func_result.results) & {AnalysisResult.SUCCESS,
+                   AnalysisResult.SUCCESS_UNWIND_FAIL,
+                   AnalysisResult.SUCCESS_UNWIND_FAIL,
+                   AnalysisResult.FAILURE}
+                if len(overlap) > 0:
+                    f.write(func_result.pretty_md())
+
 def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
     '''
     Exclude AnalysisResult cases which had zero occurrences 
@@ -167,28 +204,24 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
     plt.show()
 
 if __name__ == '__main__':
-    PLOT = False
-    CONFIG.RESULTS_DIR = ".results"
+    PLOT = True
+    DUMP_SUCCESS = True
+    CONFIG.RESULTS_DIR = "._results"
 
-    onig_results, ONIG_CBMC = get_function_results("libonig")
-    correctness_per_function(onig_results)
+    onig_results, ONIG_CBMC = get_results_from_csv("libonig")
+    correctness_per_function("libonig", onig_results, ident=False)
+    correctness_per_function("libonig", onig_results, ident=True)
 
-    expat_results, EXPAT_CBMC = get_function_results("libexpat")
-    correctness_per_function(expat_results)
+    expat_results, EXPAT_CBMC = get_results_from_csv("libexpat")
+    correctness_per_function("libexpat", expat_results, ident=False)
+    correctness_per_function("libexpat", expat_results, ident=True)
 
-    usb_results, USB_CBMC = get_function_results("libusb")
-    correctness_per_function(usb_results)
+    usb_results, USB_CBMC = get_results_from_csv("libusb")
+    correctness_per_function("libusb", usb_results, ident=False)
+    correctness_per_function("libusb", usb_results, ident=True)
 
-    test_libs = ["libonig", "libexpat", "libusb"]
-    test_results = [onig_results, expat_results, usb_results]
-
-    # Make a MD template for the correctness analysis
-    with open("correctness.md", mode = 'w', encoding='utf8') as f:
-        for lib in test_libs:
-            f.write(f"# {lib}\n\n")
-            for func_name in test_results:
-                f.write(f"## `{func_name}()`\n")
-
+    TEST_LIBS = ["libonig", "libexpat", "libusb"]
+    TEST_CASE_RESULTS = [onig_results, expat_results, usb_results]
 
     if PLOT:
         bar_names, onig_cnts = get_result_distribution(ONIG_CBMC)

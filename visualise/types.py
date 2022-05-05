@@ -18,7 +18,7 @@ class CbmcResult:
         assert len(items) == 13
         return cls(
             func_name = items[0],
-            identity = items[1] == "True",
+            identity = False if items[1] == "False" else True,
             result = AnalysisResult[items[2]],
             runtime = datetime.now(),
             driver = items[4],
@@ -55,4 +55,11 @@ class FunctionResult:
             out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
         return out.strip(",\n")+"\n]"
 
+    def pretty_md(self,ident:bool=False) -> str:
+        out = f"## `{self.func_name}()`\n```\n[\n"
+        res = self.results_id if ident else self.results
+        for r in set(res):
+            cnt = res.count(r)
+            out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
+        return out.strip(",\n")+"\n]\n```\n\n"
 
