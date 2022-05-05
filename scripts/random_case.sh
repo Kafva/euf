@@ -5,7 +5,7 @@ helpStr=""
 TIMEOUT=${TIMEOUT:=60}
 BATCH=${BATCH:=false}
 CMTS=/tmp/commits
-MAX_DISTANCE=$(( 24*60*60 * 240))
+MAX_DISTANCE=$(( 24*60*60 * 120))
 MIN_DISTANCE=$(( 24*60*60 * 30))
 
 get_pair(){
@@ -29,22 +29,24 @@ case "$1" in
     BASE_CONF=./examples/base_onig.json
     DEP_DIR=~/Repos/oniguruma
     LIBNAME=libonig
+    # GOTO-bin compilation often fails for oniguruma 
+    # outside these ranges
     NOT_BEFORE=$(date -d "2017-01-01" '+%s')
-    NOT_AFTER=$(date -d "2017-06-25" '+%s')
+    NOT_AFTER=$(date -d "2018-06-01" '+%s')
   ;;
   libexpat)
     BASE_CONF=./examples/base_expat.json
     DEP_DIR=~/Repos/libexpat
     LIBNAME=libexpat
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-    NOT_AFTER=$(date -d "2077-01-01" '+%s')
+    NOT_AFTER=$(date -d "2022-06-01" '+%s')
   ;;
   libusb)
     BASE_CONF=./examples/base_usb.json
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-01-01" '+%s')
-    NOT_AFTER=$(date -d "2077-01-01" '+%s')
+    NOT_AFTER=$(date -d "2022-06-01" '+%s')
   ;;
   *)
     die "$usage"
