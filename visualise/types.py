@@ -1,6 +1,6 @@
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
-import re
 from src.config import CONFIG
 from src.types import AnalysisResult, IdentifierLocation
 

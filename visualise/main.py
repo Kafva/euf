@@ -219,7 +219,7 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
 if __name__ == '__main__':
     PLOT = True
     DUMP_SUCCESS = True
-    CONFIG.RESULTS_DIR = ".results/1"
+    CONFIG.RESULTS_DIR = ".results/3"
 
     onig_results, ONIG_CBMC = get_results_from_csv("libonig")
     correctness_per_function("libonig", onig_results, ident=False)
