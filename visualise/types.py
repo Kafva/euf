@@ -67,10 +67,10 @@ class FunctionResult:
         return out.strip(",\n")+"\n]"
 
     def pretty_md(self,ident:bool=False) -> str:
-        out = f"## `{self.func_name}()`\n```\n[\n"
+        out = f"## `{self.func_name}()`\n"
         res = self.results_id if ident else self.results
         for r in set(res):
             cnt = res.count(r)
-            out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
-        return out.strip(",\n")+"\n]\n```\n"
+            out += f"{CONFIG.INDENT}- {r.name} ({cnt})\n"
+        return out
 

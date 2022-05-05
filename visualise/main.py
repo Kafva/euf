@@ -178,13 +178,23 @@ def write_md():
                     # Find all commits where a CBMC result
                     # was present for the current function
                     # and print an analysis command for each one
+                    f.write("```bash\n")
                     for cbmc_result in TEST_CASE_CBMCS[i].values():
                         for r in cbmc_result:
                             if r.func_name == func_result.func_name:
-                                f.write(f"> ./scripts/analyze_function.sh "
+
+                                if os.path.isfile(r.driver):
+                                    with open(r.driver, mode='r',
+                                            encoding='utf8') as driver:
+                                        f.write(f"# "
+                                                f"{driver.readline()[2:]}\n")
+
+                                f.write(f"./scripts/analyze_function.sh "
+                                    f"{TEST_LIBS[i].removeprefix('lib')} "
                                     f"{r.func_name} "
                                     f"{r.commit_old} {r.commit_new}\n"
                                 )
+                    f.write("```\n")
                     f.write("\n\n")
 
 def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
@@ -217,7 +227,8 @@ def result_dists(bar_names,onig_cnts,expat_cnts,usb_cnts,ident:bool=False):
     plt.show()
 
 if __name__ == '__main__':
-    PLOT = True
+    WRITE_MD = True
+    PLOT = False
     DUMP_SUCCESS = True
     CONFIG.RESULTS_DIR = ".results/3"
 
@@ -236,8 +247,9 @@ if __name__ == '__main__':
     TEST_LIBS = ["libonig", "libexpat", "libusb"]
     TEST_CASE_RESULTS = [onig_results, expat_results, usb_results]
     TEST_CASE_CBMCS = [ONIG_CBMC, EXPAT_CBMC, USB_CBMC]
-    write_md()
 
+    if WRITE_MD:
+        write_md()
     if PLOT:
         bar_names, onig_cnts = get_result_distribution(ONIG_CBMC)
         _, expat_cnts = get_result_distribution(EXPAT_CBMC)
