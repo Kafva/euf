@@ -80,8 +80,6 @@ class FunctionResult:
 class Case:
     '''
     Holds descriptive data for each case: libonig, libexpat and libusb
-
-
     '''
     total_functions: int
     name: str
@@ -166,9 +164,10 @@ class Case:
                 f"({identity_percent})"
         )
         print("Result distribution (pre-analysis):")
-        pprint(self.analysis_dist(ident=True,filter_zero=True))
+        pprint(self.sorted_analysis_dist(ident=True,filter_zero=True))
         print("Result distribution (full-analysis):")
-        pprint(self.analysis_dist(ident=False,filter_zero=True))
+        pprint(self.sorted_analysis_dist(ident=False,filter_zero=True))
+
 
 
     def nr_of_changed_functions(self) -> int:
@@ -193,6 +192,12 @@ class Case:
         ))
         return len(funcs_with_at_least_one_valid_id_cmp)
 
+    def sorted_analysis_dist(self,ident:bool,filter_zero:bool):
+        li = [ (key.name,val) for key,val in
+                self.analysis_dist(ident=ident,filter_zero=filter_zero).items()
+        ]
+        return sorted(li, key=lambda l: l[1], reverse=True)
+
     def analysis_dist(self,
      ident:bool,
      filter_zero:bool=False,
@@ -202,7 +207,7 @@ class Case:
         across every function analysis (during either the full or ID stage). 
         The list starts with the first entry in the AnalysisResult enum '''
         if ident:
-            # Identity analysis was performed for every function 
+            # Pre-analysis was performed for every function 
             # in function_results
             analysis_steps_performed = sum(map(lambda f: len(f.results_id),
                 self.function_results()))

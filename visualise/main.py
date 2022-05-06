@@ -43,6 +43,7 @@ sys.path.extend(['..','.'])
 from visualise.types import Case
 from src.config import CONFIG
 from src.types import AnalysisResult
+from src.util import flatten
 
 def write_md(cases: list[Case]):
     ''' Make a MD template for the correctness analysis '''
@@ -94,7 +95,14 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
 
     # Color-code a bar plot for each case
     for i,case in enumerate(cases):
-        axes.bar(bar_names, cases_dists[i],  width,  label=case.name)
+        # The bottom value must be correctly set to the sum of the previous 
+        # bars, otherwise overlaps will occur
+        match i:
+            case 1: bottom = cases_dists[0]
+            case 2: bottom = [ x+y for x,y in zip(cases_dists[0],cases_dists[1]) ]
+            case _: bottom = 0
+
+        axes.bar(bar_names, cases_dists[i],  width,  label=case.name, bottom = bottom)
 
     axes.set_ylabel('')
     axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis results")
