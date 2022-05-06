@@ -11,6 +11,11 @@ from src.util import flatten, print_stage
 ROUNDING = 4
 
 @dataclass(init=True)
+class Impacted:
+    main_project_fn_name:str
+    dependecy_fn_name:str
+
+@dataclass(init=True)
 class CbmcResult:
     func_name:str
     identity:bool
@@ -104,7 +109,8 @@ class Case:
     def cbmc_results(self) -> list[CbmcResult]:
         return flatten([ r for r in self.cbmc_results_dict.values() ])
 
-
+    impact_set: dict[str,list[Impacted]] =\
+            field(default_factory=dict)
     base_change_set: dict[str,list[DependencyFunctionChange]] =\
         field(default_factory=dict)
     reduced_change_set: dict[str,list[DependencyFunctionChange]] =\
@@ -196,15 +202,15 @@ class Case:
         stdev_size = round(stdev(change_set_sizes),ROUNDING)
         print(f"Average change set size: {average_size} (±{stdev_size})")
 
-        mean_reduction,stdev_reduction = self.change_set_reduction_stats()
+
+        mean_reduction = round(mean(self.change_set_reductions_per_trial()),ROUNDING)
+        stdev_reduction = round(stdev(self.change_set_reductions_per_trial()),ROUNDING)
         print(f"Average change set reduction: {mean_reduction} (±{stdev_reduction})")
 
-
-    def change_set_reduction_stats(self) -> tuple[float,float]:
+    def change_set_reductions_per_trial(self) -> list[float]:
         '''
         Go through each pair of base and reduced change sets and record the
-        reduction for each one. Return the mean number of functions that are
-        reduced for each trial (along with the standard deviation) 
+        reduction for each one.
         '''
         reductions_per_trial = []
         for dirpath in self.base_change_set:
@@ -212,9 +218,7 @@ class Case:
                     len(self.base_change_set[dirpath]) -
                     len(self.reduced_change_set[dirpath])
             )
-
-        return round(mean(reductions_per_trial),ROUNDING), \
-                round(stdev(reductions_per_trial),ROUNDING)
+        return reductions_per_trial
 
     def list_fully_analyzed_functions(self):
         '''
@@ -356,4 +360,18 @@ class Case:
         # from cbmc analysis should be equal
         assert len(self.base_change_set) == len(self.cbmc_results_dict)
 
+    def load_impact_set(self):
+        for item in os.listdir(CONFIG.RESULTS_DIR):
+            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
+            self.impact_set[dirpath] = []
 
+            if os.path.isdir(dirpath) and item.startswith(self.name):
+                if os.path.isfile(f"{dirpath}/impact_set.csv"):
+                    with open(f"{dirpath}/impact_set.csv",
+                      mode = 'r', encoding='utf8') as f:
+                        for line in f.readlines()[1:]:
+                            csv_values = line.split(";")
+                            self.impact_set[dirpath].append(Impacted(
+                                main_project_fn_name=csv_values[3],
+                                dependecy_fn_name=csv_values[8]
+                            ))

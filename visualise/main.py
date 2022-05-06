@@ -91,10 +91,9 @@ def plot_analysis_dists(cases:
     bar_names  = list(compress(bar_names, non_zero_fields))
 
     # Wrap the bar name text to X chars
-    bar_names = [ '\n'.join(wrap(l, 10)) for l in bar_names ]
+    bar_names = [ '\n'.join(wrap(l, OPTIONS['PLOT_WRAP_CHARS'])) for l in bar_names ]
 
     _, axes = plt.subplots()
-    width = 0.35
 
     # Color-code a bar plot for each case
     for i,case in enumerate(cases):
@@ -105,7 +104,7 @@ def plot_analysis_dists(cases:
             case 2: bottom = [ x+y for x,y in zip(cases_dists[0],cases_dists[1]) ]
             case _: bottom = 0
 
-        axes.bar(bar_names, cases_dists[i],  width,  label=case.name, bottom = bottom)
+        axes.bar(bar_names, cases_dists[i],  OPTIONS['PLOT_WIDTH'],  label=case.name, bottom = bottom)
 
     axes.set_ylabel('')
     axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis "
@@ -113,15 +112,29 @@ def plot_analysis_dists(cases:
             ("(without duplicates)" if unique_results else "(with duplicates)" ) )
     axes.legend()
 
-    plt.xticks(fontsize=10)
-    plt.show()
-
 def plot_change_set(cases: list[Case]):
     '''
+    We want to show the average reduction, stdev from the average and the
+    extreme values, a violin plot is suitable for this
+
+    One violin per case
     '''
-    pass
+    change_set_reductions = [ c.change_set_reductions_per_trial() for c in cases ]
+
+    figure, axes = plt.subplots(nrows=1, ncols=3)
+
+    axes[0].set_ylabel('Number of reduced changes')
+
+    for i,reductions in enumerate(change_set_reductions):
+        axes[i].violinplot(reductions, showmeans=True, showextrema=True)
+        axes[i].set_title(cases[i].name)
+
+    figure.suptitle("Change set reduction")
 
 OPTIONS = {
+    'PLOT_WIDTH': 0.35,
+    'PLOT_FONT_SIZE': 10,
+    'PLOT_WRAP_CHARS': 10,
     'WRITE_MD': True,
     'PLOT': True,
     'LIST_ANALYZED': False,
@@ -134,19 +147,30 @@ if __name__ == '__main__':
 
     onig = Case.new(name="libonig", total_functions=1186)
     onig.load_change_sets()
+    onig.load_impact_set()
     onig.info(OPTIONS['UNIQUE_RESULTS'])
+
     expat = Case.new(name="libexpat", total_functions=645)
     expat.load_change_sets()
+    expat.load_impact_set()
     expat.info(OPTIONS['UNIQUE_RESULTS'])
+
     usb = Case.new(name="libusb", total_functions=1346)
     usb.load_change_sets()
+    usb.load_impact_set()
     usb.info(OPTIONS['UNIQUE_RESULTS'])
 
     cases = [onig,expat,usb]
 
     if OPTIONS['PLOT']:
-        plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
-        plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
+        #plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
+        #plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
+
+        plot_change_set(cases)
+
+        plt.xticks(fontsize=OPTIONS['PLOT_FONT_SIZE'])
+        plt.show()
+
     if OPTIONS['WRITE_MD']:
         write_md(cases)
     if OPTIONS['LIST_ANALYZED']:
