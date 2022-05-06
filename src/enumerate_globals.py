@@ -3,7 +3,7 @@ from pprint import pprint
 from clang import cindex
 from src import BASE_DIR
 
-from src.util import flatten, has_allowed_suffix, print_warn, \
+from src.util import flatten, has_allowed_suffix, print_info, print_warn, \
   time_start, time_end, print_err
 from src.config import CONFIG
 from src.types import Cstruct, Identifier, SourceFile
@@ -134,6 +134,10 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
     idents, skip_renaming = handle_struct_conflicts(structs, global_identifiers)
 
     time_end("Global symbol enumeration", start_time)
+    if CONFIG.VERBOSITY >= 1:
+        total_function_count = len(list(filter(lambda x:
+            x.is_function, global_identifiers)))
+        print_info(f"Total functions: {total_function_count}")
     os.chdir(BASE_DIR)
 
     return idents, skip_renaming

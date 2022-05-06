@@ -15,8 +15,8 @@ if which apt &> /dev/null; then
   # llvm-13
   sudo apt-get install cmake clang ninja-build -y
 elif which pacman &> /dev/null; then
-  sudo pacman -Syu clang llvm flex bison make \
-    curl patch cmake bear --noconfirm
+  sudo pacman -Syu --noconfirm --needed clang llvm flex bison make \
+    curl patch cmake bear 
 else
   die "Unsupported package manager"
 fi

@@ -41,6 +41,7 @@ clone_repo(){
 
 dl(){
   local repo=$1
+  mkdir -p $repo
   clone_repo https://github.com/kkos/oniguruma        $repo/oniguruma
   clone_repo https://github.com/libexpat/libexpat     $repo/libexpat
   clone_repo https://github.com/libusb/libusb         $repo/libusb
@@ -68,8 +69,8 @@ if which apt &> /dev/null; then
     sudo apt-get install -y libidn11-dev libudns-dev libgsasl7-dev \
       cmake libusb-1.0-0-dev pkg-config libudev-dev
 elif which pacman &> /dev/null; then
-  sudo pacman -Syu --noconfirm libidn udns gsasl cmake \
-    libusb-1.0-0-dev pkg-config 
+  sudo pacman -Syu --noconfirm --needed libidn udns gsasl cmake \
+    libusb pkg-config 
 else
   die "Unsupported package manager"
 fi
@@ -82,8 +83,8 @@ dl ~/Repos
 dl ~/Repos/.docker
 
 # Clone basic examples
-clone_repo https://gitlab.com/Kafva/main   ~/Repos/main
-clone_repo https://gitlab.com/Kafva/matrix ~/Repos/matrix
+clone_repo "https://gitlab.com/Kafva/main"   ~/Repos/main
+clone_repo "https://gitlab.com/Kafva/matrix" ~/Repos/matrix
 
 # The paths generated in the ccdb for jabberd and airspy will be correspond
 # to the host path, /home/$USER/Repos/.docker, and need to be patched 
