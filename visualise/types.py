@@ -8,6 +8,8 @@ from src.types import AnalysisResult, \
         DependencyFunctionChange, IdentifierLocation
 from src.util import flatten, print_stage
 
+ROUNDING = 4
+
 @dataclass(init=True)
 class CbmcResult:
     func_name:str
@@ -151,35 +153,6 @@ class Case:
 
         return function_results, cbmc_results
 
-    def load_change_set(self,dirpath:str,filename:str,
-     change_set:dict[str,list[DependencyFunctionChange]]):
-        if os.path.isfile(f"{dirpath}/{filename}"):
-            with open(f"{dirpath}/{filename}",
-              mode = 'r', encoding='utf8') as f:
-                for line in f.readlines()[1:]:
-                    change_set[dirpath].append( DependencyFunctionChange.\
-                            new_from_change_set_csv(line.split(";"))
-                    )
-
-    def load_change_sets(self):
-        for item in os.listdir(CONFIG.RESULTS_DIR):
-            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            self.base_change_set[dirpath] = []
-            self.reduced_change_set[dirpath] = []
-            self.trans_change_set[dirpath] = []
-
-            if os.path.isdir(dirpath) and item.startswith(self.name):
-                self.load_change_set(dirpath, "change_set.csv",
-                        self.base_change_set)
-                self.load_change_set(dirpath, "reduced_set.csv",
-                        self.reduced_change_set)
-                self.load_change_set(dirpath, "trans_change_set.csv",
-                        self.trans_change_set)
-
-        # The number of changed functions in the base set and the functions
-        # from cbmc analysis should be equal
-        assert len(self.base_change_set) == len(self.cbmc_results_dict)
-
     @classmethod
     def new(cls,name:str,total_functions:int):
         function_results_dict, cbmc_results_dict = cls.load_cbmc_result(name)
@@ -189,32 +162,49 @@ class Case:
                 function_results_dict=function_results_dict
         )
 
-    def info(self):
+    def info(self,unique_results:bool=False):
         print_stage(self.name)
         changed_percent =\
-            round(self.nr_of_changed_functions()/self.total_functions,4)
+            round(self.nr_of_changed_functions()/self.total_functions,ROUNDING)
         identity_percent =\
-            round(self.passed_identity_cnt()/self.nr_of_changed_functions(),4)
+            round(self.passed_identity_cnt()/self.nr_of_changed_functions(),ROUNDING)
         print(f"Changed functions: "
                 f"{self.nr_of_changed_functions()}/{self.total_functions} ({changed_percent})")
         print("Passed identity analysis: "
                 f"{self.passed_identity_cnt()}/{self.nr_of_changed_functions()} "
                 f"({identity_percent})"
         )
-        print("Result distribution (pre-analysis):")
-        pprint(self.sorted_analysis_dist(ident=True,filter_zero=True))
-        print("Result distribution (full-analysis):")
-        pprint(self.sorted_analysis_dist(ident=False,filter_zero=True))
+
+        nr_of_full_analysis_results = len(list(filter(lambda c: not c.identity,
+                self.cbmc_results())))
+        print(f"Unique pre-analysis results: "
+              f"{len(self.unique_cbmc_results(ident=True))}/{len(self.cbmc_results())}")
+        print(f"Unique full-analysis results: "
+              f"{len(self.unique_cbmc_results(ident=False))}/{nr_of_full_analysis_results}")
+
+        dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
+            "\033[4mwith duplicates\033[0m"
+        print(f"Result distribution {dupes} (pre-analysis):")
+        pprint(self.sorted_analysis_dist(ident=True,filter_zero=True,unique_results=False))
+        print(f"Result distribution {dupes} (full-analysis):")
+        pprint(self.sorted_analysis_dist(ident=False,filter_zero=True,unique_results=False))
+
+
+
+        change_set_sizes = [ len(v) for _,v in self.base_change_set.items() ]
+        average_size = round(mean(change_set_sizes),ROUNDING)
+        stdev_size = round(stdev(change_set_sizes),ROUNDING)
+        print(f"Average change set size: {average_size} (±{stdev_size})")
 
         mean_reduction,stdev_reduction = self.change_set_reduction_stats()
         print(f"Average change set reduction: {mean_reduction} (±{stdev_reduction})")
+
 
     def change_set_reduction_stats(self) -> tuple[float,float]:
         '''
         Go through each pair of base and reduced change sets and record the
         reduction for each one. Return the mean number of functions that are
         reduced for each trial (along with the standard deviation) 
-            
         '''
         reductions_per_trial = []
         for dirpath in self.base_change_set:
@@ -223,8 +213,8 @@ class Case:
                     len(self.reduced_change_set[dirpath])
             )
 
-        return round(mean(reductions_per_trial),4), \
-                round(stdev(reductions_per_trial),4)
+        return round(mean(reductions_per_trial),ROUNDING), \
+                round(stdev(reductions_per_trial),ROUNDING)
 
     def list_fully_analyzed_functions(self):
         '''
@@ -258,28 +248,43 @@ class Case:
         ))
         return len(funcs_with_at_least_one_valid_id_cmp)
 
-    def sorted_analysis_dist(self,ident:bool,filter_zero:bool):
-        li = [ (key.name,val) for key,val in
-                self.analysis_dist(ident=ident,filter_zero=filter_zero).items()
+    def sorted_analysis_dist(self,ident:bool,
+      filter_zero:bool,unique_results:bool):
+        li = [ (key.name,round(val,ROUNDING)) for key,val in
+                self.analysis_dist(
+                    ident=ident,
+                    filter_zero=filter_zero,
+                    unique_results=unique_results
+                ).items()
         ]
         return sorted(li, key=lambda l: l[1], reverse=True)
+
+    def unique_cbmc_results(self,ident:bool):
+        return set(map(lambda c: (c.func_name,c.result),
+                filter(lambda r: r.identity == ident,
+                    self.cbmc_results()
+                ))
+            )
 
     def analysis_dist(self,
      ident:bool,
      filter_zero:bool=False,
      combine_unwinds:bool=False,
+     unique_results:bool=False
      ) -> dict[AnalysisResult,float]:
-        ''' Returns a dict of percentages for each AnalysisResult
+        '''
+        Returns a dict of percentages for each AnalysisResult
         across every function analysis (during either the full or ID stage).
-        The list starts with the first entry in the AnalysisResult enum '''
+        The list starts with the first entry in the AnalysisResult enum 
+        '''
         if ident:
             # Pre-analysis was performed for every function
             # in function_results
             analysis_steps_performed = sum(map(lambda f: len(f.results_id),
                 self.function_results()))
         else:
-            # Functions which did not pass the identity check will have len()==0
-            # of their results array.
+            # Functions which did not pass the identity check will have
+            # a results array with len()==0
             analysis_steps_performed = sum(map(lambda f: len(f.results),
                 self.function_results()))
 
@@ -287,8 +292,21 @@ class Case:
                 self.cbmc_results())
 
         result_cnts = { e.name: 0 for e in AnalysisResult }
-        for cbmc_result in filtered_cbmc_results:
-            result_cnts[cbmc_result.result.name] += 1
+
+        if unique_results:
+            # Only increment the result count for unique entries,
+            # e.g. count 16 SUCCESS results for a function as 1 SUCCESS
+            # This also requires the analysis_steps_performed to be reduced
+            # for percentages to be correct
+            unique_cbmc_results = self.unique_cbmc_results(ident=ident)
+
+            for tpl in unique_cbmc_results:
+                result_cnts[tpl[1].name] += 1
+
+            analysis_steps_performed = len(unique_cbmc_results)
+        else:
+            for cbmc_result in filtered_cbmc_results:
+                result_cnts[cbmc_result.result.name] += 1
 
         if combine_unwinds:
             result_cnts[AnalysisResult.SUCCESS.name] += \
@@ -306,7 +324,36 @@ class Case:
         analysis_dict = { AnalysisResult[tpl[0]]: tpl[1]/analysis_steps_performed
                 for tpl in result_cnts.items() }
 
-        assert (sum([ x for x in analysis_dict.values() ]) - 1) < 1**-64
+        assert (sum([ x for x in analysis_dict.values() ]) - 1) < 10**-12
         return analysis_dict
+
+    def load_change_set(self,dirpath:str,filename:str,
+     change_set:dict[str,list[DependencyFunctionChange]]):
+        if os.path.isfile(f"{dirpath}/{filename}"):
+            with open(f"{dirpath}/{filename}",
+              mode = 'r', encoding='utf8') as f:
+                for line in f.readlines()[1:]:
+                    change_set[dirpath].append( DependencyFunctionChange.\
+                            new_from_change_set_csv(line.split(";"))
+                    )
+
+    def load_change_sets(self):
+        for item in os.listdir(CONFIG.RESULTS_DIR):
+            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
+            self.base_change_set[dirpath] = []
+            self.reduced_change_set[dirpath] = []
+            self.trans_change_set[dirpath] = []
+
+            if os.path.isdir(dirpath) and item.startswith(self.name):
+                self.load_change_set(dirpath, "change_set.csv",
+                        self.base_change_set)
+                self.load_change_set(dirpath, "reduced_set.csv",
+                        self.reduced_change_set)
+                self.load_change_set(dirpath, "trans_change_set.csv",
+                        self.trans_change_set)
+
+        # The number of changed functions in the base set and the functions
+        # from cbmc analysis should be equal
+        assert len(self.base_change_set) == len(self.cbmc_results_dict)
 
 

@@ -26,19 +26,7 @@
   ======
     * Reduction in change and impact set (mean,lowest,highest graph)
     
-    * It could be useful to show the analysis_dists plot but while only counting 
-    unique results. The current versions gives the impression that expat has
-    very good performance, which in reality stems from the fact that it analyzed
-    the same few functions successfully many times.
-   
-
 '''
-OPTIONS = {
-    'WRITE_MD': True,
-    'PLOT': True,
-    'LIST_ANALYZED': False,
-    'RESULTS_DIR': "results"
-}
 
 import sys
 import matplotlib.pyplot as plt
@@ -79,8 +67,17 @@ def write_md(cases: list[Case]):
                     f.write("```\n")
                     f.write("\n\n")
 
-def plot_analysis_dists(cases: list[Case],ident:bool=False):
-    cases_dists = [ c.analysis_dist(ident=ident).values() for c in cases ]
+def plot_analysis_dists(cases:
+        list[Case],ident:bool=False,unique_results:bool=False):
+    '''
+    Not using the `unique_results` option gives the impression that expat has
+    very good performance, which stems from the fact that it has analyzed
+    the same few functions successfully many times.
+    '''
+    cases_dists = [ c.analysis_dist(
+                        ident=ident,
+                        unique_results=unique_results
+                    ).values() for c in cases ]
 
     non_zero_fields = [ a!=0 or b!=0 or c!=0 for a,b,c in
             zip(cases_dists[0],
@@ -89,7 +86,6 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
 
     # Remove fields that are zero across all cases
     cases_dists = [ list(compress(c,non_zero_fields)) for c in cases_dists ]
-
 
     bar_names = [ e.name for e in AnalysisResult ]
     bar_names  = list(compress(bar_names, non_zero_fields))
@@ -112,30 +108,45 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
         axes.bar(bar_names, cases_dists[i],  width,  label=case.name, bottom = bottom)
 
     axes.set_ylabel('')
-    axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis results")
+    axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis "
+            "results " +\
+            ("(without duplicates)" if unique_results else "(with duplicates)" ) )
     axes.legend()
 
     plt.xticks(fontsize=10)
     plt.show()
+
+def plot_change_set(cases: list[Case]):
+    '''
+    '''
+    pass
+
+OPTIONS = {
+    'WRITE_MD': True,
+    'PLOT': True,
+    'LIST_ANALYZED': False,
+    'RESULTS_DIR': "results",
+    'UNIQUE_RESULTS': False
+}
 
 if __name__ == '__main__':
     CONFIG.RESULTS_DIR = OPTIONS['RESULTS_DIR']
 
     onig = Case.new(name="libonig", total_functions=1186)
     onig.load_change_sets()
-    onig.info()
+    onig.info(OPTIONS['UNIQUE_RESULTS'])
     expat = Case.new(name="libexpat", total_functions=645)
     expat.load_change_sets()
-    expat.info()
+    expat.info(OPTIONS['UNIQUE_RESULTS'])
     usb = Case.new(name="libusb", total_functions=1346)
     usb.load_change_sets()
-    usb.info()
+    usb.info(OPTIONS['UNIQUE_RESULTS'])
 
     cases = [onig,expat,usb]
 
     if OPTIONS['PLOT']:
-        plot_analysis_dists(cases,ident=True)
-        plot_analysis_dists(cases,ident=False)
+        plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
+        plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
     if OPTIONS['WRITE_MD']:
         write_md(cases)
     if OPTIONS['LIST_ANALYZED']:
