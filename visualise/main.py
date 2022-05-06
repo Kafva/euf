@@ -112,24 +112,42 @@ def plot_analysis_dists(cases:
             ("(without duplicates)" if unique_results else "(with duplicates)" ) )
     axes.legend()
 
-def plot_change_set(cases: list[Case]):
+def plot_reductions(cases: list[Case]):
     '''
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is suitable for this
-
-    One violin per case
     '''
+
     change_set_reductions = [ c.change_set_reductions_per_trial() for c in cases ]
+    trans_set_reductions =  [ c.trans_set_reductions_per_trial() for c in cases ]
+    impact_set_reductions = [ c.impact_set_reductions_per_trial() for c in cases ]
 
-    figure, axes = plt.subplots(nrows=1, ncols=3)
+    fig = plt.figure()
+    subfigs = fig.subfigures(nrows=3, ncols=1)
 
-    axes[0].set_ylabel('Number of reduced changes')
+    def create_row(title,index,array,label):
+        subfigs[index].suptitle(title,fontweight='bold',
+                horizontalalignment='center'
+        )
+        axes = subfigs[index].subplots(nrows=1, ncols=3)
+        axes[0].set_ylabel(f"Items removed from {label} set [#]")
 
-    for i,reductions in enumerate(change_set_reductions):
-        axes[i].violinplot(reductions, showmeans=True, showextrema=True)
-        axes[i].set_title(cases[i].name)
+        for i, ax in enumerate(axes):
+            ax.violinplot(
+                array[i],
+                showmeans=True, showextrema=True
+            )
+            if index==2:
+                ax.set_xlabel(cases[i].name,
+                        fontweight='normal',
+                        fontsize=12,
+                        horizontalalignment='center',
+                )
 
-    figure.suptitle("Change set reduction")
+    create_row("Base change set reduction", 0, change_set_reductions, "change")
+    create_row("Transitive change set reduction", 1, trans_set_reductions,
+            "transitive")
+    create_row("Impact set reduction", 2, impact_set_reductions, "impact")
 
 OPTIONS = {
     'PLOT_WIDTH': 0.35,
@@ -138,26 +156,37 @@ OPTIONS = {
     'WRITE_MD': True,
     'PLOT': True,
     'LIST_ANALYZED': False,
-    'RESULTS_DIR': "results",
     'UNIQUE_RESULTS': False
 }
 
 if __name__ == '__main__':
-    CONFIG.RESULTS_DIR = OPTIONS['RESULTS_DIR']
-
+    CONFIG.RESULTS_DIR = ".results/5"
     onig = Case.new(name="libonig", total_functions=1186)
     onig.load_change_sets()
     onig.load_impact_set()
-    onig.info(OPTIONS['UNIQUE_RESULTS'])
 
     expat = Case.new(name="libexpat", total_functions=645)
     expat.load_change_sets()
     expat.load_impact_set()
-    expat.info(OPTIONS['UNIQUE_RESULTS'])
 
     usb = Case.new(name="libusb", total_functions=1346)
     usb.load_change_sets()
     usb.load_impact_set()
+
+    CONFIG.RESULTS_DIR = ".results/5_impact_only"
+    onig.load_change_sets(without_reduction=True)
+    onig.load_impact_set(without_reduction=True)
+
+    expat.load_change_sets(without_reduction=True)
+    expat.load_impact_set(without_reduction=True)
+
+    usb.load_change_sets(without_reduction=True)
+    usb.load_impact_set(without_reduction=True)
+
+    CONFIG.RESULTS_DIR = ".results/5"
+
+    onig.info(OPTIONS['UNIQUE_RESULTS'])
+    expat.info(OPTIONS['UNIQUE_RESULTS'])
     usb.info(OPTIONS['UNIQUE_RESULTS'])
 
     cases = [onig,expat,usb]
@@ -166,7 +195,7 @@ if __name__ == '__main__':
         #plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
         #plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
 
-        plot_change_set(cases)
+        plot_reductions(cases)
 
         plt.xticks(fontsize=OPTIONS['PLOT_FONT_SIZE'])
         plt.show()

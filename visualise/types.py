@@ -6,7 +6,7 @@ from datetime import datetime
 from src.config import CONFIG
 from src.types import AnalysisResult, \
         DependencyFunctionChange, IdentifierLocation
-from src.util import flatten, print_stage
+from src.util import flatten, print_err, print_info, print_stage
 
 ROUNDING = 4
 
@@ -111,6 +111,11 @@ class Case:
 
     impact_set: dict[str,list[Impacted]] =\
             field(default_factory=dict)
+    impact_set_without_reduction: dict[str,list[Impacted]] =\
+            field(default_factory=dict)
+    trans_change_set_without_reduction: dict[str,list[DependencyFunctionChange]] =\
+        field(default_factory=dict)
+
     base_change_set: dict[str,list[DependencyFunctionChange]] =\
         field(default_factory=dict)
     reduced_change_set: dict[str,list[DependencyFunctionChange]] =\
@@ -195,17 +200,44 @@ class Case:
         print(f"Result distribution {dupes} (full-analysis):")
         pprint(self.sorted_analysis_dist(ident=False,filter_zero=True,unique_results=False))
 
-
-
         change_set_sizes = [ len(v) for _,v in self.base_change_set.items() ]
         average_size = round(mean(change_set_sizes),ROUNDING)
         stdev_size = round(stdev(change_set_sizes),ROUNDING)
         print(f"Average change set size: {average_size} (±{stdev_size})")
 
-
         mean_reduction = round(mean(self.change_set_reductions_per_trial()),ROUNDING)
         stdev_reduction = round(stdev(self.change_set_reductions_per_trial()),ROUNDING)
         print(f"Average change set reduction: {mean_reduction} (±{stdev_reduction})")
+
+    def impact_set_reductions_per_trial(self) -> list[float]:
+        reductions_per_trial = []
+        for d,d_without in zip(self.impact_set,self.impact_set_without_reduction):
+            assert len(self.impact_set_without_reduction[d_without]) >= \
+                    len(self.impact_set[d])
+
+            reductions_per_trial.append(
+                    len(self.impact_set_without_reduction[d_without]) -
+                    len(self.impact_set[d])
+            )
+        return reductions_per_trial
+
+    def trans_set_reductions_per_trial(self) -> list[float]:
+        reductions_per_trial = []
+        for d,d_without in \
+          zip(self.trans_change_set,self.trans_change_set_without_reduction):
+            without_reduction = len(self.trans_change_set_without_reduction[d_without])
+            with_reduction = len(self.trans_change_set[d])
+
+            if without_reduction < with_reduction:
+                print_err(f"Outlier: {without_reduction} -> {with_reduction}: "
+                          f"{d_without}/trans_change_set.csv {d}/trans_change_set.csv")
+            else:
+                reductions_per_trial.append(
+                        len(self.trans_change_set_without_reduction[d_without]) -
+                        len(self.trans_change_set[d])
+                )
+        print_info(f"Transitive reduction: valid data points: {len(reductions_per_trial)}")
+        return reductions_per_trial
 
     def change_set_reductions_per_trial(self) -> list[float]:
         '''
@@ -214,6 +246,8 @@ class Case:
         '''
         reductions_per_trial = []
         for dirpath in self.base_change_set:
+            assert len(self.base_change_set[dirpath]) >= \
+                    len(self.reduced_change_set[dirpath])
             reductions_per_trial.append(
                     len(self.base_change_set[dirpath]) -
                     len(self.reduced_change_set[dirpath])
@@ -337,33 +371,44 @@ class Case:
             with open(f"{dirpath}/{filename}",
               mode = 'r', encoding='utf8') as f:
                 for line in f.readlines()[1:]:
-                    change_set[dirpath].append( DependencyFunctionChange.\
+                    change_set[dirpath].append(DependencyFunctionChange.\
                             new_from_change_set_csv(line.split(";"))
                     )
 
-    def load_change_sets(self):
+    def load_change_sets(self,without_reduction:bool=False):
         for item in os.listdir(CONFIG.RESULTS_DIR):
             dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            self.base_change_set[dirpath] = []
-            self.reduced_change_set[dirpath] = []
-            self.trans_change_set[dirpath] = []
+            if without_reduction:
+                self.trans_change_set_without_reduction[dirpath] = []
+            else:
+                self.base_change_set[dirpath] = []
+                self.reduced_change_set[dirpath] = []
+                self.trans_change_set[dirpath] = []
 
             if os.path.isdir(dirpath) and item.startswith(self.name):
-                self.load_change_set(dirpath, "change_set.csv",
-                        self.base_change_set)
-                self.load_change_set(dirpath, "reduced_set.csv",
-                        self.reduced_change_set)
-                self.load_change_set(dirpath, "trans_change_set.csv",
-                        self.trans_change_set)
+                if without_reduction:
+                    self.load_change_set(dirpath, "trans_change_set.csv",
+                            self.trans_change_set_without_reduction)
+                else:
+                    self.load_change_set(dirpath, "change_set.csv",
+                            self.base_change_set)
+                    self.load_change_set(dirpath, "reduced_set.csv",
+                            self.reduced_change_set)
+                    self.load_change_set(dirpath, "trans_change_set.csv",
+                            self.trans_change_set)
+
 
         # The number of changed functions in the base set and the functions
         # from cbmc analysis should be equal
         assert len(self.base_change_set) == len(self.cbmc_results_dict)
 
-    def load_impact_set(self):
+    def load_impact_set(self,without_reduction:bool=False):
         for item in os.listdir(CONFIG.RESULTS_DIR):
             dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            self.impact_set[dirpath] = []
+            if without_reduction:
+                self.impact_set_without_reduction[dirpath] = []
+            else:
+                self.impact_set[dirpath] = []
 
             if os.path.isdir(dirpath) and item.startswith(self.name):
                 if os.path.isfile(f"{dirpath}/impact_set.csv"):
@@ -371,7 +416,13 @@ class Case:
                       mode = 'r', encoding='utf8') as f:
                         for line in f.readlines()[1:]:
                             csv_values = line.split(";")
-                            self.impact_set[dirpath].append(Impacted(
-                                main_project_fn_name=csv_values[3],
-                                dependecy_fn_name=csv_values[8]
-                            ))
+                            if without_reduction:
+                                self.impact_set_without_reduction[dirpath].append(Impacted(
+                                    main_project_fn_name=csv_values[3],
+                                    dependecy_fn_name=csv_values[8]
+                                ))
+                            else:
+                                self.impact_set[dirpath].append(Impacted(
+                                    main_project_fn_name=csv_values[3],
+                                    dependecy_fn_name=csv_values[8]
+                                ))
