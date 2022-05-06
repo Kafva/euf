@@ -24,14 +24,22 @@
 
   Plots
   ======
-  * How are the Analysis Results distributed?
-      * Plotting the mean for each type of result from each case could be somewhat
-        interesting as well
-  * Reduction in change and impact set (mean,lowest,highest graph)
-  * Table of the SUCCESS and FAILURE analyzed functions
-
+    * Reduction in change and impact set (mean,lowest,highest graph)
+    
+    * It could be useful to show the analysis_dists plot but while only counting 
+    unique results. The current versions gives the impression that expat has
+    very good performance, which in reality stems from the fact that it analyzed
+    the same few functions successfully many times.
+   
 
 '''
+OPTIONS = {
+    'WRITE_MD': True,
+    'PLOT': True,
+    'LIST_ANALYZED': False,
+    'RESULTS_DIR': "results"
+}
+
 import sys
 import matplotlib.pyplot as plt
 from itertools import compress
@@ -43,7 +51,6 @@ sys.path.extend(['..','.'])
 from visualise.types import Case
 from src.config import CONFIG
 from src.types import AnalysisResult
-from src.util import flatten
 
 def write_md(cases: list[Case]):
     ''' Make a MD template for the correctness analysis '''
@@ -112,23 +119,26 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
     plt.show()
 
 if __name__ == '__main__':
-    WRITE_MD = True
-    PLOT = True
-    CONFIG.RESULTS_DIR = ".results/5"
+    CONFIG.RESULTS_DIR = OPTIONS['RESULTS_DIR']
 
     onig = Case.new(name="libonig", total_functions=1186)
+    onig.load_change_sets()
     onig.info()
     expat = Case.new(name="libexpat", total_functions=645)
+    expat.load_change_sets()
     expat.info()
     usb = Case.new(name="libusb", total_functions=1346)
+    usb.load_change_sets()
     usb.info()
 
     cases = [onig,expat,usb]
 
-    if PLOT:
+    if OPTIONS['PLOT']:
         plot_analysis_dists(cases,ident=True)
         plot_analysis_dists(cases,ident=False)
-    if WRITE_MD:
+    if OPTIONS['WRITE_MD']:
         write_md(cases)
-
-
+    if OPTIONS['LIST_ANALYZED']:
+        print("\n=============================\n")
+        for case in cases:
+            case.list_fully_analyzed_functions()

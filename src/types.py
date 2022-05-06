@@ -99,6 +99,15 @@ class IdentifierLocation:
         return obj
 
     @classmethod
+    def new_from_csv(cls, items:list[str]):
+        return cls(
+            _filepath=items[0],
+            line=int(items[1]),
+            column=int(items[2]),
+            name=items[3]
+        )
+
+    @classmethod
     def empty(cls):
         return cls(_filepath = "", line = -1, column = -1, name = "")
 
@@ -457,6 +466,19 @@ class DependencyFunctionChange:
             new = \
             DependencyFunction.new_from_cursor(cursor_new,filepath=filepath_new),
             invokes_changed_functions = set()
+        )
+
+    @classmethod
+    def new_from_change_set_csv(cls, items:list[str]):
+        assert len(items) == 9
+        old = DependencyFunction.empty()
+        old.ident.location = IdentifierLocation.new_from_csv(items[1:5])
+        new = DependencyFunction.empty()
+        new.ident.location = IdentifierLocation.new_from_csv(items[5:9])
+        return cls(
+                direct_change = items[0] == "True",
+                old = old, new = new,
+                invokes_changed_functions = set(),
         )
 
     @classmethod

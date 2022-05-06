@@ -1,9 +1,11 @@
 import os,re
+from statistics import stdev,mean
 from pprint import pprint
 from dataclasses import dataclass, field
 from datetime import datetime
 from src.config import CONFIG
-from src.types import AnalysisResult, IdentifierLocation
+from src.types import AnalysisResult, \
+        DependencyFunctionChange, IdentifierLocation
 from src.util import flatten, print_stage
 
 @dataclass(init=True)
@@ -100,8 +102,16 @@ class Case:
     def cbmc_results(self) -> list[CbmcResult]:
         return flatten([ r for r in self.cbmc_results_dict.values() ])
 
+
+    base_change_set: dict[str,list[DependencyFunctionChange]] =\
+        field(default_factory=dict)
+    reduced_change_set: dict[str,list[DependencyFunctionChange]] =\
+        field(default_factory=dict)
+    trans_change_set: dict[str,list[DependencyFunctionChange]] =\
+        field(default_factory=dict)
+
     @classmethod
-    def load_from_csv_files(cls,name:str) -> \
+    def load_cbmc_result(cls,name:str) -> \
      tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
         function_results = {}
         cbmc_results = {}
@@ -141,10 +151,38 @@ class Case:
 
         return function_results, cbmc_results
 
+    def load_change_set(self,dirpath:str,filename:str,
+     change_set:dict[str,list[DependencyFunctionChange]]):
+        if os.path.isfile(f"{dirpath}/{filename}"):
+            with open(f"{dirpath}/{filename}",
+              mode = 'r', encoding='utf8') as f:
+                for line in f.readlines()[1:]:
+                    change_set[dirpath].append( DependencyFunctionChange.\
+                            new_from_change_set_csv(line.split(";"))
+                    )
+
+    def load_change_sets(self):
+        for item in os.listdir(CONFIG.RESULTS_DIR):
+            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
+            self.base_change_set[dirpath] = []
+            self.reduced_change_set[dirpath] = []
+            self.trans_change_set[dirpath] = []
+
+            if os.path.isdir(dirpath) and item.startswith(self.name):
+                self.load_change_set(dirpath, "change_set.csv",
+                        self.base_change_set)
+                self.load_change_set(dirpath, "reduced_set.csv",
+                        self.reduced_change_set)
+                self.load_change_set(dirpath, "trans_change_set.csv",
+                        self.trans_change_set)
+
+        # The number of changed functions in the base set and the functions
+        # from cbmc analysis should be equal
+        assert len(self.base_change_set) == len(self.cbmc_results_dict)
+
     @classmethod
     def new(cls,name:str,total_functions:int):
-        function_results_dict, cbmc_results_dict = cls.load_from_csv_files(name)
-
+        function_results_dict, cbmc_results_dict = cls.load_cbmc_result(name)
         return cls(name=name,
                 total_functions=total_functions,
                 cbmc_results_dict=cbmc_results_dict,
@@ -168,19 +206,47 @@ class Case:
         print("Result distribution (full-analysis):")
         pprint(self.sorted_analysis_dist(ident=False,filter_zero=True))
 
+        mean_reduction,stdev_reduction = self.change_set_reduction_stats()
+        print(f"Average change set reduction: {mean_reduction} (±{stdev_reduction})")
 
+    def change_set_reduction_stats(self) -> tuple[float,float]:
+        '''
+        Go through each pair of base and reduced change sets and record the
+        reduction for each one. Return the mean number of functions that are
+        reduced for each trial (along with the standard deviation) 
+            
+        '''
+        reductions_per_trial = []
+        for dirpath in self.base_change_set:
+            reductions_per_trial.append(
+                    len(self.base_change_set[dirpath]) -
+                    len(self.reduced_change_set[dirpath])
+            )
+
+        return round(mean(reductions_per_trial),4), \
+                round(stdev(reductions_per_trial),4)
+
+    def list_fully_analyzed_functions(self):
+        '''
+        Dump a list of all functions that passed the identity analysis along with
+        a list of the results received for them during the main analysis
+        '''
+        print_stage(self.name)
+        for function_result in self.function_results():
+            if len(function_result.results)>0:
+                print(function_result.pretty())
 
     def nr_of_changed_functions(self) -> int:
         ''' The total number of analyzed functions corresponds to the number of
         functions that were observed as changed in at least one case,
-        every changed function will generate a CBMC entry even if 
+        every changed function will generate a CBMC entry even if
         it cannot be analyzed in `valid_preconds()` '''
         return len(self.function_results())
 
     def passed_identity_cnt(self) -> int:
         '''
         Out of the functions that were analyzed, how many passed
-        the identity comparision 
+        the identity comparision
 
         Note: We know that the total number of full analyses that were
         performed will be equal to the number of successful ID comparisons
@@ -204,10 +270,10 @@ class Case:
      combine_unwinds:bool=False,
      ) -> dict[AnalysisResult,float]:
         ''' Returns a dict of percentages for each AnalysisResult
-        across every function analysis (during either the full or ID stage). 
+        across every function analysis (during either the full or ID stage).
         The list starts with the first entry in the AnalysisResult enum '''
         if ident:
-            # Pre-analysis was performed for every function 
+            # Pre-analysis was performed for every function
             # in function_results
             analysis_steps_performed = sum(map(lambda f: len(f.results_id),
                 self.function_results()))
@@ -240,7 +306,7 @@ class Case:
         analysis_dict = { AnalysisResult[tpl[0]]: tpl[1]/analysis_steps_performed
                 for tpl in result_cnts.items() }
 
-        assert sum([ x for x in analysis_dict.values() ]) == 1
+        assert (sum([ x for x in analysis_dict.values() ]) - 1) < 1**-64
         return analysis_dict
 
 
