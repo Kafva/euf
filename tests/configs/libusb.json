@@ -14,6 +14,9 @@
     ]
   },
   "EXTRA_COMPILE_FLAGS": [
+    "-DHAVE_OS_TIMER",
+    "-DHAVE_EVENTFD",
+    "-DHAVE_LIBUDEV",
     "-DHAVE_TIMERFD",
     "-D_inline=inline",
     "-D__GNUC__",

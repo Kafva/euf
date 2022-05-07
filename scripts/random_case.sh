@@ -2,6 +2,7 @@
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <libonig|libexpat|libusb>"
 helpStr=""
+VERBOSITY=${VERBOSITY:=1}
 TIMEOUT=${TIMEOUT:=60}
 BATCH=${BATCH:=false}
 CMTS=/tmp/commits
@@ -92,7 +93,8 @@ cat << EOF > /tmp/random.json
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
   "QUIET_BUILD": true,
-  "CBMC_TIMEOUT": $TIMEOUT
+  "CBMC_TIMEOUT": $TIMEOUT,
+  "VERBOSITY": $VERBOSITY
 }
 EOF
 
@@ -102,7 +104,7 @@ mkdir -p .rand
 
 OUTNAME=.rand/${LIBNAME}_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
 
-# Save the config if we want to run it agian
+# Save the config if we want to run it again
 cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > $OUTNAME
 
 if ! $BATCH; then
@@ -117,4 +119,6 @@ fi
 ./euf.py --config \
   <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json)
 
+# Save the path to the configuration to a static location
+printf "$OUTNAME" > /tmp/path_to_prev_random_case
 echo "=> $OUTNAME"

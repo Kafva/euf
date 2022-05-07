@@ -36,7 +36,7 @@ from src.harness import valid_preconds, create_harness, \
         get_include_paths_for_tu, run_harness, add_includes_from_tu
 from src.util import ccdb_dir, flatten, flatten_dict, \
         git_dir, git_relative_path, has_allowed_suffix, \
-        mkdir_p, print_stage, remove_files_in, rm_f, time_end, time_start, \
+        mkdir_p, print_stage, rm_f, time_end, time_start, \
         wait_on_cr, print_err, set_libclang
 from src.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_non_static, \
@@ -411,7 +411,7 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
 
     if CONFIG.VERBOSITY >= 4 or len(call_sites) == 0:
         print_call_sites(call_sites)
-    else:
+    elif CONFIG.VERBOSITY >= 0:
         if CONFIG.ORDER_BY_CALL_SITE:
             pretty_print_impact_by_call_site(call_sites)
         else:
@@ -534,8 +534,12 @@ if __name__ == '__main__':
         print_err("Missing obligatory option(s) in configuration file")
         sys.exit(ERR_EXIT)
 
+    start = datetime.now()
 
     run()
+
+    if CONFIG.VERBOSITY >= 1:
+        time_end("Total runtime", start)
 
     sys.exit(0)
 

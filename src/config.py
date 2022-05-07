@@ -42,7 +42,8 @@ class Config:
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
 
     # Using 0 will suppress all output except 
-    # the impact summary and certain errors
+    # the impact summary and certain errors, 
+    # -1 and lower will suppress the impact summary
     VERBOSITY: int = 0
 
     # Impact set output format

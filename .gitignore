@@ -1,4 +1,5 @@
 ._states
+results_impact
 .con
 correctness.md
 .docker_results

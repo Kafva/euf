@@ -11,6 +11,7 @@
     "expat/xmlwf/win32.*"
   ],
   "EXTRA_COMPILE_FLAGS": [
+    "-DHAVE_ARC4RANDOM_BUF",
     "-Wno-macro-redefined"
   ],
   "CUSTOM_HEADERS": {

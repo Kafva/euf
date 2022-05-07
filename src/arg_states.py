@@ -134,8 +134,8 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
                 output += "====> stderr <====\n" + stderr_txt
 
         if p.returncode != 0:
-            print_err(f"State space analysis failed: "
-                      f"{p.returncode}\n({outdir},{symbol_name})"
+            print_err(f"State space analysis failed: {p.returncode}"
+                    f"\n{CONFIG.INDENT}{outdir}: \033[4m{symbol_name}\033[0m"
             )
             if CONFIG.VERBOSITY >= 2 and len(output.splitlines()) > 0 and quiet:
                 print(output,flush=True)
@@ -225,7 +225,6 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     return arg_states
 
 def state_space_analysis(symbols: list[str], source_dir: str, target_name:str):
-
     start = time_start(f"Inspecting call sites ({target_name})...")
 
     # Remove any previously recorded states

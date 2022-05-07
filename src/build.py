@@ -125,7 +125,8 @@ def autogen_compile_db(source_dir: str) -> bool:
             if version <= 2:
                 del cmd[1]
 
-            print("!> " + ' '.join(cmd))
+            if CONFIG.VERBOSITY >= 0:
+                print("!> " + ' '.join(cmd))
             (subprocess.run(cmd, cwd = source_dir, stdout = out, stderr = out
             )).check_returncode()
         except subprocess.CalledProcessError:
@@ -138,7 +139,8 @@ def autogen_compile_db(source_dir: str) -> bool:
 def remove_dependency_entries_from_project_db(ccdb_json: list[dict],
  ccdb_path:str) -> list[dict]:
     dep_name = os.path.basename(CONFIG.DEPENDENCY_DIR)
-    print_info(f"Removing entries from '{dep_name}' in {ccdb_path}")
+    if CONFIG.VERBOSITY >= 1:
+        print_info(f"Removing entries from '{dep_name}' in {ccdb_path}")
 
     filtered_db = []
     for tu in ccdb_json:

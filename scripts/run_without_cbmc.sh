@@ -1,46 +1,25 @@
 #!/usr/bin/env bash
-die(){ echo -e "$1" >&2 ; exit 1; }
-
-TARGET=.results/5
-
-rerun_trial(){
-  local libname=${1##lib}
-  local conf=$(mktemp --suffix .json)
-  cat << EOF > /tmp/without_cbmc.json
+conf=/tmp/without_cbmc_$RANDOM.json
+tmp_conf=$(mktemp --suffix .json)
+cat << EOF > $tmp_conf
 {
-  "ENABLE_RESULT_LOG": true,
-  "SKIP_IMPACT": false,
-  "VERBOSITY": 1,
-  "COMMIT_OLD": "$2",
-  "COMMIT_NEW": "$3",
-  "FULL": false
+  "FULL": false,
+  "RESULTS_DIR": "$PWD/results_impact"
 }
 EOF
 
-  jq -rM -s '.[0] * .[1]' examples/base_${libname%%-1.0}.json /tmp/without_cbmc.json > $conf
-  ./euf.py -c $conf
-}
+libname=$(basename $1|sed -nE 's/^([^_]*)_.*$/\1/p')
+old_commit=$(basename $1|sed -nE 's/.*_([a-z0-9]{8})_.*/\1/p')
+new_commit=$(basename $1|sed -nE 's/.*_([a-z0-9]{8})\.json$/\1/p')
 
-run_trials(){
-  local libname=${1%%-1.0}
+grep -q "libusb" <<< "$libname" && libname+="-1.0"
 
-  for trial in $TARGET/${1}_*; do
-    local old_commit=$(basename $trial|sed -nE 's/.*_([a-z0-9]{4})_.*/\1/p')
-    local new_commit=$(basename $trial|sed -nE 's/.*_([a-z0-9]{4})$/\1/p')
+result_subdir="${libname}_${old_commit::4}_${new_commit::4}"
 
-    # Fetch longer names...
-    local conf=$(find .rand -name "${libname}_$old_commit*_$new_commit*" | head -n1)
-    old_commit=$(basename $conf|sed -nE 's/.*_([a-z0-9]{8})_.*/\1/p')
-    new_commit=$(basename $conf|sed -nE 's/.*_([a-z0-9]{8})\.json$/\1/p')
+jq -rM -s '.[0] * .[1]' $1 $tmp_conf > $conf
+./euf.py -c $conf
 
-    rerun_trial $1 $old_commit $new_commit
-  done
-}
-
-# Iterate over each case in the given directory and run analysis without CBMC on
-# the same commits
-run_trials libexpat
-run_trials libonig
-run_trials libusb-1.0
-
-
+# Sanity check results
+diff -q "results/$result_subdir/change_set.csv" \
+        "results_impact/$result_subdir/change_set.csv" ||
+        printf "\033[31m==>\033[0m INCONSISTENT! \033[31m<==\033[0m\n"

@@ -10,6 +10,10 @@
     "expat/.*tab.h",
     "expat/xmlwf/win32.*"
   ],
+  "EXTRA_COMPILE_FLAGS": [
+    "-DHAVE_ARC4RANDOM_BUF",
+    "-Wno-macro-redefined"
+  ],
   "CUSTOM_HEADERS": {
     "xmlparse.c": [
       "~/euf/examples/include/xmlparse.h"
