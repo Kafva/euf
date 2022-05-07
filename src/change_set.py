@@ -101,7 +101,7 @@ def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) \
     the cursors have a different number of nodes at any level or if the
     typing of their arguments differ
 
-    For higher verbosity, we return the source location (in the old version) 
+    For higher verbosity, we return the source location (in the old version)
     where the versions diverged. This is useful for reasoning about FPs since
     functions which do not differ syntaxwise sometimes differ in their AST, e.g.
     when parameter types to functions change
@@ -133,11 +133,11 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
     consider any divergence (within a function) as a potential change
 
     1. Save the cursors for each top-level function in both versions
-    2. Walk both cursors in parallel for each function pair and exit 
+    2. Walk both cursors in parallel for each function pair and exit
     as soon as any divergence occurs
 
     The from_source() method also accepts content from arbitrary text streams,
-    but this produce an incomplete AST, we therefore need to read 
+    but this produce an incomplete AST, we therefore need to read
     both versions directly from disk
     '''
     try:
@@ -231,20 +231,20 @@ def get_transative_changes_from_file(source_file: SourceFile,
  changed_functions: list[DependencyFunctionChange]) \
  -> dict[DependencyFunction,list[str]]:
     '''
-    Go through the complete AST of the provided (new) file and save 
+    Go through the complete AST of the provided (new) file and save
     any transitive calls.
 
-    If a changed function is called from the old version, 
-    and the call is removed in the new version, the function in 
-    question will have had a direct change and will already be in 
+    If a changed function is called from the old version,
+    and the call is removed in the new version, the function in
+    question will have had a direct change and will already be in
     the change set.
 
-    If a changed function is called from the new version but not 
-    the old version, the function will similarly already be part of the 
-    change set. In these instances the callee will be considered affected 
+    If a changed function is called from the new version but not
+    the old version, the function will similarly already be part of the
+    change set. In these instances the callee will be considered affected
     by both a direct AND an indirect change.
 
-    By enumerating changed function calls in the new version, we catch 
+    By enumerating changed function calls in the new version, we catch
     all indirect changes where both the old and new version call a function +
     instances were only the new version makes a call.
     '''
@@ -271,7 +271,7 @@ def find_transative_changes_in_tu(cursor: cindex.Cursor,
  current_function: DependencyFunction) -> None:
     '''
     Look for calls to functions in the change-set and record which
-    enclosing functions perform these calls in the 
+    enclosing functions perform these calls in the
     transitive_function_calls dict
     '''
     change_matching_current = next(filter(lambda fn: \
@@ -337,12 +337,12 @@ def add_rename_changes_based_on_blame(
             print_err("Git blame correlation failed")
             return
 
-        # Create a list '[ (file_origin, count) ... ]' that describes how many 
+        # Create a list '[ (file_origin, count) ... ]' that describes how many
         # lines originates from each file in the blame output
         file_origins = get_column_counts(blame_output, 1) # type: ignore
 
         # If the file origin dict only contains two entries and the distribution
-        # is between 50/50 and RENAME_RATIO/(1-RENAME_RATIO) 
+        # is between 50/50 and RENAME_RATIO/(1-RENAME_RATIO)
         # we assume that the file has been renamed
         if len(file_origins) == 2:
 

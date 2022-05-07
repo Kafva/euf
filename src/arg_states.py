@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 '''
 We will run the plugin once PER changed name PER source directory
-If we try to run the plugin once per changed named the include paths become 
-inconsistent between TUs. Running the plugin for all names (and once per file) 
+If we try to run the plugin once per changed named the include paths become
+inconsistent between TUs. Running the plugin for all names (and once per file)
 is a bad idea as seen with the uber hack macros in clang-plugins.
 
 1. Split up the dependency dir into subdirs (including "." if applicable)
@@ -64,15 +64,15 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     subdir: str, subdir_tu: SubDirTU,
     quiet:bool = True, setx:bool=False) -> tuple[str,bool]:
     '''
-    Some of the ccdb arguments are not compatible with the -cc1 
+    Some of the ccdb arguments are not compatible with the -cc1
     frontend and need to be filtered out.
 
-    Different output directories can be provided to allow for 
+    Different output directories can be provided to allow for
     non-overlapping filenames when analysing old/new versions of a dependency
     '''
     blacklist = r"|".join(CONFIG.ARG_STATES_COMPILE_FLAG_BLACKLIST)
 
-    # Since the ccdb_args for SubDirTU objects are not read from 
+    # Since the ccdb_args for SubDirTU objects are not read from
     # SourceFile objects, we need to manually include any EXTRA_COMPILE_FLAGS
     #
     # Note the use of a list() and not a set(), it is preferable
@@ -102,7 +102,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     # Use compile dir relative names to limit output size
     c_files = list(map(lambda f: f.removeprefix(subdir+"/"), c_files))
 
-    # We assume that the isystem-flags are the same 
+    # We assume that the isystem-flags are the same
     # for all source files in a directory
     isystem_flags = SourceFile.get_isystem_flags(c_files[0], subdir)
 
@@ -158,8 +158,8 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
 def join_arg_states_result(subdir_names: list[str],log_dir:str="") \
  -> dict[str,FunctionState]:
     '''
-    The argStates clang plugin will produce one output file per TU for each 
-    CHANGED_FUNCTION (provided that the function in question was actually 
+    The argStates clang plugin will produce one output file per TU for each
+    CHANGED_FUNCTION (provided that the function in question was actually
     called in the TU) on the format
     <function_name>_<filename>.json:
 
@@ -170,12 +170,12 @@ def join_arg_states_result(subdir_names: list[str],log_dir:str="") \
           }
         }
 
-    If the same function is called from several files (in different subdirs), 
-    we need to combine these json objects into one. NOTE that an empty array 
-    means that the parameter was determined to be nondet(). The combined json 
+    If the same function is called from several files (in different subdirs),
+    we need to combine these json objects into one. NOTE that an empty array
+    means that the parameter was determined to be nondet(). The combined json
     will thus only have the union of fields if neither one is empty
 
-    We limit the analysis to explicitly specified subdirectories to avoid 
+    We limit the analysis to explicitly specified subdirectories to avoid
     issues when analysing multiple projects
     '''
 
@@ -226,7 +226,7 @@ def join_arg_states_result(subdir_names: list[str],log_dir:str="") \
                     print(param.states)
 
     if CONFIG.ENABLE_RESULT_LOG and log_dir != "":
-        # Log the joint JSON objects where at least one parameter was 
+        # Log the joint JSON objects where at least one parameter was
         # identified as constant to the results directory
         with open(f"{log_dir}/states.json", mode='w', encoding='utf8') as f:
 
@@ -273,7 +273,7 @@ def state_space_analysis(symbols: list[str], source_dir: str, target_name:str):
             # If the ArgStates plugin fails to complete its analysis and crashes for a
             # symbol we need to exclude any assumptions about this symbol. E.g. if
             # analysis for the symbol 'foo' finds only constant values in one SubDirTU and
-            # crashes for all others, we need to defensively assume that it could be 
+            # crashes for all others, we need to defensively assume that it could be
             # non-det in one of the TUs we failed to analyze.
             failed_symbol_analysis = set()
             for tpl in return_values:

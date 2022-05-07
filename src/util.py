@@ -9,9 +9,9 @@ from src.types import AnalysisResult
 
 def ccdb_dir(new: bool) -> str:
     '''
-    Retrieve the path to the 'project root' of the old or new version of the 
-    dependency _WITHOUT_ a trailing slash. 
-    The project root is defined as the directory with compile_commands.json 
+    Retrieve the path to the 'project root' of the old or new version of the
+    dependency _WITHOUT_ a trailing slash.
+    The project root is defined as the directory with compile_commands.json
     and is usually the same as the .git directory.
     '''
     source_dir = CONFIG.DEP_SOURCE_ROOT.removeprefix(CONFIG.DEPENDENCY_DIR) \
@@ -120,7 +120,7 @@ def flatten(list_of_lists: list[list]) -> list:
 
 def get_column_counts(blob: str, column_index:int, sep:str = "") \
  -> list[tuple[str,int]]:
-    ''' 
+    '''
     Return the number of occurrences of each string in a newline separated file
     for a given separator and column index (zero based). Empty on failure
     '''

@@ -18,7 +18,7 @@ def dump_children(cursor: cindex.Cursor, indent: int) -> None:
 
 def get_top_level_decls(cursor: cindex.Cursor, compile_dir: str ) \
 -> list[Identifier]:
-    ''' 
+    '''
     Extract the names of all top level declarations that should be renamed:
         - Non static global variables
         - All functions (we want to be able to verify static functions)
@@ -145,7 +145,7 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
 def handle_struct_conflicts(structs: set[Cstruct],
  idents: list[Identifier]) -> tuple[list[Identifier],set[str]]:
     '''
-    Remove all functions which are statically defined 
+    Remove all functions which are statically defined
     and have a name that overlaps with a struct field from the idents set.
     We keep non-static functions with an overlap in the set and show
     a warning regarding this
@@ -194,9 +194,9 @@ def read_in_names(rename_txt: str, names: set[str]):
             names.add(line.rstrip("\n"))
 
 def write_rename_files(global_identifiers: list[Identifier]):
-    ''' 
-    Dump a list of global_name;line;col names to disk 
-    along with a newline separated file containing just the global names 
+    '''
+    Dump a list of global_name;line;col names to disk
+    along with a newline separated file containing just the global names
     '''
     ident_locations = { g.location for g in global_identifiers }
 

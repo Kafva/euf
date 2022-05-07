@@ -42,7 +42,6 @@
   "EXCLUDE_REGEXES": [
     "sample/.*",
     "test/.*",
-    "src/regparse.c"
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [

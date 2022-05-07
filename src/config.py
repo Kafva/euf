@@ -41,8 +41,8 @@ class Config:
     # of regular expressions
     EXCLUDE_REGEXES: list[str] = field(default_factory=list)
 
-    # Using 0 will suppress all output except 
-    # the impact summary and certain errors, 
+    # Using 0 will suppress all output except
+    # the impact summary and certain errors,
     # -1 and lower will suppress the impact summary
     VERBOSITY: int = 0
 
@@ -90,11 +90,11 @@ class Config:
         "/usr/lib", "/usr/local/include", "/usr/include"
     ])
 
-    # A list of strings that should be explicitly given a 
+    # A list of strings that should be explicitly given a
     # suffix in the old version of the library
     #
     # This can be useful in scenarios were a struct has
-    # renamed fileds, causing conflicts unless the struct is split 
+    # renamed fileds, causing conflicts unless the struct is split
     # into two different versions
     #
     # Renaming types can also have other side effects that cause
@@ -102,7 +102,7 @@ class Config:
     EXPLICIT_RENAME: list[str] = field(default_factory=list)
 
     # Some projects will declare types inside source files rather
-    # than in header files (libexpat and libonig). 
+    # than in header files (libexpat and libonig).
     # If these types are needed as arguments to a
     # function in a driver we need some way of including them
     # The current solution is to provide a custom header
@@ -117,7 +117,7 @@ class Config:
     # a header entry can be provided in this array on the form
     #
     #   src_file: [
-    #      "exact_include_directive_without_abs_path" 
+    #      "exact_include_directive_without_abs_path"
     #   ]
     #
     # EUF will differentiate between the two cases based on if
@@ -132,7 +132,7 @@ class Config:
     # - - - Building - - -
     # Environment variables to set when running `./configure`
     # It is not necessary to pass `-fvisibility=default` here to access
-    # all functions, the CBMC fork is configured to make 
+    # all functions, the CBMC fork is configured to make
     # changed static functions accessible outside of their TU automatically
     BUILD_ENV: dict[str,str] = field(default_factory=dict)
 
@@ -209,7 +209,7 @@ class Config:
     # extra options
     EXTRA_COMPILE_FLAGS = []
 
-    # Compilation flag patterns to exclude from invocations of 
+    # Compilation flag patterns to exclude from invocations of
     # the ArgStates clang-plugin, NOTE this can remove entries defined
     # in EXTRA_COMPILE_FLAGS.
     ARG_STATES_COMPILE_FLAG_BLACKLIST = [
@@ -265,7 +265,7 @@ class Config:
 
     def get_script_env(self) -> dict:
         '''
-        All custom shell scripts invoked by EUF will 
+        All custom shell scripts invoked by EUF will
         have (at least) these values available
         '''
         script_env = os.environ.copy() # This is neccessary for clang

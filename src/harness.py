@@ -15,8 +15,12 @@ def valid_preconds(change: DependencyFunctionChange,
   skip_renaming: set[str],
   logfile: str= "", quiet:bool = False) -> bool:
     '''
-    If a change passes this function, it should be possible 
+    If a change passes this function, it should be possible
     to create a harness for it.
+
+    For the log to contain useful information from a CIA perspective, the order
+    of the checks is relevant. E.g. we want to be notified if the argument count
+    differs regardless of if a function has a void return value
     '''
     func_name = change.old.ident.location.name
     result = AnalysisResult.SUCCESS
@@ -24,57 +28,9 @@ def valid_preconds(change: DependencyFunctionChange,
     change_str = fmt_change(change)
     old_loc_str = fmt_location(change.old.ident.location)
 
-    # The function has not been given an '_old' suffix, preventing analysis
-    if func_name in skip_renaming:
-        fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
-            change_str
-        result = AnalysisResult.NOT_RENAMED
-    # Compilation instructions for the TU the 
-    # function is defined in do not exist
-    elif not change.old.ident.location.filepath in include_paths or \
-       len(include_paths[change.old.ident.location.filepath]) == 0:
-        path = change.old.ident.location.filepath
-        fail_msg = \
-            f"Skipping {func_name}() due to missing compilation "\
-            f"instructions for {path}"
-        result = AnalysisResult.MISSING_COMPILE
-    # Variadic function
-    elif change.old.ident.is_varidiac_function:
-        fail_msg = f"Variadic functions are not supported "\
-                   f"for verification: {old_loc_str}"
-        result = AnalysisResult.VARIADIC
-
-    # The number-of arguments and their types have not changed
-    elif (old_cnt := len(change.old.arguments)) != \
-        (new_cnt := len(change.new.arguments)):
-        fail_msg = f"Differing number of arguments: a/{old_cnt} -> "\
-                   f"b/{new_cnt} in {change_str}"
-        result = AnalysisResult.DIFF_ARG_CNT
-
-    # The return-type has not changed
-    elif change.old.ident != change.new.ident:
-        fail_msg = \
-            f"Different return type: a/{change.old.ident.type_spelling} " \
-            f"-> b/{change.old.ident.type_spelling} in {change_str}"
-        result = AnalysisResult.DIFF_RET
-
-    # Function does not have a void return value
-    elif change.old.ident.type_spelling == "void":
-        fail_msg = f"Cannot verify function with a 'void' "\
-                   f"return value: {old_loc_str}"
-        result = AnalysisResult.VOID_RET
-
-    # Function has at least one parameter
-    elif len(change.old.arguments) == 0:
-        fail_msg = f"Cannot verify a function with zero arguments: "\
-                   f"{old_loc_str}"
-        result = AnalysisResult.NO_ARGS
-    elif any(str(a).find("[") != -1 for a in change.old.arguments):
-        fail_msg = f"Verifying functions with array '[]' parameter(s) is "\
-                   f"not supported: {old_loc_str}"
-        result = AnalysisResult.ARRAY_ARG
-    else:
-        # The parameter types have not changed
+    def check_param_types(result: AnalysisResult,
+      change:DependencyFunctionChange) -> tuple[AnalysisResult,str]:
+        fail_msg = ""
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
                 fail_msg = f"Different argument types: a/{a1} -> b/{a2} "\
@@ -83,7 +39,7 @@ def valid_preconds(change: DependencyFunctionChange,
                 break
 
         if result == AnalysisResult.SUCCESS:
-            # We cannot auto-generate harnesses for 
+            # We cannot auto-generate harnesses for
             # functions that require void pointers
             for arg in change.old.arguments:
                 if arg.type_spelling == "void*":
@@ -92,6 +48,61 @@ def valid_preconds(change: DependencyFunctionChange,
                         f"argument: {old_loc_str}"
                     result = AnalysisResult.VOID_ARG
                     break
+
+        return result, fail_msg
+
+    # 1. Compilation instructions for the TU the
+    # function is defined in do not exist
+    if not change.old.ident.location.filepath in include_paths or \
+       len(include_paths[change.old.ident.location.filepath]) == 0:
+        path = change.old.ident.location.filepath
+        fail_msg = \
+            f"Skipping {func_name}() due to missing compilation "\
+            f"instructions for {path}"
+        result = AnalysisResult.MISSING_COMPILE
+    # 2. The number-of arguments or their types have changed
+    elif (old_cnt := len(change.old.arguments)) != \
+        (new_cnt := len(change.new.arguments)):
+        fail_msg = f"Differing number of arguments: a/{old_cnt} -> "\
+                   f"b/{new_cnt} in {change_str}"
+        result = AnalysisResult.DIFF_ARG_CNT
+    # 3. The return-type has changed
+    elif change.old.ident != change.new.ident:
+        fail_msg = \
+            f"Different return type: a/{change.old.ident.type_spelling} " \
+            f"-> b/{change.old.ident.type_spelling} in {change_str}"
+        result = AnalysisResult.DIFF_RET
+
+    # 4. Parameter types have changed (or a void parameter exists)
+    elif (tpl := check_param_types(result,change))[0] != AnalysisResult.SUCCESS:
+          result = tpl[0]
+          fail_msg = tpl[1]
+
+    # 5. The function has not been given an '_old' suffix, preventing analysis
+    elif func_name in skip_renaming:
+        fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
+            change_str
+        result = AnalysisResult.NOT_RENAMED
+    # 6. Function has a void return value
+    elif change.old.ident.type_spelling == "void":
+        fail_msg = f"Cannot verify function with a 'void' "\
+                   f"return value: {old_loc_str}"
+        result = AnalysisResult.VOID_RET
+    # 7. Function has zero parameters
+    elif len(change.old.arguments) == 0:
+        fail_msg = f"Cannot verify a function with zero arguments: "\
+                   f"{old_loc_str}"
+        result = AnalysisResult.NO_ARGS
+    # 8. Array argument(s)
+    elif any(str(a).find("[") != -1 for a in change.old.arguments):
+        fail_msg = f"Verifying functions with array '[]' parameter(s) is "\
+                   f"not supported: {old_loc_str}"
+        result = AnalysisResult.ARRAY_ARG
+    # 9. Variadic function
+    elif change.old.ident.is_varidiac_function:
+        fail_msg = f"Variadic functions are not supported "\
+                   f"for verification: {old_loc_str}"
+        result = AnalysisResult.VARIADIC
 
     if result != AnalysisResult.SUCCESS:
         if logfile != "":
@@ -202,7 +213,7 @@ def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
                 # Each 'include_path' must be an absolute path
                 # Otherwise, startswith() will not work as intended
                 if hdr_path.startswith(include_path+"/"):
-                    # We use +'/' since the include path does not have a 
+                    # We use +'/' since the include path does not have a
                     # trailing slash, without this we will get incorrect paths
                     #   e.g.    "/lib/st.h" rather than "lib/st.h"
                     hdr_path = hdr_path.removeprefix(include_path+"/")
@@ -285,12 +296,12 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         if not identity:
             # Declaration for the new version of the function
             #
-            # In some cases the function will already be declared in of 
+            # In some cases the function will already be declared in of
             # the headers but providing a second declaration in the driver does
             # not cause issues
             #
-            # NOTE: if the function is declared as 'static' 
-            # in one of the included headers we will not be able to access 
+            # NOTE: if the function is declared as 'static'
+            # in one of the included headers we will not be able to access
             # it a warning akin to
             #
             # **** WARNING: no body for function <...>
@@ -306,11 +317,11 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # ~~ Harness components ~~
         # https://github.com/model-checking/cbmc-starter-kit/wiki/Frequently-Asked-Questions
         #
-        # We are not bound to the `nondet_` symbols defined by CBMC 
-        # internally, any function prefixed with nondet_ is treated as a special 
+        # We are not bound to the `nondet_` symbols defined by CBMC
+        # internally, any function prefixed with nondet_ is treated as a special
         # case by CBMC and we can thus create our own versions
         # by writing a prototype string for them with the return type we desire
-        #  http://www.cprover.org/cprover-manual/modeling/nondeterminism/ 
+        #  http://www.cprover.org/cprover-manual/modeling/nondeterminism/
 
         # 1. Initialization
         # The initialisation involves creating valid, unconstrained and equal
@@ -323,22 +334,22 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         SUFFIX = CONFIG.SUFFIX
         unequal_inputs = False
 
-        # Note that all checks for e.g. void parameters are 
+        # Note that all checks for e.g. void parameters are
         # done before calling create_harness()
         for arg in change.old.arguments:
 
-            # If the function takes a parameter whose type has been renamed, 
+            # If the function takes a parameter whose type has been renamed,
             #   e.g. OnigEncodingTypeST or (previously) usbi_os_backend
             # we cannot perform any meaningful verification unless we are able
-            # to initialise each separate field and create assumptions 
-            # for each one that the _old and regular objects are equal in every 
+            # to initialise each separate field and create assumptions
+            # for each one that the _old and regular objects are equal in every
             # way except their function_ptr fields (TODO)
             #
-            # For now, we just initialise both as nondet(), 
+            # For now, we just initialise both as nondet(),
             # meaning that a passing equivalence
-            # check would infer a pass for all (unrelated) possible values 
-            # of the parameter. A SUCCESS result for this limited harness 
-            # would still be sound but it would need to produce the same 
+            # check would infer a pass for all (unrelated) possible values
+            # of the parameter. A SUCCESS result for this limited harness
+            # would still be sound but it would need to produce the same
             # output regardless of what values the input has
             # (since it is no longer synced between the calls)
             base_type = arg.type_spelling.removeprefix("struct").strip(' *')
@@ -368,7 +379,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         arg_string = arg_string.removesuffix(", ")
 
         # 2. Preconditions
-        # Create assumptions for any arguments that were identified 
+        # Create assumptions for any arguments that were identified
         # as only being called with deterministic values
         f.write("\n")
         for idx,param in enumerate(function_state.parameters):

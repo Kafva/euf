@@ -43,7 +43,7 @@ if $SHOW_DIFF; then
     ~/.cache/euf/$PROJ-${COMMIT_OLD:0:8}/$FILE \
     ~/.cache/euf/$PROJ-${COMMIT_NEW:0:8}/$FILE \
     | grep -E -m1 -A $CONTEXT_LINES --color=always  \
-    "^\s*${IDENT}*\s*${IDENT}*\s*$func_name\(" | 
+    "^\s*${IDENT}*\s*${IDENT}*\s*$func_name\(" |
     bat --language diff --style plain
   $EXIT && exit 0
 fi

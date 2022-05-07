@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# This script has the same functionality as `test_harness.sh` but
+# accepts a different input format.
 die(){ echo -e "$1" >&2 ; exit 1; }
 SILENT=${SILENT:=false}
 

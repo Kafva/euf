@@ -125,8 +125,8 @@ class IdentifierLocation:
 
 @dataclass(init=True)
 class Identifier:
-    ''' 
-    Refers to either a function argument or a function, 
+    '''
+    Refers to either a function argument or a function,
     '''
 
     # The canonical type string for this identifier,
@@ -157,15 +157,15 @@ class Identifier:
     @classmethod
     def get_type_data(cls, clang_type: cindex.Type) -> tuple[bool,str,str]:
         '''
-        To determine if a function is being called with the same types of 
-        arguments as those specified in the prototype we need to resolve 
-        all typedefs into their canonical representation. This infers that 
-        the declarations created inside harnesses may look slightly different 
+        To determine if a function is being called with the same types of
+        arguments as those specified in the prototype we need to resolve
+        all typedefs into their canonical representation. This infers that
+        the declarations created inside harnesses may look slightly different
         from those in the original source code
-        This should not be an issue though since the "parent" type resolves 
+        This should not be an issue though since the "parent" type resolves
         in the same way.
 
-        Some types are not properly resolved, for these we fallback to 
+        Some types are not properly resolved, for these we fallback to
         the current value
         '''
         if re.search(CONFIG.UNRESOLVED_NODES_REGEX,
@@ -207,7 +207,7 @@ class Identifier:
             pass
 
         # For functions we are interested in the `.result_type`, this value
-        # is empty for function arguments which instead 
+        # is empty for function arguments which instead
         # have their typing in `.type`
         #
         # Note that this also applies for call expressions, these
@@ -239,7 +239,7 @@ class Identifier:
                 filepath=filepath
             ),
             is_varidiac_function = cursor.type.is_function_variadic() if
-                (is_decl or is_call) else False
+                is_decl else False
         )
 
     @classmethod
@@ -293,7 +293,7 @@ class Identifier:
         '''
         When type-checking parameters against arguments we do not want to
         to check the function field since e.g. `foo( bar() )` is valid
-        provided that the return value is correct (even though 
+        provided that the return value is correct (even though
         it is a function unlike the param ident)
         '''
         same = "\033[32m✓\033[0m"
@@ -333,7 +333,7 @@ class Identifier:
         return ret
 
     def __eq__(self, other) -> bool:
-        ''' 
+        '''
         Does not consider nodes which only differ in spelling or location
         as different. Function calls and function decls are also considered the same
 
@@ -401,10 +401,10 @@ class Identifier:
 
 @dataclass(init=True)
 class DependencyFunction:
-    ''' 
+    '''
     A function which is transitively changed due to invoking either
     a directly changed function or another transitively changed function
-    will have the `invokes_changed_function` attribute set to a non-empty list 
+    will have the `invokes_changed_function` attribute set to a non-empty list
 
     We pair functions based on the key:
     {diff.filepath_new}:{diff.filepath_old}:{child.spelling}
@@ -450,9 +450,9 @@ class DependencyFunctionChange:
     old: DependencyFunction
     new: DependencyFunction
 
-    # NOTE: We need to use a set() since if a header defines a 
-    # function, several TUs may parse the function multiple times, 
-    # causing duplicate entries to be added if the function calls a 
+    # NOTE: We need to use a set() since if a header defines a
+    # function, several TUs may parse the function multiple times,
+    # causing duplicate entries to be added if the function calls a
     # function in the change set. This is not an issue for regular .c files
     invokes_changed_functions: set[str]
     direct_change: bool = True
@@ -496,8 +496,8 @@ class DependencyFunctionChange:
                f"{self.new.ident.location.to_csv()}"
 
     def __hash__(self):
-        ''' 
-        Note that the hash does not consider the `invokes_changed_functions` 
+        '''
+        Note that the hash does not consider the `invokes_changed_functions`
         list. A set will thus only include one copy of each function
         '''
         return hash(self.old.ident.location.to_csv() + \
@@ -547,8 +547,8 @@ class SourceFile:
         The -cc1 flag is used to invoke the clang 'frontend', using only the
         frontend infers that default options are lost, errors like
             'stddef.h' file not found
-        are caused from the fact that the builtin-include path of 
-        clang is missing. We can see the default frontend options 
+        are caused from the fact that the builtin-include path of
+        clang is missing. We can see the default frontend options
         used by clang with
             clang -### test/file.cpp
         Output format (stderr):
@@ -560,7 +560,7 @@ class SourceFile:
         5 <default frontend arguments>: "/usr/lib/llvm-13/bin/clang" "-cc1"
         "-triple" "x86_64-pc-linux-gnu" "-emit-obj" "-mrelax-all"
         "--mrelax-relocations" ...
-        6 <default linker arguments>: "/usr/bin/ld" "-z" "relro" 
+        6 <default linker arguments>: "/usr/bin/ld" "-z" "relro"
         "--hash-style=gnu" "--build-id" "--eh-frame-hdr" ...
         '''
         out = []
@@ -590,10 +590,10 @@ class SourceFile:
     def get_compile_args(cls, compile_db: cindex.CompilationDatabase,
          filepath: str, isystem_flags: list[str]|None = None) -> \
     tuple[str,list[str]]:
-        ''' 
+        '''
         Load the compilation configuration for the particular file
         and retrieve the compilation arguments and the directory that
-        the file should be compiled in 
+        the file should be compiled in
         '''
         ccmds: cindex.CompileCommands = compile_db.getCompileCommands(filepath)
         if ccmds:
@@ -609,7 +609,7 @@ class SourceFile:
                 xclang_flags.append("-Xclang")
                 xclang_flags.append(flag)
 
-            # Remove the first (/usr/bin/cc) and last (source_file) 
+            # Remove the first (/usr/bin/cc) and last (source_file)
             # arguments from the command list
             flags = xclang_flags + compile_args[1:-1]
 
@@ -693,7 +693,7 @@ class SubDirTU:
     ccdb_args: set[str] = field(default_factory=set)
 
     def add_from_tu(self, tu: dict):
-        ''' 
+        '''
         The TU argument corresponds to one entry from a compile_commands.json
         Note the use of [1:-3] to skip over the cc and output files
         '''
@@ -708,8 +708,8 @@ class StateParam:
 
 @dataclass(init=True)
 class FunctionState:
-    ''' 
-    The value for a parameter will be '[]' or False if its nondet 
+    '''
+    The value for a parameter will be '[]' or False if its nondet
     Each item in the parameters array is on the form
         [0]:    { <param name>, <states>,  <det> }
     We use a list rather than a dict since the argument order is important
@@ -726,7 +726,7 @@ class FunctionState:
         # Add entries to ensure that we can insert the current param
         # at the correct index
         while len(self.parameters) <= idx:
-            self.parameters.append(StateParam()) # defaults to nondet() 
+            self.parameters.append(StateParam()) # defaults to nondet()
 
         # Skip setting the name if its a placeholder set by the clang plugin
         if not param_name.isnumeric():

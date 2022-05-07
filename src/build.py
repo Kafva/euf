@@ -37,8 +37,8 @@ def run_autoreconf(path: str, out) -> bool:
 def has_non_empty_compile_db(source_dir: str) -> bool:
     '''
     Returns true if a non-empty ccdb without "command" keys is given.
-    Note: This does not verify all internal assumptions for the ccdb, 
-    these assumptions are asserted to be true (or fixed if false) 
+    Note: This does not verify all internal assumptions for the ccdb,
+    these assumptions are asserted to be true (or fixed if false)
     in `write_canoncial_ccdb`.
     '''
     ccdb_path = f"{source_dir}/compile_commands.json"
@@ -83,7 +83,7 @@ def autogen_compile_db(source_dir: str) -> bool:
 
     out = subprocess.DEVNULL if CONFIG.QUIET_BUILD else sys.stderr
 
-    # For some projects (e.g. older versions of expat), `autoreconf -vfi` 
+    # For some projects (e.g. older versions of expat), `autoreconf -vfi`
     # needs to be manually invoked to create configure
     if not os.path.isfile(f"{source_dir}/configure"):
         print_err(f"{source_dir}: Missing ./configure")
@@ -151,7 +151,7 @@ def remove_dependency_entries_from_project_db(ccdb_json: list[dict],
 
 def assert_abspaths(ccdb_json: list[dict]) -> list[dict]:
     '''
-    Ensure that the "output" and "file" keys all specify files using 
+    Ensure that the "output" and "file" keys all specify files using
     absolute paths. If no "output" field exists, add one based on the
     assumption that the output is given right after the -o flag.
     '''
@@ -190,7 +190,7 @@ def write_canoncial_ccdb(source_dir:str, ccdb_path:str) -> bool:
     ccdb_json = assert_abspaths(ccdb_json)
 
     # If the project being analyzed builds the dependency from source,
-    # e.g. jq and oniguruma, the ccdb for the main project may contain 
+    # e.g. jq and oniguruma, the ccdb for the main project may contain
     # entries for the dependency. For our use case, we do not want these
     # entries present and therefore remove them
     if source_dir is CONFIG.PROJECT_DIR and os.path.isfile(ccdb_path):
@@ -215,7 +215,7 @@ def write_canoncial_ccdb(source_dir:str, ccdb_path:str) -> bool:
                 combine_with_next = True
 
     # Open up each arguments array and find the index of "-o" and "-c".
-    # Place these along with the item following "-o" and the source file 
+    # Place these along with the item following "-o" and the source file
     # last in the array
     for tu in ccdb_json:
 
@@ -244,7 +244,7 @@ def write_canoncial_ccdb(source_dir:str, ccdb_path:str) -> bool:
         except ValueError:
             tu['arguments'].extend(["-o", output_file, src_file])
 
-    # Sort the array based on 'output' + 'file' to 
+    # Sort the array based on 'output' + 'file' to
     # ensure that the ccdb always looks the same for a project
     ccdb_json = sorted(ccdb_json, key = lambda entry:
             entry['file'] + (entry['output'] if 'output' in entry else '')

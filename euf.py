@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 '''
-1. Determine what source files in the dependency have been 
-modified (M) or renamed (R) since the last commit based on git labeling 
+1. Determine what source files in the dependency have been
+modified (M) or renamed (R) since the last commit based on git labeling
 2. Walk the AST of the old and new version of each modified file
 3. Consider any functions with a difference in the AST composition as
 the base change-set
 4. Perform a configurable number of passes where we add functions that
-are transitively changed, i.e. functions that call a function that 
+are transitively changed, i.e. functions that call a function that
 has been changed
 5. Inspect all calls in the dependency to the changed functions and
 save 'state sets' for each parameter. The state set will contain all
 constant values that the given parameter can be assigned during program
 execution or be set as empty if the parameter receives nondet() assignments
-5. Analyze each of the objects in the base change-set and 
+5. Analyze each of the objects in the base change-set and
 remove equivalent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
@@ -179,7 +179,7 @@ def reduction_stage(
 
     write_rename_files(global_identifiers)
 
-    # Compile the old and new version of the dependency as a set of 
+    # Compile the old and new version of the dependency as a set of
     # goto-bin files
     if (new_lib := build_goto_lib(ccdb_dir(new=True), new_version=True)) == "":
         sys.exit(ERR_EXIT)
@@ -191,14 +191,14 @@ def reduction_stage(
     os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
     # - - - State space - - - #
-    # Derive valid input parameters for each changed function based 
-    # on invocations in the old and new version of the dependency as 
-    # well as the main project This process is performed using an 
+    # Derive valid input parameters for each changed function based
+    # on invocations in the old and new version of the dependency as
+    # well as the main project This process is performed using an
     # external clang plugin.
     #
-    # FIXME: If the main project has an internal function with the 
-    # same name as a function in the change set these will not 
-    # be differentiated and likely cause parameters to be set as 
+    # FIXME: If the main project has an internal function with the
+    # same name as a function in the change set these will not
+    # be differentiated and likely cause parameters to be set as
     # nondet when they could potentially be det.
     name_old    = os.path.basename(git_dir(new=False))
     name_new    = os.path.basename(git_dir(new=True))
@@ -241,7 +241,7 @@ def reduction_stage(
     mkdir_p(harness_dir)
 
     # Holds a mapping from each source file in the dependency onto a list
-    # of header files to include. The header files should be given with 
+    # of header files to include. The header files should be given with
     # paths relative to one of the '-I' paths for the TU in question
     tu_includes_dict = {}
     total = len(changed_functions)
@@ -309,7 +309,7 @@ def reduction_stage(
             if run_harness(change, script_env, harness_path, func_name,
                cbmc_log, i+1, total, run_include_paths,
                quiet = CONFIG.SILENT_VERIFICATION):
-                # Remove the change from the change set 
+                # Remove the change from the change set
                 # if the equivalence check passes
                 changed_functions.remove(change)
 
@@ -320,14 +320,14 @@ def transitive_stage(
  changed_functions: list[DependencyFunctionChange],
  dep_source_files_new: list[SourceFile], log_dir:str):
     '''
-    To include functions that have not had a textual change but call a 
-    function that has changed, we perform a configurable number of 
-    additional passes were we look for invocations of changed functions 
-    in the dependency 
-    
+    To include functions that have not had a textual change but call a
+    function that has changed, we perform a configurable number of
+    additional passes were we look for invocations of changed functions
+    in the dependency
+
     Note that we perform propagation after the reduction step
     We do not want to use CBMC analysis for transitive function calls
-    
+
     We only need to look through the files in the new version
     '''
     if CONFIG.VERBOSITY >= 1:
@@ -355,7 +355,7 @@ def transitive_stage(
 
         for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
             try:
-                # Add calls to functions that have already 
+                # Add calls to functions that have already
                 # been identified as changed
                 if (idx := [ c.new for c in changed_functions ].index(key)):
                     changed_functions[idx].invokes_changed_functions |= \
@@ -424,8 +424,8 @@ def impact_stage(log_dir:str, project_source_files: list[SourceFile],
     return call_sites
 
 def run(load_libclang:bool = True) -> tuple:
-    ''' 
-    Returns a tuple with changed functions and call_sites 
+    '''
+    Returns a tuple with changed functions and call_sites
     '''
     # - - - Setup - - -
     # Set the path to the clang library (platform dependent)

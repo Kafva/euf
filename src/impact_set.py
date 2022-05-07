@@ -11,7 +11,7 @@ from src.util import git_relative_path, print_err, shorten_path_fields
 def get_call_sites_from_file(source_file: SourceFile,
  changed_functions: Set[DependencyFunctionChange]) -> list[CallSite]:
     '''
-    Return a list of call sites in the provided source file for 
+    Return a list of call sites in the provided source file for
     the functions in `changed_functions`
     '''
     call_sites = []
@@ -91,7 +91,7 @@ def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
 
 def log_impact_set(call_sites: list[CallSite], filename: str) -> None:
     '''
-    A full record of the impact set will 
+    A full record of the impact set will
     be recorded as a JSON dump of the CallSite list
 
     We would not benefit from making two different CSV logging schemes (with reversed mappings)
@@ -123,7 +123,7 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
     Print each impact site as its own header with a list of dependency change
     sources beneath it
 
-    Note: a "site" object consists of one call to a dependency function from the 
+    Note: a "site" object consists of one call to a dependency function from the
     main project, i.e. there can be several site objects that have the same
     enclosing function.
     '''
@@ -163,7 +163,7 @@ def pretty_print_impact_by_call_site(call_sites: list[CallSite]) -> None:
 
 def pretty_print_impact_by_dep(call_sites: list[CallSite]) -> None:
     '''
-    Print each dependency change as its own header with a list of impact sites 
+    Print each dependency change as its own header with a list of impact sites
     in our project beneath it
     '''
 
