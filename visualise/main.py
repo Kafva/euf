@@ -63,7 +63,7 @@ def write_md(cases: list[Case]):
                                 f"{r.func_name} "
                                 f"{r.commit_old} {r.commit_new}\n"
                             )
-                            f.write(f"# => {r.driver}\n")
+                            f.write(f"# => {r.driver} ({r.result.name})\n")
                     f.write("```\n")
                     f.write("\n\n")
 
@@ -165,8 +165,8 @@ OPTIONS = {
     'PLOT_FONT_SIZE': 10,
     'PLOT_WRAP_CHARS': 10,
     'WRITE_MD': True,
-    'PLOT': True,
-    'LIST_ANALYZED': False,
+    'PLOT': False,
+    'LIST_ANALYZED': True,
     'UNIQUE_RESULTS': False
 }
 

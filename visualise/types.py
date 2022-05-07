@@ -70,8 +70,21 @@ class FunctionResult:
     results_id: list[AnalysisResult] = field(default_factory=list)
 
     def pretty(self,ident:bool=False) -> str:
-        out = f"{self.func_name}: [\n"
+        '''
+        Highlight if both SUCCESS and FAILURE was recorded
+        for a function, these cases are most intresting since
+        they enable a comparsion between a (accroding to EUF)
+        equivalent and influential update to the same function
+        '''
         res = self.results_id if ident else self.results
+        if (AnalysisResult.SUCCESS in res or
+            AnalysisResult.SUCCESS_UNWIND_FAIL in res) and \
+            (AnalysisResult.FAILURE in res or
+             AnalysisResult.FAILURE_UNWIND_FAIL in res):
+            out = f"\033[32;4m{self.func_name}\033[0m: [\n"
+        else:
+            out = f"{self.func_name}: [\n"
+
         for r in set(res):
             cnt = res.count(r)
             out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
