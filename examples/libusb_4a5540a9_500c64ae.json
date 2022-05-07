@@ -14,6 +14,8 @@
     ]
   },
   "EXTRA_COMPILE_FLAGS": [
+    "-DFD_CLOEXEC",
+    "-DHAVE_PTHREAD_SETNAME_NP",
     "-DHAVE_OS_TIMER",
     "-DHAVE_EVENTFD",
     "-DHAVE_LIBUDEV",
