@@ -170,7 +170,7 @@ def reduction_stage(
  dep_db_old: cindex.CompilationDatabase,
  changed_functions: list[DependencyFunctionChange],
  source_diffs: list[SourceDiff],
- log_file: str):
+ log_dir: str):
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
 
@@ -204,7 +204,8 @@ def reduction_stage(
     name_new    = os.path.basename(git_dir(new=True))
     name_proj   = os.path.basename(CONFIG.PROJECT_DIR)
 
-    rm_f(log_file)
+    cbmc_log = f"{log_dir}/cbmc.csv"
+    rm_f(cbmc_log)
 
     # Retrieve a list of the headers that each TU uses
     # We will need to include these in the driver
@@ -232,7 +233,8 @@ def reduction_stage(
                                              name_proj)
 
     # Join the results from each analysis
-    ARG_STATES  = join_arg_states_result([ name_old, name_new, name_proj ])
+    ARG_STATES  = join_arg_states_result([ name_old, name_new, name_proj ],
+            log_dir)
 
     # - - - Harness generation - - - #
     harness_dir = f"{ccdb_dir(new=False)}/{CONFIG.HARNESS_DIR}"
@@ -270,7 +272,7 @@ def reduction_stage(
 
         # Log the reason for why a change could not be verified
         if not valid_preconds(change, include_paths, skip_renaming, \
-           log_file, quiet=False):
+           cbmc_log, quiet=False):
             continue
 
         filepath_old = change.old.ident.location.filepath
@@ -292,7 +294,7 @@ def reduction_stage(
             )
         # Run the identity harness
         if run_harness(change, script_env, harness_path, func_name, \
-           log_file, i+1, total, run_include_paths, \
+           cbmc_log, i+1, total, run_include_paths, \
            quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
 
             harness_path = f"{harness_dir}/{change.old.ident.location.name}.c"
@@ -305,7 +307,7 @@ def reduction_stage(
                 )
             # Run the actual harness
             if run_harness(change, script_env, harness_path, func_name,
-               log_file, i+1, total, run_include_paths,
+               cbmc_log, i+1, total, run_include_paths,
                quiet = CONFIG.SILENT_VERIFICATION):
                 # Remove the change from the change set 
                 # if the equivalence check passes
@@ -487,12 +489,11 @@ def run(load_libclang:bool = True) -> tuple:
 
     # - - - Reduction of change set - - - #
     if CONFIG.FULL:
-        log_file = f"{log_dir}/cbmc.csv"
         reduction_stage(
              dep_db_old,
              changed_functions,
              source_diffs,
-             log_file
+             log_dir
         )
         log_changed_functions(changed_functions, f"{log_dir}/reduced_set.csv")
 

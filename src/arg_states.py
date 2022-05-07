@@ -8,6 +8,7 @@ is a bad idea as seen with the uber hack macros in clang-plugins.
 1. Split up the dependency dir into subdirs (including "." if applicable)
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
+import dataclasses
 import subprocess, re, sys, json, os, traceback, multiprocessing
 from glob import glob
 from functools import partial
@@ -154,7 +155,8 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
 
     return symbol_name, success
 
-def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
+def join_arg_states_result(subdir_names: list[str],log_dir:str="") \
+ -> dict[str,FunctionState]:
     '''
     The argStates clang plugin will produce one output file per TU for each 
     CHANGED_FUNCTION (provided that the function in question was actually 
@@ -219,8 +221,27 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
 
             for idx,param in enumerate(func_state.parameters):
                 if not param.nondet:
-                    print(f"\033[32m!>\033[0m{INDENT}{idx}.{param.name} = ", end='')
+                    print(f"\033[32m!>\033[0m{INDENT}{idx}.{param.name} = ",
+                            end='')
                     print(param.states)
+
+    if CONFIG.ENABLE_RESULT_LOG and log_dir != "":
+        # Log the joint JSON objects where at least one parameter was 
+        # identified as constant to the results directory
+        with open(f"{log_dir}/states.json", mode='w', encoding='utf8') as f:
+
+            non_empty_arg_states = { c: val for c,val in arg_states.items()
+                if any(map(lambda x: not x.nondet, val.parameters))
+            }
+
+            json_obj = { c: dataclasses.asdict(val)
+                    for c,val in non_empty_arg_states.items()
+            }
+
+            json.dump(json_obj, f,
+                default=lambda x: list(x) if isinstance(x, set) else x,
+                ensure_ascii=True, indent=4, sort_keys=True
+            )
 
     return arg_states
 
