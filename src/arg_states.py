@@ -9,6 +9,7 @@ is a bad idea as seen with the uber hack macros in clang-plugins.
 2. Iterate over CHANGED_FUNCTIONS and call for each name ONCE per directory
 '''
 import subprocess, re, sys, json, os, traceback, multiprocessing
+from glob import glob
 from functools import partial
 from src import ERR_EXIT
 from src.config import CONFIG
@@ -60,7 +61,7 @@ def get_subdir_tus(source_dir: str) -> dict[str,SubDirTU]:
 
 def call_arg_states_plugin(symbol_name: str, outdir:str,
     subdir: str, subdir_tu: SubDirTU,
-    quiet:bool = True, setx:bool=False) -> None:
+    quiet:bool = True, setx:bool=False) -> tuple[str,bool]:
     '''
     Some of the ccdb arguments are not compatible with the -cc1 
     frontend and need to be filtered out.
@@ -116,6 +117,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
             if len(cmd_str) > CONFIG.CLANG_PLUGIN_RUN_STR_LIMIT \
             else cmd_str
 
+    success = True
     output = ""
     try:
         p = subprocess.Popen(cmd, cwd = subdir, stdout = out, stderr = out,
@@ -137,6 +139,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
             )
             if CONFIG.VERBOSITY >= 2 and len(output.splitlines()) > 0 and quiet:
                 print(output,flush=True)
+            success = False
     except FileNotFoundError:
         # Usually caused by faulty paths in ccdb
         traceback.print_exc()
@@ -144,9 +147,12 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
                 "compile_commands.json")
         if quiet:
             print(output,flush=True)
+        success = False
 
     if setx:
         print(f"({outdir},{symbol_name})\ncd {subdir}\n", cmd_str)
+
+    return symbol_name, success
 
 def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
     '''
@@ -218,13 +224,15 @@ def join_arg_states_result(subdir_names: list[str]) -> dict[str,FunctionState]:
 
     return arg_states
 
-def state_space_analysis(symbols: list[str], source_dir: str, git_dir: str):
-    target_name = os.path.basename(git_dir)
+def state_space_analysis(symbols: list[str], source_dir: str, target_name:str):
 
     start = time_start(f"Inspecting call sites ({target_name})...")
+
+    # Remove any previously recorded states
     outdir = f"{CONFIG.ARG_STATES_OUTDIR}/{target_name}"
     mkdir_p(outdir)
     remove_files_in(outdir)
+
     subdir_tus = get_subdir_tus(source_dir)
     if CONFIG.VERBOSITY >= 3:
         print("Subdirectories to analyze: ", end='')
@@ -233,7 +241,7 @@ def state_space_analysis(symbols: list[str], source_dir: str, git_dir: str):
 
     with multiprocessing.Pool(CONFIG.NPROC) as p:
         for subdir, subdir_tu in subdir_tus.items():
-            p.map(partial(call_arg_states_plugin,
+            return_values = p.map(partial(call_arg_states_plugin,
                 outdir = outdir,
                 subdir = subdir,
                 subdir_tu = subdir_tu,
@@ -241,5 +249,28 @@ def state_space_analysis(symbols: list[str], source_dir: str, git_dir: str):
                 setx = False),
                 symbols
             )
+
+            # If the ArgStates plugin fails to complete its analysis and crashes for a
+            # symbol we need to exclude any assumptions about this symbol. E.g. if
+            # analysis for the symbol 'foo' finds only constant values in one SubDirTU and
+            # crashes for all others, we need to defensively assume that it could be 
+            # non-det in one of the TUs we failed to analyze.
+            failed_symbol_analysis = set()
+            for tpl in return_values:
+                if not tpl[1]:
+                    failed_symbol_analysis.add(tpl[0])
+
+            if len(failed_symbol_analysis)>0:
+                if CONFIG.VERBOSITY>=1:
+                    print_err(f"Incomplete state enumeration:")
+                    print(failed_symbol_analysis)
+
+                # Remove all state files created for symbols that could
+                # not be fully analyzed
+                for sym in failed_symbol_analysis:
+                    for state_file in glob(f"{outdir}/{sym}*"):
+                        if CONFIG.VERBOSITY>=1:
+                            print_info(f"Removing {state_file}")
+                        os.remove(state_file)
 
     time_end(f"State space analysis ({target_name})", start)

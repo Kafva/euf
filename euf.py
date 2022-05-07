@@ -200,7 +200,9 @@ def reduction_stage(
     # same name as a function in the change set these will not 
     # be differentiated and likely cause parameters to be set as 
     # nondet when they could potentially be det.
-    remove_files_in(CONFIG.ARG_STATES_OUTDIR)
+    name_old    = os.path.basename(git_dir(new=False))
+    name_new    = os.path.basename(git_dir(new=True))
+    name_proj   = os.path.basename(CONFIG.PROJECT_DIR)
 
     rm_f(log_file)
 
@@ -223,17 +225,14 @@ def reduction_stage(
             get_non_static(changes_to_analyze) ]
 
     state_space_analysis(idents_to_analyze, ccdb_dir(new=False),
-                                            git_dir(new=False))
+                                            name_old)
     state_space_analysis(idents_to_analyze, ccdb_dir(new=True),
-                                            git_dir(new=True))
+                                            name_new)
     state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
-                                             CONFIG.PROJECT_DIR)
+                                             name_proj)
 
     # Join the results from each analysis
-    old_name    = os.path.basename(git_dir(new=False))
-    new_name    = os.path.basename(git_dir(new=True))
-    proj_name   = os.path.basename(CONFIG.PROJECT_DIR)
-    ARG_STATES  = join_arg_states_result([ old_name, new_name, proj_name ])
+    ARG_STATES  = join_arg_states_result([ name_old, name_new, name_proj ])
 
     # - - - Harness generation - - - #
     harness_dir = f"{ccdb_dir(new=False)}/{CONFIG.HARNESS_DIR}"

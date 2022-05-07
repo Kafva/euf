@@ -20,12 +20,11 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "VERBOSITY": 2,
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
-  "CBMC_TIMEOUT": 60
+  "CBMC_TIMEOUT": 30,
+  "FORCE_RECOMPILE": false
 }
 EOF
 
 jq -rM -s '.[0] * .[1]' examples/base_${LIBNAME}.json /tmp/$FUNC_NAME.json \
                          > $CONF
-
-
 ./euf.py -c $CONF $DIFF

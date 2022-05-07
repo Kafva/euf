@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Run with `time`!
 CASE_CNT=30
 export TIMEOUT=60
 export BATCH=true
