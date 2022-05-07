@@ -21,5 +21,4 @@ jq -rM -s '.[0] * .[1]' $1 $tmp_conf > $conf
 
 # Sanity check results
 diff -q "results/$result_subdir/change_set.csv" \
-        "results_impact/$result_subdir/change_set.csv" ||
-        printf "\033[31m==>\033[0m INCONSISTENT! \033[31m<==\033[0m\n"
+        "results_impact/$result_subdir/change_set.csv"

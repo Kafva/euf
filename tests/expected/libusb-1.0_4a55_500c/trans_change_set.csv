@@ -64,6 +64,7 @@ False;;-1;-1;;libusb/sync.c;35;25;sync_transfer_cb
 False;;-1;-1;;libusb/sync.c;43;13;sync_transfer_wait_for_completion
 False;;-1;-1;;libusb/sync.c;97;18;libusb_control_transfer
 False;;-1;-1;;libusb/sync.c;169;12;do_sync_bulk_transfer
+False;;-1;-1;;libusb/os/linux_usbfs.h;174;20;linux_stop_event_monitor
 False;;-1;-1;;libusb/os/linux_netlink.c;56;12;set_fd_cloexec_nb
 False;;-1;-1;;libusb/os/linux_netlink.c;93;5;linux_netlink_start_event_monitor
 False;;-1;-1;;libusb/os/linux_netlink.c;154;5;linux_netlink_stop_event_monitor
@@ -89,9 +90,6 @@ False;;-1;-1;;libusb/os/linux_usbfs.c;826;12;initialize_device
 False;;-1;-1;;libusb/os/linux_usbfs.c;939;12;linux_get_parent_info
 False;;-1;-1;;libusb/os/linux_usbfs.c;1007;5;linux_enumerate_device
 False;;-1;-1;;libusb/os/linux_usbfs.c;1064;6;linux_device_disconnected
-False;;-1;-1;;libusb/os/linux_usbfs.c;1101;12;usbfs_scan_busdir
-False;;-1;-1;;libusb/os/linux_usbfs.c;1141;12;usbfs_get_device_list
-False;;-1;-1;;libusb/os/linux_usbfs.c;1188;12;sysfs_get_device_list
 False;;-1;-1;;libusb/os/linux_usbfs.c;1238;12;initialize_handle
 False;;-1;-1;;libusb/os/linux_usbfs.c;1257;12;op_wrap_sys_device
 False;;-1;-1;;libusb/os/linux_usbfs.c;1307;12;op_open

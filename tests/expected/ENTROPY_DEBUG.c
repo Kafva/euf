@@ -51,10 +51,7 @@ void euf_main() {
   unsigned long entropy;
 
   __CPROVER_assume(
-    label == "/dev/urandom" ||
-    label == "fallback(4)" ||
-    label == "fallback(8)" ||
-    label == "getrandom"
+    label == "arc4random_buf"
   );
 
   unsigned long ret_old = ENTROPY_DEBUG_old_b026324c6904b2a(label, entropy);
