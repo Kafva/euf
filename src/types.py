@@ -41,6 +41,7 @@ class AnalysisResult(Enum):
     # Array arguments are not supported for verification
     # (adding partial support should not be to compliated however)
     ARRAY_ARG = 85
+    VARIADIC = 86
     NONE = 255 # Base case used in `print_result`
 
 @dataclass(init=True)
@@ -143,6 +144,8 @@ class Identifier:
     # Set for nodes that corresponds to function reference
     is_function: bool = False
 
+    is_varidiac_function:bool = False
+
     # If set, the identifier is a pointer to the specified type
     is_ptr: bool = False
 
@@ -234,7 +237,9 @@ class Identifier:
             is_static = str(cursor.storage_class).endswith("STATIC"),
             location = IdentifierLocation.new_from_cursor(cursor,
                 filepath=filepath
-            )
+            ),
+            is_varidiac_function = cursor.type.is_function_variadic() if
+                (is_decl or is_call) else False
         )
 
     @classmethod

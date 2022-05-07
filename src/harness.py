@@ -29,7 +29,6 @@ def valid_preconds(change: DependencyFunctionChange,
         fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
             change_str
         result = AnalysisResult.NOT_RENAMED
-
     # Compilation instructions for the TU the 
     # function is defined in do not exist
     elif not change.old.ident.location.filepath in include_paths or \
@@ -39,6 +38,11 @@ def valid_preconds(change: DependencyFunctionChange,
             f"Skipping {func_name}() due to missing compilation "\
             f"instructions for {path}"
         result = AnalysisResult.MISSING_COMPILE
+    # Variadic function
+    elif change.old.ident.is_varidiac_function:
+        fail_msg = f"Variadic functions are not supported "\
+                   f"for verification: {old_loc_str}"
+        result = AnalysisResult.VARIADIC
 
     # The number-of arguments and their types have not changed
     elif (old_cnt := len(change.old.arguments)) != \
