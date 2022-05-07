@@ -86,7 +86,7 @@ else # 2 is newer
   DATE_NEW=$date2
 fi
 
-echo "=== $DATE_OLD (${COMMIT_OLD:0:8})-> $DATE_NEW (${COMMIT_NEW:0:8}) === (TIMEOUT=$TIMEOUT)"
+echo "=== $DATE_OLD (${COMMIT_OLD:0:8}) -> $DATE_NEW (${COMMIT_NEW:0:8}) === (TIMEOUT=$TIMEOUT)"
 
 cat << EOF > /tmp/random.json
 {

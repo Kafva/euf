@@ -4,6 +4,3 @@
 [submodule "clang-plugins"]
 	path = clang-plugins
 	url = https://github.com/Kafva/clang-plugins.git
-[submodule "bear"]
-	path = bear
-	url = git@github.com:rizsotto/Bear.git
