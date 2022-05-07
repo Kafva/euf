@@ -104,13 +104,24 @@ def plot_analysis_dists(cases:
             case 2: bottom = [ x+y for x,y in zip(cases_dists[0],cases_dists[1]) ]
             case _: bottom = 0
 
-        axes.bar(bar_names, cases_dists[i],  OPTIONS['PLOT_WIDTH'],  label=case.name, bottom = bottom)
+        axes.bar(bar_names, cases_dists[i],
+                OPTIONS['PLOT_WIDTH'],
+                label=case.name,
+                color=[ cases[i].color ],
+                bottom = bottom,
+                edgecolor='white'
+        )
 
     axes.set_ylabel('')
     axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis "
             "results " +\
-            ("(without duplicates)" if unique_results else "(with duplicates)" ) )
-    axes.legend()
+            ("(without duplicates)" if unique_results else "(with duplicates)"),
+            fontweight='bold', fontsize=12
+
+    )
+
+    axes.legend(loc='upper left')
+
 
 def plot_reductions(cases: list[Case]):
     '''
@@ -160,16 +171,18 @@ OPTIONS = {
 }
 
 if __name__ == '__main__':
+    plt.style.use('dark_background')
+
     CONFIG.RESULTS_DIR = ".results/5"
-    onig = Case.new(name="libonig", total_functions=1186)
+    onig = Case.new(name="libonig", total_functions=1186, color='#d44848')
     onig.load_change_sets()
     onig.load_impact_set()
 
-    expat = Case.new(name="libexpat", total_functions=645)
+    expat = Case.new(name="libexpat", total_functions=645, color='#32a852')
     expat.load_change_sets()
     expat.load_impact_set()
 
-    usb = Case.new(name="libusb", total_functions=1346)
+    usb = Case.new(name="libusb", total_functions=1346, color='#467fdb')
     usb.load_change_sets()
     usb.load_impact_set()
 
@@ -192,9 +205,8 @@ if __name__ == '__main__':
     cases = [onig,expat,usb]
 
     if OPTIONS['PLOT']:
-        #plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
-        #plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
-
+        plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
+        plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
         plot_reductions(cases)
 
         plt.xticks(fontsize=OPTIONS['PLOT_FONT_SIZE'])

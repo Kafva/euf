@@ -92,6 +92,8 @@ class Case:
     '''
     total_functions: int
     name: str
+    # Color to use for bar plots
+    color: str
 
     # Holds one entry per function that was analyzed (dict key),
     # each item contains an array of AnalysisResult that
@@ -165,12 +167,13 @@ class Case:
         return function_results, cbmc_results
 
     @classmethod
-    def new(cls,name:str,total_functions:int):
+    def new(cls,name:str,total_functions:int,color:str):
         function_results_dict, cbmc_results_dict = cls.load_cbmc_result(name)
         return cls(name=name,
                 total_functions=total_functions,
                 cbmc_results_dict=cbmc_results_dict,
-                function_results_dict=function_results_dict
+                function_results_dict=function_results_dict,
+                color=color
         )
 
     def info(self,unique_results:bool=False):
@@ -229,7 +232,7 @@ class Case:
             with_reduction = len(self.trans_change_set[d])
 
             if without_reduction < with_reduction:
-                print_err(f"Outlier: {without_reduction} -> {with_reduction}: "
+                print_err(f"Inconsistent data point: {without_reduction} -> {with_reduction}: "
                           f"{d_without}/trans_change_set.csv {d}/trans_change_set.csv")
             else:
                 reductions_per_trial.append(
