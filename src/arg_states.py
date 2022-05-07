@@ -245,7 +245,8 @@ def join_arg_states_result(subdir_names: list[str],log_dir:str="") \
 
     return arg_states
 
-def state_space_analysis(symbols: list[str], source_dir: str, target_name:str):
+def state_space_analysis(symbols: list[str], source_dir: str,
+  target_name:str, log_dir:str):
     start = time_start(f"Inspecting call sites ({target_name})...")
 
     # Remove any previously recorded states
@@ -292,5 +293,11 @@ def state_space_analysis(symbols: list[str], source_dir: str, target_name:str):
                         if CONFIG.VERBOSITY>=1:
                             print_info(f"Removing {state_file}")
                         os.remove(state_file)
+
+                with open(f"{log_dir}/state_fail.csv", mode='w',
+                  encoding='utf8') as f:
+                    f.write("subdir;symbol\n");
+                    for sym in failed_symbol_analysis:
+                        f.write(f"{subdir};{sym}\n")
 
     time_end(f"State space analysis ({target_name})", start)

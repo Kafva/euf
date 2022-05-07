@@ -226,11 +226,11 @@ def reduction_stage(
             get_non_static(changes_to_analyze) ]
 
     state_space_analysis(idents_to_analyze, ccdb_dir(new=False),
-                                            name_old)
+                                            name_old,log_dir)
     state_space_analysis(idents_to_analyze, ccdb_dir(new=True),
-                                            name_new)
+                                            name_new,log_dir)
     state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
-                                             name_proj)
+                                             name_proj,log_dir)
 
     # Join the results from each analysis
     ARG_STATES  = join_arg_states_result([ name_old, name_new, name_proj ],
