@@ -410,7 +410,6 @@ class DependencyFunction:
     {diff.filepath_new}:{diff.filepath_old}:{child.spelling}
     All other attributes could thus differ between the new and old version.
     '''
-    displayname: str # Includes the full prototype string
     ident: Identifier # Function name and return type
     # The arguments must be in correct order within the list
     arguments: list[Identifier]
@@ -418,7 +417,6 @@ class DependencyFunction:
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor, filepath: str = ""):
         return cls(
-            displayname = cursor.displayname,
             ident        = Identifier.new_from_cursor(cursor, filepath=filepath),
             arguments   = [ Identifier.new_from_cursor(arg, filepath=filepath)
                   for arg in cursor.get_arguments() ],
@@ -427,7 +425,6 @@ class DependencyFunction:
     @classmethod
     def empty(cls):
         return cls(
-            displayname = "",
             ident       = Identifier.empty(),
             arguments   = [],
         )
@@ -443,7 +440,7 @@ class DependencyFunction:
         return out.removesuffix(", ") + ")"
 
     def __hash__(self):
-        return hash(self.ident.location.to_csv() + self.displayname)
+        return hash(self.ident.location.to_csv())
 
 @dataclass(init=True)
 class DependencyFunctionChange:

@@ -69,7 +69,7 @@ class FunctionResult:
     results: list[AnalysisResult]    = field(default_factory=list)
     results_id: list[AnalysisResult] = field(default_factory=list)
 
-    def pretty(self,ident:bool=False) -> str:
+    def pretty(self,ident:bool=False,only_multi:bool=False) -> str:
         '''
         Highlight if both SUCCESS and FAILURE was recorded
         for a function, these cases are most intresting since
@@ -83,6 +83,8 @@ class FunctionResult:
              AnalysisResult.FAILURE_UNWIND_FAIL in res):
             out = f"\033[32;4m{self.func_name}\033[0m: [\n"
         else:
+            if only_multi:
+                return ""
             out = f"{self.func_name}: [\n"
 
         for r in set(res):
@@ -108,6 +110,11 @@ class Case:
     # Color to use for bar plots
     color: str
 
+    def libname(self) -> str:
+        return 'libusb-1.0' if self.name=='libusb' else self.name
+    def reponame(self) -> str:
+        return 'oniguruma' if self.name=='libonig' else self.libname()
+
     # Holds one entry per function that was analyzed (dict key),
     # each item contains an array of AnalysisResult that
     # were encountered for the particular function
@@ -124,11 +131,13 @@ class Case:
     def cbmc_results(self) -> list[CbmcResult]:
         return flatten([ r for r in self.cbmc_results_dict.values() ])
 
+    # The key to every dict is the path to the results directory
+    # for a specific trial
     impact_set: dict[str,list[Impacted]] =\
             field(default_factory=dict)
     impact_set_without_reduction: dict[str,list[Impacted]] =\
             field(default_factory=dict)
-    trans_change_set_without_reduction: dict[str,list[DependencyFunctionChange]] =\
+    trans_set_without_reduction: dict[str,list[DependencyFunctionChange]] =\
         field(default_factory=dict)
 
     base_change_set: dict[str,list[DependencyFunctionChange]] =\
@@ -240,8 +249,8 @@ class Case:
     def trans_set_reductions_per_trial(self) -> list[float]:
         reductions_per_trial = []
         for d,d_without in \
-          zip(self.trans_change_set,self.trans_change_set_without_reduction):
-            without_reduction = len(self.trans_change_set_without_reduction[d_without])
+          zip(self.trans_change_set,self.trans_set_without_reduction):
+            without_reduction = len(self.trans_set_without_reduction[d_without])
             with_reduction = len(self.trans_change_set[d])
 
             if without_reduction < with_reduction:
@@ -249,7 +258,7 @@ class Case:
                           f"{d_without}/trans_change_set.csv {d}/trans_change_set.csv")
             else:
                 reductions_per_trial.append(
-                        len(self.trans_change_set_without_reduction[d_without]) -
+                        len(self.trans_set_without_reduction[d_without]) -
                         len(self.trans_change_set[d])
                 )
         print_info(f"Transitive reduction: valid data points: {len(reductions_per_trial)}")
@@ -270,7 +279,7 @@ class Case:
             )
         return reductions_per_trial
 
-    def list_fully_analyzed_functions(self):
+    def list_fully_analyzed_functions(self,only_multi:bool=False):
         '''
         Dump a list of all functions that passed the identity analysis along with
         a list of the results received for them during the main analysis
@@ -278,7 +287,9 @@ class Case:
         print_stage(self.name)
         for function_result in self.function_results():
             if len(function_result.results)>0:
-                print(function_result.pretty())
+                text = function_result.pretty(only_multi=only_multi)
+                if len(text)>0:
+                    print(text)
 
     def nr_of_changed_functions(self) -> int:
         ''' The total number of analyzed functions corresponds to the number of
@@ -395,7 +406,7 @@ class Case:
         for item in os.listdir(CONFIG.RESULTS_DIR):
             dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
             if without_reduction:
-                self.trans_change_set_without_reduction[dirpath] = []
+                self.trans_set_without_reduction[dirpath] = []
             else:
                 self.base_change_set[dirpath] = []
                 self.reduced_change_set[dirpath] = []
@@ -404,7 +415,7 @@ class Case:
             if os.path.isdir(dirpath) and item.startswith(self.name):
                 if without_reduction:
                     self.load_change_set(dirpath, "trans_change_set.csv",
-                            self.trans_change_set_without_reduction)
+                            self.trans_set_without_reduction)
                 else:
                     self.load_change_set(dirpath, "change_set.csv",
                             self.base_change_set)

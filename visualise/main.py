@@ -28,6 +28,7 @@
     
 '''
 
+from posixpath import expanduser
 import sys
 import matplotlib.pyplot as plt
 from itertools import compress
@@ -40,28 +41,88 @@ from visualise.types import Case
 from src.config import CONFIG
 from src.types import AnalysisResult
 
-def write_md(cases: list[Case]):
-    ''' Make a MD template for the correctness analysis '''
+def write_report(cases: list[Case], only_multi:bool=False):
+    ''' 
+    Make a MD template for the correctness analysis 
+    For each function the template gives a command to test the harness
+    and a command to view the diff of the file wherein the function
+    being tested resides
+
+    ./scripts/analyze_function.sh onig unset_addr_list_fix f30e 158e
+    git difftool --no-index ~/.cache/euf/oniguruma-f30edcce/src/regcomp.c
+                        ~/.cache/euf/oniguruma-158e/src/regcomp.c
+    # => /home/jonas/.cache/euf/oniguruma-f30edcce/.harnesses/unset_addr_list_fix.c (SUCCESS_UNWIND_FAIL)
+
+    The only_multi option will limit the report to functions where both a FAILED
+    and SUCCESS result were attained.
+    '''
     with open("correctness.md", mode = 'w', encoding='utf8') as f:
         for case in cases:
             f.write(f"# {case.name}\n")
             for func_result in case.function_results():
-                overlap = set(func_result.results) & {AnalysisResult.SUCCESS,
-                   AnalysisResult.SUCCESS_UNWIND_FAIL,
-                   AnalysisResult.SUCCESS_UNWIND_FAIL,
-                   AnalysisResult.FAILURE}
-                if len(overlap) > 0:
+                should_write = False
+
+                if only_multi:
+                    should_write = (AnalysisResult.SUCCESS in func_result.results or
+                        AnalysisResult.SUCCESS_UNWIND_FAIL in func_result.results) and \
+                        (AnalysisResult.FAILURE in func_result.results or
+                         AnalysisResult.FAILURE_UNWIND_FAIL in func_result.results)
+                else:
+                    overlap = set(func_result.results) & {AnalysisResult.SUCCESS,
+                       AnalysisResult.SUCCESS_UNWIND_FAIL,
+                       AnalysisResult.SUCCESS_UNWIND_FAIL,
+                       AnalysisResult.FAILURE}
+                    should_write = len(overlap) > 0
+
+                if should_write:
                     f.write(func_result.pretty_md())
+
                     # Find all commits where a CBMC result
                     # was present for the current function
                     # and print an analysis command for each one
                     f.write("```bash\n")
                     for r in case.cbmc_results():
                         if r.func_name == func_result.func_name and not r.identity:
+
+                            # The exact file that has the change can be determined from 
+                            # change_set.csv
+                            trial_path = \
+                                f"{CONFIG.RESULTS_DIR}/{case.libname()}_" \
+                                f"{r.commit_old}_{r.commit_new}"
+
+                            change_set = case.base_change_set[trial_path]
+
+                            function_change = next( c for c in change_set if
+                                    c.old.ident.location.name == r.func_name )
+
+                            # These directories (with 4 characters of the commit
+                            # hash in their name) will only be available
+                            # after running `analyze_function.sh`
+                            euf_cache_dir_old = \
+                                f"{CONFIG.EUF_CACHE}/{case.reponame()}-{r.commit_old}"
+                            euf_cache_dir_new = \
+                                f"{CONFIG.EUF_CACHE}/{case.reponame()}-{r.commit_new}"
+
+                            euf_cache_dir_old = \
+                                euf_cache_dir_old.replace(expanduser('~'),"~")
+                            euf_cache_dir_new = \
+                                euf_cache_dir_new.replace(expanduser('~'),"~")
+
                             f.write(f"./scripts/analyze_function.sh "
                                 f"{case.name.removeprefix('lib')} "
                                 f"{r.func_name} "
                                 f"{r.commit_old} {r.commit_new}\n"
+                            )
+                            f.write("git difftool --no-index "
+                                    f"{euf_cache_dir_old}/"
+                                    f"{function_change.old.ident.location.filepath} "
+                                    f"{euf_cache_dir_new}/"
+                                    f"{function_change.new.ident.location.filepath}\n"
+                            )
+                            f.write(f"# {function_change.old.ident.location.line}"
+                                    f":{function_change.old.ident.location.column}"
+                                    f" <-> {function_change.new.ident.location.line}"
+                                    f":{function_change.new.ident.location.column}\n"
                             )
                             f.write(f"# => {r.driver} ({r.result.name})\n")
                     f.write("```\n")
@@ -165,15 +226,17 @@ OPTIONS = {
     'PLOT_FONT_SIZE': 10,
     'PLOT_WRAP_CHARS': 10,
     'WRITE_MD': True,
-    'PLOT': False,
+    'PLOT': True,
     'LIST_ANALYZED': True,
-    'UNIQUE_RESULTS': False
+    'UNIQUE_RESULTS': False,
+    'RESULT_DIR': ".results/6",
+    'IMPACT_DIR': ".results/6_impact"
 }
 
 if __name__ == '__main__':
     plt.style.use('dark_background')
 
-    CONFIG.RESULTS_DIR = ".results/5"
+    CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
     onig = Case.new(name="libonig", total_functions=1186, color='#d44848')
     onig.load_change_sets()
     onig.load_impact_set()
@@ -186,7 +249,7 @@ if __name__ == '__main__':
     usb.load_change_sets()
     usb.load_impact_set()
 
-    CONFIG.RESULTS_DIR = ".results/5_impact_only"
+    CONFIG.RESULTS_DIR = OPTIONS['IMPACT_DIR']
     onig.load_change_sets(without_reduction=True)
     onig.load_impact_set(without_reduction=True)
 
@@ -196,7 +259,7 @@ if __name__ == '__main__':
     usb.load_change_sets(without_reduction=True)
     usb.load_impact_set(without_reduction=True)
 
-    CONFIG.RESULTS_DIR = ".results/5"
+    CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
 
     onig.info(OPTIONS['UNIQUE_RESULTS'])
     expat.info(OPTIONS['UNIQUE_RESULTS'])
@@ -213,8 +276,8 @@ if __name__ == '__main__':
         plt.show()
 
     if OPTIONS['WRITE_MD']:
-        write_md(cases)
+        write_report(cases,True)
     if OPTIONS['LIST_ANALYZED']:
         print("\n=============================\n")
         for case in cases:
-            case.list_fully_analyzed_functions()
+            case.list_fully_analyzed_functions(only_multi=True)
