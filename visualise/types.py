@@ -117,7 +117,7 @@ class Case:
     def libname(self) -> str:
         return 'libusb-1.0' if self.name=='libusb' else self.name
     def reponame(self) -> str:
-        return 'oniguruma' if self.name=='libonig' else self.libname()
+        return 'oniguruma' if self.name=='libonig' else self.name
 
     # Holds one entry per function that was analyzed (dict key),
     # each item contains an array of AnalysisResult that

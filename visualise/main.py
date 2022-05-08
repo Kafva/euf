@@ -28,9 +28,9 @@
     
 '''
 
-from posixpath import expanduser
 import sys,os
 import matplotlib.pyplot as plt
+from posixpath import expanduser
 from itertools import compress
 from textwrap import wrap
 
@@ -40,6 +40,7 @@ sys.path.extend(['..','.'])
 from visualise.types import Case
 from src.config import CONFIG
 from src.types import AnalysisResult
+from src.util import print_stage
 
 def write_report(cases: list[Case], only_multi:bool=False):
     ''' 
@@ -281,6 +282,9 @@ if __name__ == '__main__':
     if OPTIONS['LIST_ANALYZED']:
         print("\n=============================\n")
         for case in cases:
+            print_stage(case.name)
             results = case.multi_result_function_results() \
                     if OPTIONS['ONLY_MULTI'] \
                     else case.fully_analyzed_functions()
+            for r in results:
+                print(r.pretty())
