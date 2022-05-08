@@ -17,6 +17,8 @@ class AnalysisResult(Enum):
     TIMEOUT = 52
     # "SUCCESS": No verification conditions generated
     NO_VCCS = 53
+    NO_VCCS_UNWIND_FAIL = 67
+
     # FAILED verification: non-equivalent change
     FAILURE = 54
     # Inconclusive: One or both of the functions to test lacks a body
@@ -450,7 +452,10 @@ class DependencyFunctionChange:
     # NOTE: We need to use a set() since if a header defines a
     # function, several TUs may parse the function multiple times,
     # causing duplicate entries to be added if the function calls a
-    # function in the change set. This is not an issue for regular .c files
+    # function in the change set. 
+    #
+    # This workaround is required _even if compdb is not used_, e.g.
+    # libusb.h defines several functions which are parsed by multiple TUs
     invokes_changed_functions: set[str]
     direct_change: bool = True
 

@@ -33,6 +33,7 @@ True;expat/lib/xmltok_impl.c;913;1;little2_scanPercent;expat/lib/xmltok_impl.c;9
 True;expat/lib/xmltok_impl.c;266;1;little2_scanPi;expat/lib/xmltok_impl.c;274;1;little2_scanPi
 True;expat/lib/xmltok_impl.c;943;1;little2_scanPoundName;expat/lib/xmltok_impl.c;951;1;little2_scanPoundName
 True;expat/lib/xmltok_impl.c;534;1;little2_scanRef;expat/lib/xmltok_impl.c;542;1;little2_scanRef
+True;expat/lib/xmlparse.c;6403;1;lookup;expat/lib/xmlparse.c;7017;1;lookup
 True;expat/lib/xmlparse.c;6774;1;nextScaffoldPart;expat/lib/xmlparse.c;7400;1;nextScaffoldPart
 True;expat/lib/xmltok_impl.c;1007;1;normal_prologTok;expat/lib/xmltok_impl.c;1015;1;normal_prologTok
 True;expat/lib/xmltok_impl.c;562;1;normal_scanAtts;expat/lib/xmltok_impl.c;570;1;normal_scanAtts
@@ -46,6 +47,7 @@ True;expat/lib/xmlparse.c;882;1;parserCreate;expat/lib/xmlparse.c;971;1;parserCr
 True;expat/lib/xmlparse.c;997;1;parserInit;expat/lib/xmlparse.c;1086;1;parserInit
 True;expat/lib/xmlparse.c;6670;1;poolGrow;expat/lib/xmlparse.c;7296;1;poolGrow
 True;expat/lib/xmlparse.c;5170;1;processInternalEntity;expat/lib/xmlparse.c;5705;1;processInternalEntity
+True;expat/lib/xmlparse.c;3816;1;processXmlDecl;expat/lib/xmlparse.c;4267;1;processXmlDecl
 True;expat/lib/xmlparse.c;5296;1;storeAttributeValue;expat/lib/xmlparse.c;5845;1;storeAttributeValue
 True;expat/lib/xmlparse.c;3057;1;storeAtts;expat/lib/xmlparse.c;3240;1;storeAtts
 True;expat/lib/xmlparse.c;5483;1;storeEntityValue;expat/lib/xmlparse.c;6060;1;storeEntityValue

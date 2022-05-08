@@ -163,7 +163,7 @@ class Config:
             "main"
     ])
 
-    # Show part of the goto functions before running CBMC analysis
+    # Show part of the GOTO functions before running CBMC analysis
     # ** NOTE: Overriden by SILENT_VERIFICATION **
     SHOW_FUNCTIONS: bool = False
 
@@ -171,6 +171,16 @@ class Config:
     # remove an item from the change set even if
     # --unwinding-assertions generated a failure
     REDUCE_INCOMPLETE_UNWIND: bool = True
+
+    # Consider cases were the equivalence assertion is simplified away
+    # (NO_VCCS) as valid reductions, if used together with 
+    # REDUCE_INCOMPLETE_UNWIND, NO_VCCS_UNWIND_FAIL will also trigger
+    # reductions
+    REDUCE_NO_VCCS: bool = False
+
+    # Perform full analysis regardless of if the identity analysis
+    # is successful
+    IGNORE_FAILED_IDENTITY: bool = False
 
     # Options for each cbmc invocation
     CBMC_OPTS_STR: str = \
@@ -241,12 +251,14 @@ class Config:
     RENAME_CSV: str = "/tmp/rename.csv"
     CBMC_OUTFILE: str = "runner"
     EUF_ENTRYPOINT: str = "euf_main"
-    CBMC_ASSERT_MSG: str = "Equivalent output"
     IDENTITY_HARNESS: str = "_id"
     INDENT: str = " "*2
     CLANG_PLUGIN_RUN_STR_LIMIT: int = 1000
 
     ARG_STATS_SO=f"{BASE_DIR}/clang-plugins/build/lib/libArgStates.so"
+
+    # !! DO NOT CHANGE, hardcoded in ./scripts/cbmc_driver.sh !!
+    CBMC_ASSERT_MSG: str = "Equivalent output"
 
     # Print debug information when running ArgStates.so
     DEBUG_CLANG_PLUGIN: bool = False

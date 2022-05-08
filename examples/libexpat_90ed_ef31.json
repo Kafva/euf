@@ -1,0 +1,44 @@
+{
+  "PROJECT_DIR": "~/Repos/jabberd-2.7.0",
+  "DEPENDENCY_DIR": "~/Repos/libexpat",
+  "DEP_SOURCE_ROOT": "~/Repos/libexpat/expat",
+  "DEPLIB_NAME": "libexpat.a",
+  "EXCLUDE_REGEXES": [
+    "expat/tests/.*",
+    "expat/examples/.*",
+    "expat/.*tab.h",
+    "expat/fuzz/.*",
+    "expat/xmlwf/win32.*"
+  ],
+  "EXTRA_COMPILE_FLAGS": [
+    "-DHAVE_ARC4RANDOM_BUF",
+    "-Wno-macro-redefined"
+  ],
+  "CUSTOM_HEADERS": {
+    "xmlparse.c": [
+      "~/Repos/euf/examples/include/xmlparse.h"
+    ]
+  },
+  "BLACKLISTED_HEADERS": [
+    "asciitab.h",
+    "utf8tab.h",
+    "iasciitab.h",
+    "latin1tab.h"
+  ],
+  "FORCE_RECOMPILE": true,
+  "FORCE_CCDB_RECOMPILE": true,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1",
+  "CBMC_TIMEOUT": 7,
+  "PAUSES": false,
+  "ENABLE_RESULT_LOG": true,
+  "DIE_ON_ERROR": true,
+  "ORDER_BY_CALL_SITE": true,
+  "VERBOSITY": 0,
+  
+  "SKIP_BLAME": false,
+  "SKIP_IMPACT": false,
+  "FULL": false,
+  "COMMIT_OLD": "90ed5777a6e447f0d4ed34a6a293c99069123bcb",
+  "COMMIT_NEW": "ef31c8681eeae39ce23e4efd4cf718ae23403b79",
+  "QUIET_BUILD": true
+}

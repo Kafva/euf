@@ -10,6 +10,24 @@ from src.types import AnalysisResult, DependencyFunctionChange, \
 from src.util import ccdb_dir, print_result, shorten_path_fields, \
         time_end, time_start, wait_on_cr, print_err
 
+
+def successful_harness_result(result: AnalysisResult) -> bool:
+    '''
+    For identity verification, this return value determines whether or not 
+    full analysis is performed, for full analysis this return value
+    determines if the tested function should be removed from the change set
+    '''
+    return result.value == AnalysisResult.SUCCESS.value \
+            or \
+            (CONFIG.REDUCE_INCOMPLETE_UNWIND and \
+            result.value == AnalysisResult.SUCCESS_UNWIND_FAIL.value) \
+            or \
+            (CONFIG.REDUCE_NO_VCCS and \
+            result.value == AnalysisResult.NO_VCCS) \
+            or \
+            ((CONFIG.REDUCE_NO_VCCS and CONFIG.REDUCE_INCOMPLETE_UNWIND) and \
+            result.value == AnalysisResult.NO_VCCS_UNWIND_FAIL)
+
 def valid_preconds(change: DependencyFunctionChange,
   include_paths: dict[str,set[str]],
   skip_renaming: set[str],
@@ -457,7 +475,7 @@ def log_harness(filename: str,
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
   driver: str, func_name: str, log_file: str, current: int, total: int,
-  dep_i_flags:str, quiet: bool) -> bool:
+  dep_i_flags:str, identity:bool, quiet: bool) -> bool:
     '''
     Returns True if the assertion in the harness
     was successful
@@ -469,7 +487,6 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     })
 
     out = subprocess.PIPE if quiet else sys.stderr
-    identity = driver.endswith(f"{CONFIG.IDENTITY_HARNESS}.c")
 
     loc_str = fmt_location(change.old.ident.location)
     id_str = '(ID) ' if identity else ''
@@ -524,6 +541,9 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
             msg = f"No body available for {func_name}"
         case AnalysisResult.NO_VCCS.value:
             msg = f"No verification conditions generated for: {driver}"
+        case AnalysisResult.NO_VCCS_UNWIND_FAIL.value:
+            msg = f"No verification conditions generated for: " \
+                  f"{driver} (incomplete unwinding)"
         case AnalysisResult.FAILURE.value:
             msg = f"Identity verification failed: {func_name}" \
                     if identity else \
@@ -564,6 +584,4 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     time_end(msg,  start, AnalysisResult(return_code))
 
-    return return_code == AnalysisResult.SUCCESS.value or \
-            (CONFIG.REDUCE_INCOMPLETE_UNWIND and \
-            return_code == AnalysisResult.SUCCESS_UNWIND_FAIL.value)
+    return successful_harness_result(analysis_result)

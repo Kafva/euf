@@ -5,6 +5,10 @@ from src.config import CONFIG
 from src.util import remove_files_in
 from tests import RESULT_DIR, TEST_DIR, check_cbmc_csv
 
+# Note: The regression tests are ran with 
+#   REDUCE_NO_VCCS: False
+#   REDUCE_INCOMPLETE_UNWIND: True
+
 def test_impact_set():
     '''
     Note that the functions listed in "Affected by changes" will only be explicitly listed

@@ -11,6 +11,7 @@ COMMIT_OLD=$3
 COMMIT_NEW=$4
 DIFF=$5
 
+# --unwinding-assertions
 cat << EOF > /tmp/$FUNC_NAME.json
 {
   "ONLY_ANALYZE": "$FUNC_NAME",
@@ -23,7 +24,9 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
   "CBMC_TIMEOUT": 30,
-  "FORCE_RECOMPILE": false
+  "FORCE_RECOMPILE": false,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
+  "IGNORE_FAILED_IDENTITY": true
 }
 EOF
 

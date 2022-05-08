@@ -181,9 +181,9 @@ def reduction_stage(
 
     # Compile the old and new version of the dependency as a set of
     # goto-bin files
-    if (new_lib := build_goto_lib(ccdb_dir(new=True), new_version=True)) == "":
+    if (new_lib := build_goto_lib(ccdb_dir(new=True), new_version=True))=="":
         sys.exit(ERR_EXIT)
-    if (old_lib := build_goto_lib(ccdb_dir(new=False), new_version=False)) == "":
+    if (old_lib := build_goto_lib(ccdb_dir(new=False), new_version=False))=="":
         sys.exit(ERR_EXIT)
 
     # Copy any required headers into the include
@@ -293,10 +293,12 @@ def reduction_stage(
                 function_state, identity=True
             )
         # Run the identity harness
-        if run_harness(change, script_env, harness_path, func_name, \
+        success = run_harness(change, script_env, harness_path, func_name, \
            cbmc_log, i+1, total, run_include_paths, \
-           quiet = CONFIG.SILENT_IDENTITY_VERIFICATION):
+           identity=True, quiet = CONFIG.SILENT_IDENTITY_VERIFICATION
+        )
 
+        if success or CONFIG.IGNORE_FAILED_IDENTITY:
             harness_path = f"{harness_dir}/{change.old.ident.location.name}.c"
 
             if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
@@ -308,7 +310,7 @@ def reduction_stage(
             # Run the actual harness
             if run_harness(change, script_env, harness_path, func_name,
                cbmc_log, i+1, total, run_include_paths,
-               quiet = CONFIG.SILENT_VERIFICATION):
+               identity=False, quiet = CONFIG.SILENT_VERIFICATION):
                 # Remove the change from the change set
                 # if the equivalence check passes
                 changed_functions.remove(change)
@@ -361,11 +363,12 @@ def transitive_stage(
                     changed_functions[idx].invokes_changed_functions |= \
                             set(calls)
             except ValueError:
-                # Add a new function (with an indirect change) to the changed set
+                # Add a new function 
+                # (with an indirect change) to the changed set
                 changed_function = DependencyFunctionChange(
                         old = DependencyFunction.empty(),
                         new = key,
-                        invokes_changed_functions = calls,
+                        invokes_changed_functions = set(calls),
                         direct_change = False
                 )
                 changed_functions.append(changed_function)

@@ -2,6 +2,7 @@
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <libonig|libexpat|libusb>"
 helpStr=""
+REDUCE_NO_VCCS=${REDUCE_NO_VCCS:=false}
 VERBOSITY=${VERBOSITY:=1}
 TIMEOUT=${TIMEOUT:=60}
 BATCH=${BATCH:=false}
@@ -94,7 +95,8 @@ cat << EOF > /tmp/random.json
   "COMMIT_NEW": "$COMMIT_NEW",
   "QUIET_BUILD": true,
   "CBMC_TIMEOUT": $TIMEOUT,
-  "VERBOSITY": $VERBOSITY
+  "VERBOSITY": $VERBOSITY,
+  "REDUCE_NO_VCCS": $REDUCE_NO_VCCS
 }
 EOF
 
