@@ -75,8 +75,8 @@ def valid_preconds(change: DependencyFunctionChange,
 
     # 4. Parameter types have changed (or a void parameter exists)
     elif (tpl := check_param_types(result,change))[0] != AnalysisResult.SUCCESS:
-          result = tpl[0]
-          fail_msg = tpl[1]
+        result = tpl[0]
+        fail_msg = tpl[1]
 
     # 5. The function has not been given an '_old' suffix, preventing analysis
     elif func_name in skip_renaming:
