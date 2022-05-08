@@ -29,7 +29,7 @@
 '''
 
 from posixpath import expanduser
-import sys
+import sys,os
 import matplotlib.pyplot as plt
 from itertools import compress
 from textwrap import wrap
@@ -123,7 +123,9 @@ def write_report(cases: list[Case], only_multi:bool=False):
                                     f" <-> {function_change.new.ident.location.line}"
                                     f":{function_change.new.ident.location.column}\n"
                             )
-                            f.write(f"# => {r.driver} ({r.result.name})\n")
+                            driver = f"{euf_cache_dir_old}/.harnesses/"+\
+                                os.path.basename(r.driver)
+                            f.write(f"# => {driver} ({r.result.name})\n")
                     f.write("```\n")
                     f.write("\n\n")
 
