@@ -201,38 +201,67 @@ class Case:
     def info(self,unique_results:bool=False):
         print_stage(self.name)
         changed_percent =\
-            round(self.nr_of_changed_functions()/self.total_functions,ROUNDING)
+            round(self.nr_of_changed_functions()/self.total_functions,
+                    ROUNDING
+            )
         identity_percent =\
-            round(self.passed_identity_cnt()/self.nr_of_changed_functions(),ROUNDING)
+            round(self.passed_identity_cnt()/self.nr_of_changed_functions(),
+                    ROUNDING
+            )
         print(f"Changed functions: "
-                f"{self.nr_of_changed_functions()}/{self.total_functions} ({changed_percent})")
+                f"{self.nr_of_changed_functions()}/{self.total_functions} "
+                f"({changed_percent})")
         print("Passed identity analysis: "
-                f"{self.passed_identity_cnt()}/{self.nr_of_changed_functions()} "
-                f"({identity_percent})"
+                f"{self.passed_identity_cnt()}/{self.nr_of_changed_functions()}"
+                f" ({identity_percent})"
         )
 
         nr_of_full_analysis_results = len(list(filter(lambda c: not c.identity,
                 self.cbmc_results())))
         print(f"Unique pre-analysis results: "
-              f"{len(self.unique_cbmc_results(ident=True))}/{len(self.cbmc_results())}")
+              f"{len(self.unique_cbmc_results(ident=True))}/"
+              f"{len(self.cbmc_results())}")
         print(f"Unique full-analysis results: "
-              f"{len(self.unique_cbmc_results(ident=False))}/{nr_of_full_analysis_results}")
+              f"{len(self.unique_cbmc_results(ident=False))}/"
+              f"{nr_of_full_analysis_results}")
 
         dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
             "\033[4mwith duplicates\033[0m"
         print(f"Result distribution {dupes} (pre-analysis):")
-        pprint(self.sorted_analysis_dist(ident=True,filter_zero=True,unique_results=False))
+        pprint(self.sorted_analysis_dist(
+            ident=True,filter_zero=True,unique_results=False)
+        )
         print(f"Result distribution {dupes} (full-analysis):")
-        pprint(self.sorted_analysis_dist(ident=False,filter_zero=True,unique_results=False))
+        pprint(self.sorted_analysis_dist(
+            ident=False,filter_zero=True,unique_results=False)
+        )
 
-        change_set_sizes = [ len(v) for _,v in self.base_change_set.items() ]
-        average_size = round(mean(change_set_sizes),ROUNDING)
-        stdev_size = round(stdev(change_set_sizes),ROUNDING)
-        print(f"Average change set size: {average_size} (±{stdev_size})")
+        change_set_sizes = [ len(v) for v in self.base_change_set.values() ]
+        trans_set_sizes = [ len(v) for v in self.trans_change_set.values() ]
+        impact_set_sizes = [ len(v) for v in self.impact_set.values() ]
 
-        mean_reduction = round(mean(self.change_set_reductions_per_trial()),ROUNDING)
-        stdev_reduction = round(stdev(self.change_set_reductions_per_trial()),ROUNDING)
-        print(f"Average change set reduction: {mean_reduction} (±{stdev_reduction})")
+        self.average_set(change_set_sizes,
+            self.change_set_reductions_per_trial(),
+            "change"
+        )
+        self.average_set(trans_set_sizes,
+            self.trans_set_reductions_per_trial(),
+            "transitive"
+        )
+        self.average_set(impact_set_sizes,
+            self.impact_set_reductions_per_trial(),
+            "impact"
+        )
+
+    def average_set(self, sizes: list[int], reductions:list[float], label:str):
+        average_size = round(mean(sizes),ROUNDING)
+        stdev_size = round(stdev(sizes),ROUNDING)
+        print(f"Average {label} set size: {average_size} (±{stdev_size})")
+
+        mean_reduction = round(mean(reductions),ROUNDING)
+        stdev_reduction = round(stdev(reductions),ROUNDING)
+        print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
+
 
     def impact_set_reductions_per_trial(self) -> list[float]:
         reductions_per_trial = []
@@ -253,15 +282,12 @@ class Case:
             without_reduction = len(self.trans_set_without_reduction[d_without])
             with_reduction = len(self.trans_change_set[d])
 
-            if without_reduction < with_reduction:
-                print_err(f"Inconsistent data point: {without_reduction} -> {with_reduction}: "
-                          f"{d_without}/trans_change_set.csv {d}/trans_change_set.csv")
-            else:
-                reductions_per_trial.append(
-                        len(self.trans_set_without_reduction[d_without]) -
-                        len(self.trans_change_set[d])
-                )
-        print_info(f"Transitive reduction: valid data points: {len(reductions_per_trial)}")
+            assert without_reduction >= with_reduction
+            reductions_per_trial.append(
+                    len(self.trans_set_without_reduction[d_without]) -
+                    len(self.trans_change_set[d])
+            )
+
         return reductions_per_trial
 
     def change_set_reductions_per_trial(self) -> list[float]:

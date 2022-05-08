@@ -183,7 +183,6 @@ def plot_analysis_dists(cases:
 
     axes.legend(loc='upper left')
 
-
 def plot_reductions(cases: list[Case]):
     '''
     We want to show the average reduction, stdev from the average and the
@@ -276,7 +275,7 @@ if __name__ == '__main__':
         plt.show()
 
     if OPTIONS['WRITE_MD']:
-        write_report(cases,True)
+        write_report(cases,only_multi=True)
     if OPTIONS['LIST_ANALYZED']:
         print("\n=============================\n")
         for case in cases:
