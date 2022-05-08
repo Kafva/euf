@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run with `time`!
-CASE_CNT=30
+CASE_CNT=20
 export TIMEOUT=60
 export VERBOSITY=-1
 export BATCH=true
@@ -16,8 +16,8 @@ run_trial(){
   fi
 
   # Run with REDUCE_NO_VCC active
-  conf=/tmp/without_cbmc_$RANDOM.json
-  tmp_conf=$(mktemp --suffix .json)
+  local conf="/tmp/novcc_$RANDOM.json"
+  local tmp_conf=$(mktemp --suffix .json)
   cat << EOF > $tmp_conf
 {
   "RESULTS_DIR": "$PWD/results_novccs",
