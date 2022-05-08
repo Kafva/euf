@@ -334,14 +334,19 @@ class Identifier:
 
         return ret
 
+
     def __eq__(self, other) -> bool:
         '''
+        FIXME: This should be refactored as a non __internal__ method
         Does not consider nodes which only differ in spelling or location
-        as different. Function calls and function decls are also considered the same
+        as different. 
+        Function calls and function decls are also considered the same
 
-        Unresolved nodes with a 'dependent type' are considered equal to everything
+        Unresolved nodes with a 'dependent type' are 
+        considered equal to everything
         unless we are using STRICT_TYPECHECKS
-        We only check the function_flag and type_spelling if STRICT_TYPECHECKS is not set,
+        We only check the function_flag and type_spelling 
+        if STRICT_TYPECHECKS is not set,
         Type checking through python's clang bindings is very FP prone
         '''
         strict_check = True
@@ -374,7 +379,8 @@ class Identifier:
             .strip(' *')
 
         if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
-            struct = "struct " if self.type_spelling.startswith("struct") else ''
+            struct = "struct " if self.type_spelling.startswith("struct") \
+                               else ''
             type_str = f"{struct}{base_type}{CONFIG.SUFFIX}"
 
             if self.type_spelling.endswith("*"):
@@ -419,8 +425,8 @@ class DependencyFunction:
     @classmethod
     def new_from_cursor(cls, cursor: cindex.Cursor, filepath: str = ""):
         return cls(
-            ident        = Identifier.new_from_cursor(cursor, filepath=filepath),
-            arguments   = [ Identifier.new_from_cursor(arg, filepath=filepath)
+            ident = Identifier.new_from_cursor(cursor, filepath=filepath),
+            arguments = [ Identifier.new_from_cursor(arg, filepath=filepath)
                   for arg in cursor.get_arguments() ],
         )
 
@@ -441,8 +447,25 @@ class DependencyFunction:
 
         return out.removesuffix(", ") + ")"
 
+    def __eq__(self, other) -> bool:
+        '''
+        Relies on equivalence for the
+        underlying IdentifierLocation objects, not the
+        the Identifier objects. This stems from the fact that
+        identifiers have their __eq__ method overriden in a way
+        where nodes of the same type (but with different names)
+        are considered the same, behaviour that is unpreferable
+        when comparing functions.
+        '''
+        return self.ident.location == other.ident.location and \
+            all([ s.location==o.location for s,o in \
+                zip(self.arguments,other.arguments) ] # type: ignore
+        )
+
     def __hash__(self):
-        return hash(self.ident.location.to_csv())
+        return hash(self.ident.location.to_csv() + ''.join( \
+            [ a.dump() for a in self.arguments ])
+        )
 
 @dataclass(init=True)
 class DependencyFunctionChange:

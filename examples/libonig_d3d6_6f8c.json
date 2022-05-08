@@ -41,7 +41,7 @@
   ],
   "EXCLUDE_REGEXES": [
     "sample/.*",
-    "test/.*",
+    "test/.*"
   ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [

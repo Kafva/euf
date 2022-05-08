@@ -252,12 +252,20 @@ def get_transative_changes_from_file(source_file: SourceFile,
     # value: [ called_functions ]
     transative_function_calls: dict[DependencyFunction,list[str]] = {}
 
-    os.chdir(source_file.compile_dir_new)
-    translation_unit = cindex.TranslationUnit.from_source(
-            source_file.filepath_new,
-            args = source_file.compile_args_new
-    )
-    cursor = translation_unit.cursor
+    try:
+        os.chdir(source_file.compile_dir_new)
+        tu = cindex.TranslationUnit.from_source(
+                source_file.filepath_new,
+                args = source_file.compile_args_new
+        )
+        cursor = tu.cursor
+    except cindex.TranslationUnitLoadError:
+        print_err(f"Failed to load TU: {source_file.filepath_new}")
+        if CONFIG.VERBOSITY >= 3:
+            print(' '.join(source_file.compile_args_new))
+        return {}
+
+    print_diag_errors(source_file.compile_dir_new,tu)
 
     find_transative_changes_in_tu(cursor,
         source_file.compile_dir_new, changed_functions,

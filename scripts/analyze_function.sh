@@ -11,7 +11,6 @@ COMMIT_OLD=$3
 COMMIT_NEW=$4
 DIFF=$5
 
-# --unwinding-assertions
 cat << EOF > /tmp/$FUNC_NAME.json
 {
   "ONLY_ANALYZE": "$FUNC_NAME",

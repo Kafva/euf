@@ -163,8 +163,12 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
         case AnalysisResult.FAILURE_UNWIND_FAIL:
             print_inconclusive(msg)
 
-        case AnalysisResult.NO_VCCS:
-            print_fail(msg)
+        case AnalysisResult.NO_VCCS | AnalysisResult.NO_VCCS_UNWIND_FAIL:
+            if CONFIG.REDUCE_NO_VCCS:
+                print_inconclusive(msg)
+            else:
+                print_fail(msg)
+
         case AnalysisResult.NO_BODY:
             print_fail(msg)
 

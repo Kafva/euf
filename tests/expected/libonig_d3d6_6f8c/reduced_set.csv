@@ -17,3 +17,4 @@ True;src/regcomp.c;3783;1;setup_tree;src/regcomp.c;3785;1;setup_tree
 True;src/regcomp.c;2764;1;subexp_inf_recursive_check;src/regcomp.c;2766;1;subexp_inf_recursive_check
 True;src/regcomp.c;2848;1;subexp_inf_recursive_check_trav;src/regcomp.c;2850;1;subexp_inf_recursive_check_trav
 True;src/regcomp.c;2902;1;subexp_recursive_check;src/regcomp.c;2904;1;subexp_recursive_check
+True;src/regcomp.c;2958;1;subexp_recursive_check_trav;src/regcomp.c;2960;1;subexp_recursive_check_trav

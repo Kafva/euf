@@ -336,6 +336,7 @@ def transitive_stage(
         print_stage("Transitive change set")
         wait_on_cr()
         start = datetime.now()
+    # Mapping from DependencyFunction -> list of called functions
     TRANSATIVE_CHANGED_FUNCTIONS = {}
     os.chdir(git_dir(new=True))
 
@@ -355,19 +356,21 @@ def transitive_stage(
         if CONFIG.VERBOSITY >= 1:
             print_transistive_changes(TRANSATIVE_CHANGED_FUNCTIONS)
 
-        for key,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
-            try:
+        for func,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
+            added = False
+            for c in changed_functions:
                 # Add calls to functions that have already
                 # been identified as changed
-                if (idx := [ c.new for c in changed_functions ].index(key)):
-                    changed_functions[idx].invokes_changed_functions |= \
-                            set(calls)
-            except ValueError:
+                if c.new == func:
+                    c.invokes_changed_functions |= set(calls)
+                    added = True
+                    break
+            if not added:
                 # Add a new function 
                 # (with an indirect change) to the changed set
                 changed_function = DependencyFunctionChange(
                         old = DependencyFunction.empty(),
-                        new = key,
+                        new = func,
                         invokes_changed_functions = set(calls),
                         direct_change = False
                 )
