@@ -6,7 +6,7 @@ from datetime import datetime
 from src.config import CONFIG
 from src.types import AnalysisResult, \
         DependencyFunctionChange, IdentifierLocation
-from src.util import flatten, print_err, print_info, print_stage
+from src.util import flatten, print_stage
 
 ROUNDING = 4
 
@@ -69,6 +69,13 @@ class FunctionResult:
     results: list[AnalysisResult]    = field(default_factory=list)
     results_id: list[AnalysisResult] = field(default_factory=list)
 
+    def has_multi_result(self,ident:bool=False):
+        res = self.results_id if ident else self.results
+        return (AnalysisResult.SUCCESS in res or
+            AnalysisResult.SUCCESS_UNWIND_FAIL in res) and \
+            (AnalysisResult.FAILURE in res or
+             AnalysisResult.FAILURE_UNWIND_FAIL in res)
+
     def pretty(self,ident:bool=False,only_multi:bool=False) -> str:
         '''
         Highlight if both SUCCESS and FAILURE was recorded
@@ -77,10 +84,7 @@ class FunctionResult:
         equivalent and influential update to the same function
         '''
         res = self.results_id if ident else self.results
-        if (AnalysisResult.SUCCESS in res or
-            AnalysisResult.SUCCESS_UNWIND_FAIL in res) and \
-            (AnalysisResult.FAILURE in res or
-             AnalysisResult.FAILURE_UNWIND_FAIL in res):
+        if self.has_multi_result(ident):
             out = f"\033[32;4m{self.func_name}\033[0m: [\n"
         else:
             if only_multi:
@@ -225,6 +229,30 @@ class Case:
               f"{len(self.unique_cbmc_results(ident=False))}/"
               f"{nr_of_full_analysis_results}")
 
+        multi_cnt = len(self.multi_result_function_results())
+        fully_analyzed = self.fully_analyzed_functions()
+        equiv_result_cnt = len(list(filter(lambda x:
+            1 <= len({
+                AnalysisResult.SUCCESS,
+                AnalysisResult.SUCCESS_UNWIND_FAIL
+                } | set(x.results)) <= 2 ,
+            fully_analyzed
+        )))
+        influential_result_cnt = len(list(filter(lambda x:
+            1 <= len({
+                AnalysisResult.FAILURE,
+                AnalysisResult.FAILURE_UNWIND_FAIL
+                } | set(x.results)) <= 2 ,
+            fully_analyzed
+        )))
+
+        print(f"Functions with an influential and equivalent analysis result: "
+              f"{multi_cnt}/{self.nr_of_changed_functions()}")
+        print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
+              f"{equiv_result_cnt}/{self.nr_of_changed_functions()}")
+        print(f"Functions with \033[4monly\033[0m influential analysis results: "
+              f"{influential_result_cnt}/{self.nr_of_changed_functions()}")
+
         dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
             "\033[4mwith duplicates\033[0m"
         print(f"Result distribution {dupes} (pre-analysis):")
@@ -253,6 +281,8 @@ class Case:
             "impact"
         )
 
+
+
     def average_set(self, sizes: list[int], reductions:list[float], label:str):
         average_size = round(mean(sizes),ROUNDING)
         stdev_size = round(stdev(sizes),ROUNDING)
@@ -261,7 +291,6 @@ class Case:
         mean_reduction = round(mean(reductions),ROUNDING)
         stdev_reduction = round(stdev(reductions),ROUNDING)
         print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
-
 
     def impact_set_reductions_per_trial(self) -> list[float]:
         reductions_per_trial = []
@@ -305,17 +334,22 @@ class Case:
             )
         return reductions_per_trial
 
-    def list_fully_analyzed_functions(self,only_multi:bool=False):
+    def multi_result_function_results(self,ident:bool=False) -> list[FunctionResult]:
+        multi_results = []
+        for func_res in self.function_results():
+            if func_res.has_multi_result(ident):
+                multi_results.append(func_res)
+        return multi_results
+
+    def fully_analyzed_functions(self) -> list[FunctionResult]:
         '''
-        Dump a list of all functions that passed the identity analysis along with
-        a list of the results received for them during the main analysis
+        Return a list of all functions that passed the identity analysis
         '''
-        print_stage(self.name)
+        fully_analyzed = []
         for function_result in self.function_results():
             if len(function_result.results)>0:
-                text = function_result.pretty(only_multi=only_multi)
-                if len(text)>0:
-                    print(text)
+                fully_analyzed.append(function_result)
+        return fully_analyzed
 
     def nr_of_changed_functions(self) -> int:
         ''' The total number of analyzed functions corresponds to the number of

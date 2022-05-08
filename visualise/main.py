@@ -58,21 +58,20 @@ def write_report(cases: list[Case], only_multi:bool=False):
     '''
     with open("correctness.md", mode = 'w', encoding='utf8') as f:
         for case in cases:
+            results = case.multi_result_function_results() if only_multi \
+                    else case.function_results()
             f.write(f"# {case.name}\n")
-            for func_result in case.function_results():
-                should_write = False
 
-                if only_multi:
-                    should_write = (AnalysisResult.SUCCESS in func_result.results or
-                        AnalysisResult.SUCCESS_UNWIND_FAIL in func_result.results) and \
-                        (AnalysisResult.FAILURE in func_result.results or
-                         AnalysisResult.FAILURE_UNWIND_FAIL in func_result.results)
-                else:
+            for func_result in results:
+
+                if not only_multi:
                     overlap = set(func_result.results) & {AnalysisResult.SUCCESS,
                        AnalysisResult.SUCCESS_UNWIND_FAIL,
                        AnalysisResult.SUCCESS_UNWIND_FAIL,
                        AnalysisResult.FAILURE}
                     should_write = len(overlap) > 0
+                else: # Only iterating over valid results already
+                    should_write = True
 
                 if should_write:
                     f.write(func_result.pretty_md())
@@ -225,11 +224,12 @@ OPTIONS = {
     'PLOT_FONT_SIZE': 10,
     'PLOT_WRAP_CHARS': 10,
     'WRITE_MD': True,
-    'PLOT': True,
+    'PLOT': False,
     'LIST_ANALYZED': True,
     'UNIQUE_RESULTS': False,
     'RESULT_DIR': ".results/6",
-    'IMPACT_DIR': ".results/6_impact"
+    'IMPACT_DIR': ".results/6_impact",
+    'ONLY_MULTI': True
 }
 
 if __name__ == '__main__':
@@ -275,8 +275,10 @@ if __name__ == '__main__':
         plt.show()
 
     if OPTIONS['WRITE_MD']:
-        write_report(cases,only_multi=True)
+        write_report(cases,only_multi=OPTIONS['ONLY_MULTI'])
     if OPTIONS['LIST_ANALYZED']:
         print("\n=============================\n")
         for case in cases:
-            case.list_fully_analyzed_functions(only_multi=True)
+            results = case.multi_result_function_results() \
+                    if OPTIONS['ONLY_MULTI'] \
+                    else case.fully_analyzed_functions()
