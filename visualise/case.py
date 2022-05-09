@@ -260,10 +260,10 @@ class Case:
             )
 
     def analysis_dist(self,
-     ident:bool,
-     filter_zero:bool=False,
-     combine_unwinds:bool=False,
-     unique_results:bool=False
+        ident:bool,
+        filter_zero:bool=False,
+        combine_unwinds:bool=False,
+        unique_results:bool=False
      ) -> dict[AnalysisResult,float]:
         '''
         Returns a dict of percentages for each AnalysisResult

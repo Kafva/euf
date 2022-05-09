@@ -130,72 +130,79 @@ def write_report(cases: list[Case], only_multi:bool=False):
                     f.write("```\n")
                     f.write("\n\n")
 
-def plot_analysis_dists(cases:
-        list[Case],ident:bool=False,unique_results:bool=False):
+def plot_analysis_dists(cases: list[Case],ident:bool=False):
     '''
     Not using the `unique_results` option gives the impression that expat has
     very good performance, which stems from the fact that it has analyzed
     the same few functions successfully many times.
     '''
-    cases_dists = [ c.analysis_dist(
-                        ident=ident,
-                        unique_results=unique_results
-                    ).values() for c in cases ]
 
-    non_zero_fields = [ a!=0 or b!=0 or c!=0 for a,b,c in
-            zip(cases_dists[0],
-                cases_dists[1],
-                cases_dists[2]) ]
+    fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
+    subfigs = fig.subfigures(nrows=2, ncols=1)
 
-    # Remove fields that are zero across all cases
-    cases_dists = [ list(compress(c,non_zero_fields)) for c in cases_dists ]
-
-    bar_names = [ e.name for e in AnalysisResult ]
-    bar_names  = list(compress(bar_names, non_zero_fields))
-
-    # Wrap the bar name text to X chars
-    bar_names = [ '\n'.join(wrap(l, OPTIONS['PLOT_WRAP_CHARS'])) for l in bar_names ]
-
-    _, axes = plt.subplots()
-
-    # Color-code a bar plot for each case
-    for i,case in enumerate(cases):
-        # The bottom value must be correctly set to the sum of the previous 
-        # bars, otherwise overlaps will occur
-        match i:
-            case 1: bottom = cases_dists[0]
-            case 2: bottom = [ x+y for x,y in zip(cases_dists[0],cases_dists[1]) ]
-            case _: bottom = 0
-
-        axes.bar(bar_names, cases_dists[i],
-                OPTIONS['PLOT_WIDTH'],
-                label=case.name,
-                color=[ cases[i].color ],
-                bottom = bottom,
-                edgecolor='white'
+    def create_row(title,index,unique_results:bool):
+        subfigs[index].suptitle(title,fontweight='bold',
+                horizontalalignment='center'
         )
+        axes = subfigs[index].subplots(nrows=1, ncols=1)
+        axes.set_ylabel('')
 
-    axes.set_ylabel('')
-    axes.set_title(f"Distribution of CBMC {'identity ' if ident else ''}analysis "
-            "results " +\
-            ("(without duplicates)" if unique_results else "(with duplicates)"),
-            fontweight='bold', fontsize=12
+        cases_dists = [ c.analysis_dist(
+                            ident=ident,
+                            unique_results=unique_results
+                        ).values() for c in cases ]
 
-    )
+        non_zero_fields = [ a!=0 or b!=0 or c!=0 for a,b,c in
+                zip(cases_dists[0],
+                    cases_dists[1],
+                    cases_dists[2]) ]
 
-    axes.legend(loc='upper left')
+        # Remove fields that are zero across all cases
+        cases_dists = [ list(compress(c,non_zero_fields)) for c in cases_dists ]
+
+        bar_names = [ e.name for e in AnalysisResult ]
+        bar_names  = list(compress(bar_names, non_zero_fields))
+
+        # Wrap the bar name text to X chars
+        bar_names = [ '\n'.join(wrap(l, OPTIONS['PLOT_WRAP_CHARS'])) for l in bar_names ]
+
+
+        # Color-code a bar plot for each case
+        for i,case in enumerate(cases):
+            # The bottom value must be correctly set to the sum of the previous 
+            # bars, otherwise overlaps will occur
+            match i:
+                case 1: bottom = cases_dists[0]
+                case 2: bottom = [ x+y for x,y in zip(cases_dists[0],cases_dists[1]) ]
+                case _: bottom = 0
+
+            axes.bar(bar_names, cases_dists[i],
+                    width = OPTIONS['PLOT_WIDTH'],
+                    label = case.name,
+                    color = [ cases[i].color ],
+                    bottom = bottom,
+                    edgecolor='white'
+            )
+
+        if index==0:
+            axes.legend(loc='upper left')
+
+    title = f"Distribution of CBMC {'identity ' if ident else ''}analysis "\
+            "results (with duplicates)"
+
+    create_row(title,0,unique_results=False)
+    create_row("Without duplicates",1,unique_results=True)
 
 def plot_reductions(cases: list[Case]):
     '''
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is suitable for this
     '''
-
     change_set_reductions = [ c.change_set_reductions_per_trial() for c in cases ]
     trans_set_reductions =  [ c.trans_set_reductions_per_trial() for c in cases ]
     impact_set_reductions = [ c.impact_set_reductions_per_trial() for c in cases ]
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
     subfigs = fig.subfigures(nrows=3, ncols=1)
 
     def create_row(title,index,array,label):
@@ -223,17 +230,24 @@ def plot_reductions(cases: list[Case]):
     create_row("Impact set reduction", 2, impact_set_reductions, "impact")
 
 OPTIONS = {
-    'PLOT_WIDTH': 0.35,
+    'PLOT_WIDTH': 0.6,
     'PLOT_FONT_SIZE': 10,
-    'PLOT_WRAP_CHARS': 10,
+    'PLOT_WRAP_CHARS': 8,
     'WRITE_MD': True,
-    'PLOT': False,
+    'PLOT': True,
     'LIST_ANALYZED': True,
     'UNIQUE_RESULTS': False,
     'RESULT_DIR': ".results/6",
     'IMPACT_DIR': ".results/6_impact",
-    'ONLY_MULTI': True
+    'ONLY_MULTI': True,
+    'SAVE_FIGS': False,
+    'FIGURE_DIR': f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results",
+    'FIG_SIZE': (19,11)
 }
+
+def save_figure(path: str):
+    if os.path.isdir(os.path.dirname(path)) and OPTIONS['SAVE_FIGS']:
+        plt.savefig(path, dpi=900)
 
 if __name__ == '__main__':
     plt.style.use('dark_background')
@@ -273,14 +287,14 @@ if __name__ == '__main__':
     cases = [onig,expat,usb]
 
     if OPTIONS['PLOT']:
-        plot_analysis_dists(cases,ident=True,
-            unique_results=OPTIONS['UNIQUE_RESULTS']
-        )
-        plot_analysis_dists(cases,ident=False,
-            unique_results=OPTIONS['UNIQUE_RESULTS']
-        )
+        plot_analysis_dists(cases,ident=True)
+        save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist_id.png")
+        plot_analysis_dists(cases,ident=False)
+        save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist.png")
         plot_reductions(cases)
+        save_figure(f"{OPTIONS['FIGURE_DIR']}/reduction_violin.png")
 
+        plt.subplots_adjust(bottom=0.15)
         plt.xticks(fontsize=OPTIONS['PLOT_FONT_SIZE'])
         plt.show()
 
