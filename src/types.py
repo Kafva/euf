@@ -41,10 +41,26 @@ class AnalysisResult(Enum):
     # as a function
     NOT_RENAMED = 84
     # Array arguments are not supported for verification
-    # (adding partial support should not be to compliated however)
+    # (adding partial support should not be to complicated however)
     ARRAY_ARG = 85
     VARIADIC = 86
     NONE = 255 # Base case used in `print_result`
+
+    @classmethod
+    def results_that_reduce(cls) -> set:
+        '''
+        Returns the set of results which infer a reduction based on the
+        current CONFIG.
+        '''
+        reduction_results = {AnalysisResult.SUCCESS}
+        if CONFIG.REDUCE_INCOMPLETE_UNWIND:
+            reduction_results.add(AnalysisResult.SUCCESS_UNWIND_FAIL)
+        if CONFIG.REDUCE_NO_VCCS:
+            reduction_results.add(AnalysisResult.NO_VCCS)
+        if CONFIG.REDUCE_NO_VCCS and CONFIG.REDUCE_INCOMPLETE_UNWIND:
+            reduction_results.add(AnalysisResult.NO_VCCS_UNWIND_FAIL)
+        return reduction_results
+
 
 @dataclass(init=True)
 class IdentifierLocation:

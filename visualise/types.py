@@ -70,9 +70,13 @@ class FunctionResult:
     results_id: list[AnalysisResult] = field(default_factory=list)
 
     def has_multi_result(self,ident:bool=False):
+        '''
+        Considers a different set of results as "successful" based on 
+        the current CONFIG object
+        '''
         res = self.results_id if ident else self.results
-        return (AnalysisResult.SUCCESS in res or
-            AnalysisResult.SUCCESS_UNWIND_FAIL in res) and \
+        return any([ r in AnalysisResult.results_that_reduce() \
+                for r in res ]) and \
             (AnalysisResult.FAILURE in res or
              AnalysisResult.FAILURE_UNWIND_FAIL in res)
 
@@ -280,8 +284,6 @@ class Case:
             self.impact_set_reductions_per_trial(),
             "impact"
         )
-
-
 
     def average_set(self, sizes: list[int], reductions:list[float], label:str):
         average_size = round(mean(sizes),ROUNDING)

@@ -40,7 +40,7 @@ sys.path.extend(['..','.'])
 from visualise.types import Case
 from src.config import CONFIG
 from src.types import AnalysisResult
-from src.util import print_stage
+from src.util import print_info, print_stage
 
 def write_report(cases: list[Case], only_multi:bool=False):
     ''' 
@@ -280,7 +280,13 @@ if __name__ == '__main__':
     if OPTIONS['WRITE_MD']:
         write_report(cases,only_multi=OPTIONS['ONLY_MULTI'])
     if OPTIONS['LIST_ANALYZED']:
-        print("\n=============================\n")
+        print("\n=============================")
+        # Specify what we consider as a 'multi-result'
+        CONFIG.REDUCE_NO_VCCS = True
+        CONFIG.REDUCE_INCOMPLETE_UNWIND = True
+        print_info(f"REDUCE_NO_VCCS: {CONFIG.REDUCE_NO_VCCS}")
+        print_info(f"REDUCE_INCOMPLETE_UNWIND: "
+                f"{CONFIG.REDUCE_INCOMPLETE_UNWIND}\n")
         for case in cases:
             print_stage(case.name)
             results = case.multi_result_function_results() \

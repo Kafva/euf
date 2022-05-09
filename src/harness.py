@@ -10,24 +10,6 @@ from src.types import AnalysisResult, DependencyFunctionChange, \
 from src.util import ccdb_dir, print_result, shorten_path_fields, \
         time_end, time_start, wait_on_cr, print_err
 
-
-def successful_harness_result(result: AnalysisResult) -> bool:
-    '''
-    For identity verification, this return value determines whether or not 
-    full analysis is performed, for full analysis this return value
-    determines if the tested function should be removed from the change set
-    '''
-    return result.value == AnalysisResult.SUCCESS.value \
-            or \
-            (CONFIG.REDUCE_INCOMPLETE_UNWIND and \
-            result.value == AnalysisResult.SUCCESS_UNWIND_FAIL.value) \
-            or \
-            (CONFIG.REDUCE_NO_VCCS and \
-            result.value == AnalysisResult.NO_VCCS) \
-            or \
-            ((CONFIG.REDUCE_NO_VCCS and CONFIG.REDUCE_INCOMPLETE_UNWIND) and \
-            result.value == AnalysisResult.NO_VCCS_UNWIND_FAIL)
-
 def valid_preconds(change: DependencyFunctionChange,
   include_paths: dict[str,set[str]],
   skip_renaming: set[str],
@@ -584,4 +566,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     time_end(msg,  start, AnalysisResult(return_code))
 
-    return successful_harness_result(analysis_result)
+    # For identity verification, this return value determines whether or not 
+    # full analysis is performed, for full analysis this return value
+    # determines if the tested function should be removed from the change set
+    return analysis_result in AnalysisResult.results_that_reduce()
