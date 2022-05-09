@@ -273,8 +273,12 @@ if __name__ == '__main__':
     cases = [onig,expat,usb]
 
     if OPTIONS['PLOT']:
-        plot_analysis_dists(cases,ident=True,unique_results=OPTIONS['UNIQUE_RESULTS'])
-        plot_analysis_dists(cases,ident=False,unique_results=OPTIONS['UNIQUE_RESULTS'])
+        plot_analysis_dists(cases,ident=True,
+            unique_results=OPTIONS['UNIQUE_RESULTS']
+        )
+        plot_analysis_dists(cases,ident=False,
+            unique_results=OPTIONS['UNIQUE_RESULTS']
+        )
         plot_reductions(cases)
 
         plt.xticks(fontsize=OPTIONS['PLOT_FONT_SIZE'])
