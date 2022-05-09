@@ -46,7 +46,7 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
 
         # Color-code a bar plot for each case
         for i,case in enumerate(cases):
-            # The bottom value must be correctly set to the sum of the previous 
+            # The bottom value must be correctly set to the sum of the previous
             # bars, otherwise overlaps will occur
             match i:
                 case 1: bottom = cases_dists[0]
@@ -70,26 +70,34 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
     create_row(title,0,unique_results=False)
     create_row("Without duplicates",1,unique_results=True)
 
-def plot_reductions(cases: list[Case], novcc_cases: list[Case]):
+def plot_reductions(cases: list[Case], novcc_cases: list[Case] = [],percent:bool=True):
     '''
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is suitable for this
     '''
-    change_set_reductions = [ c.change_set_reductions_per_trial() for c in cases ]
-    trans_set_reductions =  [ c.trans_set_reductions_per_trial() for c in cases ]
-    impact_set_reductions = [ c.impact_set_reductions_per_trial() for c in cases ]
+    change_set_reductions = [ c.change_set_reductions_per_trial(percent=percent)
+            for c in cases ]
+    trans_set_reductions =  [ c.trans_set_reductions_per_trial(percent=percent)
+            for c in cases ]
+    impact_set_reductions = [ c.impact_set_reductions_per_trial(percent=percent)
+            for c in cases ]
 
-    CONFIG.RESULTS_DIR = OPTIONS['NO_VCC_RESULT_DIR']
-    novcc_change_set_reductions = [
-            c.change_set_reductions_per_trial(assertions=False) for c
-            in novcc_cases ]
-    novcc_trans_set_reductions =  [
-            c.trans_set_reductions_per_trial(assertions=False) for c in
-            novcc_cases ]
-    novcc_impact_set_reductions = [ \
-            c.impact_set_reductions_per_trial(assertions=False) for c
-            in novcc_cases ]
-    CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
+    if novcc_cases != []:
+        CONFIG.RESULTS_DIR = OPTIONS['NO_VCC_RESULT_DIR']
+        novcc_change_set_reductions = [
+                c.change_set_reductions_per_trial(assertions=True,percent=percent)
+                for c in novcc_cases ]
+        novcc_trans_set_reductions =  [
+                c.trans_set_reductions_per_trial(assertions=True,percent=percent)
+                for c in novcc_cases ]
+        novcc_impact_set_reductions = [ \
+                c.impact_set_reductions_per_trial(assertions=True,percent=percent)
+                for c in novcc_cases ]
+        CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
+    else:
+        novcc_change_set_reductions = []
+        novcc_trans_set_reductions =  []
+        novcc_impact_set_reductions = []
 
 
     fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
@@ -100,11 +108,11 @@ def plot_reductions(cases: list[Case], novcc_cases: list[Case]):
                 horizontalalignment='center'
         )
         axes = subfigs[index].subplots(nrows=1, ncols=3)
-        #axes[0].set_ylabel(f"Items removed from {label} set [#]")
-        axes[0].set_ylabel(f"Items removed from {label} set [%]")
+        unit = '%' if percent else '#'
+        axes[0].set_ylabel(f"Items removed from {label} set [{unit}]")
 
         for i, ax in enumerate(axes):
-            # If the plots are identical we will only see 
+            # If the plots are identical we will only see
             # one of them. If the value ranges are widely different,
             # one bar will also be obscured (but that should not happen)
 
@@ -112,19 +120,23 @@ def plot_reductions(cases: list[Case], novcc_cases: list[Case]):
                 array1[i],
                 showmeans=True, showextrema=True
             )
+            if percent:
+                ax.set_ylim(OPTIONS['VIOLIN_YLIM'])
+
             for pc in parts1['bodies']:
                  pc.set_facecolor('#a9d1d0')
                  pc.set_edgecolor('white')
                  pc.set_alpha(0.5)
 
-            parts2 = ax.violinplot(
-                array2[i],
-                showmeans=True, showextrema=True,
-            )
-            for pc in parts2['bodies']:
-                 pc.set_facecolor('#d6d6d6')
-                 pc.set_edgecolor('white')
-                 pc.set_alpha(0.5)
+            if novcc_cases!=[]:
+                parts2 = ax.violinplot(
+                    array2[i],
+                    showmeans=True, showextrema=True,
+                )
+                for pc in parts2['bodies']:
+                     pc.set_facecolor('#d6d6d6')
+                     pc.set_edgecolor('white')
+                     pc.set_alpha(0.5)
 
             if index==2:
                 ax.set_xlabel(cases[i].name,

@@ -20,6 +20,7 @@ OPTIONS = {
     'FIG_SIZE': (19,11),
     'NO_VCC_RESULT_DIR': ".results/7_novccs",
     'RED': '#d44848',
-    'BLUE': '#467fdb'
+    'BLUE': '#467fdb',
+    'VIOLIN_YLIM': [0,0.25]
 }
 
