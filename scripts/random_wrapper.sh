@@ -30,25 +30,6 @@ EOF
   fi
 }
 
-run_with_novcc(){
-  local conf="/tmp/novcc_$RANDOM.json"
-  local tmp_conf=$(mktemp --suffix .json)
-  cat << EOF > $tmp_conf
-{
-  "RESULTS_DIR": "$PWD/results_novccs",
-  "REDUCE_NO_VCCS": true,
-  "CBMC_RESULTS_FROM_FILE": "$HOME/Repos/euf/results/$2/cbmc.csv"
-}
-EOF
-  
-  jq -rM -s '.[0] * .[1]' $1 $tmp_conf > $conf
-  ./euf.py -c $conf
-
-  cp $HOME/Repos/euf/results/$2/cbmc.csv \
-    $HOME/Repos/euf/results_novccs/$2/cbmc.csv
-
-}
-
 run_trial(){
   local libname=$1
   # Run a random case
@@ -64,13 +45,8 @@ run_trial(){
     sed -nE 's/.*_([a-z0-9]{8})\.json$/\1/p')
   local result_subdir="${libname}_${old_commit::4}_${new_commit::4}"
 
-
   # Run without cbmc (results_impact)
   run_without_cbmc $prev_rand_case_path $result_subdir
-
-  # Run with REDUCE_NO_VCC active (using results from the already generated
-  # cbmc.csv file)
-  run_with_novcc $prev_rand_case_path $result_subdir
 }
 
 for _ in $(seq $CASE_CNT); do

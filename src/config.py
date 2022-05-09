@@ -172,12 +172,6 @@ class Config:
     # --unwinding-assertions generated a failure
     REDUCE_INCOMPLETE_UNWIND: bool = True
 
-    # Consider cases were the equivalence assertion is simplified away
-    # (NO_VCCS) as valid reductions, if used together with 
-    # REDUCE_INCOMPLETE_UNWIND, NO_VCCS_UNWIND_FAIL will also trigger
-    # reductions
-    REDUCE_NO_VCCS: bool = False
-
     # Perform full analysis regardless of if the identity analysis
     # is successful
     IGNORE_FAILED_IDENTITY: bool = False
@@ -197,13 +191,6 @@ class Config:
     USE_EXISTING_DRIVERS: bool = False
 
     # - - - Internal - - -
-
-    # Allow for CBMC results to be loaded from an existing cbmc.csv
-    # file. This is useful when comparing reductions 
-    # for different values of REDUCE_INCOMPLETE_UNWIND and 
-    # REDUCE_NO_VCCS. Must be given as an abspath.
-    CBMC_RESULTS_FROM_FILE: str = ""
-
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio
     # [0.5,RENAME_RATIO_LOW]

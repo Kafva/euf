@@ -56,10 +56,6 @@ class AnalysisResult(Enum):
         reduction_results = {AnalysisResult.SUCCESS}
         if CONFIG.REDUCE_INCOMPLETE_UNWIND:
             reduction_results.add(AnalysisResult.SUCCESS_UNWIND_FAIL)
-        if CONFIG.REDUCE_NO_VCCS:
-            reduction_results.add(AnalysisResult.NO_VCCS)
-        if CONFIG.REDUCE_NO_VCCS and CONFIG.REDUCE_INCOMPLETE_UNWIND:
-            reduction_results.add(AnalysisResult.NO_VCCS_UNWIND_FAIL)
         return reduction_results
 
 @dataclass(init=True)

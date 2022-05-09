@@ -176,29 +176,6 @@ def reduction_stage(
 
     total = len(changed_functions)
 
-    if CONFIG.CBMC_RESULTS_FROM_FILE != "":
-        # Use pre-existing analysis results
-        print_info("Loading pre-existing results from "
-                f"{CONFIG.CBMC_RESULTS_FROM_FILE}...")
-        cbmc_result = load_cbmc_result(
-                os.path.dirname(CONFIG.CBMC_RESULTS_FROM_FILE), {}
-        )
-        for cbmc_result in cbmc_result:
-            if cbmc_result.identity:
-                continue
-            for c in changed_functions:
-                # Remove all functions for which a successful
-                # full result was attained
-                if c.new.ident.location.name == cbmc_result.func_name and \
-                 cbmc_result.result in AnalysisResult.results_that_reduce():
-                    changed_functions.remove(c)
-                    # Continue to the next row in cbmc.csv
-                    break
-
-        print_info(f"Change set reduction: {total} -> {len(changed_functions)}")
-        return
-
-
     global_identifiers, skip_renaming = \
             get_global_identifiers(ccdb_dir(new=False), dep_db_old)
 
