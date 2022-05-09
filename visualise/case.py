@@ -119,8 +119,7 @@ class Case:
         print(f"Functions with an influential and equivalent analysis result: "
               f"{multi_cnt}/{self.nr_of_changed_functions()}")
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-              f"{equiv_result_cnt}/{self.nr_of_changed_functions()}" +\
-              (" (counting NO_VCCS as valid)" if CONFIG.REDUCE_NO_VCCS  else '')
+              f"{equiv_result_cnt}/{self.nr_of_changed_functions()}"
         )
         print(f"Functions with \033[4monly\033[0m influential analysis results: "
               f"{influential_result_cnt}/{self.nr_of_changed_functions()}")
@@ -354,7 +353,6 @@ class Case:
             if os.path.isdir(dirpath) and item.startswith(self.name):
                 if without_reduction:
                     self.trans_set_without_reduction[dirpath] = []
-
                     self.load_change_set(dirpath, "trans_change_set.csv",
                             self.trans_set_without_reduction)
                 else:

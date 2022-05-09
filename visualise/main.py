@@ -137,7 +137,6 @@ def dir_cnt(path:str):
     return len([ p for p in os.listdir(path) \
             if os.path.isdir(f"{path}/{p}")])
 
-
 def load_cases(result_dir:str, result_dir_impact:str) -> list[Case]:
     CONFIG.RESULTS_DIR = result_dir
     onig = Case.new(name="libonig", result_dir=CONFIG.RESULTS_DIR,
@@ -175,12 +174,6 @@ if __name__ == '__main__':
 
     cases = load_cases(OPTIONS['RESULT_DIR'], OPTIONS['IMPACT_DIR'])
 
-    # Same cases but with NO_VCC considered as a valid reduction
-    # Note, the NO_VCC case will have the same cbmc.csv as the main result,
-    #novcc_cases = load_cases(OPTIONS['NO_VCC_RESULT_DIR'],
-    #        OPTIONS['IMPACT_DIR']
-    #)
-
     CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
 
     if OPTIONS['PLOT']:
@@ -188,7 +181,6 @@ if __name__ == '__main__':
         save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist_id.png")
         plot_analysis_dists(cases,ident=False)
         save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist.png")
-        #plot_reductions(cases,novcc_cases,True)
         plot_reductions(cases,percent=False)
         save_figure(f"{OPTIONS['FIGURE_DIR']}/reduction_violin.png")
 
@@ -197,20 +189,12 @@ if __name__ == '__main__':
         plt.show()
 
     # Specify what we consider as a 'multi-result'
-    CONFIG.REDUCE_NO_VCCS = True
     CONFIG.REDUCE_INCOMPLETE_UNWIND = True
-    print_info(f"REDUCE_NO_VCCS: {CONFIG.REDUCE_NO_VCCS}")
     print_info(f"REDUCE_INCOMPLETE_UNWIND: "
         f"{CONFIG.REDUCE_INCOMPLETE_UNWIND}\n"
     )
     for c in cases:
         c.info(OPTIONS['UNIQUE_RESULTS'])
-
-    #print("\n=============================")
-    #CONFIG.RESULTS_DIR = OPTIONS['NO_VCC_RESULT_DIR']
-    #for c in novcc_cases:
-    #    c.info(OPTIONS['UNIQUE_RESULTS'])
-    #CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
 
     if OPTIONS['WRITE_MD']:
         write_report(cases,only_multi=OPTIONS['ONLY_MULTI'])

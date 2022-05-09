@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from itertools import compress
 from textwrap import wrap
-from src.config import CONFIG
 
 from src.types import AnalysisResult
 from visualise.case import Case
@@ -43,7 +42,6 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
         # Wrap the bar name text to X chars
         bar_names = [ '\n'.join(wrap(l, OPTIONS['PLOT_WRAP_CHARS'])) for l in bar_names ]
 
-
         # Color-code a bar plot for each case
         for i,case in enumerate(cases):
             # The bottom value must be correctly set to the sum of the previous
@@ -70,7 +68,7 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
     create_row(title,0,unique_results=False)
     create_row("Without duplicates",1,unique_results=True)
 
-def plot_reductions(cases: list[Case], novcc_cases: list[Case] = [],percent:bool=True):
+def plot_reductions(cases: list[Case],percent:bool=True):
     '''
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is suitable for this
@@ -82,79 +80,45 @@ def plot_reductions(cases: list[Case], novcc_cases: list[Case] = [],percent:bool
     impact_set_reductions = [ c.impact_set_reductions_per_trial(percent=percent)
             for c in cases ]
 
-    if novcc_cases != []:
-        CONFIG.RESULTS_DIR = OPTIONS['NO_VCC_RESULT_DIR']
-        novcc_change_set_reductions = [
-                c.change_set_reductions_per_trial(assertions=True,percent=percent)
-                for c in novcc_cases ]
-        novcc_trans_set_reductions =  [
-                c.trans_set_reductions_per_trial(assertions=True,percent=percent)
-                for c in novcc_cases ]
-        novcc_impact_set_reductions = [ \
-                c.impact_set_reductions_per_trial(assertions=True,percent=percent)
-                for c in novcc_cases ]
-        CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
-    else:
-        novcc_change_set_reductions = []
-        novcc_trans_set_reductions =  []
-        novcc_impact_set_reductions = []
-
-
     fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
     subfigs = fig.subfigures(nrows=3, ncols=1)
 
-    def create_row(title,index,array1,array2,label):
-        subfigs[index].suptitle(title,fontweight='bold',
-                horizontalalignment='center'
+    def create_row(title,index,array1,label):
+        subfigs[index].suptitle(title,
+            fontweight='bold',
+            horizontalalignment='center'
         )
         axes = subfigs[index].subplots(nrows=1, ncols=3)
         unit = '%' if percent else '#'
         axes[0].set_ylabel(f"Items removed from {label} set [{unit}]")
 
         for i, ax in enumerate(axes):
-            # If the plots are identical we will only see
-            # one of them. If the value ranges are widely different,
-            # one bar will also be obscured (but that should not happen)
-
-            parts1 = ax.violinplot(
+            parts = ax.violinplot(
                 array1[i],
                 showmeans=True, showextrema=True
             )
             if percent:
                 ax.set_ylim(OPTIONS['VIOLIN_YLIM'])
 
-            for pc in parts1['bodies']:
+            for pc in parts['bodies']:
                  pc.set_facecolor('#a9d1d0')
                  pc.set_edgecolor('white')
                  pc.set_alpha(0.5)
 
-            if novcc_cases!=[]:
-                parts2 = ax.violinplot(
-                    array2[i],
-                    showmeans=True, showextrema=True,
-                )
-                for pc in parts2['bodies']:
-                     pc.set_facecolor('#d6d6d6')
-                     pc.set_edgecolor('white')
-                     pc.set_alpha(0.5)
-
             if index==2:
                 ax.set_xlabel(cases[i].name,
-                        fontweight='normal',
-                        fontsize=12,
-                        horizontalalignment='center',
+                    fontweight='normal',
+                    fontsize=12,
+                    horizontalalignment='center',
                 )
 
     create_row("Base change set reduction", 0, change_set_reductions,
-        novcc_change_set_reductions,
         "change"
     )
     create_row("Transitive change set reduction", 1, trans_set_reductions,
-        novcc_trans_set_reductions,
         "transitive"
     )
     create_row("Impact set reduction", 2, impact_set_reductions,
-        novcc_impact_set_reductions,
         "impact"
     )
 
