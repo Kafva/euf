@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run with `time`!
-CASE_CNT=1
-export TIMEOUT=-1
+CASE_CNT=2
+export TIMEOUT=60
 export VERBOSITY=-1
 export BATCH=true
 
@@ -43,6 +43,9 @@ EOF
   
   jq -rM -s '.[0] * .[1]' $1 $tmp_conf > $conf
   ./euf.py -c $conf
+
+  cp $HOME/Repos/euf/results/$2/cbmc.csv \
+    $HOME/Repos/euf/results_novccs/$2/cbmc.csv
 
 }
 
