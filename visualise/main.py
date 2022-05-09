@@ -1,32 +1,4 @@
 #!/usr/bin/env python3
-'''
-  Correctness
-  ============
-  * Run X random cases for each project
-
-  * Grep out the subset of equivalent (`SUCCESS`) (TN|FN) cases,
-    there should be a major overlap in what functions appear
-
-  * Grep out the subset of influential (`FAILURE`) (TP|FP) cases,
-    there should be a major overlap in what functions appear
-
-  * Interrogate each function individually to determine if the result is trustworthy
-    - Record in a CSV:
-       - function_name;dependency;results;trusted
-    - "results" should hold all recorded results for this function
-    - "trusted" should be set as True, True(unwind) False or Inconclusive
-    - "description" should motivate the trusted column"s value (separate
-      markdown doc, with pictures)
-
-  * With some form of correctness assessment for each function, we can show a
-    plot of what percentage of the analysis could be considered reliable
-    (CSV entries for functions that are not reliable -> False else True)
-
-  Plots
-  ======
-    * Reduction in change and impact set (mean,lowest,highest graph)
-
-'''
 import os,sys
 import matplotlib.pyplot as plt
 from posixpath import expanduser
