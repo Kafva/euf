@@ -197,6 +197,13 @@ class Config:
     USE_EXISTING_DRIVERS: bool = False
 
     # - - - Internal - - -
+
+    # Allow for CBMC results to be loaded from an existing cbmc.csv
+    # file. This is useful when comparing reductions 
+    # for different values of REDUCE_INCOMPLETE_UNWIND and 
+    # REDUCE_NO_VCCS.
+    CBMC_RESULTS_FROM_FILE: str = ""
+
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio
     # [0.5,RENAME_RATIO_LOW]

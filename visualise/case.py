@@ -1,12 +1,11 @@
-import os,re
+import os
 from statistics import stdev,mean
 from pprint import pprint
 from dataclasses import dataclass, field
-from datetime import datetime
 from src.config import CONFIG
-from src.types import AnalysisResult, \
-        DependencyFunctionChange, IdentifierLocation
-from src.util import flatten, print_stage
+from src.types import AnalysisResult, CbmcResult, \
+        DependencyFunctionChange, FunctionResult
+from src.util import flatten, load_cbmc_result, print_stage
 
 ROUNDING = 4
 
@@ -14,99 +13,6 @@ ROUNDING = 4
 class Impacted:
     main_project_fn_name:str
     dependecy_fn_name:str
-
-@dataclass(init=True)
-class CbmcResult:
-    func_name:str
-    identity:bool
-    result: AnalysisResult
-    runtime: datetime
-    driver: str
-    location_old: IdentifierLocation
-    location_new: IdentifierLocation
-    commit_old: str
-    commit_new: str
-
-    @classmethod
-    def new(cls, items:list, directory:str):
-        assert len(items) == 13
-
-        commit_old = re.search(r"_[a-z0-9]{4}_", directory).\
-                group(0)[1:-1] # type: ignore
-        commit_new = re.search(r"_[a-z0-9]{4}$", directory).\
-                group(0)[1:] # type: ignore
-
-        return cls(
-            func_name = items[0],
-            identity = False if items[1] == "False" else True,
-            result = AnalysisResult[items[2]],
-            runtime = datetime.now(),
-            driver = items[4],
-            location_old = IdentifierLocation(
-                _filepath = items[5],
-                line = items[6],
-                column = items[7],
-                name = items[8].strip()
-            ),
-            location_new = IdentifierLocation(
-                _filepath = items[9],
-                line = items[10],
-                column = items[11],
-                name = items[12].strip()
-            ),
-            commit_old = commit_old,
-            commit_new = commit_new
-        )
-
-@dataclass(init=True)
-class FunctionResult:
-    '''
-    A list of all the analysis results recorded for a perticular
-    function. By using a list with duplicate entries we can
-    see the distrubtion of results and fetch a set()
-    '''
-    func_name: str
-    results: list[AnalysisResult]    = field(default_factory=list)
-    results_id: list[AnalysisResult] = field(default_factory=list)
-
-    def has_multi_result(self,ident:bool=False):
-        '''
-        Considers a different set of results as "successful" based on 
-        the current CONFIG object
-        '''
-        res = self.results_id if ident else self.results
-        return any([ r in AnalysisResult.results_that_reduce() \
-                for r in res ]) and \
-            (AnalysisResult.FAILURE in res or
-             AnalysisResult.FAILURE_UNWIND_FAIL in res)
-
-    def pretty(self,ident:bool=False,only_multi:bool=False) -> str:
-        '''
-        Highlight if both SUCCESS and FAILURE was recorded
-        for a function, these cases are most intresting since
-        they enable a comparsion between a (accroding to EUF)
-        equivalent and influential update to the same function
-        '''
-        res = self.results_id if ident else self.results
-        if self.has_multi_result(ident):
-            out = f"\033[32;4m{self.func_name}\033[0m: [\n"
-        else:
-            if only_multi:
-                return ""
-            out = f"{self.func_name}: [\n"
-
-        for r in set(res):
-            cnt = res.count(r)
-            out += f"{CONFIG.INDENT}{r.name} ({cnt}),\n"
-        return out.strip(",\n")+"\n]"
-
-    def pretty_md(self,ident:bool=False) -> str:
-        out = f"## `{self.func_name}()`\n"
-        res = self.results_id if ident else self.results
-        for r in set(res):
-            cnt = res.count(r)
-            out += f"> {r.name} ({cnt})\n"
-        return out
 
 @dataclass(init=True)
 class Case:
@@ -156,49 +62,9 @@ class Case:
         field(default_factory=dict)
 
     @classmethod
-    def load_cbmc_result(cls,name:str) -> \
-     tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
-        function_results = {}
-        cbmc_results = {}
-
-        for item in os.listdir(CONFIG.RESULTS_DIR):
-            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            cbmc_results[dirpath] = []
-
-            if os.path.isdir(dirpath) and item.startswith(name):
-                if os.path.isfile(f"{dirpath}/cbmc.csv"):
-                    with open(f"{dirpath}/cbmc.csv", mode = 'r', encoding='utf8') as f:
-                        for line in f.readlines()[1:]:
-                            cbmc_results[dirpath].append(
-                                CbmcResult.new(line.split(";"), dirpath)
-                            )
-
-                            # Add a key for each function name
-                            func_name = cbmc_results[dirpath][-1].func_name
-                            if func_name not in function_results:
-                                function_results[func_name] =\
-                                FunctionResult(func_name=func_name)
-
-            # Join entries with for the same function into one
-            for func_name,func_result in function_results.items():
-                func_result.results.extend(
-                    map(lambda a: a.result, filter(lambda c:
-                        not c.identity and c.func_name == func_name,
-                        cbmc_results[dirpath]
-                    )
-                ))
-                func_result.results_id.extend(
-                    map(lambda a: a.result, filter(lambda c:
-                        c.identity and c.func_name == func_name,
-                        cbmc_results[dirpath]
-                    )
-                ))
-
-        return function_results, cbmc_results
-
-    @classmethod
-    def new(cls,name:str,total_functions:int,color:str):
-        function_results_dict, cbmc_results_dict = cls.load_cbmc_result(name)
+    def new(cls,name:str, result_dir:str, total_functions:int,color:str):
+        function_results_dict, cbmc_results_dict = \
+            load_cbmc_result(name,result_dir)
         return cls(name=name,
                 total_functions=total_functions,
                 cbmc_results_dict=cbmc_results_dict,

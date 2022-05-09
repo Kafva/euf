@@ -5,7 +5,7 @@ from clang import cindex
 from src import ERR_EXIT
 
 from src.config import CONFIG
-from src.types import AnalysisResult
+from src.types import AnalysisResult, CbmcResult, FunctionResult
 
 def ccdb_dir(new: bool) -> str:
     '''
@@ -219,3 +219,44 @@ def remove_files_in(path: str):
             filepath = f"{path}/{file}"
             if os.path.isfile(filepath):
                 os.remove(filepath)
+
+def load_cbmc_result(name:str,result_dir:str) -> \
+ tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
+    function_results = {}
+    cbmc_results = {}
+
+    for item in os.listdir(result_dir):
+        dirpath = f"{result_dir}/{item}"
+        cbmc_results[dirpath] = []
+
+        if os.path.isdir(dirpath) and item.startswith(name):
+            if os.path.isfile(f"{dirpath}/cbmc.csv"):
+                with open(f"{dirpath}/cbmc.csv", mode = 'r', encoding='utf8') as f:
+                    for line in f.readlines()[1:]:
+                        cbmc_results[dirpath].append(
+                            CbmcResult.new(line.split(";"), dirpath)
+                        )
+
+                        # Add a key for each function name
+                        func_name = cbmc_results[dirpath][-1].func_name
+                        if func_name not in function_results:
+                            function_results[func_name] =\
+                            FunctionResult(func_name=func_name)
+
+        # Join entries with for the same function into one
+        for func_name,func_result in function_results.items():
+            func_result.results.extend(
+                map(lambda a: a.result, filter(lambda c:
+                    not c.identity and c.func_name == func_name,
+                    cbmc_results[dirpath]
+                )
+            ))
+            func_result.results_id.extend(
+                map(lambda a: a.result, filter(lambda c:
+                    c.identity and c.func_name == func_name,
+                    cbmc_results[dirpath]
+                )
+            ))
+
+    return function_results, cbmc_results
+

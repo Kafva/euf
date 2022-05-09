@@ -37,7 +37,7 @@ from textwrap import wrap
 # '.' is needed to run from the visualise directory 
 sys.path.extend(['..','.'])
 
-from visualise.types import Case
+from visualise.case import Case
 from src.config import CONFIG
 from src.types import AnalysisResult
 from src.util import print_info, print_stage
@@ -239,15 +239,18 @@ if __name__ == '__main__':
     plt.style.use('dark_background')
 
     CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
-    onig = Case.new(name="libonig", total_functions=1186, color='#d44848')
+    onig = Case.new(name="libonig", result_dir=CONFIG.RESULTS_DIR,
+            total_functions=1186, color='#d44848')
     onig.load_change_sets()
     onig.load_impact_set()
 
-    expat = Case.new(name="libexpat", total_functions=645, color='#32a852')
+    expat = Case.new(name="libexpat", result_dir=CONFIG.RESULTS_DIR,
+            total_functions=645, color='#32a852')
     expat.load_change_sets()
     expat.load_impact_set()
 
-    usb = Case.new(name="libusb", total_functions=1346, color='#467fdb')
+    usb = Case.new(name="libusb", result_dir=CONFIG.RESULTS_DIR,
+            total_functions=1346, color='#467fdb')
     usb.load_change_sets()
     usb.load_impact_set()
 

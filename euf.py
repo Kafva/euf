@@ -35,8 +35,8 @@ from src.arg_states import join_arg_states_result, state_space_analysis
 from src.harness import valid_preconds, create_harness, \
         get_include_paths_for_tu, run_harness, add_includes_from_tu
 from src.util import ccdb_dir, flatten, flatten_dict, \
-        git_dir, git_relative_path, has_allowed_suffix, \
-        mkdir_p, print_stage, rm_f, time_end, time_start, \
+        git_dir, git_relative_path, has_allowed_suffix, load_cbmc_result, \
+        mkdir_p, print_info, print_stage, rm_f, time_end, time_start, \
         wait_on_cr, print_err, set_libclang
 from src.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_non_static, \
@@ -173,6 +173,17 @@ def reduction_stage(
  log_dir: str):
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
+
+    if CONFIG.CBMC_RESULTS_FROM_FILE != "":
+        # Use pre-existing analysis results
+        print_info("Loading pre-existing results from "
+                f"{CONFIG.CBMC_RESULTS_FROM_FILE}...")
+        cbmc_results = \
+        load_cbmc_result(
+            os.path.basename(CONFIG.DEPENDENCY_DIR),
+            os.path.dirname(CONFIG.CBMC_RESULTS_FROM_FILE)
+        )
+
 
     global_identifiers, skip_renaming = \
             get_global_identifiers(ccdb_dir(new=False), dep_db_old)
