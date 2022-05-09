@@ -101,11 +101,11 @@ class Case:
 
         multi_cnt = len(self.multi_result_function_results())
         fully_analyzed = self.fully_analyzed_functions()
+
+        equiv_results = AnalysisResult.results_that_reduce()
+
         equiv_result_cnt = len(list(filter(lambda x:
-            1 <= len({
-                AnalysisResult.SUCCESS,
-                AnalysisResult.SUCCESS_UNWIND_FAIL
-                } | set(x.results)) <= 2 ,
+            1 <= len(equiv_results|set(x.results)) <= len(equiv_results),
             fully_analyzed
         )))
         influential_result_cnt = len(list(filter(lambda x:
@@ -119,7 +119,9 @@ class Case:
         print(f"Functions with an influential and equivalent analysis result: "
               f"{multi_cnt}/{self.nr_of_changed_functions()}")
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-              f"{equiv_result_cnt}/{self.nr_of_changed_functions()}")
+              f"{equiv_result_cnt}/{self.nr_of_changed_functions()}" +\
+              (" (counting NO_VCCS as valid)" if CONFIG.REDUCE_NO_VCCS  else '')
+        )
         print(f"Functions with \033[4monly\033[0m influential analysis results: "
               f"{influential_result_cnt}/{self.nr_of_changed_functions()}")
 
@@ -160,49 +162,65 @@ class Case:
         stdev_reduction = round(stdev(reductions),ROUNDING)
         print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
 
-    def impact_set_reductions_per_trial(self) -> list[float]:
+    def impact_set_reductions_per_trial(self,assertions:bool=True,
+     percent:bool=True) -> list[float]:
         reductions_per_trial = []
         for d,d_without in zip(self.impact_set,self.impact_set_without_reduction):
-            assert len(self.impact_set_without_reduction[d_without]) >= \
-                    len(self.impact_set[d])
+            without_reduction = len(self.impact_set_without_reduction[d_without])
+            with_reduction = len(self.impact_set[d])
+
+            if assertions:
+                assert without_reduction >= with_reduction
 
             reductions_per_trial.append(
-                    len(self.impact_set_without_reduction[d_without]) -
-                    len(self.impact_set[d])
+                    without_reduction - with_reduction
             )
+            if percent and without_reduction != 0:
+                reductions_per_trial[-1] /= without_reduction
+
         return reductions_per_trial
 
-    def trans_set_reductions_per_trial(self) -> list[float]:
+    def trans_set_reductions_per_trial(self,assertions:bool=True,
+     percent:bool=True) -> list[float]:
         reductions_per_trial = []
         for d,d_without in \
           zip(self.trans_change_set,self.trans_set_without_reduction):
             without_reduction = len(self.trans_set_without_reduction[d_without])
             with_reduction = len(self.trans_change_set[d])
 
-            assert without_reduction >= with_reduction
+            if assertions:
+                assert without_reduction >= with_reduction
             reductions_per_trial.append(
-                    len(self.trans_set_without_reduction[d_without]) -
-                    len(self.trans_change_set[d])
+                    without_reduction - with_reduction
             )
+            if percent and without_reduction!=0:
+                reductions_per_trial[-1] /= without_reduction
 
         return reductions_per_trial
 
-    def change_set_reductions_per_trial(self) -> list[float]:
+    def change_set_reductions_per_trial(self,assertions:bool=True,
+     percent:bool=True) -> list[float]:
         '''
         Go through each pair of base and reduced change sets and record the
         reduction for each one.
         '''
         reductions_per_trial = []
         for dirpath in self.base_change_set:
-            assert len(self.base_change_set[dirpath]) >= \
-                    len(self.reduced_change_set[dirpath])
+            base_set_len = len(self.base_change_set[dirpath])
+            if assertions:
+                assert base_set_len >= \
+                        len(self.reduced_change_set[dirpath])
             reductions_per_trial.append(
-                    len(self.base_change_set[dirpath]) -
+                    base_set_len -
                     len(self.reduced_change_set[dirpath])
             )
+            if percent and base_set_len!=0:
+                reductions_per_trial[-1] /= base_set_len
+
         return reductions_per_trial
 
-    def multi_result_function_results(self,ident:bool=False) -> list[FunctionResult]:
+    def multi_result_function_results(self,ident:bool=False) \
+     -> list[FunctionResult]:
         multi_results = []
         for func_res in self.function_results():
             if func_res.has_multi_result(ident):
