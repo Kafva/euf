@@ -7,8 +7,8 @@ VERBOSITY=${VERBOSITY:=1}
 TIMEOUT=${TIMEOUT:=60}
 BATCH=${BATCH:=false}
 CMTS=/tmp/commits
-MAX_DISTANCE=$(( 24*60*60 * 120))
-MIN_DISTANCE=$(( 24*60*60 * 30))
+MAX_DISTANCE=$(( 24*60*60 * 28))
+MIN_DISTANCE=$(( 24*60*60 * 14))
 
 get_pair(){
   cmt1=$(shuf -n1 $CMTS)
