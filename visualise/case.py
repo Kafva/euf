@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from src.config import CONFIG
 from src.types import AnalysisResult, CbmcResult, \
         DependencyFunctionChange, FunctionResult
-from src.util import flatten, load_cbmc_result, print_stage
+from src.util import flatten, load_cbmc_results, print_stage
 
 ROUNDING = 4
 
@@ -64,7 +64,7 @@ class Case:
     @classmethod
     def new(cls,name:str, result_dir:str, total_functions:int,color:str):
         function_results_dict, cbmc_results_dict = \
-            load_cbmc_result(name,result_dir)
+            load_cbmc_results(name,result_dir)
         return cls(name=name,
                 total_functions=total_functions,
                 cbmc_results_dict=cbmc_results_dict,
@@ -323,8 +323,7 @@ class Case:
     def load_change_set(self,dirpath:str,filename:str,
      change_set:dict[str,list[DependencyFunctionChange]]):
         if os.path.isfile(f"{dirpath}/{filename}"):
-            with open(f"{dirpath}/{filename}",
-              mode = 'r', encoding='utf8') as f:
+            with open(f"{dirpath}/{filename}", mode='r', encoding='utf8') as f:
                 for line in f.readlines()[1:]:
                     change_set[dirpath].append(DependencyFunctionChange.\
                             new_from_change_set_csv(line.split(";"))
@@ -333,18 +332,18 @@ class Case:
     def load_change_sets(self,without_reduction:bool=False):
         for item in os.listdir(CONFIG.RESULTS_DIR):
             dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            if without_reduction:
-                self.trans_set_without_reduction[dirpath] = []
-            else:
-                self.base_change_set[dirpath] = []
-                self.reduced_change_set[dirpath] = []
-                self.trans_change_set[dirpath] = []
-
+            # Only load entries matching the current name
             if os.path.isdir(dirpath) and item.startswith(self.name):
                 if without_reduction:
+                    self.trans_set_without_reduction[dirpath] = []
+
                     self.load_change_set(dirpath, "trans_change_set.csv",
                             self.trans_set_without_reduction)
                 else:
+                    self.base_change_set[dirpath] = []
+                    self.reduced_change_set[dirpath] = []
+                    self.trans_change_set[dirpath] = []
+
                     self.load_change_set(dirpath, "change_set.csv",
                             self.base_change_set)
                     self.load_change_set(dirpath, "reduced_set.csv",
@@ -360,19 +359,22 @@ class Case:
     def load_impact_set(self,without_reduction:bool=False):
         for item in os.listdir(CONFIG.RESULTS_DIR):
             dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            if without_reduction:
-                self.impact_set_without_reduction[dirpath] = []
-            else:
-                self.impact_set[dirpath] = []
 
+            # Only load entries matching the current name
             if os.path.isdir(dirpath) and item.startswith(self.name):
+                if without_reduction:
+                    self.impact_set_without_reduction[dirpath] = []
+                else:
+                    self.impact_set[dirpath] = []
+
                 if os.path.isfile(f"{dirpath}/impact_set.csv"):
                     with open(f"{dirpath}/impact_set.csv",
                       mode = 'r', encoding='utf8') as f:
                         for line in f.readlines()[1:]:
                             csv_values = line.split(";")
                             if without_reduction:
-                                self.impact_set_without_reduction[dirpath].append(Impacted(
+                                self.impact_set_without_reduction[dirpath]\
+                                    .append(Impacted(
                                     main_project_fn_name=csv_values[3],
                                     dependecy_fn_name=csv_values[8]
                                 ))

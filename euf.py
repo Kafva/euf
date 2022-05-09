@@ -28,7 +28,7 @@ from src import BASE_DIR, ERR_EXIT
 from src.config import CONFIG
 from src.fmt import fmt_divergence, print_call_sites, \
         print_changes, print_transistive_changes
-from src.types import DependencyFunction, \
+from src.types import AnalysisResult, DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
     CallSite, SourceDiff, SourceFile
 from src.arg_states import join_arg_states_result, state_space_analysis
@@ -174,15 +174,29 @@ def reduction_stage(
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
 
+    total = len(changed_functions)
+
     if CONFIG.CBMC_RESULTS_FROM_FILE != "":
         # Use pre-existing analysis results
         print_info("Loading pre-existing results from "
                 f"{CONFIG.CBMC_RESULTS_FROM_FILE}...")
-        cbmc_results = \
-        load_cbmc_result(
-            os.path.basename(CONFIG.DEPENDENCY_DIR),
-            os.path.dirname(CONFIG.CBMC_RESULTS_FROM_FILE)
+        cbmc_result = load_cbmc_result(
+                os.path.dirname(CONFIG.CBMC_RESULTS_FROM_FILE), {}
         )
+        for cbmc_result in cbmc_result:
+            if cbmc_result.identity:
+                continue
+            for c in changed_functions:
+                # Remove all functions for which a successful
+                # full result was attained
+                if c.new.ident.location.name == cbmc_result.func_name and \
+                 cbmc_result.result in AnalysisResult.results_that_reduce():
+                    changed_functions.remove(c)
+                    # Continue to the next row in cbmc.csv
+                    break
+
+        print_info(f"Change set reduction: {total} -> {len(changed_functions)}")
+        return
 
 
     global_identifiers, skip_renaming = \
@@ -255,7 +269,6 @@ def reduction_stage(
     # of header files to include. The header files should be given with
     # paths relative to one of the '-I' paths for the TU in question
     tu_includes_dict = {}
-    total = len(changed_functions)
 
     script_env = CONFIG.get_script_env()
     script_env.update({

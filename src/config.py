@@ -201,7 +201,7 @@ class Config:
     # Allow for CBMC results to be loaded from an existing cbmc.csv
     # file. This is useful when comparing reductions 
     # for different values of REDUCE_INCOMPLETE_UNWIND and 
-    # REDUCE_NO_VCCS.
+    # REDUCE_NO_VCCS. Must be given as an abspath.
     CBMC_RESULTS_FROM_FILE: str = ""
 
     # A file will be considered renamed if git blame only finds
@@ -327,6 +327,8 @@ class Config:
             for key,val in dct.items():
                 if key in dct:
                     setattr(self, key, val) # Respects .setters
+        assert self.CBMC_RESULTS_FROM_FILE.startswith("/") or \
+               self.CBMC_RESULTS_FROM_FILE==""
 
     def reset(self):
         '''

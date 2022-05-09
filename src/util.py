@@ -220,43 +220,68 @@ def remove_files_in(path: str):
             if os.path.isfile(filepath):
                 os.remove(filepath)
 
-def load_cbmc_result(name:str,result_dir:str) -> \
+
+def load_cbmc_results(name:str, result_dir:str) -> \
  tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
-    function_results = {}
-    cbmc_results = {}
+    '''
+    Load the data from every cbmc.csv for a given case (libonig etc.)
+    under the given result_dir.
+    '''
+    function_results_dict = {}
+    cbmc_results_dict = {}
 
     for item in os.listdir(result_dir):
         dirpath = f"{result_dir}/{item}"
-        cbmc_results[dirpath] = []
 
+        # Only load entries matching the current name
         if os.path.isdir(dirpath) and item.startswith(name):
-            if os.path.isfile(f"{dirpath}/cbmc.csv"):
-                with open(f"{dirpath}/cbmc.csv", mode = 'r', encoding='utf8') as f:
-                    for line in f.readlines()[1:]:
-                        cbmc_results[dirpath].append(
-                            CbmcResult.new(line.split(";"), dirpath)
-                        )
+            cbmc_results_dict[dirpath] = load_cbmc_result(
+                    dirpath,
+                    function_results_dict
+            )
 
-                        # Add a key for each function name
-                        func_name = cbmc_results[dirpath][-1].func_name
-                        if func_name not in function_results:
-                            function_results[func_name] =\
-                            FunctionResult(func_name=func_name)
-
-        # Join entries with for the same function into one
-        for func_name,func_result in function_results.items():
-            func_result.results.extend(
-                map(lambda a: a.result, filter(lambda c:
-                    not c.identity and c.func_name == func_name,
-                    cbmc_results[dirpath]
-                )
-            ))
-            func_result.results_id.extend(
-                map(lambda a: a.result, filter(lambda c:
-                    c.identity and c.func_name == func_name,
-                    cbmc_results[dirpath]
-                )
+            # For each cbmc.csv, add any new results for a function
+            # to the dictionary of function_results
+            for func_name,func_result in function_results_dict.items():
+                # Full results
+                func_result.results.extend(
+                    map(lambda a: a.result, filter(lambda c:
+                        not c.identity and c.func_name == func_name,
+                        cbmc_results_dict[dirpath]
+                    )
+                ))
+                # Identity results
+                func_result.results_id.extend(
+                    map(lambda a: a.result, filter(lambda c:
+                        c.identity and c.func_name == func_name,
+                        cbmc_results_dict[dirpath]
+                    )
             ))
 
-    return function_results, cbmc_results
+    return function_results_dict, cbmc_results_dict
+
+
+def load_cbmc_result(dirpath:str, \
+  function_results_dict: dict[str,FunctionResult]) -> list[CbmcResult]:
+    '''
+    Load each row of cbmc.csv from the provided dirpath into a list
+    of CbmcResult objects and populate the provided dict with
+    FunctionResults.
+    '''
+    cbmc_results = []
+
+    if os.path.isfile(f"{dirpath}/cbmc.csv"):
+        with open(f"{dirpath}/cbmc.csv", mode = 'r', encoding='utf8') as f:
+            for line in f.readlines()[1:]:
+                cbmc_results.append(
+                    CbmcResult.new(line.split(";"), dirpath)
+                )
+
+                # Add a key for each encountered function name
+                func_name = cbmc_results[-1].func_name
+                if func_name not in function_results_dict:
+                    function_results_dict[func_name] =\
+                        FunctionResult(func_name=func_name)
+
+    return cbmc_results
 
