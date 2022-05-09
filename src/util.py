@@ -217,7 +217,6 @@ def remove_files_in(path: str):
             if os.path.isfile(filepath):
                 os.remove(filepath)
 
-
 def load_cbmc_results(name:str, result_dir:str) -> \
  tuple[dict[str,FunctionResult],dict[str,list[CbmcResult]]]:
     '''
@@ -256,7 +255,6 @@ def load_cbmc_results(name:str, result_dir:str) -> \
             ))
 
     return function_results_dict, cbmc_results_dict
-
 
 def load_cbmc_result(dirpath:str, \
   function_results_dict: dict[str,FunctionResult]) -> list[CbmcResult]:

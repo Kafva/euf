@@ -283,7 +283,7 @@ def state_space_analysis(symbols: list[str], source_dir: str,
 
             if len(failed_symbol_analysis)>0:
                 if CONFIG.VERBOSITY>=1:
-                    print_err(f"Incomplete state enumeration:")
+                    print_err("Incomplete state enumeration:")
                     print(failed_symbol_analysis)
 
                 # Remove all state files created for symbols that could
@@ -296,7 +296,7 @@ def state_space_analysis(symbols: list[str], source_dir: str,
 
                 with open(f"{log_dir}/state_fail.csv", mode='w',
                   encoding='utf8') as f:
-                    f.write("subdir;symbol\n");
+                    f.write("subdir;symbol\n")
                     for sym in failed_symbol_analysis:
                         f.write(f"{subdir};{sym}\n")
 

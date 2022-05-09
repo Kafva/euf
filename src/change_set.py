@@ -15,6 +15,28 @@ from src.util import get_column_counts, git_dir, \
         git_relative_path, print_info, print_err, \
         shorten_path_fields, time_end, time_start
 
+def get_cursor_from_source_file(source_file: SourceFile) -> cindex.Cursor|None:
+    try:
+        os.chdir(source_file.compile_dir_new)
+        tu = cindex.TranslationUnit.from_source(
+            source_file.filepath_new,
+            args = source_file.compile_args_new
+        )
+        print_diag_errors(source_file.compile_dir_new,tu)
+        return tu.cursor
+    except cindex.TranslationUnitLoadError:
+        print_err(f"Failed to load TU: {source_file.filepath_new}")
+        if CONFIG.VERBOSITY >= 3:
+            print(' '.join(source_file.compile_args_new))
+    except FileNotFoundError:
+        # Usually caused by faulty paths in ccdb
+        traceback.print_exc()
+        print_err("This error has likely occured due to invalid entries in "
+                  "compile_commands.json"
+        )
+    return None
+
+
 def functions_match(match: DependencyFunction, other: DependencyFunction) \
  -> bool:
     '''
@@ -126,6 +148,8 @@ def functions_differ(cursor_old: cindex.Cursor, cursor_new: cindex.Cursor) \
         if src_loc := functions_differ(child_old,child_new):
             return src_loc
 
+    return None
+
 def get_changed_functions_from_diff(diff: SourceDiff) \
  -> list[DependencyFunctionChange]:
     '''
@@ -188,7 +212,7 @@ def get_changed_functions_from_diff(diff: SourceDiff) \
             if CONFIG.VERBOSITY >= 5:
                 print(f"Deleted: a/{git_rel_path_old} {pair.old.spelling}()")
             continue
-        elif not pair.old:
+        if not pair.old:
             if CONFIG.VERBOSITY >= 5:
                 print(f"New: b/{git_rel_path_new} {pair.new.spelling}()")
             continue
@@ -251,26 +275,12 @@ def get_transative_changes_from_file(source_file: SourceFile,
     # key: 'enclosing_function'
     # value: [ called_functions ]
     transative_function_calls: dict[DependencyFunction,list[str]] = {}
-
-    try:
-        os.chdir(source_file.compile_dir_new)
-        tu = cindex.TranslationUnit.from_source(
-                source_file.filepath_new,
-                args = source_file.compile_args_new
+    cursor = get_cursor_from_source_file(source_file)
+    if cursor is not None:
+        find_transative_changes_in_tu(cursor,
+            source_file.compile_dir_new, changed_functions,
+            transative_function_calls, DependencyFunction.empty()
         )
-        cursor = tu.cursor
-    except cindex.TranslationUnitLoadError:
-        print_err(f"Failed to load TU: {source_file.filepath_new}")
-        if CONFIG.VERBOSITY >= 3:
-            print(' '.join(source_file.compile_args_new))
-        return {}
-
-    print_diag_errors(source_file.compile_dir_new,tu)
-
-    find_transative_changes_in_tu(cursor,
-        source_file.compile_dir_new, changed_functions,
-        transative_function_calls, DependencyFunction.empty()
-    )
     return transative_function_calls
 
 def find_transative_changes_in_tu(cursor: cindex.Cursor,

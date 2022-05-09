@@ -1,12 +1,12 @@
-import dataclasses, json, os, traceback
+import dataclasses, json
 from typing import Set
 from clang import cindex
-from src.change_set import functions_match
+from src.change_set import functions_match, get_cursor_from_source_file
 from src.config import CONFIG
 from src.fmt import affected_by, fmt_change, fmt_divergence, fmt_location
 from src.types import DependencyFunction, DependencyFunctionChange, \
         CallSite, IdentifierLocation, SourceFile
-from src.util import git_relative_path, print_err, shorten_path_fields
+from src.util import git_relative_path, shorten_path_fields
 
 def get_call_sites_from_file(source_file: SourceFile,
  changed_functions: Set[DependencyFunctionChange]) -> list[CallSite]:
@@ -15,30 +15,13 @@ def get_call_sites_from_file(source_file: SourceFile,
     the functions in `changed_functions`
     '''
     call_sites = []
-
-    try:
-        os.chdir(source_file.compile_dir_new)
-        tu = cindex.TranslationUnit.from_source(
-           source_file.filepath_new,
-           args = source_file.compile_args_new
-        )
-        cursor = tu.cursor
+    cursor = get_cursor_from_source_file(source_file)
+    if cursor is not None:
         current_enclosing = ""
-
         find_call_sites_in_tu(source_file.filepath_new, cursor,
             source_file.compile_dir_new,
             changed_functions, call_sites, current_enclosing
         )
-    except cindex.TranslationUnitLoadError:
-        traceback.print_exc()
-        print_err(f"Failed to create TU for {source_file.filepath_new}")
-    except FileNotFoundError:
-        # Usually caused by faulty paths in ccdb
-        traceback.print_exc()
-        print_err("This error has likely occured due to invalid entries in "
-                  "compile_commands.json"
-        )
-
     return call_sites
 
 def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,

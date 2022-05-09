@@ -28,15 +28,15 @@ from src import BASE_DIR, ERR_EXIT
 from src.config import CONFIG
 from src.fmt import fmt_divergence, print_call_sites, \
         print_changes, print_transistive_changes
-from src.types import AnalysisResult, DependencyFunction, \
+from src.types import DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
     CallSite, SourceDiff, SourceFile
 from src.arg_states import join_arg_states_result, state_space_analysis
 from src.harness import valid_preconds, create_harness, \
         get_include_paths_for_tu, run_harness, add_includes_from_tu
 from src.util import ccdb_dir, flatten, flatten_dict, \
-        git_dir, git_relative_path, has_allowed_suffix, load_cbmc_result, \
-        mkdir_p, print_info, print_stage, rm_f, time_end, time_start, \
+        git_dir, git_relative_path, has_allowed_suffix, \
+        mkdir_p, print_stage, rm_f, time_end, time_start, \
         wait_on_cr, print_err, set_libclang
 from src.change_set import add_rename_changes_based_on_blame, \
         get_changed_functions_from_diff, get_non_static, \
@@ -542,12 +542,12 @@ if __name__ == '__main__':
         print_err("Missing obligatory option(s) in configuration file")
         sys.exit(ERR_EXIT)
 
-    start = datetime.now()
+    start_main = datetime.now()
 
     run()
 
     if CONFIG.VERBOSITY >= 1:
-        time_end("Total runtime", start)
+        time_end("Total runtime", start_main)
 
     sys.exit(0)
 

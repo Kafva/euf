@@ -470,9 +470,9 @@ class DependencyFunction:
         when comparing functions.
         '''
         return self.ident.location == other.ident.location and \
-            all([ s.location==o.location for s,o in \
-                zip(self.arguments,other.arguments) ] # type: ignore
-        )
+            all( s.location==o.location for s,o in \
+                zip(self.arguments,other.arguments) # type: ignore
+            )
 
     def __hash__(self):
         return hash(self.ident.location.to_csv() + ''.join( \
@@ -844,8 +844,9 @@ class FunctionResult:
         the current CONFIG object
         '''
         res = self.results_id if ident else self.results
-        return any([ r in AnalysisResult.results_that_reduce() \
-                for r in res ]) and \
+        return any(r in AnalysisResult.results_that_reduce()
+                for r in res
+            ) and \
             (AnalysisResult.FAILURE in res or
              AnalysisResult.FAILURE_UNWIND_FAIL in res)
 

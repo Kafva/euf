@@ -314,8 +314,6 @@ class Config:
             for key,val in dct.items():
                 if key in dct:
                     setattr(self, key, val) # Respects .setters
-        assert self.CBMC_RESULTS_FROM_FILE.startswith("/") or \
-               self.CBMC_RESULTS_FROM_FILE==""
 
     def reset(self):
         '''

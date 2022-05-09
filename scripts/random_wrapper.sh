@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run with `time`!
 CASE_CNT=2
-export TIMEOUT=60
+export TIMEOUT=3
 export VERBOSITY=-1
 export BATCH=true
 

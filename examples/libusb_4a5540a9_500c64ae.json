@@ -40,7 +40,6 @@
     "libusb/os/sunos.*",
     "libusb/os/threads_windows.h"
   ],
-  "CBMC_RESULTS_FROM_FILE": "/home/jonas/Repos/euf/tests/expected/libusb-1.0_4a55_500c/cbmc.csv",
   "FORCE_RECOMPILE": false,
   "FORCE_CCDB_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,
