@@ -76,7 +76,7 @@ def valid_preconds(change: DependencyFunctionChange,
     elif change.old.ident != change.new.ident:
         fail_msg = \
             f"Different return type: a/{change.old.ident.type_spelling} " \
-            f"-> b/{change.old.ident.type_spelling} in {change_str}"
+            f"-> b/{change.new.ident.type_spelling} in {change_str}"
         result = AnalysisResult.DIFF_RET
 
     # 4. Parameter types have changed (or a void parameter exists)

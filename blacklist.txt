@@ -15,3 +15,5 @@ libusb_handle_events_locked
 libusb_handle_events_timeout_completed
 libusb_init
 usbi_wait_for_events
+add_code_range_to_buf
+add_ctype_to_cc
