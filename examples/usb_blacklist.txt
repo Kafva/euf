@@ -1,0 +1,6 @@
+add_to_flying_list
+libusb_handle_events_locked
+libusb_handle_events_timeout_completed
+libusb_init
+usbi_wait_for_events
+

@@ -1,0 +1,13 @@
+name_add
+onig_compile
+onig_get_regex_ext
+onig_initialize_encoding
+onig_parse_tree
+onig_search
+add_code_range_to_buf
+add_ctype_to_cc
+add_opcode_option
+add_opcode_rel_addr
+compile_gimmick_node
+compile_length_gimmick_node
+onig_compile
