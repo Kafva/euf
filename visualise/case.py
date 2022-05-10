@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from src.config import CONFIG
 from src.types import AnalysisResult, CbmcResult, \
         DependencyFunctionChange, FunctionResult
-from src.util import flatten, load_cbmc_results, print_stage
+from src.util import flatten, load_cbmc_results, print_err, print_stage
 
 ROUNDING = 4
 
@@ -187,8 +187,16 @@ class Case:
             without_reduction = len(self.trans_set_without_reduction[d_without])
             with_reduction = len(self.trans_change_set[d])
 
+
             if assertions:
+                if without_reduction < with_reduction:
+                    print_err(f"Inconsistent data point: {without_reduction} "
+                        f"-> {with_reduction}: "
+                        f"{d_without}/trans_change_set.csv "
+                        f"{d}/trans_change_set.csv"
+                    )
                 assert without_reduction >= with_reduction
+
             reductions_per_trial.append(
                     without_reduction - with_reduction
             )
