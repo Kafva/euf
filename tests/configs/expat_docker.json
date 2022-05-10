@@ -25,7 +25,6 @@
     "iasciitab.h",
     "latin1tab.h"
   ],
-  "TIMEOUT_BLACKLIST_FILE": "/home/euf/euf/tests/blacklist.txt",
   "FORCE_CCDB_RECOMPILE": true,
   "FORCE_RECOMPILE": false,
   "USE_EXISTING_DRIVERS": false,

@@ -57,7 +57,6 @@
     "-Wno-unused-function",
     "-D__GNUC__"
   ],
-  "TIMEOUT_BLACKLIST_FILE": "/home/jonas/Repos/euf/examples/onig_blacklist.txt",
   "FORCE_RECOMPILE": true,
   "FORCE_CCDB_RECOMPILE": false,
   "SHOW_FUNCTIONS": false,

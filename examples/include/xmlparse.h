@@ -351,6 +351,110 @@ typedef struct open_internal_entity {
 typedef enum XML_Error PTRCALL Processor(XML_Parser parser, const char *start,
                                          const char *end, const char **endPtr);
 
+/* Added as a requirement for sizeof(struct XML_ParserStruct) 
+ * in .e.g. lib/xmlparse.c:5763:1:defineAttribute() */
+struct XML_ParserStruct {
+  /* The first member must be m_userData so that the XML_GetUserData
+     macro works. */
+  void *m_userData;
+  void *m_handlerArg;
+  char *m_buffer;
+  const XML_Memory_Handling_Suite m_mem;
+  /* first character to be parsed */
+  const char *m_bufferPtr;
+  /* past last character to be parsed */
+  char *m_bufferEnd;
+  /* allocated end of m_buffer */
+  const char *m_bufferLim;
+  XML_Index m_parseEndByteIndex;
+  const char *m_parseEndPtr;
+  XML_Char *m_dataBuf;
+  XML_Char *m_dataBufEnd;
+  XML_StartElementHandler m_startElementHandler;
+  XML_EndElementHandler m_endElementHandler;
+  XML_CharacterDataHandler m_characterDataHandler;
+  XML_ProcessingInstructionHandler m_processingInstructionHandler;
+  XML_CommentHandler m_commentHandler;
+  XML_StartCdataSectionHandler m_startCdataSectionHandler;
+  XML_EndCdataSectionHandler m_endCdataSectionHandler;
+  XML_DefaultHandler m_defaultHandler;
+  XML_StartDoctypeDeclHandler m_startDoctypeDeclHandler;
+  XML_EndDoctypeDeclHandler m_endDoctypeDeclHandler;
+  XML_UnparsedEntityDeclHandler m_unparsedEntityDeclHandler;
+  XML_NotationDeclHandler m_notationDeclHandler;
+  XML_StartNamespaceDeclHandler m_startNamespaceDeclHandler;
+  XML_EndNamespaceDeclHandler m_endNamespaceDeclHandler;
+  XML_NotStandaloneHandler m_notStandaloneHandler;
+  XML_ExternalEntityRefHandler m_externalEntityRefHandler;
+  XML_Parser m_externalEntityRefHandlerArg;
+  XML_SkippedEntityHandler m_skippedEntityHandler;
+  XML_UnknownEncodingHandler m_unknownEncodingHandler;
+  XML_ElementDeclHandler m_elementDeclHandler;
+  XML_AttlistDeclHandler m_attlistDeclHandler;
+  XML_EntityDeclHandler m_entityDeclHandler;
+  XML_XmlDeclHandler m_xmlDeclHandler;
+  const ENCODING *m_encoding;
+  INIT_ENCODING m_initEncoding;
+  const ENCODING *m_internalEncoding;
+  const XML_Char *m_protocolEncodingName;
+  XML_Bool m_ns;
+  XML_Bool m_ns_triplets;
+  void *m_unknownEncodingMem;
+  void *m_unknownEncodingData;
+  void *m_unknownEncodingHandlerData;
+  void(XMLCALL *m_unknownEncodingRelease)(void *);
+  PROLOG_STATE m_prologState;
+  Processor *m_processor;
+  enum XML_Error m_errorCode;
+  const char *m_eventPtr;
+  const char *m_eventEndPtr;
+  const char *m_positionPtr;
+  OPEN_INTERNAL_ENTITY *m_openInternalEntities;
+  OPEN_INTERNAL_ENTITY *m_freeInternalEntities;
+  XML_Bool m_defaultExpandInternalEntities;
+  int m_tagLevel;
+  ENTITY *m_declEntity;
+  const XML_Char *m_doctypeName;
+  const XML_Char *m_doctypeSysid;
+  const XML_Char *m_doctypePubid;
+  const XML_Char *m_declAttributeType;
+  const XML_Char *m_declNotationName;
+  const XML_Char *m_declNotationPublicId;
+  ELEMENT_TYPE *m_declElementType;
+  ATTRIBUTE_ID *m_declAttributeId;
+  XML_Bool m_declAttributeIsCdata;
+  XML_Bool m_declAttributeIsId;
+  DTD *m_dtd;
+  const XML_Char *m_curBase;
+  TAG *m_tagStack;
+  TAG *m_freeTagList;
+  BINDING *m_inheritedBindings;
+  BINDING *m_freeBindingList;
+  int m_attsSize;
+  int m_nSpecifiedAtts;
+  int m_idAttIndex;
+  ATTRIBUTE *m_atts;
+  NS_ATT *m_nsAtts;
+  unsigned long m_nsAttsVersion;
+  unsigned char m_nsAttsPower;
+#ifdef XML_ATTR_INFO
+  XML_AttrInfo *m_attInfo;
+#endif
+  POSITION m_position;
+  STRING_POOL m_tempPool;
+  STRING_POOL m_temp2Pool;
+  char *m_groupConnector;
+  unsigned int m_groupSize;
+  XML_Char m_namespaceSeparator;
+  XML_Parser m_parentParser;
+  XML_ParsingStatus m_parsingStatus;
+#ifdef XML_DTD
+  XML_Bool m_isParamEntity;
+  XML_Bool m_useForeignDTD;
+  enum XML_ParamEntityParsing m_paramEntityParsing;
+#endif
+  unsigned long m_hash_secret_salt;
+};
 
  Processor prologProcessor;
  Processor prologInitProcessor;

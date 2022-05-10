@@ -1,3 +1,0 @@
-handle_event_trigger
-libusb_get_configuration
-libusb_handle_events_timeout_completed

@@ -8,20 +8,22 @@ from src.config import CONFIG
 from src.types import AnalysisResult, CbmcResult, FunctionResult
 
 def add_to_timeout_blacklist(func_name:str) -> None:
-    print_info(f"Adding {func_name} to {CONFIG.TIMEOUT_BLACKLIST_FILE}")
-    with open(CONFIG.TIMEOUT_BLACKLIST_FILE, mode='a', encoding='utf8') \
-     as f:
-        f.write(f"{func_name}\n")
+    if CONFIG.ENABLE_TIMEOUT_BLACKLIST and \
+     os.path.isdir(os.path.dirname(CONFIG.TIMEOUT_BLACKLIST_FILE)):
+        print_info(f"Adding {func_name} to {CONFIG.TIMEOUT_BLACKLIST_FILE}")
+        with open(CONFIG.TIMEOUT_BLACKLIST_FILE, mode='a', encoding='utf8') \
+         as f:
+            f.write(f"{func_name}\n")
 
 def load_timeout_blacklist() -> set[str]:
     timed_out_functions = set()
-    if os.path.isfile(CONFIG.TIMEOUT_BLACKLIST_FILE):
-        with open(CONFIG.TIMEOUT_BLACKLIST_FILE, mode = 'r', encoding='utf8') \
-         as f:
-            for line in f.readlines():
-                timed_out_functions.add(line.strip())
+    if CONFIG.ENABLE_TIMEOUT_BLACKLIST:
+        if os.path.isfile(CONFIG.TIMEOUT_BLACKLIST_FILE):
+            with open(CONFIG.TIMEOUT_BLACKLIST_FILE, mode = 'r', encoding='utf8') \
+             as f:
+                for line in f.readlines():
+                    timed_out_functions.add(line.strip())
     return timed_out_functions
-
 
 def ccdb_dir(new: bool) -> str:
     '''

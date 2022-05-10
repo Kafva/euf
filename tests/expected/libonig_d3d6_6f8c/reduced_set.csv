@@ -12,11 +12,9 @@ True;src/regcomp.c;1842;1;noname_disable_map;src/regcomp.c;1842;1;noname_disable
 True;src/regcomp.c;1964;1;numbered_ref_check;src/regcomp.c;1964;1;numbered_ref_check
 True;src/regcomp.c;4684;1;optimize_node_left;src/regcomp.c;4686;1;optimize_node_left
 True;src/regcomp.c;3704;1;quantifiers_memory_node_info;src/regcomp.c;3706;1;quantifiers_memory_node_info
-True;src/regcomp.c;1901;1;renumber_node_backref;src/regcomp.c;1901;1;renumber_node_backref
 True;src/regcomp.c;3028;1;setup_subexp_call;src/regcomp.c;3030;1;setup_subexp_call
 True;src/regcomp.c;3783;1;setup_tree;src/regcomp.c;3785;1;setup_tree
 True;src/regcomp.c;2764;1;subexp_inf_recursive_check;src/regcomp.c;2766;1;subexp_inf_recursive_check
 True;src/regcomp.c;2848;1;subexp_inf_recursive_check_trav;src/regcomp.c;2850;1;subexp_inf_recursive_check_trav
 True;src/regcomp.c;2902;1;subexp_recursive_check;src/regcomp.c;2904;1;subexp_recursive_check
 True;src/regcomp.c;2958;1;subexp_recursive_check_trav;src/regcomp.c;2960;1;subexp_recursive_check_trav
-True;src/regcomp.c;2042;1;unset_addr_list_fix;src/regcomp.c;2042;1;unset_addr_list_fix

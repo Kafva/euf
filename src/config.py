@@ -195,6 +195,7 @@ class Config:
     # Any function that receives a TIMEOUT result will be
     # automatically appended to the file
     TIMEOUT_BLACKLIST_FILE: str = f"{BASE_DIR}/blacklist.txt"
+    ENABLE_TIMEOUT_BLACKLIST: bool = False
 
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
