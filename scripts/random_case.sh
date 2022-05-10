@@ -2,10 +2,9 @@
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <libonig|libexpat|libusb>"
 helpStr=""
-REDUCE_NO_VCCS=${REDUCE_NO_VCCS:=false}
 VERBOSITY=${VERBOSITY:=1}
 TIMEOUT=${TIMEOUT:=60}
-BATCH=${BATCH:=false}
+BATCH=${BATCH:=true}
 CMTS=/tmp/commits
 MAX_DISTANCE=$(( 24*60*60 * 28))
 MIN_DISTANCE=$(( 24*60*60 * 14))
@@ -42,14 +41,14 @@ case "$1" in
     DEP_DIR=~/Repos/libexpat
     LIBNAME=libexpat
     NOT_BEFORE=$(date -d "2020-04-06" '+%s')
-    NOT_AFTER=$(date -d "2021-09-19" '+%s')
+    NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
   libusb)
     BASE_CONF=./examples/base_usb.json
     DEP_DIR=~/Repos/libusb
     LIBNAME=libusb
     NOT_BEFORE=$(date -d "2020-04-06" '+%s')
-    NOT_AFTER=$(date -d "2021-09-19" '+%s')
+    NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
   *)
     die "$usage"
@@ -95,8 +94,7 @@ cat << EOF > /tmp/random.json
   "COMMIT_NEW": "$COMMIT_NEW",
   "QUIET_BUILD": true,
   "CBMC_TIMEOUT": $TIMEOUT,
-  "VERBOSITY": $VERBOSITY,
-  "REDUCE_NO_VCCS": $REDUCE_NO_VCCS
+  "VERBOSITY": $VERBOSITY
 }
 EOF
 

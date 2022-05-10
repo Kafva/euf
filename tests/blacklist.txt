@@ -1,11 +1,3 @@
-add_to_flying_list
-calculate_timeout
-libusb_submit_transfer
-usbi_handle_transfer_cancellation
-usbi_handle_transfer_completion
-XML_ExternalEntityParserCreate
-XML_GetBuffer
-XML_ParserCreateNS
 addBinding
 build_model
 copyString
@@ -25,6 +17,7 @@ compile_length_enclose_node
 compile_length_tree
 compile_range_repeat_node
 compile_tree
+compile_length_quantifier_node
 get_char_length_tree1
 get_max_len
 get_min_len
