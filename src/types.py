@@ -168,6 +168,12 @@ class Identifier:
 
     is_static: bool = False
 
+    def nondet_prototype(self) -> str:
+        base_type =  self.type_spelling.removeprefix("struct") \
+            .removeprefix("enum")\
+            .strip(' *').replace(" ", "_")
+        return f"nondet_{base_type}()"
+
     @classmethod
     def get_type_data(cls, clang_type: cindex.Type) -> tuple[bool,str,str]:
         '''
@@ -380,7 +386,8 @@ class Identifier:
                other.type_spelling.removeprefix("enum ") and \
                self.is_function == other.is_function
 
-    def __repr__(self, paranthesis: bool = True, use_suffix:bool=False):
+    def __repr__(self, paranthesis: bool = True, use_suffix:bool=False,
+            type_only:bool=False):
         constant = 'const ' if self.is_const else ''
         func = '()' if self.is_function and paranthesis else ''
 
@@ -409,7 +416,10 @@ class Identifier:
             type_str = type_str.strip()[0:bracket_idx]
             spelling_str += "[]"
 
-        return f"{constant}{type_str} {spelling_str}{func}"
+        if type_only:
+            return f"{type_str}"
+        else:
+            return f"{constant}{type_str} {spelling_str}{func}"
 
     def dump(self, header:bool = False) -> str:
         fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" \

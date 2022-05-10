@@ -25,7 +25,7 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
   "CBMC_TIMEOUT": 30,
-  "FORCE_RECOMPILE": false,
+  "FORCE_RECOMPILE": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --trace --havoc-undefined-functions",
   "IGNORE_FAILED_IDENTITY": true
 }
@@ -48,6 +48,8 @@ if $TRACE; then
   $output
   printf "\033[34m==>\033[0m TRACE \033[34m<==\033[0m\n"
   grep --no-group-separator --color=never -E -B2 "^\s*ret(_old)*=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*bn=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*node=.*" $output
 else
   ./euf.py -c $CONF $DIFF
 fi

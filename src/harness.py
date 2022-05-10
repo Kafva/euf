@@ -290,6 +290,17 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         for header in includes[1]:
             f.write(f"#include \"{header.lstrip('./')}\"\n")
 
+        f.write("\n")
+        # nondet() stub declarations
+        types = set()
+        for arg in change.old.arguments:
+            type_str = arg.__repr__(type_only=True)
+            if type_str not in types:
+                f.write(f"{type_str} "
+                    f"{arg.nondet_prototype()};\n"
+                )
+                types.add(type_str)
+
         # Declaration of the old version of the function
         f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n")
 
@@ -357,7 +368,12 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             if base_type in CONFIG.EXPLICIT_RENAME:
                 unequal_inputs = True
 
-                f.write(f"{INDENT}{arg.__repr__(use_suffix=True)};\n"  )
+                f.write(f"{INDENT}{arg.__repr__(use_suffix=True)} = ")
+
+                # ~~ nondet() initalisation ~~
+                # ./doc/cprover-manual/modeling-nondeterminism.md
+                f.write(f"{arg.nondet_prototype()};\n")
+
                 arg_string_old += f"{arg.location.name}{SUFFIX}, "
 
                 f.write(f"{INDENT}{arg.__repr__(use_suffix=False)};\n"  )
@@ -371,7 +387,12 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 # more than one input variable. If we had been checking pointer
                 # modifications then we would need separate variables to pass
                 # the old/new version
-                f.write(f"{INDENT}{arg};\n")
+                f.write(f"{INDENT}{arg} = ")
+
+                # ~~ nondet() initalisation ~~
+                # ./doc/cprover-manual/modeling-nondeterminism.md
+                f.write(f"{arg.nondet_prototype()};\n")
+
                 arg_string_old += f"{arg.location.name}, "
                 arg_string += f"{arg.location.name}, "
 

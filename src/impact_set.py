@@ -6,7 +6,7 @@ from src.config import CONFIG
 from src.fmt import affected_by, fmt_change, fmt_divergence, fmt_location
 from src.types import DependencyFunction, DependencyFunctionChange, \
         CallSite, IdentifierLocation, SourceFile
-from src.util import git_relative_path, shorten_path_fields
+from src.util import git_relative_path, print_err, shorten_path_fields
 
 def get_call_sites_from_file(source_file: SourceFile,
  changed_functions: Set[DependencyFunctionChange]) -> list[CallSite]:
@@ -22,6 +22,8 @@ def get_call_sites_from_file(source_file: SourceFile,
             source_file.compile_dir_new,
             changed_functions, call_sites, current_enclosing
         )
+    else:
+        print_err(f"Failed to load: {source_file.filepath_new}")
     return call_sites
 
 def find_call_sites_in_tu(filepath: str, cursor: cindex.Cursor,
