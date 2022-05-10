@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run with `time`!
-CASE_CNT=30
-export TIMEOUT=60
-export VERBOSITY=-1
+CASE_CNT=1
+export TIMEOUT=$((60*2))
+export VERBOSITY=1
 export BATCH=true
 
 INCONSISTENT=0

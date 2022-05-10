@@ -13,6 +13,8 @@ DIFF=$5
 SILENT=${SILENT:=false}
 TRACE=${TRACE:=true}
 
+rm -f /tmp/none.txt
+
 cat << EOF > /tmp/$FUNC_NAME.json
 {
   "ONLY_ANALYZE": "$FUNC_NAME",
@@ -27,7 +29,8 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "CBMC_TIMEOUT": 30,
   "FORCE_RECOMPILE": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --trace --havoc-undefined-functions",
-  "IGNORE_FAILED_IDENTITY": true
+  "IGNORE_FAILED_IDENTITY": true,
+  "TIMEOUT_BLACKLIST_FILE": "/tmp/none.txt"
 }
 EOF
 

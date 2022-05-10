@@ -22,13 +22,18 @@ for func_name in $@; do
 
 [ -f "$func_name" ] && continue
 
+rm -f /tmp/none.txt
+
 cat << EOF > /tmp/$func_name.json
 {
+  "FORCE_RECOMPILE": false,
   "ONLY_ANALYZE": "$func_name",
   "SILENT_IDENTITY_VERIFICATION": $SILENT,
   "SILENT_VERIFICATION": $SILENT,
   "SHOW_FUNCTIONS": $SHOW_FUNC,
-  "SKIP_IMPACT": true
+  "ENABLE_RESULT_LOG": false,
+  "SKIP_IMPACT": true,
+  "TIMEOUT_BLACKLIST_FILE": "/tmp/none.txt"
 }
 EOF
 
