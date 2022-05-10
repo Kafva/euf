@@ -43,12 +43,16 @@
 #include "lib/xmltok.h"
 #include "lib/xmlrole.h"
 
+char nondet_char();
+unsigned long nondet_unsigned_long();
+
 unsigned long ENTROPY_DEBUG_old_b026324c6904b2a(const char* label, unsigned long entropy);
 unsigned long ENTROPY_DEBUG(const char* label, unsigned long entropy);
 
 void euf_main() {
-  const char* label;
-  unsigned long entropy;
+  char* label = malloc(sizeof(char));
+  *label = nondet_char();
+  unsigned long entropy = nondet_unsigned_long();
 
   __CPROVER_assume(
     label == "arc4random_buf"
@@ -58,5 +62,7 @@ void euf_main() {
   unsigned long ret = ENTROPY_DEBUG(label, entropy);
 
   __CPROVER_assert(ret_old == ret, "Equivalent output");
+
+  free(label);
 }
 #endif

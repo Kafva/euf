@@ -10,8 +10,8 @@ COMMIT_OLD=$3
 COMMIT_NEW=$4
 DIFF=$5
 
-SILENT=${SILENT:=false}
-TRACE=${TRACE:=true}
+SILENT=${SILENT:=true}
+TRACE=${TRACE:=false}
 
 rm -f /tmp/none.txt
 
@@ -19,17 +19,17 @@ cat << EOF > /tmp/$FUNC_NAME.json
 {
   "ONLY_ANALYZE": "$FUNC_NAME",
   "SILENT_IDENTITY_VERIFICATION": $SILENT,
-  "USE_EXISTING_DRIVERS": true,
+  "USE_EXISTING_DRIVERS": false,
   "ENABLE_RESULT_LOG": false,
   "SILENT_VERIFICATION": $SILENT,
   "SKIP_IMPACT": true,
   "VERBOSITY": 2,
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
-  "CBMC_TIMEOUT": 30,
-  "FORCE_RECOMPILE": true,
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --trace --havoc-undefined-functions",
-  "IGNORE_FAILED_IDENTITY": true,
+  "CBMC_TIMEOUT": 10,
+  "FORCE_RECOMPILE": false,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
+  "IGNORE_FAILED_IDENTITY": false,
   "TIMEOUT_BLACKLIST_FILE": "/tmp/none.txt"
 }
 EOF

@@ -295,12 +295,15 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # Project include directives
         for header in includes[1]:
             f.write(f"#include \"{header.lstrip('./')}\"\n")
-
         f.write("\n")
+
         # nondet() stub declarations
         types = set()
         for arg in change.old.arguments:
-            type_str = arg.__repr__(type_only=True)
+            # Note that pointers do not get their own stub declerations
+            # we instead use malloc() on the pointer paramter and assign
+            # it with a nondet() value
+            type_str = arg.__repr__(type_only=True).strip(' *')
             if type_str not in types:
                 f.write(f"{type_str} "
                     f"{arg.nondet_prototype()};\n"
@@ -350,6 +353,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         arg_string = ""
         SUFFIX = CONFIG.SUFFIX
         unequal_inputs = False
+        ptr_vars = []
 
         # Note that all checks for e.g. void parameters are
         # done before calling create_harness()
@@ -369,20 +373,30 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             # would still be sound but it would need to produce the same
             # output regardless of what values the input has
             # (since it is no longer synced between the calls)
+            is_ptr = arg.type_spelling.find('*')!=-1
+            if is_ptr:
+                ptr_vars.append(arg)
+
             base_type = arg.type_spelling.removeprefix("struct").strip(' *')
+            type_str = arg.__repr__(type_only=True).strip(' *')
 
             if base_type in CONFIG.EXPLICIT_RENAME:
                 unequal_inputs = True
+                decl = arg.__repr__(use_suffix=True)
 
-                f.write(f"{INDENT}{arg.__repr__(use_suffix=True)} = ")
-
-                # ~~ nondet() initalisation ~~
+                # ~~ nondet() initialisation ~~
                 # ./doc/cprover-manual/modeling-nondeterminism.md
-                f.write(f"{arg.nondet_prototype()};\n")
+                if is_ptr:
+                    # We haft to strip const specifiers from pointers to be
+                    # able to perform the nondet() assignment
+                    decl = decl.removeprefix("const ")
+
+                    f.write(f"{INDENT}{decl} = malloc(sizeof({type_str}));\n")
+                    f.write(f"{INDENT}*{arg.location.name} = {arg.nondet_prototype()};\n")
+                else:
+                    f.write(f"{INDENT}{decl} = {arg.nondet_prototype()};\n")
 
                 arg_string_old += f"{arg.location.name}{SUFFIX}, "
-
-                f.write(f"{INDENT}{arg.__repr__(use_suffix=False)};\n"  )
                 arg_string += f"{arg.location.name}, "
             else:
                 # For non-pointer types we only need to create one variable
@@ -393,11 +407,15 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 # more than one input variable. If we had been checking pointer
                 # modifications then we would need separate variables to pass
                 # the old/new version
-                f.write(f"{INDENT}{arg} = ")
 
-                # ~~ nondet() initalisation ~~
+                # ~~ nondet() initialisation ~~
                 # ./doc/cprover-manual/modeling-nondeterminism.md
-                f.write(f"{arg.nondet_prototype()};\n")
+                if is_ptr:
+                    decl = arg.__repr__().removeprefix('const ')
+                    f.write(f"{INDENT}{decl} = malloc(sizeof({type_str}));\n")
+                    f.write(f"{INDENT}*{arg.location.name} = {arg.nondet_prototype()};\n")
+                else:
+                    f.write(f"{INDENT}{arg} = {arg.nondet_prototype()};\n")
 
                 arg_string_old += f"{arg.location.name}, "
                 arg_string += f"{arg.location.name}, "
@@ -448,10 +466,14 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # 4. Postconditions
         #   Verify equivalence with one or more assertions
         f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, "
-                f"\"{CONFIG.CBMC_ASSERT_MSG}\");")
+                f"\"{CONFIG.CBMC_ASSERT_MSG}\");\n\n")
+
+        # Free any variables that were allocated for completeness
+        for ptr in ptr_vars:
+            f.write(f"{INDENT}free({ptr.location.name});\n")
 
         # Enclose driver function
-        f.write("\n}\n#endif\n")
+        f.write("}\n#endif\n")
 
 def log_harness(filename: str,
   func_name: str,
