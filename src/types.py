@@ -16,6 +16,8 @@ class AnalysisResult(Enum):
     FAILURE_UNWIND_FAIL = 74
     INTERRUPT = 51
     TIMEOUT = 52
+    # Skipped analysis due to previous TIMEOUT result
+    PREV_TIMEOUT = 89
     # "SUCCESS": No verification conditions generated
     NO_VCCS = 53
     NO_VCCS_UNWIND_FAIL = 67

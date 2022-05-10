@@ -190,6 +190,12 @@ class Config:
     # This allows for manual modifications and provisioning of custom drivers
     USE_EXISTING_DRIVERS: bool = False
 
+
+    # Functions listed in this file will be skipped during analysis
+    # Any function that receives a TIMEOUT result will be
+    # automatically appended to the file
+    TIMEOUT_BLACKLIST_FILE: str = f"{BASE_DIR}/blacklist.txt"
+
     # - - - Internal - - -
     # A file will be considered renamed if git blame only finds
     # two origins for changes and the changes are within the ratio

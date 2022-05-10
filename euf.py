@@ -215,9 +215,13 @@ def reduction_stage(
     include_paths = get_include_paths_for_tu(source_diffs, ccdb_dir(new=False))
 
     # Exclude functions that we are not going to analyze
+    # Note: We make an exception for timed-out functions that are
+    # present in blacklist.txt, it can still intresting to see the 
+    # full state space analysis for these functions.
     changes_to_analyze = []
     for c in changed_functions:
-        if valid_preconds(c,include_paths,skip_renaming,logfile="",quiet=True):
+        if valid_preconds(c,include_paths,skip_renaming,logfile="",quiet=True,
+            ignore_timeout=True):
             changes_to_analyze.append(c)
 
     idents_to_analyze = [c.old.ident.location.name for c in changes_to_analyze]

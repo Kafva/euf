@@ -40,6 +40,7 @@
     "libusb/os/sunos.*",
     "libusb/os/threads_windows.h"
   ],
+  "TIMEOUT_BLACKLIST_FILE": "/home/jonas/Repos/euf/tests/blacklist.txt",
   "FORCE_RECOMPILE": true,
   "FORCE_CCDB_RECOMPILE": true,
   "SHOW_FUNCTIONS": false,

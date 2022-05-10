@@ -7,13 +7,14 @@ from src.config import CONFIG
 from src.fmt import fmt_change, fmt_location
 from src.types import AnalysisResult, DependencyFunctionChange, \
     FunctionState, IdentifierLocation, SourceDiff
-from src.util import ccdb_dir, print_result, shorten_path_fields, \
+from src.util import add_to_timeout_blacklist, ccdb_dir, load_timeout_blacklist, \
+        print_result, shorten_path_fields, \
         time_end, time_start, wait_on_cr, print_err
 
 def valid_preconds(change: DependencyFunctionChange,
   include_paths: dict[str,set[str]],
   skip_renaming: set[str],
-  logfile: str= "", quiet:bool = False) -> bool:
+  logfile: str= "", quiet:bool = False,ignore_timeout:bool=False) -> bool:
     '''
     If a change passes this function, it should be possible
     to create a harness for it.
@@ -51,9 +52,14 @@ def valid_preconds(change: DependencyFunctionChange,
 
         return result, fail_msg
 
+    # 0. Previous analysis attempts for the function have timed-out
+    # and we therefore exclude new attempts
+    if func_name in load_timeout_blacklist() and not ignore_timeout:
+        fail_msg = f"Skipping {func_name}() due to previous TIMEOUT"
+        result = AnalysisResult.PREV_TIMEOUT
     # 1. Compilation instructions for the TU the
     # function is defined in do not exist
-    if not change.old.ident.location.filepath in include_paths or \
+    elif not change.old.ident.location.filepath in include_paths or \
        len(include_paths[change.old.ident.location.filepath]) == 0:
         path = change.old.ident.location.filepath
         fail_msg = \
@@ -537,6 +543,8 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
                         start,driver,change)
         time_end(f"Execution timed-out for {driver_name}",
                     start, AnalysisResult.TIMEOUT)
+
+        add_to_timeout_blacklist(func_name)
         return False
 
     match return_code:

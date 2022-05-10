@@ -55,7 +55,7 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": false,
+  "FULL": true,
   "QUIET_BUILD": true,
   "COMMIT_OLD": "4a5540a925e47923ed20b4ea68aabe550dac976d",
   "COMMIT_NEW": "500c64aef290348a1c833983b7297bdc3f3262c4"

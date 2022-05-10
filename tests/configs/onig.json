@@ -58,6 +58,7 @@
       "~/Repos/euf/examples/include/regparse2.h"
     ]
   },
+  "TIMEOUT_BLACKLIST_FILE": "/home/jonas/Repos/euf/tests/blacklist.txt",
   "FORCE_RECOMPILE": false,
   "SILENT_IDENTITY_VERIFICATION": true,
   "SILENT_VERIFICATION": true,
