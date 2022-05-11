@@ -358,7 +358,7 @@ def build_goto_lib(source_dir: str, new_version: bool) -> str:
                         cwd = source_dir, env = script_env
                     ).check_returncode()
 
-                if new_version:
+                if not new_version:
                     # Tell CBMC to add a suffix to every global
                     # symbol when we compile the old version
                     script_env.update({CONFIG.SUFFIX_ENV_FLAG: '1'})
