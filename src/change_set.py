@@ -50,7 +50,7 @@ def functions_match(match: DependencyFunction, other: DependencyFunction) \
     )
 
     if err != "":
-        if CONFIG.VERBOSITY >= 1:
+        if CONFIG.VERBOSITY >= 2:
             print(err)
             print(f"definition: {match_str}\ncall: {other_str}\n")
         return False
@@ -60,7 +60,7 @@ def functions_match(match: DependencyFunction, other: DependencyFunction) \
                 check_function=False
         )
         if err != "":
-            if CONFIG.VERBOSITY >= 1:
+            if CONFIG.VERBOSITY >= 2:
                 print(err)
                 print(f"definition: {match_str}\ncall: {other_str}\n")
             return False

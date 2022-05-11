@@ -180,13 +180,17 @@ def print_result(msg: str, result = AnalysisResult.NONE, identity:bool=False):
             print_success(msg)
         case AnalysisResult.SUCCESS_UNWIND_FAIL:
             print_inconclusive(msg)
+
         case AnalysisResult.FAILURE:
             if identity:
                 print_err(msg)
             else:
                 print_fail(msg)
         case AnalysisResult.FAILURE_UNWIND_FAIL:
-            print_inconclusive(msg)
+            if identity:
+                print_err(msg)
+            else:
+                print_inconclusive(msg)
 
         case AnalysisResult.NO_VCCS | AnalysisResult.NO_VCCS_UNWIND_FAIL:
             if identity:

@@ -520,7 +520,6 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     time_start(f"{id_str}Starting CBMC analysis for {loc_str}(): " +
                f"{os.path.basename(driver)} ({current}/{total})"
     )
-    wait_on_cr()
 
     start = datetime.now()
     driver_name = os.path.basename(driver)
@@ -576,22 +575,22 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         case AnalysisResult.FAILURE.value:
             msg = f"Identity verification failed: {func_name}" \
                     if identity else \
-                    f"Verification failed: {func_name}"
+                    f"Rejected equivalence assertion: {func_name}"
         case AnalysisResult.SUCCESS.value:
-            msg = f"Identity verification successful: {func_name}" \
+            msg = f"Passed equivalence assertion: {func_name}" \
                     if identity else \
                     f"Verification successful: {func_name}"
         case AnalysisResult.SUCCESS_UNWIND_FAIL.value:
             msg = f"Identity verification successful (incomplete unwinding): "\
                     f"{func_name}" \
                     if identity else \
-                    f"Verification successful (incomplete unwinding): "\
+                    f"Passed equivalence assertion (incomplete unwinding): "\
                     f"{func_name}"
         case AnalysisResult.FAILURE_UNWIND_FAIL.value:
             msg = f"Identity verification failed (incomplete unwinding): "\
                     f"{func_name}" \
                     if identity else \
-                    f"Verification failed (incomplete unwinding): {func_name}"
+                    f"Rejected equivalence assertion (incomplete unwinding): {func_name}"
         case _:
             if return_code == AnalysisResult.STRUCT_CNT_CONFLICT.value:
                 msg = "Differing member count in one or more structs"

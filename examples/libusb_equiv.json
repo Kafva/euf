@@ -1,7 +1,21 @@
 {
   "PROJECT_DIR": "~/Repos/airspy",
+
   "DEPENDENCY_DIR": "~/Repos/libusb",
-  "DEPLIB_NAME": "libusb-1.0.a",
+  "COMMIT_OLD": "b0fd4d87",
+  "COMMIT_NEW": "6cae9c6d",
+
+  "ENABLE_CBMC": true,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
+  "CBMC_TIMEOUT": 7,
+  "ENABLE_STATE_SPACE_ANALYSIS": false,
+
+
+
+
+
+
+
   "CUSTOM_HEADERS": {
     "linux_usbfs.c": [
       "libusb/libusbi.h"
@@ -40,24 +54,9 @@
     "libusb/os/sunos.*",
     "libusb/os/threads_windows.h"
   ],
-  "FORCE_RECOMPILE": true,
-  "FORCE_CCDB_RECOMPILE": false,
-  "SHOW_FUNCTIONS": false,
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
-  "CBMC_TIMEOUT": 7,
-  "ENABLE_RESULT_LOG": true,
-  "DIE_ON_ERROR": false,
-  "SILENT_IDENTITY_VERIFICATION": true,
-  "SILENT_VERIFICATION": true,
-  "USE_EXISTING_DRIVERS": false,
-  "ORDER_BY_CALL_SITE": true,
-  "VERBOSITY": 1,
   
-  "SKIP_BLAME": false,
-  "SKIP_IMPACT": false,
-  "ENABLE_CBMC": true,
-  "QUIET_BUILD": true,
-  "COMMIT_NEW": "6cae9c6d",
-  "COMMIT_OLD": "b0fd4d873e224bbb1985971834d31d956080c7a4"
+  "VERBOSITY": 1,
+  "DEPLIB_NAME": "libusb-1.0.a",
+  "PAUSES": true,
+  "ORDER_BY_CALL_SITE": false
 }
-

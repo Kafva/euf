@@ -173,6 +173,7 @@ def reduction_stage(
  log_dir: str):
     if CONFIG.VERBOSITY >= 1:
         print_stage("Reduction")
+    wait_on_cr()
 
     total = len(changed_functions)
 
