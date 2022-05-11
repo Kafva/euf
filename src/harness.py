@@ -280,7 +280,8 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             for header in CONFIG.CUSTOM_HEADERS[filename]:
                 header = os.path.expanduser(header)
                 if header.startswith("/") and os.path.isfile(header):
-                    # The header is a custom header that should be copied to .out
+                    # The header is a custom header that should 
+                    # be copied to .out
                     header_name = os.path.basename(header)
                     shutil.copy(header, f"{CONFIG.OUTDIR}/{header_name}")
                 else:
@@ -300,9 +301,9 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # nondet() stub declarations
         types = set()
         for arg in change.old.arguments:
-            # Note that pointers do not get their own stub declerations
-            # we instead use malloc() on the pointer paramter and assign
-            # it with a nondet() value
+            # Note that pointers do not get their own stub declarations
+            # We instead assign a nondet() value from the base type 
+            # to the dereferenced version.
             type_str = arg.__repr__(type_only=True).strip(' *')
             if type_str not in types:
                 f.write(f"{type_str} "
@@ -353,7 +354,6 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         arg_string = ""
         SUFFIX = CONFIG.SUFFIX
         unequal_inputs = False
-        ptr_vars = []
 
         # Note that all checks for e.g. void parameters are
         # done before calling create_harness()
@@ -374,8 +374,6 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
             # output regardless of what values the input has
             # (since it is no longer synced between the calls)
             is_ptr = arg.type_spelling.find('*')!=-1
-            if is_ptr:
-                ptr_vars.append(arg)
 
             base_type = arg.type_spelling.removeprefix("struct").strip(' *')
             type_str = arg.__repr__(type_only=True).strip(' *')
@@ -391,8 +389,9 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                     # able to perform the nondet() assignment
                     decl = decl.removeprefix("const ")
 
-                    f.write(f"{INDENT}{decl} = malloc(sizeof({type_str}));\n")
-                    f.write(f"{INDENT}*{arg.location.name} = {arg.nondet_prototype()};\n")
+                    f.write(f"{INDENT}{decl};\n")
+                    f.write(f"{INDENT}*{arg.location.name} = "
+                            f"{arg.nondet_prototype()};\n")
                 else:
                     f.write(f"{INDENT}{decl} = {arg.nondet_prototype()};\n")
 
@@ -412,8 +411,9 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 # ./doc/cprover-manual/modeling-nondeterminism.md
                 if is_ptr:
                     decl = arg.__repr__().removeprefix('const ')
-                    f.write(f"{INDENT}{decl} = malloc(sizeof({type_str}));\n")
-                    f.write(f"{INDENT}*{arg.location.name} = {arg.nondet_prototype()};\n")
+                    f.write(f"{INDENT}{decl};\n")
+                    f.write(f"{INDENT}*{arg.location.name} = "
+                            f"{arg.nondet_prototype()};\n")
                 else:
                     f.write(f"{INDENT}{arg} = {arg.nondet_prototype()};\n")
 
@@ -466,14 +466,10 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # 4. Postconditions
         #   Verify equivalence with one or more assertions
         f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, "
-                f"\"{CONFIG.CBMC_ASSERT_MSG}\");\n\n")
-
-        # Free any variables that were allocated for completeness
-        for ptr in ptr_vars:
-            f.write(f"{INDENT}free({ptr.location.name});\n")
+                f"\"{CONFIG.CBMC_ASSERT_MSG}\");\n")
 
         # Enclose driver function
-        f.write("}\n#endif\n")
+        f.write("\n}\n#endif\n")
 
 def log_harness(filename: str,
   func_name: str,
@@ -586,11 +582,14 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
                     if identity else \
                     f"Verification successful: {func_name}"
         case AnalysisResult.SUCCESS_UNWIND_FAIL.value:
-            msg = f"Identity verification successful (incomplete unwinding): {func_name}" \
+            msg = f"Identity verification successful (incomplete unwinding): "\
+                    f"{func_name}" \
                     if identity else \
-                    f"Verification successful (incomplete unwinding): {func_name}"
+                    f"Verification successful (incomplete unwinding): "\
+                    f"{func_name}"
         case AnalysisResult.FAILURE_UNWIND_FAIL.value:
-            msg = f"Identity verification failed (incomplete unwinding): {func_name}" \
+            msg = f"Identity verification failed (incomplete unwinding): "\
+                    f"{func_name}" \
                     if identity else \
                     f"Verification failed (incomplete unwinding): {func_name}"
         case _:
@@ -599,7 +598,8 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
             elif return_code == AnalysisResult.STRUCT_TYPE_CONFLICT.value:
                 msg = "Type conflict in one or more structs"
             elif not os.path.exists(f"{CONFIG.OUTDIR}/{CONFIG.CBMC_OUTFILE}"):
-                msg = f"An error occurred during goto-cc compilation of {driver}"
+                msg = \
+                    f"An error occurred during goto-cc compilation of {driver}"
             else:
                 msg = f"An error occurred during the analysis of {driver}"
 
@@ -615,7 +615,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
 
     log_harness(log_file,func_name,identity,analysis_result,start,driver,change)
 
-    time_end(msg,  start, AnalysisResult(return_code))
+    time_end(msg,  start, AnalysisResult(return_code),identity=identity)
 
     # For identity verification, this return value determines whether or not 
     # full analysis is performed, for full analysis this return value

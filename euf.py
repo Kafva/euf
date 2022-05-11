@@ -192,16 +192,6 @@ def reduction_stage(
     # directory of the driver
     os.makedirs(CONFIG.OUTDIR, exist_ok=True)
 
-    # - - - State space - - - #
-    # Derive valid input parameters for each changed function based
-    # on invocations in the old and new version of the dependency as
-    # well as the main project This process is performed using an
-    # external clang plugin.
-    #
-    # FIXME: If the main project has an internal function with the
-    # same name as a function in the change set these will not
-    # be differentiated and likely cause parameters to be set as
-    # nondet when they could potentially be det.
     name_old    = os.path.basename(git_dir(new=False))
     name_new    = os.path.basename(git_dir(new=True))
     name_proj   = os.path.basename(CONFIG.PROJECT_DIR)
@@ -214,33 +204,49 @@ def reduction_stage(
     # for types etc. to be defined
     include_paths = get_include_paths_for_tu(source_diffs, ccdb_dir(new=False))
 
-    # Exclude functions that we are not going to analyze
-    # Note: We make an exception for timed-out functions that are
-    # present in blacklist.txt, it can still intresting to see the 
-    # full state space analysis for these functions.
-    changes_to_analyze = []
-    for c in changed_functions:
-        if valid_preconds(c,include_paths,skip_renaming,logfile="",quiet=True,
-            ignore_timeout=True):
-            changes_to_analyze.append(c)
+    # - - - State space - - - #
+    # Derive valid input parameters for each changed function based
+    # on invocations in the old and new version of the dependency as
+    # well as the main project This process is performed using an
+    # external clang plugin.
+    #
+    # FIXME: If the main project has an internal function with the
+    # same name as a function in the change set these will not
+    # be differentiated and likely cause parameters to be set as
+    # nondet when they could potentially be det.
 
-    idents_to_analyze = [c.old.ident.location.name for c in changes_to_analyze]
+    if CONFIG.ENABLE_STATE_SPACE_ANALYSIS:
+        # Exclude functions that we are not going to analyze
+        # Note: We make an exception for timed-out functions that are
+        # present in blacklist.txt, it can still intresting to see the 
+        # full state space analysis for these functions.
+        changes_to_analyze = []
+        for c in changed_functions:
+            if valid_preconds(c,include_paths,skip_renaming,
+                logfile="",quiet=True,
+                ignore_timeout=True):
+                changes_to_analyze.append(c)
 
-    # Skip the state space analysis for static functions since these
-    # cannot be called from the main project
-    non_static_changes = [ c.old.ident.location.name for c in
-            get_non_static(changes_to_analyze) ]
+        idents_to_analyze = [c.old.ident.location.name \
+                for c in changes_to_analyze]
 
-    state_space_analysis(idents_to_analyze, ccdb_dir(new=False),
-                                            name_old,log_dir)
-    state_space_analysis(idents_to_analyze, ccdb_dir(new=True),
-                                            name_new,log_dir)
-    state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
-                                             name_proj,log_dir)
+        # Skip the state space analysis for static functions since these
+        # cannot be called from the main project
+        non_static_changes = [ c.old.ident.location.name for c in
+                get_non_static(changes_to_analyze) ]
 
-    # Join the results from each analysis
-    ARG_STATES  = join_arg_states_result([ name_old, name_new, name_proj ],
-            log_dir)
+        state_space_analysis(idents_to_analyze, ccdb_dir(new=False),
+                                                name_old,log_dir)
+        state_space_analysis(idents_to_analyze, ccdb_dir(new=True),
+                                                name_new,log_dir)
+        state_space_analysis(non_static_changes, CONFIG.PROJECT_DIR,
+                                                 name_proj,log_dir)
+
+        # Join the results from each analysis
+        ARG_STATES  = join_arg_states_result([ name_old, name_new, name_proj ],
+                log_dir)
+    else:
+        ARG_STATES = {}
 
     # - - - Harness generation - - - #
     harness_dir = f"{ccdb_dir(new=False)}/{CONFIG.HARNESS_DIR}"

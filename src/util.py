@@ -86,10 +86,10 @@ def print_info(msg: str):
         print("\033[34m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
 def print_success(msg: str):
-    print("[\033[32m+\033[0m] " +  msg, file=sys.stderr, flush=True)
+    print("[\033[32m✓\033[0m] " +  msg, file=sys.stderr, flush=True)
 
 def print_fail(msg: str):
-    print("[\033[31mX\033[0m] " +  msg, file=sys.stderr, flush=True)
+    print("[\033[31mx\033[0m] " +  msg, file=sys.stderr, flush=True)
 
 def print_inconclusive(msg: str):
     print("[\033[33m~\033[0m] " +  msg, file=sys.stderr, flush=True)
@@ -170,22 +170,35 @@ def time_start(msg: str) -> datetime:
         print_info(msg)
     return datetime.now()
 
-def print_result(msg: str, result = AnalysisResult.NONE) -> None:
+def print_result(msg: str, result = AnalysisResult.NONE, identity:bool=False):
+    '''
+    Failures during the identity verification will be printed with an
+    error prefix rather than a "fail" prefix.
+    '''
     match result:
         case AnalysisResult.SUCCESS:
             print_success(msg)
         case AnalysisResult.SUCCESS_UNWIND_FAIL:
             print_inconclusive(msg)
         case AnalysisResult.FAILURE:
-            print_fail(msg)
+            if identity:
+                print_err(msg)
+            else:
+                print_fail(msg)
         case AnalysisResult.FAILURE_UNWIND_FAIL:
             print_inconclusive(msg)
 
         case AnalysisResult.NO_VCCS | AnalysisResult.NO_VCCS_UNWIND_FAIL:
-            print_fail(msg)
+            if identity:
+                print_err(msg)
+            else:
+                print_fail(msg)
 
         case AnalysisResult.NO_BODY:
-            print_fail(msg)
+            if identity:
+                print_err(msg)
+            else:
+                print_fail(msg)
 
         case AnalysisResult.STRUCT_CNT_CONFLICT:
             print_err(msg)
@@ -201,9 +214,11 @@ def print_result(msg: str, result = AnalysisResult.NONE) -> None:
             print_warn(msg)
 
 def time_end(msg: str, start_time: datetime,
- result: AnalysisResult = AnalysisResult.NONE) -> None:
+        result: AnalysisResult = AnalysisResult.NONE,identity:bool=False):
     if CONFIG.VERBOSITY >= 1:
-        print_result(f"{msg}: {datetime.now() - start_time}", result)
+        print_result(f"{msg}: {datetime.now() - start_time}",
+            result=result, identity=identity
+        )
         start_time = datetime.now()
 
 def mkdir_p(path: str):

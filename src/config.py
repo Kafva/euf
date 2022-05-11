@@ -220,6 +220,9 @@ class Config:
     # extra options
     EXTRA_COMPILE_FLAGS = []
 
+    # Determines if state space analysis is performed
+    ENABLE_STATE_SPACE_ANALYSIS: bool = True
+
     # Compilation flag patterns to exclude from invocations of
     # the ArgStates clang-plugin, NOTE this can remove entries defined
     # in EXTRA_COMPILE_FLAGS.
