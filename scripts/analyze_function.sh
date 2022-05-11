@@ -18,7 +18,7 @@ cat << EOF > /tmp/$FUNC_NAME.json
 {
   "ONLY_ANALYZE": "$FUNC_NAME",
   "SILENT_IDENTITY_VERIFICATION": true,
-  "USE_EXISTING_DRIVERS": false,
+  "USE_EXISTING_DRIVERS": true,
   "ENABLE_RESULT_LOG": false,
   "SILENT_VERIFICATION": false,
   "SKIP_IMPACT": true,
