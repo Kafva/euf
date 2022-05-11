@@ -16,7 +16,7 @@
   
   "SKIP_BLAME": true,
   "SKIP_IMPACT": true,
-  "FULL": true,
+  "ENABLE_CBMC": true,
   "CP_HEADERS": [
     "include/openssl/aes.h",
     "include/openssl/asn1err.h",

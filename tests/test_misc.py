@@ -29,9 +29,9 @@ def setup():
 
     if not os.path.exists(EXPAT_OLD_PATH):
         # Create the directory if neccessary
-        CONFIG.FULL = False
+        CONFIG.ENABLE_CBMC = False
         run(load_libclang=False)
-        CONFIG.FULL = True
+        CONFIG.ENABLE_CBMC = True
 
 def test_write_canonical_ccdb():
     CONFIG.PROJECT_DIR = "NO_REPO_NAME_MATCHES_THIS"

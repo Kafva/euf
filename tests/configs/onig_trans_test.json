@@ -70,5 +70,5 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": false
+  "ENABLE_CBMC": false
 }

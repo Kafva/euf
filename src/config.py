@@ -152,7 +152,7 @@ class Config:
 
     # - - - CBMC analysis - - -
     # False to skip all CBMC analysis
-    FULL: bool = False
+    ENABLE_CBMC: bool = False
 
     # Suppress all output from CBMC during ID analysis and/or the main analysis
     SILENT_IDENTITY_VERIFICATION: bool = True

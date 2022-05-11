@@ -55,7 +55,7 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": true,
+  "ENABLE_CBMC": true,
   "QUIET_BUILD": true
 }
 

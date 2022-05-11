@@ -17,7 +17,7 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": true,
+  "ENABLE_CBMC": true,
   "FORCE_RECOMPILE": false
 }
 

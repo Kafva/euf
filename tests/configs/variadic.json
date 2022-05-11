@@ -70,7 +70,7 @@
   "VERBOSITY": 2,
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": true,
+  "ENABLE_CBMC": true,
   "QUIET_BUILD": true,
   "COMMIT_OLD": "bafe6a4a27deda13ca72e0e6934c4104e8d4f96a",
   "COMMIT_NEW": "664be251d950d29a914998551307adc3afd2f417"

@@ -10,7 +10,7 @@ run_trial(){
   "ENABLE_RESULT_LOG": true,
   "SKIP_IMPACT": false,
   "VERBOSITY": 1,
-  "FULL": $FULL,
+  "ENABLE_CBMC": $ENABLE_CBMC,
   "CBMC_TIMEOUT": -1
 }
 EOF
@@ -32,14 +32,14 @@ COMMIT_NEW=42ad1d1d
 LIBNAME=libusb-1.0
 
 
-FULL=false
+ENABLE_CBMC=false
 
 for i in $(seq $TEST_CNT); do
-  echo "Running ${i}_$FULL..."
+  echo "Running ${i}_$ENABLE_CBMC..."
   run_trial .rand/${LIBNAME%%-1.0}_${COMMIT_OLD}_${COMMIT_NEW}.json
-  mv results/${LIBNAME}_${COMMIT_OLD:0:4}_${COMMIT_NEW:0:4} .con/${i}_$FULL
+  mv results/${LIBNAME}_${COMMIT_OLD:0:4}_${COMMIT_NEW:0:4} .con/${i}_$ENABLE_CBMC
   wc -l .con/*/change_set.csv
   sleep 2
-  [ $FULL = true ] && FULL=false || FULL=true
+  [ $ENABLE_CBMC = true ] && ENABLE_CBMC=false || ENABLE_CBMC=true
 done
 

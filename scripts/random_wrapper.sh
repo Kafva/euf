@@ -13,7 +13,7 @@ run_without_cbmc(){
   local tmp_conf=$(mktemp --suffix .json)
   cat << EOF > $tmp_conf
 {
-  "FULL": false,
+  "ENABLE_CBMC": false,
   "RESULTS_DIR": "$PWD/results_impact"
 }
 EOF

@@ -6,7 +6,7 @@
   "COMMIT_OLD": "26b16eb65",
   "COMMIT_NEW": "15bd82e9a2935fd4e5c1a9ed83c73d364e92d8ec",
 
-  "FULL": false,
+  "ENABLE_CBMC": false,
   "ENABLE_STATE_SPACE_ANALYSIS": false,
   "VERBOSITY": 1,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 100 --unwinding-assertions --havoc-undefined-functions",

@@ -55,7 +55,7 @@
   
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": true,
+  "ENABLE_CBMC": true,
   "QUIET_BUILD": true,
   "COMMIT_NEW": "6cae9c6d",
   "COMMIT_OLD": "b0fd4d873e224bbb1985971834d31d956080c7a4"

@@ -505,7 +505,7 @@ def run(load_libclang:bool = True) -> tuple:
     changed_functions = ast_diff_stage(source_diffs, log_dir)
 
     # - - - Reduction of change set - - - #
-    if CONFIG.FULL:
+    if CONFIG.ENABLE_CBMC:
         reduction_stage(
              dep_db_old,
              changed_functions,

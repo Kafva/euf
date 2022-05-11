@@ -54,7 +54,7 @@
   "VERBOSITY": 1,
   "SKIP_BLAME": false,
   "SKIP_IMPACT": false,
-  "FULL": true,
+  "ENABLE_CBMC": true,
   "QUIET_BUILD": true,
   "COMMIT_OLD": "442305ec3d525bc9745cd1d7b7e89fd413595444",
   "COMMIT_NEW": "40644b462254638db93501d7fcd37ceea301b699"
