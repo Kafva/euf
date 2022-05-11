@@ -17,7 +17,7 @@ remove equivalent entries based on CBMC analysis
 6. Walk the AST of all source files in the main project and return
 all locations were functions from the change set are called
 '''
-import argparse, sys, os, traceback, multiprocessing, subprocess
+import argparse, sys, os, traceback, multiprocessing, subprocess,textwrap
 from datetime import datetime
 from functools import partial
 from pprint import pprint
@@ -530,13 +530,29 @@ def run(load_libclang:bool = True) -> tuple:
     return (changed_functions, call_sites)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=
-    "A 'compile_commands.json' database must be generated for both the project "
-    "and the dependency."
-    )
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent('''
+    EUF (Equivalent update filter) is an impact assessment tool for upgrading
+    open source C dependencies.
+
+    The tool expects the following inputs:
+
+        * A C project which uses an outdated version of a particular library
+        * The commit hash for the current version of the library
+        * The commit hash for the upgraded version of the library
+
+    By analyzing the differences between the two versions and their
+    relationship to the main project, EUF presents a set of locations
+    in the main project which are deemed impacted by the upgrade.
+
+    A 'compile_commands.json' database must be generated for both the project
+    and the dependency (automatic generation is only availalbe for autotools).
+    '''
+    ))
     parser.add_argument("-c", "--config", metavar="json", type=str,
         required=True, default="", help="JSON configuration file, "
-        "refer to src/config.py for a list of available options.")
+        "refer to ./src/config.py for a list of available options.")
     parser.add_argument("-d", "--diff", action='store_true', default=False,
      help="Print the first point of divergence for each function in the "
      "change set followed by the git-diff of the corresponding files and exit"
