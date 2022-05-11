@@ -27,8 +27,8 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "COMMIT_NEW": "$COMMIT_NEW",
   "CBMC_TIMEOUT": 30,
   "FORCE_CCDB_RECOMPILE": false,
-  "FORCE_RECOMPILE": false,
-  "CBMC_OPTS_STR": "--object-bits 12 --trace --unwind 1 --havoc-undefined-functions",
+  "FORCE_RECOMPILE": true,
+  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --havoc-undefined-functions",
   "IGNORE_FAILED_IDENTITY": false
 }
 EOF
