@@ -71,7 +71,7 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
 def plot_reductions(cases: list[Case],percent:bool=True):
     '''
     We want to show the average reduction, stdev from the average and the
-    extreme values, a violin plot is suitable for this
+    extreme values, a violin plot is somewhat suitable for this
     '''
     change_set_reductions = [ c.change_set_reductions_per_trial(percent=percent)
             for c in cases ]

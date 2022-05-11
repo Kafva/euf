@@ -14,7 +14,7 @@ OPTIONS = {
     'UNIQUE_RESULTS': False,
     'RESULT_DIR': ".results/8",
     'IMPACT_DIR': ".results/8_impact",
-    'ONLY_MULTI': False,
+    'ONLY_MULTI': True,
     'SAVE_FIGS': False,
     'FIGURE_DIR': f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results",
     'FIG_SIZE': (19,11),
