@@ -530,14 +530,15 @@ def run(load_libclang:bool = True) -> tuple:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=
-    "A 'compile_commands.json' database must be generated for both the project and the dependency."
+    "A 'compile_commands.json' database must be generated for both the project "
+    "and the dependency."
     )
-    parser.add_argument("-c", "--config", metavar="json", type=str, required=True,
-        default="", help="JSON configuration file, "
+    parser.add_argument("-c", "--config", metavar="json", type=str,
+        required=True, default="", help="JSON configuration file, "
         "refer to src/config.py for a list of available options.")
     parser.add_argument("-d", "--diff", action='store_true', default=False,
-     help='Print the first point of divergence for each function in the '
-     "change set followed by the git-diff of the corresponding files and exit'"
+     help="Print the first point of divergence for each function in the "
+     "change set followed by the git-diff of the corresponding files and exit"
     )
 
     args = parser.parse_args()

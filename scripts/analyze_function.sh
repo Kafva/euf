@@ -17,10 +17,10 @@ rm -f /tmp/none.txt
 cat << EOF > /tmp/$FUNC_NAME.json
 {
   "ONLY_ANALYZE": "$FUNC_NAME",
-  "SILENT_IDENTITY_VERIFICATION": true,
-  "USE_EXISTING_DRIVERS": true,
-  "ENABLE_RESULT_LOG": false,
+  "SILENT_IDENTITY_VERIFICATION": false,
   "SILENT_VERIFICATION": false,
+  "USE_EXISTING_DRIVERS": false,
+  "ENABLE_RESULT_LOG": false,
   "SKIP_IMPACT": true,
   "VERBOSITY": 2,
   "COMMIT_OLD": "$COMMIT_OLD",
@@ -28,8 +28,9 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "CBMC_TIMEOUT": 30,
   "FORCE_CCDB_RECOMPILE": false,
   "FORCE_RECOMPILE": true,
-  "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --havoc-undefined-functions",
-  "IGNORE_FAILED_IDENTITY": false
+  "CBMC_OPTS_STR": "--object-bits 12 --trace --unwind 1 --havoc-undefined-functions",
+  "IGNORE_FAILED_IDENTITY": false,
+  "ENABLE_STATE_SPACE_ANALYSIS": false
 }
 EOF
 
@@ -56,8 +57,7 @@ if $TRACE; then
 
   printf "\033[34m==>\033[0m TRACE \033[34m<==\033[0m\n"
   grep --no-group-separator --color=never -E -B2 "^\s*ret(_old)*=.*" $output
-  grep --no-group-separator --color=never -E -B2 "^\s*bn=.*" $output
-  grep --no-group-separator --color=never -E -B2 "^\s*node=.*" $output
+  grep --no-group-separator --color=never -E -B2 "^\s*interface_number=.*" $output
 else
   ./euf.py -c $CONF $DIFF
 fi
