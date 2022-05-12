@@ -18,7 +18,7 @@ output_formatting(){
    -z "$NEW_LIB"     || -z "$OLD_LIB"       || -z "$EUF_ENTRYPOINT"   ||
    -z "$FUNC_NAME"   || -z "$OUTFILE"      || -z "$SHOW_FUNCTIONS"   ||
    -z "$DEP_I_FLAGS"
-]] && die "Missing environment variable(s): The following not set:"
+]] && die "Missing environment variable(s): The following are not set:"
 
 cbmc_output=$(mktemp)
 rm -f $OUTFILE
