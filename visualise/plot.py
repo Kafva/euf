@@ -1,3 +1,4 @@
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from itertools import compress
 from textwrap import wrap
@@ -7,7 +8,7 @@ from visualise.case import Case
 from visualise import OPTIONS
 
 
-def plot_analysis_dists(cases: list[Case],ident:bool=False):
+def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
     '''
     Not using the `unique_results` option gives the impression that expat has
     very good performance, which stems from the fact that it has analyzed
@@ -68,7 +69,9 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False):
     create_row(title,0,unique_results=False)
     create_row("Without duplicates",1,unique_results=True)
 
-def plot_reductions(cases: list[Case],percent:bool=True):
+    return fig
+
+def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     '''
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is somewhat suitable for this
@@ -101,9 +104,15 @@ def plot_reductions(cases: list[Case],percent:bool=True):
                 ax.set_ylim(OPTIONS['VIOLIN_YLIM'])
 
             for pc in parts['bodies']:
-                 pc.set_facecolor('#a9d1d0')
+                 pc.set_facecolor(OPTIONS['PINK'])
                  pc.set_edgecolor('white')
                  pc.set_alpha(0.5)
+
+            # Change colors of the mean indicators
+            for partname in ('cbars','cmins','cmaxes','cmeans'):
+                vp = parts[partname]
+                vp.set_edgecolor(OPTIONS['WHITE'])
+                vp.set_linewidth(1)
 
             if index==2:
                 ax.set_xlabel(cases[i].name,
@@ -122,3 +131,4 @@ def plot_reductions(cases: list[Case],percent:bool=True):
         "impact"
     )
 
+    return fig

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os,sys
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from posixpath import expanduser
 
@@ -101,9 +102,14 @@ def write_report(cases: list[Case], only_multi:bool=False):
                     f.write("```\n")
                     f.write("\n\n")
 
-def save_figure(path: str):
+def save_figure(path: str, fig:Figure):
     if os.path.isdir(os.path.dirname(path)) and OPTIONS['SAVE_FIGS']:
-        plt.savefig(path, dpi=900)
+        fig.savefig(path,
+            dpi=900,
+            facecolor=OPTIONS['BLACK'],
+            transparent=True,
+            edgecolor=OPTIONS['WHITE']
+        )
 
 def dir_cnt(path:str):
     return len([ p for p in os.listdir(path) \
@@ -139,7 +145,14 @@ def load_cases(result_dir:str, result_dir_impact:str) -> list[Case]:
     return [onig,expat,usb]
 
 if __name__ == '__main__':
-    plt.style.use('dark_background')
+    plt.rcParams['text.color'] = OPTIONS['WHITE']
+    plt.rcParams['axes.labelcolor'] = OPTIONS['WHITE']
+    plt.rcParams['xtick.color'] = OPTIONS['WHITE']
+    plt.rcParams['ytick.color'] = OPTIONS['WHITE']
+    plt.rcParams['axes.edgecolor'] = OPTIONS['WHITE']
+    plt.rcParams['axes.facecolor'] = OPTIONS['BLACK']
+    plt.rcParams['savefig.facecolor']= OPTIONS['BLACK']
+    plt.rcParams['figure.facecolor']= OPTIONS['BLACK']
 
     total_trials = dir_cnt(OPTIONS['RESULT_DIR'])
     print_info(f"Total trials: {total_trials} ({round(total_trials/3,1)} per project)")
@@ -149,12 +162,12 @@ if __name__ == '__main__':
     CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
 
     if OPTIONS['PLOT']:
-        plot_analysis_dists(cases,ident=True)
-        save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist_id.png")
-        plot_analysis_dists(cases,ident=False)
-        save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist.png")
-        plot_reductions(cases,percent=False)
-        save_figure(f"{OPTIONS['FIGURE_DIR']}/reduction_violin.png")
+        fig = plot_analysis_dists(cases,ident=True)
+        save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist_id.png", fig)
+        fig = plot_analysis_dists(cases,ident=False)
+        save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist.png", fig)
+        fig = plot_reductions(cases,percent=False)
+        save_figure(f"{OPTIONS['FIGURE_DIR']}/reduction_violin.png", fig)
 
         plt.subplots_adjust(bottom=0.15)
         plt.xticks(fontsize=OPTIONS['PLOT_FONT_SIZE'])
