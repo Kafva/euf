@@ -123,7 +123,7 @@ def load_cases(result_dir:str, result_dir_impact:str) -> list[Case]:
     onig.load_impact_set()
 
     expat = Case.new(name="libexpat", result_dir=CONFIG.RESULTS_DIR,
-            total_functions=645, color='#32a852')
+            total_functions=645, color=OPTIONS['GREEN'])
     expat.load_change_sets()
     expat.load_impact_set()
 
