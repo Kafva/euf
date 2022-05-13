@@ -1,10 +1,10 @@
-import os
+import os, json
 from statistics import stdev,mean
 from pprint import pprint
 from dataclasses import dataclass, field
 from src.config import CONFIG
 from src.types import AnalysisResult, CbmcResult, \
-        DependencyFunctionChange, FunctionResult
+        DependencyFunctionChange, FunctionResult, StateParam
 from src.util import flatten, load_cbmc_results, print_err, print_stage
 
 ROUNDING = 4
@@ -44,6 +44,9 @@ class Case:
 
     def cbmc_results(self) -> list[CbmcResult]:
         return flatten([ r for r in self.cbmc_results_dict.values() ])
+
+    arg_states: dict[str,dict[str,list[StateParam]]] =\
+            field(default_factory=dict)
 
     # The key to every dict is the path to the results directory
     # for a specific trial
@@ -407,3 +410,23 @@ class Case:
                                     main_project_fn_name=csv_values[3],
                                     dependecy_fn_name=csv_values[8]
                                 ))
+
+    def load_state_space(self):
+        for item in os.listdir(CONFIG.RESULTS_DIR):
+            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
+            self.arg_states[dirpath] = {}
+
+            # Only load entries matching the current name
+            if os.path.isdir(dirpath) and item.startswith(self.name):
+
+                if os.path.isfile(f"{dirpath}/states.json"):
+                    with open(f"{dirpath}/states.json", mode = 'r', encoding='utf8') as f:
+                         dct = json.load(f)
+                         for func_name in dct:
+                             param_states = []
+                             for i,param in \
+                                enumerate(dct[func_name]['parameters']):
+                                 param_states.append(
+                                     StateParam.new_from_dct(param,i)
+                                 )
+                             self.arg_states[dirpath][func_name] = param_states

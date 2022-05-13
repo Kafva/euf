@@ -132,3 +132,39 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     )
 
     return fig
+
+
+
+'''
+Each state space analysis creates a states.json file on the form:
+"ENTROPY_DEBUG": {
+  "parameters": [
+      {
+          "name": "label",
+          "nondet": false,
+          "states": [
+              "arc4random_buf"
+          ]
+      },
+      {
+          "name": "entropy",
+          "nondet": true,
+          "states": []
+      }
+  ]
+}
+
+For the visualisation we would like to know (per case):
+    * What percentage of (analyzed/changed) functions had at least 
+    one parameter with constant state?
+
+    * Out of the functions with at least one constant parameter, how many states
+    were encountered for a parameter on average?
+
+    * Did any state space anylsis yield a harness where every parameter was
+    constrained? I.e. what percentage of parameters in a function were
+    constrained on average?
+
+This data would highlight how useful state analysis is in regards to limiting
+the data space of input data.
+'''

@@ -127,16 +127,19 @@ def load_cases(result_dir:str, result_dir_impact:str) -> list[Case]:
             total_functions=1186, color=OPTIONS['RED'])
     onig.load_change_sets()
     onig.load_impact_set()
+    onig.load_state_space()
 
     expat = Case.new(name="libexpat", result_dir=CONFIG.RESULTS_DIR,
             total_functions=645, color=OPTIONS['GREEN'])
     expat.load_change_sets()
     expat.load_impact_set()
+    expat.load_state_space()
 
     usb = Case.new(name="libusb", result_dir=CONFIG.RESULTS_DIR,
             total_functions=1346, color=OPTIONS['BLUE'])
     usb.load_change_sets()
     usb.load_impact_set()
+    usb.load_state_space()
 
     CONFIG.RESULTS_DIR = result_dir_impact
     onig.load_change_sets(without_reduction=True)

@@ -755,6 +755,14 @@ class StateParam:
     nondet: bool = False # Must be explicitly set
     states: set = field(default_factory=set)
 
+    @classmethod
+    def new_from_dct(cls,dct:dict,index:int):
+        return cls(
+            name = dct['name'] if dct['name'] != '' else str(index),
+            nondet = dct['nondet'],
+            states = set(dct['states'])
+        )
+
 @dataclass(init=True)
 class FunctionState:
     '''

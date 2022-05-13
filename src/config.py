@@ -104,7 +104,7 @@ class Config:
     # Some projects will declare types inside source files rather
     # than in header files (libexpat and libonig).
     # If these types are needed as arguments to a
-    # function in a driver we need some way of including them
+    # function in a driver we need some way of including them.
     # The current solution is to provide a custom header
     # with the necessary definitions to resolve this
     #
@@ -177,8 +177,8 @@ class Config:
     IGNORE_FAILED_IDENTITY: bool = False
 
     # Options for each cbmc invocation
-    CBMC_OPTS_STR: str = \
-        "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions"
+    CBMC_OPTS_STR: str = "--object-bits 12 --unwind 1 --unwinding-assertions "\
+        "--havoc-undefined-functions"
 
     # Stop execution if a harness cannot be executed or compiled due to errors
     DIE_ON_ERROR: bool = False
