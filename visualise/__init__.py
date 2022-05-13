@@ -1,5 +1,5 @@
-from posixpath import expanduser
 import sys
+from posixpath import expanduser
 
 # '.' is needed to run from the visualise directory 
 sys.path.extend(['..','.'])

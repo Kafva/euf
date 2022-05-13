@@ -9,7 +9,7 @@ from src.types import AnalysisResult, DependencyFunctionChange, \
     FunctionState, IdentifierLocation, SourceDiff
 from src.util import add_to_timeout_blacklist, ccdb_dir, load_timeout_blacklist, \
         print_result, shorten_path_fields, \
-        time_end, time_start, wait_on_cr, print_err
+        time_end, time_start, print_err
 
 def valid_preconds(change: DependencyFunctionChange,
   include_paths: dict[str,set[str]],

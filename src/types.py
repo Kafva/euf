@@ -420,8 +420,7 @@ class Identifier:
 
         if type_only:
             return f"{type_str}"
-        else:
-            return f"{constant}{type_str} {spelling_str}{func}"
+        return f"{constant}{type_str} {spelling_str}{func}"
 
     def dump(self, header:bool = False) -> str:
         fmt =  "is_const;is_ptr;is_function;typing;type_spelling;spelling\n" \

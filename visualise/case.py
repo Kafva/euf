@@ -14,6 +14,24 @@ class Impacted:
     main_project_fn_name:str
     dependecy_fn_name:str
 
+def average_set(sizes: list[int], reductions:list[float], label:str):
+    average_size = round(mean(sizes),ROUNDING)
+    stdev_size = round(stdev(sizes),ROUNDING)
+    print(f"Average {label} set size: {average_size} (±{stdev_size})")
+
+    mean_reduction = round(mean(reductions),ROUNDING)
+    stdev_reduction = round(stdev(reductions),ROUNDING)
+    print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
+
+def load_change_set(dirpath:str,filename:str,
+ change_set:dict[str,list[DependencyFunctionChange]]):
+    if os.path.isfile(f"{dirpath}/{filename}"):
+        with open(f"{dirpath}/{filename}", mode='r', encoding='utf8') as f:
+            for line in f.readlines()[1:]:
+                change_set[dirpath].append(DependencyFunctionChange.\
+                        new_from_change_set_csv(line.split(";"))
+                )
+
 @dataclass(init=True)
 class Case:
     '''
@@ -36,14 +54,14 @@ class Case:
     function_results_dict: dict[str,FunctionResult]
 
     def function_results(self) -> list[FunctionResult]:
-        return [ r for r in self.function_results_dict.values() ]
+        return list(self.function_results_dict.values())
 
     # Holds one entry per CSV row across all results, dict key
     # is the path to the CSV file
     cbmc_results_dict: dict[str,list[CbmcResult]]
 
     def cbmc_results(self) -> list[CbmcResult]:
-        return flatten([ r for r in self.cbmc_results_dict.values() ])
+        return flatten(list(self.cbmc_results_dict.values()))
 
     arg_states: dict[str,dict[str,list[StateParam]]] =\
             field(default_factory=dict)
@@ -142,27 +160,19 @@ class Case:
         trans_set_sizes = [ len(v) for v in self.trans_change_set.values() ]
         impact_set_sizes = [ len(v) for v in self.impact_set.values() ]
 
-        self.average_set(change_set_sizes,
+        average_set(change_set_sizes,
             self.change_set_reductions_per_trial(),
             "change"
         )
-        self.average_set(trans_set_sizes,
+        average_set(trans_set_sizes,
             self.trans_set_reductions_per_trial(),
             "transitive"
         )
-        self.average_set(impact_set_sizes,
+        average_set(impact_set_sizes,
             self.impact_set_reductions_per_trial(),
             "impact"
         )
 
-    def average_set(self, sizes: list[int], reductions:list[float], label:str):
-        average_size = round(mean(sizes),ROUNDING)
-        stdev_size = round(stdev(sizes),ROUNDING)
-        print(f"Average {label} set size: {average_size} (±{stdev_size})")
-
-        mean_reduction = round(mean(reductions),ROUNDING)
-        stdev_reduction = round(stdev(reductions),ROUNDING)
-        print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
 
     def impact_set_reductions_per_trial(self,assertions:bool=True,
      percent:bool=True) -> list[float]:
@@ -345,17 +355,9 @@ class Case:
         analysis_dict = { AnalysisResult[tpl[0]]: tpl[1]/analysis_steps_performed
                 for tpl in result_cnts.items() }
 
-        assert (sum([ x for x in analysis_dict.values() ]) - 1) < 10**-12
+        assert (sum(list(analysis_dict.values())) - 1) < 10**-12
         return analysis_dict
 
-    def load_change_set(self,dirpath:str,filename:str,
-     change_set:dict[str,list[DependencyFunctionChange]]):
-        if os.path.isfile(f"{dirpath}/{filename}"):
-            with open(f"{dirpath}/{filename}", mode='r', encoding='utf8') as f:
-                for line in f.readlines()[1:]:
-                    change_set[dirpath].append(DependencyFunctionChange.\
-                            new_from_change_set_csv(line.split(";"))
-                    )
 
     def load_change_sets(self,without_reduction:bool=False):
         for item in os.listdir(CONFIG.RESULTS_DIR):
@@ -364,18 +366,18 @@ class Case:
             if os.path.isdir(dirpath) and item.startswith(self.name):
                 if without_reduction:
                     self.trans_set_without_reduction[dirpath] = []
-                    self.load_change_set(dirpath, "trans_change_set.csv",
+                    load_change_set(dirpath, "trans_change_set.csv",
                             self.trans_set_without_reduction)
                 else:
                     self.base_change_set[dirpath] = []
                     self.reduced_change_set[dirpath] = []
                     self.trans_change_set[dirpath] = []
 
-                    self.load_change_set(dirpath, "change_set.csv",
+                    load_change_set(dirpath, "change_set.csv",
                             self.base_change_set)
-                    self.load_change_set(dirpath, "reduced_set.csv",
+                    load_change_set(dirpath, "reduced_set.csv",
                             self.reduced_change_set)
-                    self.load_change_set(dirpath, "trans_change_set.csv",
+                    load_change_set(dirpath, "trans_change_set.csv",
                             self.trans_change_set)
 
 
@@ -421,12 +423,12 @@ class Case:
 
                 if os.path.isfile(f"{dirpath}/states.json"):
                     with open(f"{dirpath}/states.json", mode = 'r', encoding='utf8') as f:
-                         dct = json.load(f)
-                         for func_name in dct:
-                             param_states = []
-                             for i,param in \
-                                enumerate(dct[func_name]['parameters']):
-                                 param_states.append(
-                                     StateParam.new_from_dct(param,i)
-                                 )
-                             self.arg_states[dirpath][func_name] = param_states
+                        dct = json.load(f)
+                        for func_name in dct:
+                            param_states = []
+                            for i,param in \
+                               enumerate(dct[func_name]['parameters']):
+                                param_states.append(
+                                    StateParam.new_from_dct(param,i)
+                                )
+                            self.arg_states[dirpath][func_name] = param_states
