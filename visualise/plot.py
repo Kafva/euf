@@ -111,8 +111,8 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
             # Change colors of the mean indicators
             for partname in ('cbars','cmins','cmaxes','cmeans'):
                 vp = parts[partname]
-                vp.set_edgecolor(OPTIONS['WHITE'])
-                vp.set_linewidth(1)
+                vp.set_edgecolor(OPTIONS['DARK PINK'])
+                vp.set_linewidth(2)
 
             if index==2:
                 ax.set_xlabel(cases[i].name,

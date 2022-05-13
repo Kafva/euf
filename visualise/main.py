@@ -103,7 +103,13 @@ def write_report(cases: list[Case], only_multi:bool=False):
                     f.write("\n\n")
 
 def save_figure(path: str, fig:Figure):
-    if os.path.isdir(os.path.dirname(path)) and OPTIONS['SAVE_FIGS']:
+    result_dir = os.path.dirname(path)
+    if os.path.isdir(result_dir) and OPTIONS['SAVE_FIGS']:
+        filename = os.path.basename(path)
+        if OPTIONS['EXPORT_LIGHT']:
+            filename = filename.split('.')[0] + "_white."\
+                    + filename.split('.')[1]
+            path = f"{result_dir}/{filename}"
         fig.savefig(path,
             dpi=900,
             facecolor=OPTIONS['BLACK'],
@@ -145,17 +151,20 @@ def load_cases(result_dir:str, result_dir_impact:str) -> list[Case]:
     return [onig,expat,usb]
 
 if __name__ == '__main__':
-    plt.rcParams['text.color'] = OPTIONS['WHITE']
-    plt.rcParams['axes.labelcolor'] = OPTIONS['WHITE']
-    plt.rcParams['xtick.color'] = OPTIONS['WHITE']
-    plt.rcParams['ytick.color'] = OPTIONS['WHITE']
-    plt.rcParams['axes.edgecolor'] = OPTIONS['WHITE']
-    plt.rcParams['axes.facecolor'] = OPTIONS['BLACK']
-    plt.rcParams['savefig.facecolor']= OPTIONS['BLACK']
-    plt.rcParams['figure.facecolor']= OPTIONS['BLACK']
+    if not OPTIONS['EXPORT_LIGHT']:
+        plt.rcParams['text.color'] = OPTIONS['WHITE']
+        plt.rcParams['axes.labelcolor'] = OPTIONS['WHITE']
+        plt.rcParams['xtick.color'] = OPTIONS['WHITE']
+        plt.rcParams['ytick.color'] = OPTIONS['WHITE']
+        plt.rcParams['axes.edgecolor'] = OPTIONS['WHITE']
+        plt.rcParams['axes.facecolor'] = OPTIONS['BLACK']
+        plt.rcParams['savefig.facecolor']= OPTIONS['BLACK']
+        plt.rcParams['figure.facecolor'] = OPTIONS['BLACK']
 
     total_trials = dir_cnt(OPTIONS['RESULT_DIR'])
-    print_info(f"Total trials: {total_trials} ({round(total_trials/3,1)} per project)")
+    print_info(f"Total trials: {total_trials} "
+               f"({round(total_trials/3,1)} per project)"
+    )
 
     cases = load_cases(OPTIONS['RESULT_DIR'], OPTIONS['IMPACT_DIR'])
 
@@ -164,8 +173,10 @@ if __name__ == '__main__':
     if OPTIONS['PLOT']:
         fig = plot_analysis_dists(cases,ident=True)
         save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist_id.png", fig)
+
         fig = plot_analysis_dists(cases,ident=False)
         save_figure(f"{OPTIONS['FIGURE_DIR']}/result_dist.png", fig)
+
         fig = plot_reductions(cases,percent=False)
         save_figure(f"{OPTIONS['FIGURE_DIR']}/reduction_violin.png", fig)
 
