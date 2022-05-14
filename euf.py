@@ -218,8 +218,8 @@ def reduction_stage(
         changes_to_analyze = []
         for c in changed_functions:
             if invalid_preconds(c,include_paths,skip_renaming,
-                logfile="",quiet=True,
-                ignore_timeout=True) > 0:
+               logfile="",quiet=True,
+               ignore_timeout=True) == 0:
                 changes_to_analyze.append(c)
 
         idents_to_analyze = [c.old.ident.location.name \
