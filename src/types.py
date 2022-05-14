@@ -86,6 +86,18 @@ class AnalysisResult(Enum):
             reduction_results.add(AnalysisResult.SUCCESS_UNWIND_FAIL)
         return reduction_results
 
+
+class HarnessType(Enum):
+    # Compare the new version with itself
+    IDENTITY     = 0
+    # Compare the old version with itself
+    IDENTITY_OLD = 1
+    # Compare the old version with the new version
+    STANDARD = 2
+    # Default option for logging
+    NONE = 3
+
+
 @dataclass(init=True)
 class IdentifierLocation:
     '''
@@ -302,9 +314,9 @@ class Identifier:
         try:
             with open(to_open, mode='r', encoding='utf8') as f:
                 lines = f.readlines()
-                if CONFIG.VERBOSITY>=2:
+                if CONFIG.VERBOSITY>=4:
                     print("!> Deriving type directly from source code for "
-                            f"{type_spelling}")
+                            f"{str(cursor.spelling)}: {type_spelling}")
 
                 # Get the line of the identifier
                 line_offset = cursor.location.line-1

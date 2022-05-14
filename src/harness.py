@@ -6,7 +6,7 @@ from src import BASE_DIR, ERR_EXIT
 from src.config import CONFIG
 from src.fmt import fmt_change, fmt_location
 from src.types import AnalysisResult, DependencyFunctionChange, \
-    FunctionState, IdentifierLocation, SourceDiff
+    FunctionState, HarnessType, IdentifierLocation, SourceDiff
 from src.util import add_to_timeout_blacklist, ccdb_dir, load_timeout_blacklist, \
         print_result, shorten_path_fields, \
         time_end, time_start, print_err
@@ -131,7 +131,7 @@ def invalid_preconds(change: DependencyFunctionChange,
 
     if len(results) != 0:
         if logfile != "":
-            log_harness(logfile, func_name, None, results, None, "", change)
+            log_harness(logfile, func_name, HarnessType.NONE, results, None, "", change)
         if not quiet:
             if len(results)>1:
                 fail_msg += f" -- {len(results)-1} additional precondition "\
@@ -258,9 +258,37 @@ def add_includes_from_tu(diff: SourceDiff, include_paths: dict[str,set[str]],
     if len(usr_includes) > 0 or len(project_includes) > 0:
         tu_includes[diff.filepath_old] = (usr_includes, project_includes)
 
+def create_and_run_harness(
+ harness_type: HarnessType,
+ change: DependencyFunctionChange,
+ harness_path: str,
+ tu_includes: tuple[list[str],list[str]],
+ function_state: FunctionState,
+ run_include_paths: str,
+ cbmc_log: str,
+ current:int,
+ total:int,
+ func_name:str,
+ script_env: dict[str,str]) -> bool:
+    if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
+        pass # Use existing driver
+    else:
+        create_harness(change, harness_path, tu_includes,
+            function_state, harness_type
+        )
+    quiet = CONFIG.SILENT_IDENTITY_VERIFICATION if harness_type in \
+            (HarnessType.IDENTITY, HarnessType.IDENTITY_OLD) else \
+            CONFIG.SILENT_VERIFICATION
+
+    return run_harness(change, script_env, harness_path, func_name, \
+       cbmc_log, current, total, run_include_paths, \
+       harness_type,
+       quiet
+    )
+
 def create_harness(change: DependencyFunctionChange, harness_path: str,
   includes: tuple[list[str],list[str]], function_state: FunctionState,
-  identity: bool = False) -> None:
+  harness_type: HarnessType) -> None:
     '''
     Firstly, we need to know basic information about the function we are
     generating a harness for:
@@ -274,8 +302,8 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
     "a/" side --> OLD
     "b/" side --> NEW
 
-    If "identity" is set, the comparison will be made with the old version
-    and itself, creating a separate harness file with the suffix _id
+    If "old_identity" is set, the comparison will be made with the old version
+    and itself, creating a separate harness file with the suffix _[old]_id
     '''
     indent=CONFIG.INDENT
 
@@ -332,12 +360,14 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
                 )
                 types.add(type_str)
 
-        # Declaration of the old version of the function
-        f.write(f"\n{change.old.prototype_string(CONFIG.SUFFIX)};\n")
+        f.write("\n")
 
-        if not identity:
-            # Declaration for the new version of the function
-            #
+        # Declaration of the old version of the function
+        if harness_type in (HarnessType.IDENTITY_OLD,HarnessType.STANDARD):
+            f.write(f"{change.old.prototype_string(CONFIG.SUFFIX)};\n")
+
+        # Declaration of the new version of the function
+        if harness_type in (HarnessType.IDENTITY,HarnessType.STANDARD):
             # In some cases the function will already be declared in of
             # the headers but providing a second declaration in the driver does
             # not cause issues
@@ -381,7 +411,6 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         arg_string = ""
 
         for arg in change.old.arguments:
-
             is_ptr = arg.type_spelling.count('*')==1
             is_dbl_ptr = arg.type_spelling.count('*')==2
 
@@ -435,17 +464,25 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # 3. Call the functions under verification
         ret_type = change.old.ident.type_spelling
 
+        # First call ('_old' unless new identity)
         f.write(f"{indent}{ret_type} ret_old = ")
-        f.write(f"{change.old.ident.location.name}{CONFIG.SUFFIX}"
-                f"({arg_string});\n")
 
-        f.write(f"{indent}{ret_type} ret = ")
-        if identity:
-            f.write(f"{change.new.ident.location.name}{CONFIG.SUFFIX}"
-                    f"({arg_string});\n\n")
+        if harness_type in (HarnessType.IDENTITY_OLD,HarnessType.STANDARD):
+            f.write(f"{change.old.ident.location.name}{CONFIG.SUFFIX}"
+                    f"({arg_string});\n")
         else:
-            f.write(f"{change.new.ident.location.name}({arg_string});\n\n")
+            f.write(f"{change.new.ident.location.name}({arg_string});\n")
 
+        # Second call ('new' unless old identity)
+        f.write(f"{indent}{ret_type} ret = ")
+
+        if harness_type is HarnessType.IDENTITY_OLD:
+            f.write(f"{change.old.ident.location.name}{CONFIG.SUFFIX}"
+                    f"({arg_string});\n")
+        else:
+            f.write(f"{change.new.ident.location.name}({arg_string});\n")
+
+        f.write("\n")
 
         # 4. Postconditions
         #   Verify equivalence with one or more assertions
@@ -457,7 +494,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 
 def log_harness(filename: str,
   func_name: str,
-  identity: bool|None,
+  harness_type: HarnessType,
   results: set[AnalysisResult],
   start_time: datetime|None,
   driver: str,
@@ -468,7 +505,7 @@ def log_harness(filename: str,
     if CONFIG.ENABLE_RESULT_LOG:
         if not os.path.exists(filename):
             f = open(filename, mode='w', encoding='utf8')
-            f.write("func_name;identity;result;runtime;driver;"+\
+            f.write("func_name;harness_type;result;runtime;driver;"+\
                     IdentifierLocation.csv_header('old') + ";"+\
                     IdentifierLocation.csv_header('new')+"\n"
             )
@@ -477,7 +514,6 @@ def log_harness(filename: str,
             f = open(filename, mode='a', encoding='utf8')
 
         runtime = datetime.now() - start_time if start_time else ""
-        identity_str = "" if identity is None else identity
 
         old_loc = shorten_path_fields(change.old.ident.location.to_csv())
         new_loc = shorten_path_fields(change.new.ident.location.to_csv())
@@ -488,13 +524,13 @@ def log_harness(filename: str,
             results_str+=f"{r.name},"
         results_str = results_str.removesuffix(",")
 
-        f.write(f"{func_name};{identity_str};{results_str};{runtime};"
+        f.write(f"{func_name};{harness_type.name};{results_str};{runtime};"
                 f"{driver};{old_loc};{new_loc}\n")
         f.close()
 
 def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
   driver: str, func_name: str, log_file: str, current: int, total: int,
-  dep_i_flags:str, identity:bool, quiet: bool) -> bool:
+  dep_i_flags:str, harness_type:HarnessType, quiet: bool) -> bool:
     '''
     Returns True if the assertion in the harness
     was successful
@@ -508,7 +544,17 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     out = subprocess.PIPE if quiet else sys.stderr
 
     loc_str = fmt_location(change.old.ident.location)
-    id_str = '(ID) ' if identity else ''
+
+    match harness_type:
+        case HarnessType.IDENTITY_OLD:
+            id_str = "(ID '_old') "
+        case HarnessType.IDENTITY:
+            id_str = "(ID) "
+        case _:
+            id_str = ''
+
+    identity = harness_type in (HarnessType.IDENTITY_OLD,HarnessType.IDENTITY)
+
     time_start(f"{id_str}Starting CBMC analysis for {loc_str}(): " +
                f"{os.path.basename(driver)} ({current}/{total})"
     )
@@ -517,7 +563,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     driver_name = os.path.basename(driver)
 
     if CONFIG.CBMC_TIMEOUT <= 0:
-        log_harness(log_file,func_name,identity,{AnalysisResult.TIMEOUT},
+        log_harness(log_file,func_name,harness_type,{AnalysisResult.TIMEOUT},
                 start,driver,change)
         time_end(f"Execution timed-out for {driver_name}",
                 start, AnalysisResult.TIMEOUT)
@@ -540,7 +586,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     except KeyboardInterrupt:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
-        log_harness(log_file,func_name,identity,{AnalysisResult.INTERRUPT},
+        log_harness(log_file,func_name,harness_type,{AnalysisResult.INTERRUPT},
                             start,driver,change)
         print("\n")
         time_end(f"Cancelled execution for {driver_name}",
@@ -549,7 +595,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     except subprocess.TimeoutExpired:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
-        log_harness(log_file,func_name,identity,{AnalysisResult.TIMEOUT},
+        log_harness(log_file,func_name,harness_type,{AnalysisResult.TIMEOUT},
                         start,driver,change)
         time_end(f"Execution timed-out for {driver_name}",
                     start, AnalysisResult.TIMEOUT)
@@ -570,9 +616,10 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
                     if identity else \
                     f"Rejected equivalence assertion: {func_name}"
         case AnalysisResult.SUCCESS.value:
-            msg = f"Passed equivalence assertion: {func_name}" \
+            msg = f"Identity verification successful: {func_name}" \
                     if identity else \
-                    f"Verification successful: {func_name}"
+                    f"Passed equivalence assertion: {func_name}"
+
         case AnalysisResult.SUCCESS_UNWIND_FAIL.value:
             msg = f"Identity verification successful (incomplete unwinding): "\
                     f"{func_name}" \
@@ -605,7 +652,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         print_err(f"Unexpected return code from CBMC: {return_code}")
         analysis_result = AnalysisResult(ERR_EXIT)
 
-    log_harness(log_file,func_name,identity,{analysis_result},start,driver,change)
+    log_harness(log_file,func_name,harness_type,{analysis_result},start,driver,change)
 
     time_end(msg,  start, AnalysisResult(return_code),identity=identity)
 

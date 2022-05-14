@@ -30,10 +30,10 @@ from src.fmt import fmt_divergence, print_call_sites, \
         print_changes, print_transistive_changes
 from src.types import DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
-    CallSite, SourceDiff, SourceFile
+    CallSite, HarnessType, SourceDiff, SourceFile
 from src.arg_states import join_arg_states_result, state_space_analysis
-from src.harness import invalid_preconds, create_harness, \
-        get_include_paths_for_tu, run_harness, add_includes_from_tu
+from src.harness import create_and_run_harness, invalid_preconds, \
+        get_include_paths_for_tu, add_includes_from_tu
 from src.util import ccdb_dir, flatten, flatten_dict, \
         git_dir, git_relative_path, has_allowed_suffix, \
         mkdir_p, print_stage, rm_f, time_end, time_start, \
@@ -284,8 +284,6 @@ def reduction_stage(
 
         filepath_old = change.old.ident.location.filepath
 
-        harness_path = f"{harness_dir}/{change.old.ident.location.name}"\
-                       f"{CONFIG.IDENTITY_HARNESS}.c"
         function_state = ARG_STATES[func_name] if func_name in ARG_STATES \
                 else FunctionState()
         tu_includes = tu_includes_dict[filepath_old] if \
@@ -293,34 +291,38 @@ def reduction_stage(
                     ([],[])
         run_include_paths = ' '.join(include_paths[filepath_old]).strip()
 
-        if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
-            pass # Use existing driver
-        else:
-            create_harness(change, harness_path, tu_includes,
-                function_state, identity=True
-            )
-        # Run the identity harness
-        success = run_harness(change, script_env, harness_path, func_name, \
-           cbmc_log, i+1, total, run_include_paths, \
-           identity=True, quiet = CONFIG.SILENT_IDENTITY_VERIFICATION
+
+        harness_path = f"{harness_dir}/{change.old.ident.location.name}"\
+                       f"{CONFIG.OLD_IDENTITY_HARNESS}.c"
+        #== '_old' ID verification ==#
+        success = create_and_run_harness(HarnessType.IDENTITY_OLD,
+            change, harness_path, tu_includes, function_state,
+            run_include_paths, cbmc_log, i+1, total, func_name,
+            script_env
         )
 
-        if success or CONFIG.IGNORE_FAILED_IDENTITY:
-            harness_path = f"{harness_dir}/{change.old.ident.location.name}.c"
-
-            if CONFIG.USE_EXISTING_DRIVERS and os.path.isfile(harness_path):
-                pass # Use existing driver
-            else:
-                create_harness(change, harness_path, tu_includes,
-                    function_state, identity=False
+        if success:
+            harness_path = f"{harness_dir}/{change.old.ident.location.name}"\
+                           f"{CONFIG.IDENTITY_HARNESS}.c"
+            #== 'new' ID verification ==#
+            success = create_and_run_harness(HarnessType.IDENTITY,
+                 change, harness_path, tu_includes, function_state,
+                 run_include_paths, cbmc_log, i+1, total, func_name,
+                 script_env
+            )
+            if success:
+                harness_path = \
+                    f"{harness_dir}/{change.old.ident.location.name}.c"
+                #== Verification ==#
+                success = create_and_run_harness(HarnessType.STANDARD,
+                     change, harness_path, tu_includes, function_state,
+                     run_include_paths, cbmc_log, i+1, total, func_name,
+                     script_env
                 )
-            # Run the actual harness
-            if run_harness(change, script_env, harness_path, func_name,
-               cbmc_log, i+1, total, run_include_paths,
-               identity=False, quiet = CONFIG.SILENT_VERIFICATION):
-                # Remove the change from the change set
-                # if the equivalence check passes
-                changed_functions.remove(change)
+                if success:
+                    # Remove the change from the change set
+                    # if the equivalence check passes
+                    changed_functions.remove(change)
 
     time_end(f"Change set reduction: {total} -> {len(changed_functions)}",
                                                                           start)

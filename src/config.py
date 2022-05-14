@@ -256,6 +256,7 @@ class Config:
     CBMC_OUTFILE: str = "runner"
     EUF_ENTRYPOINT: str = "euf_main"
     IDENTITY_HARNESS: str = "_id"
+    OLD_IDENTITY_HARNESS: str = "_old_id"
     INDENT: str = " "*2
     CLANG_PLUGIN_RUN_STR_LIMIT: int = 1000
 
