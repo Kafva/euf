@@ -55,6 +55,7 @@ case "$1" in
   ;;
 esac
 
+BLACKLIST_FILE="$PWD/results/${1}_blacklist.txt"
 
 pushd $DEP_DIR > /dev/null
 git log | awk "/^commit/{print \$2}" > $CMTS
@@ -94,7 +95,9 @@ cat << EOF > /tmp/random.json
   "COMMIT_NEW": "$COMMIT_NEW",
   "QUIET_BUILD": true,
   "CBMC_TIMEOUT": $TIMEOUT,
-  "VERBOSITY": $VERBOSITY
+  "VERBOSITY": $VERBOSITY,
+  "ENABLE_TIMEOUT_BLACKLIST": true,
+  "TIMEOUT_BLACKLIST_FILE": "$BLACKLIST_FILE"
 }
 EOF
 
