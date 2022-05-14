@@ -57,7 +57,7 @@ def valid_preconds(change: DependencyFunctionChange,
     if func_name in load_timeout_blacklist() and not ignore_timeout:
         fail_msg = f"Skipping {func_name}() due to previous TIMEOUT"
         result = AnalysisResult.PREV_TIMEOUT
-    # 1. Compilation instructions for the TU the
+    # 1. Compilation instructions for the TU that the
     # function is defined in do not exist
     elif not change.old.ident.location.filepath in include_paths or \
        len(include_paths[change.old.ident.location.filepath]) == 0:
@@ -84,6 +84,13 @@ def valid_preconds(change: DependencyFunctionChange,
         result = tpl[0]
         fail_msg = tpl[1]
 
+    # 11. One or more arguments are of types that have been explicitly renamed
+    elif any(a.type_spelling.removeprefix("struct ").strip(' *') in \
+          CONFIG.EXPLICIT_RENAME for a in change.old.arguments):
+        fail_msg = f"Verification is not supported for functions where one or "\
+                   "more parameter types have been explicitly renamed: "\
+                   f"{old_loc_str}"
+        result = AnalysisResult.RENAMED_TYPE
     # 5. The function has not been given an '_old' suffix, preventing analysis
     elif func_name in skip_renaming:
         fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
@@ -109,6 +116,12 @@ def valid_preconds(change: DependencyFunctionChange,
         fail_msg = f"Variadic functions are not supported "\
                    f"for verification: {old_loc_str}"
         result = AnalysisResult.VARIADIC
+    # 10. More than two levels of pointer indirection in one or more arguments
+    elif any(str(a).count("*") >= 3 for a in change.old.arguments):
+        fail_msg = f"Function parameter(s) are only allowed to have two "\
+                   "or fewer levels of indirection ('*'): "\
+                   f"{old_loc_str}"
+        result = AnalysisResult.INDIRECTION_LIMIT
 
     if result != AnalysisResult.SUCCESS:
         if logfile != "":
@@ -256,7 +269,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
     If "identity" is set, the comparison will be made with the old version
     and itself, creating a separate harness file with the suffix _id
     '''
-    INDENT=CONFIG.INDENT
+    indent=CONFIG.INDENT
 
     # Write the harness
     with open(harness_path, mode='w', encoding='utf8') as f:
@@ -348,79 +361,45 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         # The initialisation involves creating valid, unconstrained and equal
         # data structures that can be passed to the two versions
 
-        # The initialisation procedure is done per function argument and the
-        # type of argument dictates how the initialization is done
-        arg_string_old = ""
-        arg_string = ""
-        SUFFIX = CONFIG.SUFFIX
-        unequal_inputs = False
-
         # Note that all checks for e.g. void parameters are
-        # done before calling create_harness()
+        # done before calling create_harness() in valid_preconds()
+
+        # Since we only check return values, we never need to create
+        # more than one input variable. If we had been checking pointer
+        # modifications then we would need separate variables to pass
+        # the old/new version
+
+        # The string that will end up inside of the function calls
+        arg_string = ""
+
         for arg in change.old.arguments:
 
-            # If the function takes a parameter whose type has been renamed,
-            #   e.g. OnigEncodingTypeST or (previously) usbi_os_backend
-            # we cannot perform any meaningful verification unless we are able
-            # to initialise each separate field and create assumptions
-            # for each one that the _old and regular objects are equal in every
-            # way except their function_ptr fields (TODO)
-            #
-            # For now, we just initialise both as nondet(),
-            # meaning that a passing equivalence
-            # check would infer a pass for all (unrelated) possible values
-            # of the parameter. A SUCCESS result for this limited harness
-            # would still be sound but it would need to produce the same
-            # output regardless of what values the input has
-            # (since it is no longer synced between the calls)
-            is_ptr = arg.type_spelling.find('*')!=-1
+            is_ptr = arg.type_spelling.count('*')==1
+            is_dbl_ptr = arg.type_spelling.count('*')==2
 
-            base_type = arg.type_spelling.removeprefix("struct").strip(' *')
+            # The argument type (without any '*' tokens)
             type_str = arg.__repr__(type_only=True).strip(' *')
+            decl = arg.__repr__().removeprefix('const ')
 
-            if base_type in CONFIG.EXPLICIT_RENAME:
-                unequal_inputs = True
-                decl = arg.__repr__(use_suffix=True)
+            if is_dbl_ptr:
+                decl = decl.replace('**','*')
 
-                # ~~ nondet() initialisation ~~
-                # ./doc/cprover-manual/modeling-nondeterminism.md
-                if is_ptr:
-                    # We haft to strip const specifiers from pointers to be
-                    # able to perform the nondet() assignment
-                    decl = decl.removeprefix("const ")
-
-                    f.write(f"{INDENT}{decl};\n")
-                    f.write(f"{INDENT}*{arg.location.name} = "
-                            f"{arg.nondet_prototype()};\n")
-                else:
-                    f.write(f"{INDENT}{decl} = {arg.nondet_prototype()};\n")
-
-                arg_string_old += f"{arg.location.name}{SUFFIX}, "
-                arg_string += f"{arg.location.name}, "
+            # ~~ nondet() initialisation ~~
+            # ./doc/cprover-manual/modeling-nondeterminism.md
+            if is_ptr or is_dbl_ptr:
+                f.write(f"{indent}{decl};\n")
+                f.write(f"{indent}*{arg.location.name} = "
+                        f"{arg.nondet_prototype()};\n")
             else:
-                # For non-pointer types we only need to create one variable
-                # since the original value will not be modified and thus
-                # will not need to be verified
-                #
-                # Since we only check return values, we never need to create
-                # more than one input variable. If we had been checking pointer
-                # modifications then we would need separate variables to pass
-                # the old/new version
+                f.write(f"{indent}{arg} = {arg.nondet_prototype()};\n")
 
-                # ~~ nondet() initialisation ~~
-                # ./doc/cprover-manual/modeling-nondeterminism.md
-                if is_ptr:
-                    decl = arg.__repr__().removeprefix('const ')
-                    f.write(f"{INDENT}{decl};\n")
-                    f.write(f"{INDENT}*{arg.location.name} = "
-                            f"{arg.nondet_prototype()};\n")
-                else:
-                    f.write(f"{INDENT}{arg} = {arg.nondet_prototype()};\n")
-
-                arg_string_old += f"{arg.location.name}, "
+            # For double pointers, the argument will be provided
+            # with an extra level of indirection
+            if is_dbl_ptr:
+                arg_string += f"&{arg.location.name}, "
+            else:
                 arg_string += f"{arg.location.name}, "
 
-        arg_string_old = arg_string_old.removesuffix(", ")
         arg_string = arg_string.removesuffix(", ")
 
         # 2. Preconditions
@@ -430,42 +409,39 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
         for idx,param in enumerate(function_state.parameters):
             if not param.nondet and len(param.states) > 0:
                 arg_name = change.old.arguments[idx].location.name
-                f.write(f"{INDENT}__CPROVER_assume(\n")
+                f.write(f"{indent}__CPROVER_assume(\n")
 
                 out_string = ""
                 # Sort the states to enable file-diff regression testing
                 for state in sorted(param.states):
                     state_val  = state if str(state).isnumeric() \
                                        else f"\"{state}\""
-                    out_string += f"{INDENT}{INDENT}{arg_name} == " \
+                    out_string += f"{indent}{indent}{arg_name} == " \
                                   f"{state_val} ||\n"
 
                 out_string = out_string.removesuffix(" ||\n")
 
-                f.write(f"{out_string}\n{INDENT});\n")
+                f.write(f"{out_string}\n{indent});\n")
         f.write("\n")
 
         # 3. Call the functions under verification
         ret_type = change.old.ident.type_spelling
 
-        if unequal_inputs and not identity:
-            f.write(f"{INDENT}// Unequal input comparison!\n")
+        f.write(f"{indent}{ret_type} ret_old = ")
+        f.write(f"{change.old.ident.location.name}{CONFIG.SUFFIX}"
+                f"({arg_string});\n")
 
-        f.write(f"{INDENT}{ret_type} ret_old = ")
-        f.write(f"{change.old.ident.location.name}{SUFFIX}"
-                f"({arg_string_old});\n")
-
-        f.write(f"{INDENT}{ret_type} ret = ")
+        f.write(f"{indent}{ret_type} ret = ")
         if identity:
-            f.write(f"{change.new.ident.location.name}{SUFFIX}"
-                    f"({arg_string_old});\n\n")
+            f.write(f"{change.new.ident.location.name}{CONFIG.SUFFIX}"
+                    f"({arg_string});\n\n")
         else:
             f.write(f"{change.new.ident.location.name}({arg_string});\n\n")
 
 
         # 4. Postconditions
         #   Verify equivalence with one or more assertions
-        f.write(f"{INDENT}__CPROVER_assert(ret_old == ret, "
+        f.write(f"{indent}__CPROVER_assert(ret_old == ret, "
                 f"\"{CONFIG.CBMC_ASSERT_MSG}\");\n")
 
         # Enclose driver function

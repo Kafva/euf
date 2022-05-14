@@ -26,6 +26,7 @@ rm -f /tmp/none.txt
 
 cat << EOF > /tmp/$func_name.json
 {
+  "USE_EXISTING_DRIVERS": false,
   "FORCE_RECOMPILE": false,
   "ONLY_ANALYZE": "$func_name",
   "SILENT_IDENTITY_VERIFICATION": $SILENT,
@@ -33,7 +34,10 @@ cat << EOF > /tmp/$func_name.json
   "SHOW_FUNCTIONS": $SHOW_FUNC,
   "ENABLE_RESULT_LOG": false,
   "SKIP_IMPACT": true,
-  "TIMEOUT_BLACKLIST_FILE": "/tmp/none.txt"
+  "ENABLE_CBMC": true,
+  "TIMEOUT_BLACKLIST_FILE": "/tmp/none.txt",
+  "PAUSES": false,
+  "VERBOSITY": 1
 }
 EOF
 

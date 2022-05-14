@@ -47,6 +47,32 @@ class AnalysisResult(Enum):
     # (adding partial support should not be to complicated however)
     ARRAY_ARG = 85
     VARIADIC = 86
+    # Triple or higher pointer arguments are not supported for verification
+    # Regular pointers are already initialised with a semi-hack
+    # and attempting something similar for higher levels of indirection 
+    # would most likely not yield useful results.
+    INDIRECTION_LIMIT = 87
+
+    # If the function takes a parameter whose type has been renamed,
+    #   e.g. OnigEncodingTypeST in
+    #
+    #  ./scripts/test_harness.sh 
+    #       tests/configs/libonig_20967add_e99abac6.json 
+    #       property_name_to_ctype
+    #
+    # We would need to initialise two different variables, one of the
+    # renamed type and one of the un-renamed type.
+    # 
+    # These variables will not be equal under instrumentation
+    # by CBMC. It would technically be possible to create 
+    # assumptions for each field in both types
+    # (assuming that the type is a struct) to attain equal inputs
+    # but this was not pursued.
+    #
+    # Functions where this condition holds are usually not renamed and could
+    # thus also be classifeid as NOT_RENAMED
+    RENAMED_TYPE = 91
+
     NONE = 255 # Base case used in `print_result`
 
     @classmethod
@@ -388,29 +414,12 @@ class Identifier:
                other.type_spelling.removeprefix("enum ") and \
                self.is_function == other.is_function
 
-    def __repr__(self, paranthesis: bool = True, use_suffix:bool=False,
-            type_only:bool=False):
+    def __repr__(self, paranthesis: bool = True, type_only:bool=False):
         constant = 'const ' if self.is_const else ''
         func = '()' if self.is_function and paranthesis else ''
 
-        # Types that should be explicitly renamed will be given a suffix
-        # with their type string and spelling if the use_suffix flag is set
-        #
-        base_type = self.type_spelling.removeprefix("struct") \
-            .strip(' *')
-
-        if use_suffix and base_type in CONFIG.EXPLICIT_RENAME:
-            struct = "struct " if self.type_spelling.startswith("struct") \
-                               else ''
-            type_str = f"{struct}{base_type}{CONFIG.SUFFIX}"
-
-            if self.type_spelling.endswith("*"):
-                type_str = f"{type_str}*"
-
-            spelling_str = self.location.name+CONFIG.SUFFIX
-        else:
-            type_str = self.type_spelling
-            spelling_str = self.location.name
+        type_str = self.type_spelling
+        spelling_str = self.location.name
 
         # Arrays will have '[]' within their type string (rather than
         # the symbol name)
@@ -463,10 +472,7 @@ class DependencyFunction:
     def prototype_string(self, suffix: str = "") -> str:
         out = f"{self.ident.__repr__(paranthesis=False)}{suffix}("
         for arg in self.arguments:
-            if suffix != "":
-                out += f"{arg.__repr__(use_suffix=True)}, "
-            else:
-                out += f"{arg}, "
+            out += f"{arg}, "
 
         return out.removesuffix(", ") + ")"
 
