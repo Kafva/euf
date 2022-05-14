@@ -37,7 +37,7 @@ cat << EOF > /tmp/$func_name.json
   "ENABLE_CBMC": true,
   "TIMEOUT_BLACKLIST_FILE": "/tmp/none.txt",
   "PAUSES": false,
-  "VERBOSITY": 3
+  "VERBOSITY": 2
 }
 EOF
 

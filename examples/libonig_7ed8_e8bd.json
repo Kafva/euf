@@ -45,6 +45,9 @@
     "-Wno-unused-function",
     "-D__GNUC__"
   ],
+  "BLACKLISTED_HEADERS": [
+    "onigposix.h"
+  ],
   "EXCLUDE_REGEXES": [
     "sample/.*",
     "test/.*"
@@ -57,12 +60,6 @@
       "~/Repos/euf/examples/include/regparse2.h"
     ]
   },
-  "EXTRA_COMPILE_FLAGS": [
-    "-Wno-macro-redefined",
-    "-Wno-unused-parameter",
-    "-Wno-unused-function",
-    "-D__GNUC__"
-  ],
   "FORCE_RECOMPILE": true,
   "FORCE_CCDB_RECOMPILE": true,
   "SILENT_IDENTITY_VERIFICATION": true,

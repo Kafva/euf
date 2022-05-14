@@ -50,7 +50,7 @@ unsigned long ENTROPY_DEBUG_old_b026324c6904b2a(const char* label, unsigned long
 unsigned long ENTROPY_DEBUG(const char* label, unsigned long entropy);
 
 void euf_main() {
-  char* label = malloc(sizeof(char));
+  char* label;
   *label = nondet_char();
   unsigned long entropy = nondet_unsigned_long();
 
@@ -63,6 +63,5 @@ void euf_main() {
 
   __CPROVER_assert(ret_old == ret, "Equivalent output");
 
-  free(label);
 }
 #endif

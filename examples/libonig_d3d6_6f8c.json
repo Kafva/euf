@@ -43,6 +43,9 @@
     "sample/.*",
     "test/.*"
   ],
+  "BLACKLISTED_HEADERS": [
+    "onigposix.h"
+  ],
   "CUSTOM_HEADERS": {
     "regcomp.c": [
       "~/Repos/euf/examples/include/regcomp.h"

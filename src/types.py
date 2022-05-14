@@ -86,17 +86,14 @@ class AnalysisResult(Enum):
             reduction_results.add(AnalysisResult.SUCCESS_UNWIND_FAIL)
         return reduction_results
 
-
 class HarnessType(Enum):
-    # Compare the new version with itself
-    IDENTITY     = 0
+    IDENTITY     = 0 # Compare the new version with itself
     # Compare the old version with itself
     IDENTITY_OLD = 1
     # Compare the old version with the new version
     STANDARD = 2
     # Default option for logging
     NONE = 3
-
 
 @dataclass(init=True)
 class IdentifierLocation:

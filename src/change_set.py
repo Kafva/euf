@@ -404,10 +404,13 @@ def log_changed_functions(changed_functions: list[DependencyFunctionChange],
  filename: str):
     '''
     Always sorts the functions to ensure that processing is done
-    in the same order (makes testing easier)
+    in the same order (makes testing easier).
+    The sorting is done alphabetically with a division
+    into direct/indirect changes
     '''
     changed_functions = sorted(changed_functions,
-            key = lambda c: c.old.ident.location.name
+        key = lambda c: \
+            str(c.direct_change)+c.new.ident.location.name
     )
 
     if CONFIG.ENABLE_RESULT_LOG:
