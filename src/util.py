@@ -218,7 +218,7 @@ def print_result(msg: str, result = AnalysisResult.NONE, identity:bool=False):
             print_warn(msg)
 
 def time_end(msg: str, start_time: datetime,
-        result: AnalysisResult = AnalysisResult.NONE,identity:bool=False):
+ result: AnalysisResult = AnalysisResult.NONE,identity:bool=False):
     if CONFIG.VERBOSITY >= 1:
         print_result(f"{msg}: {datetime.now() - start_time}",
             result=result, identity=identity

@@ -302,6 +302,9 @@ class Identifier:
         try:
             with open(to_open, mode='r', encoding='utf8') as f:
                 lines = f.readlines()
+                if CONFIG.VERBOSITY>=2:
+                    print("!> Deriving type directly from source code for "
+                            f"{type_spelling}")
 
                 # Get the line of the identifier
                 line_offset = cursor.location.line-1

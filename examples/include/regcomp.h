@@ -83,3 +83,7 @@ typedef struct {
 
   OptMapInfo   map;   /* boundary */
 } NodeOptInfo;
+
+// Failed analysis for optimize_node() without this in:
+//  ./tests/configs/libonig_07005064_eed90744.json 
+typedef NodeOptInfo NodeOpt;
