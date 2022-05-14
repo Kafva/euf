@@ -62,13 +62,13 @@ False;;-1;-1;;libusb/sync.c;35;25;sync_transfer_cb
 False;;-1;-1;;libusb/sync.c;43;13;sync_transfer_wait_for_completion
 False;;-1;-1;;libusb/sync.c;97;18;libusb_control_transfer
 False;;-1;-1;;libusb/sync.c;169;12;do_sync_bulk_transfer
-False;;-1;-1;;libusb/os/linux_usbfs.h;174;20;linux_stop_event_monitor
 False;;-1;-1;;libusb/os/linux_netlink.c;56;12;set_fd_cloexec_nb
 False;;-1;-1;;libusb/os/linux_netlink.c;93;5;linux_netlink_start_event_monitor
 False;;-1;-1;;libusb/os/linux_netlink.c;154;5;linux_netlink_stop_event_monitor
 False;;-1;-1;;libusb/os/linux_netlink.c;196;12;linux_netlink_parse
 False;;-1;-1;;libusb/os/linux_netlink.c;289;12;linux_netlink_read_message
 False;;-1;-1;;libusb/os/linux_netlink.c;354;14;linux_netlink_event_thread_main
+False;;-1;-1;;libusb/os/linux_usbfs.h;174;20;linux_stop_event_monitor
 False;;-1;-1;;libusb/os/linux_udev.c;44;5;linux_udev_start_event_monitor
 False;;-1;-1;;libusb/os/linux_udev.c;235;13;udev_hotplug_event
 False;;-1;-1;;libusb/os/linux_udev.c;272;5;linux_udev_scan_devices

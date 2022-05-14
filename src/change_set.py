@@ -403,6 +403,14 @@ def add_rename_changes_based_on_blame(
 
 def log_changed_functions(changed_functions: list[DependencyFunctionChange],
  filename: str):
+    '''
+    Always sorts the functions to ensure that processing is done
+    in the same order (makes testing easier)
+    '''
+    changed_functions = sorted(changed_functions,
+            key = lambda c: c.old.ident.location.name
+    )
+
     if CONFIG.ENABLE_RESULT_LOG:
         with open(filename, mode='w', encoding='utf8') as f:
             f.write(f"direct_change;{IdentifierLocation.csv_header('old')};"

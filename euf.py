@@ -156,12 +156,6 @@ def ast_diff_stage(source_diffs: list[SourceDiff], log_dir: str) \
 
     wait_on_cr()
 
-    # Sort the functions to ensure that processing is always done
-    # in the same order (makes testing easier)
-    changed_functions = sorted(changed_functions,
-            key = lambda c: c.old.ident.location.name
-    )
-
     log_changed_functions(changed_functions, f"{log_dir}/change_set.csv")
 
     return changed_functions
