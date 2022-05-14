@@ -11,35 +11,40 @@ from src.util import add_to_timeout_blacklist, ccdb_dir, load_timeout_blacklist,
         print_result, shorten_path_fields, \
         time_end, time_start, print_err
 
-def valid_preconds(change: DependencyFunctionChange,
+def invalid_preconds(change: DependencyFunctionChange,
   include_paths: dict[str,set[str]],
   skip_renaming: set[str],
-  logfile: str= "", quiet:bool = False,ignore_timeout:bool=False) -> bool:
+  logfile: str= "", quiet:bool = False,ignore_timeout:bool=False) \
+  -> int:
     '''
     If a change passes this function, it should be possible
-    to create a harness for it.
+    to create a harness for it. Returns the number of failed checks.
+
+    To allow for analysis regarding the most common reasons for why analysis
+    failed we need to return a set() of analysis results since e.g. a function 
+    could have both a different argument count and different argument types.
 
     For the log to contain useful information from a CIA perspective, the order
     of the checks is relevant. E.g. we want to be notified if the argument count
     differs regardless of if a function has a void return value
     '''
     func_name = change.old.ident.location.name
-    result = AnalysisResult.SUCCESS
+    results = set()
     fail_msg = ""
     change_str = fmt_change(change)
     old_loc_str = fmt_location(change.old.ident.location)
 
-    def check_param_types(result: AnalysisResult,
-      change:DependencyFunctionChange) -> tuple[AnalysisResult,str]:
+    def check_param_types(results: set[AnalysisResult],
+      change:DependencyFunctionChange) -> tuple[set[AnalysisResult],str]:
         fail_msg = ""
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
                 fail_msg = f"Different argument types: a/{a1} -> b/{a2} "\
                            f"in {change_str}"
-                result = AnalysisResult.DIFF_ARG_TYPE
+                results.add(AnalysisResult.DIFF_ARG_TYPE)
                 break
 
-        if result == AnalysisResult.SUCCESS:
+        if len(results) == 0:
             # We cannot auto-generate harnesses for
             # functions that require void pointers
             for arg in change.old.arguments:
@@ -47,90 +52,92 @@ def valid_preconds(change: DependencyFunctionChange,
                     fail_msg = \
                         f"Function requires a 'void* {arg.location.name}' "\
                         f"argument: {old_loc_str}"
-                    result = AnalysisResult.VOID_ARG
+                    results.add(AnalysisResult.VOID_ARG)
                     break
 
-        return result, fail_msg
+        return results, fail_msg
 
-    # 0. Previous analysis attempts for the function have timed-out
+    # Previous analysis attempts for the function have timed-out
     # and we therefore exclude new attempts
     if func_name in load_timeout_blacklist() and not ignore_timeout:
         fail_msg = f"Skipping {func_name}() due to previous TIMEOUT"
-        result = AnalysisResult.PREV_TIMEOUT
-    # 1. Compilation instructions for the TU that the
+        results.add(AnalysisResult.PREV_TIMEOUT)
+    # Compilation instructions for the TU that the
     # function is defined in do not exist
-    elif not change.old.ident.location.filepath in include_paths or \
+    if not change.old.ident.location.filepath in include_paths or \
        len(include_paths[change.old.ident.location.filepath]) == 0:
         path = change.old.ident.location.filepath
         fail_msg = \
             f"Skipping {func_name}() due to missing compilation "\
             f"instructions for {path}"
-        result = AnalysisResult.MISSING_COMPILE
-    # 2. The number-of arguments or their types have changed
-    elif (old_cnt := len(change.old.arguments)) != \
+        results.add(AnalysisResult.MISSING_COMPILE)
+    # The number-of arguments or their types have changed)
+    if (old_cnt := len(change.old.arguments)) != \
         (new_cnt := len(change.new.arguments)):
         fail_msg = f"Differing number of arguments: a/{old_cnt} -> "\
                    f"b/{new_cnt} in {change_str}"
-        result = AnalysisResult.DIFF_ARG_CNT
-    # 3. The return-type has changed
-    elif change.old.ident != change.new.ident:
+        results.add(AnalysisResult.DIFF_ARG_CNT)
+    # The return-type has changed
+    if change.old.ident != change.new.ident:
         fail_msg = \
             f"Different return type: a/{change.old.ident.type_spelling} " \
             f"-> b/{change.new.ident.type_spelling} in {change_str}"
-        result = AnalysisResult.DIFF_RET
+        results.add(AnalysisResult.DIFF_RET)
 
-    # 4. Parameter types have changed (or a void parameter exists)
-    elif (tpl := check_param_types(result,change))[0] != AnalysisResult.SUCCESS:
-        result = tpl[0]
+    # Parameter types have changed (or a void parameter exists)
+    if (tpl := check_param_types(results,change))[0] != AnalysisResult.SUCCESS:
+        results |= tpl[0]
         fail_msg = tpl[1]
 
-    # 11. One or more arguments are of types that have been explicitly renamed
-    elif any(a.type_spelling.removeprefix("struct ").strip(' *') in \
+    # One or more arguments are of types that have been explicitly renamed
+    if any(a.type_spelling.removeprefix("struct ").strip(' *') in \
           CONFIG.EXPLICIT_RENAME for a in change.old.arguments):
         fail_msg = f"Verification is not supported for functions where one or "\
                    "more parameter types have been explicitly renamed: "\
                    f"{old_loc_str}"
-        result = AnalysisResult.RENAMED_TYPE
-    # 5. The function has not been given an '_old' suffix, preventing analysis
-    elif func_name in skip_renaming:
+        results.add(AnalysisResult.RENAMED_TYPE)
+    # The function has not been given an '_old' suffix, preventing analysis
+    if func_name in skip_renaming:
         fail_msg = f"Renaming {func_name}() could cause conflicts, skipping " +\
             change_str
-        result = AnalysisResult.NOT_RENAMED
-    # 6. Function has a void return value
-    elif change.old.ident.type_spelling == "void":
+        results.add(AnalysisResult.NOT_RENAMED)
+    # Function has a void return value
+    if change.old.ident.type_spelling == "void":
         fail_msg = f"Cannot verify function with a 'void' "\
                    f"return value: {old_loc_str}"
-        result = AnalysisResult.VOID_RET
-    # 7. Function has zero parameters
-    elif len(change.old.arguments) == 0:
+        results.add(AnalysisResult.VOID_RET)
+    # Function has zero parameters
+    if len(change.old.arguments) == 0:
         fail_msg = f"Cannot verify a function with zero arguments: "\
                    f"{old_loc_str}"
-        result = AnalysisResult.NO_ARGS
-    # 8. Array argument(s)
-    elif any(str(a).find("[") != -1 for a in change.old.arguments):
+        results.add(AnalysisResult.NO_ARGS)
+    # Array argument(s)
+    if any(str(a).find("[") != -1 for a in change.old.arguments):
         fail_msg = f"Verifying functions with array '[]' parameter(s) is "\
                    f"not supported: {old_loc_str}"
-        result = AnalysisResult.ARRAY_ARG
-    # 9. Variadic function
-    elif change.old.ident.is_varidiac_function:
+        results.add(AnalysisResult.ARRAY_ARG)
+    # Variadic function
+    if change.old.ident.is_varidiac_function:
         fail_msg = f"Variadic functions are not supported "\
                    f"for verification: {old_loc_str}"
-        result = AnalysisResult.VARIADIC
-    # 10. More than two levels of pointer indirection in one or more arguments
-    elif any(str(a).count("*") >= 3 for a in change.old.arguments):
+        results.add(AnalysisResult.VARIADIC)
+    # More than two levels of pointer indirection in one or more arguments
+    if any(str(a).count("*") >= 3 for a in change.old.arguments):
         fail_msg = f"Function parameter(s) are only allowed to have two "\
                    "or fewer levels of indirection ('*'): "\
                    f"{old_loc_str}"
-        result = AnalysisResult.INDIRECTION_LIMIT
+        results.add(AnalysisResult.INDIRECTION_LIMIT)
 
-    if result != AnalysisResult.SUCCESS:
+    if len(results) != 0:
         if logfile != "":
-            log_harness(logfile, func_name, None, result, None, "", change)
+            log_harness(logfile, func_name, None, results, None, "", change)
         if not quiet:
-            print_result(fail_msg, result)
-        return False
+            if len(results)>1:
+                fail_msg += f" -- {len(results)-1} additional precondition "\
+                "failure(s)"
+            print_result(fail_msg, next(iter(results)) )
 
-    return True
+    return len(results)
 
 def get_include_paths_for_tu(diffs: list[SourceDiff], source_dir_old:str) \
  -> dict[str,set[str]]:
@@ -450,7 +457,7 @@ def create_harness(change: DependencyFunctionChange, harness_path: str,
 def log_harness(filename: str,
   func_name: str,
   identity: bool|None,
-  result: AnalysisResult,
+  results: set[AnalysisResult],
   start_time: datetime|None,
   driver: str,
   change: DependencyFunctionChange) -> None:
@@ -472,7 +479,13 @@ def log_harness(filename: str,
 
         old_loc = shorten_path_fields(change.old.ident.location.to_csv())
         new_loc = shorten_path_fields(change.new.ident.location.to_csv())
-        f.write(f"{func_name};{identity_str};{result.name};{runtime};"
+
+        results_str = ""
+        for r in results:
+            results_str+=f"{r.name},"
+        results_str = results_str.removesuffix(",")
+
+        f.write(f"{func_name};{identity_str};{results_str};{runtime};"
                 f"{driver};{old_loc};{new_loc}\n")
         f.close()
 
@@ -501,7 +514,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     driver_name = os.path.basename(driver)
 
     if CONFIG.CBMC_TIMEOUT <= 0:
-        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,
+        log_harness(log_file,func_name,identity,{AnalysisResult.TIMEOUT},
                 start,driver,change)
         time_end(f"Execution timed-out for {driver_name}",
                 start, AnalysisResult.TIMEOUT)
@@ -523,7 +536,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     except KeyboardInterrupt:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
-        log_harness(log_file,func_name,identity,AnalysisResult.INTERRUPT,
+        log_harness(log_file,func_name,identity,{AnalysisResult.INTERRUPT},
                             start,driver,change)
         print("\n")
         time_end(f"Cancelled execution for {driver_name}",
@@ -532,7 +545,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     except subprocess.TimeoutExpired:
         os.killpg(os.getpgid(p.pid), signal.SIGTERM) # type: ignore
 
-        log_harness(log_file,func_name,identity,AnalysisResult.TIMEOUT,
+        log_harness(log_file,func_name,identity,{AnalysisResult.TIMEOUT},
                         start,driver,change)
         time_end(f"Execution timed-out for {driver_name}",
                     start, AnalysisResult.TIMEOUT)
@@ -588,7 +601,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
         print_err(f"Unexpected return code from CBMC: {return_code}")
         analysis_result = AnalysisResult(ERR_EXIT)
 
-    log_harness(log_file,func_name,identity,analysis_result,start,driver,change)
+    log_harness(log_file,func_name,identity,{analysis_result},start,driver,change)
 
     time_end(msg,  start, AnalysisResult(return_code),identity=identity)
 

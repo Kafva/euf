@@ -32,7 +32,7 @@ from src.types import DependencyFunction, \
     DependencyFunctionChange, FunctionState, \
     CallSite, SourceDiff, SourceFile
 from src.arg_states import join_arg_states_result, state_space_analysis
-from src.harness import valid_preconds, create_harness, \
+from src.harness import invalid_preconds, create_harness, \
         get_include_paths_for_tu, run_harness, add_includes_from_tu
 from src.util import ccdb_dir, flatten, flatten_dict, \
         git_dir, git_relative_path, has_allowed_suffix, \
@@ -223,9 +223,9 @@ def reduction_stage(
         # full state space analysis for these functions.
         changes_to_analyze = []
         for c in changed_functions:
-            if valid_preconds(c,include_paths,skip_renaming,
+            if invalid_preconds(c,include_paths,skip_renaming,
                 logfile="",quiet=True,
-                ignore_timeout=True):
+                ignore_timeout=True) > 0:
                 changes_to_analyze.append(c)
 
         idents_to_analyze = [c.old.ident.location.name \
@@ -283,8 +283,8 @@ def reduction_stage(
             continue
 
         # Log the reason for why a change could not be verified
-        if not valid_preconds(change, include_paths, skip_renaming, \
-           cbmc_log, quiet=False):
+        if invalid_preconds(change, include_paths, skip_renaming, \
+           cbmc_log, quiet=False) > 0:
             continue
 
         filepath_old = change.old.ident.location.filepath

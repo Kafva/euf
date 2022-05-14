@@ -42,7 +42,8 @@ build the Docker image (recommended).
 ```bash 
 git clone --recursive https://github.com/Kafva/euf.git
 
-# Semi-automatic setup for Arch or Ubuntu 20.04 ./scripts/setup.sh
+# Semi-automatic setup for Arch or Ubuntu 20.04
+./scripts/setup.sh
 
 # Docker setup: 
 # Additional setup steps will likely be necessary 
@@ -71,16 +72,17 @@ several examples present in the repository.
 # any other resources like custom configs must be manually mounted 
 # when using Docker. 
 # Refer to ./scripts/docker-run.sh for development/debugging in Docker 
-docker run \ -v
-  $HOME/Repos/.docker/jq:/home/euf/Repos/jq \ -v
-  $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \ euf --config
-  tests/configs/onig_docker.json 
+docker run \
+  -v $HOME/Repos/.docker/jq:/home/euf/Repos/jq \
+  -v $HOME/Repos/.docker/oniguruma:/home/euf/Repos/oniguruma \
+  euf --config tests/configs/onig_docker.json 
 ```
 
 Note that running EUF both within and outside Docker on the same repositories is
 not supported, create separate directories if this is necessary.
 
-## CBMC fork To avoid duplicate symbols a fork of CBMC which adds a suffix to
+## CBMC fork 
+To avoid duplicate symbols a fork of CBMC which adds a suffix to
 all global symbols has been created. The symbol renaming is triggered by
 starting `cbmc`, `goto-cc` or any of the other Cprover tools with `USE_SUFFIX`
 set in the environment.
