@@ -279,6 +279,7 @@ def load_cbmc_results(name:str, result_dir:str) -> \
                 # Full results
                 func_result.results.extend(
                     map(lambda a: a.result, filter(lambda c:
+                        # pylint: disable=cell-var-from-loop
                         not c.identity and c.func_name == func_name,
                         cbmc_results_dict[dirpath]
                     )
@@ -286,6 +287,7 @@ def load_cbmc_results(name:str, result_dir:str) -> \
                 # Identity results
                 func_result.results_id.extend(
                     map(lambda a: a.result, filter(lambda c:
+                        # pylint: disable=cell-var-from-loop
                         c.identity and c.func_name == func_name,
                         cbmc_results_dict[dirpath]
                     )

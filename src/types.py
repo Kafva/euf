@@ -832,6 +832,7 @@ class CbmcResult:
 
         return cls(
             func_name = items[0],
+            # pylint: disable=simplifiable-if-expression
             identity = False if items[1] == "False" else True,
             result = AnalysisResult[items[2]],
             runtime = datetime.now(),

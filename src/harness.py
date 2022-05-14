@@ -472,6 +472,7 @@ def log_harness(filename: str,
                     IdentifierLocation.csv_header('new')+"\n"
             )
         else:
+            # pylint: disable=consider-using-with
             f = open(filename, mode='a', encoding='utf8')
 
         runtime = datetime.now() - start_time if start_time else ""
@@ -523,6 +524,7 @@ def run_harness(change: DependencyFunctionChange, script_env: dict[str,str],
     output = ""
 
     try:
+        # pylint: disable=consider-using-with
         p = subprocess.Popen([ CONFIG.CBMC_SCRIPT ],
             env = script_env, stdout = out, stderr = out, cwd = BASE_DIR,
             start_new_session = True

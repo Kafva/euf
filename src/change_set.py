@@ -36,7 +36,6 @@ def get_cursor_from_source_file(source_file: SourceFile) -> cindex.Cursor|None:
         )
     return None
 
-
 def functions_match(match: DependencyFunction, other: DependencyFunction) \
  -> bool:
     '''

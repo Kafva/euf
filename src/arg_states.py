@@ -121,6 +121,7 @@ def call_arg_states_plugin(symbol_name: str, outdir:str,
     success = True
     output = ""
     try:
+        # pylint: disable=consider-using-with
         p = subprocess.Popen(cmd, cwd = subdir, stdout = out, stderr = out,
                             env = script_env)
         p.wait()

@@ -2,4 +2,6 @@
 disable=missing-class-docstring,fixme,missing-module-docstring,
   missing-function-docstring,trailing-newlines,broad-except,
   logging-fstring-interpolation,trailing-whitespace,invalid-name,
-  subprocess-run-check,multiple-statements,multiple-imports,arguments-differ
+  subprocess-run-check,multiple-statements,multiple-imports,arguments-differ,
+  too-many-statements,too-many-branches,too-many-locals,too-many-return-statements,
+  too-many-instance-attributes,too-many-arguments
