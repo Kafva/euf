@@ -273,6 +273,7 @@ def reduction_stage(
         # change is considered equivalent
         func_name = change.old.ident.location.name
 
+        # pylint: disable=consider-using-in
         if CONFIG.ONLY_ANALYZE != "" and CONFIG.ONLY_ANALYZE != func_name:
             continue
 

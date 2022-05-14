@@ -2,9 +2,9 @@ import sys
 from itertools import zip_longest
 sys.path.append('../')
 
+# pylint: disable=wrong-import-position
 from src import BASE_DIR
 
-zip_longest
 TEST_DIR =  f"{BASE_DIR}/tests"
 RESULT_DIR = f"{BASE_DIR}/results"
 
