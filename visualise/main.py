@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 # '.' is needed to run from the visualise directory
 sys.path.extend(['..','.'])
 
+# pylint: disable=wrong-import-position
 from src.config import CONFIG
 from src.util import print_info, print_stage
 from visualise import OPTIONS

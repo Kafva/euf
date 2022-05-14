@@ -225,6 +225,7 @@ class Case:
         reduction for each one.
         '''
         reductions_per_trial = []
+        # pylint: disable=consider-using-dict-items
         for dirpath in self.base_change_set:
             base_set_len = len(self.base_change_set[dirpath])
             if assertions:

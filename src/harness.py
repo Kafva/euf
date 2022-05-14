@@ -36,10 +36,10 @@ def invalid_preconds(change: DependencyFunctionChange,
 
     def check_param_types(results: set[AnalysisResult],
       change:DependencyFunctionChange) -> tuple[set[AnalysisResult],str]:
-        fail_msg = ""
+        param_msg = ""
         for a1,a2 in zip(change.old.arguments,change.new.arguments):
             if a1!=a2:
-                fail_msg = f"Different argument types: a/{a1} -> b/{a2} "\
+                param_msg = f"Different argument types: a/{a1} -> b/{a2} "\
                            f"in {change_str}"
                 results.add(AnalysisResult.DIFF_ARG_TYPE)
                 break
@@ -49,13 +49,13 @@ def invalid_preconds(change: DependencyFunctionChange,
             # functions that require void pointers
             for arg in change.old.arguments:
                 if arg.type_spelling == "void*":
-                    fail_msg = \
+                    param_msg = \
                         f"Function requires a 'void* {arg.location.name}' "\
                         f"argument: {old_loc_str}"
                     results.add(AnalysisResult.VOID_ARG)
                     break
 
-        return results, fail_msg
+        return results, param_msg
 
     # Previous analysis attempts for the function have timed-out
     # and we therefore exclude new attempts
@@ -87,7 +87,8 @@ def invalid_preconds(change: DependencyFunctionChange,
     # Parameter types have changed (or a void parameter exists)
     if (tpl := check_param_types(results,change))[0] != AnalysisResult.SUCCESS:
         results |= tpl[0]
-        fail_msg = tpl[1]
+        if tpl[1]!="":
+            fail_msg = tpl[1]
 
     # One or more arguments are of types that have been explicitly renamed
     if any(a.type_spelling.removeprefix("struct ").strip(' *') in \
@@ -481,8 +482,9 @@ def log_harness(filename: str,
         old_loc = shorten_path_fields(change.old.ident.location.to_csv())
         new_loc = shorten_path_fields(change.new.ident.location.to_csv())
 
+        # Sort the results so that they are always printed in the same order
         results_str = ""
-        for r in results:
+        for r in sorted(list(results), key=lambda r: r.name):
             results_str+=f"{r.name},"
         results_str = results_str.removesuffix(",")
 

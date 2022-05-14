@@ -19,7 +19,7 @@ def load_timeout_blacklist() -> set[str]:
     timed_out_functions = set()
     if CONFIG.ENABLE_TIMEOUT_BLACKLIST:
         if os.path.isfile(CONFIG.TIMEOUT_BLACKLIST_FILE):
-            with open(CONFIG.TIMEOUT_BLACKLIST_FILE, mode = 'r', encoding='utf8') \
+            with open(CONFIG.TIMEOUT_BLACKLIST_FILE, mode='r', encoding='utf8')\
              as f:
                 for line in f.readlines():
                     timed_out_functions.add(line.strip())

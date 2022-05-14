@@ -259,5 +259,6 @@ def plot_states():
     This data would highlight how useful state analysis is in regards to limiting
     the data space of input data.
     '''
+    # pylint: disable=unnecessary-pass
     pass
 
