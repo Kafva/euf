@@ -106,7 +106,7 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
     very good performance, which stems from the fact that it has analyzed
     the same few functions successfully many times.
     '''
-    fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
+    fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
     subfigs = fig.subfigures(nrows=2, ncols=1)
 
     def create_row(title,index,unique_results:bool):
@@ -133,7 +133,7 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
         bar_names  = list(compress(bar_names, non_zero_fields))
 
         # Wrap the bar name text to X chars
-        bar_names = [ '\n'.join(wrap(l, OPTIONS['PLOT_WRAP_CHARS'])) for l in bar_names ]
+        bar_names = [ '\n'.join(wrap(l, OPTIONS.PLOT_WRAP_CHARS)) for l in bar_names ]
 
         # Color-code a bar plot for each case
         for i,case in enumerate(cases):
@@ -145,7 +145,7 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
                 case _: bottom = 0
 
             axes.bar(bar_names, cases_dists[i],
-                    width = OPTIONS['PLOT_WIDTH'],
+                    width = OPTIONS.PLOT_WIDTH,
                     label = case.name,
                     color = [ cases[i].color ],
                     bottom = bottom,
@@ -181,7 +181,7 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     ) for c in cases ]
 
 
-    fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
+    fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
     subfigs = fig.subfigures(nrows=3, ncols=1)
 
     def create_row(title,index,array1,label):
@@ -199,17 +199,17 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
                 showmeans=True, showextrema=True
             )
             if percent:
-                ax.set_ylim(OPTIONS['VIOLIN_YLIM'])
+                ax.set_ylim(OPTIONS.VIOLIN_YLIM)
 
             for pc in parts['bodies']:
-                pc.set_facecolor(OPTIONS['PINK'])
+                pc.set_facecolor(OPTIONS.PINK)
                 pc.set_edgecolor('white')
                 pc.set_alpha(0.5)
 
             # Change colors of the mean indicators
             for partname in ('cbars','cmins','cmaxes','cmeans'):
                 vp = parts[partname]
-                vp.set_edgecolor(OPTIONS['DARK PINK'])
+                vp.set_edgecolor(OPTIONS.DARK_PINK)
                 vp.set_linewidth(2)
 
             if index==2:

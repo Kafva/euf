@@ -1,5 +1,4 @@
 from statistics import stdev,mean
-from pprint import pprint
 from dataclasses import dataclass, field
 from src.types import AnalysisResult, CbmcResult, \
         DependencyFunctionChange, FunctionResult, StateParam
@@ -99,13 +98,13 @@ class Case:
     @classmethod
     def new(cls,name:str, total_functions:int, color:str):
         function_results_dict, cbmc_results_dict = \
-            load_cbmc_results(name,OPTIONS['RESULT_DIR'])
+            load_cbmc_results(name,OPTIONS.RESULT_DIR)
 
         base_change_set, reduced_change_set, trans_change_set = \
-                load_change_sets(name,OPTIONS['RESULT_DIR'])
+                load_change_sets(name,OPTIONS.RESULT_DIR)
 
         _,_,trans_set_without_reduction = \
-                load_change_sets(name,OPTIONS['IMPACT_DIR'])
+                load_change_sets(name,OPTIONS.IMPACT_DIR)
 
         # The number of changed functions in the base set and the functions
         # from cbmc analysis should be equal
@@ -117,19 +116,19 @@ class Case:
             function_results_dict=function_results_dict,
             color=color,
 
-            arg_states = load_state_space(name,OPTIONS['RESULT_DIR']),
+            arg_states = load_state_space(name,OPTIONS.RESULT_DIR),
 
             base_change_set = base_change_set,
             trans_change_set = trans_change_set,
-            impact_set = load_impact_set(name,OPTIONS['RESULT_DIR']),
+            impact_set = load_impact_set(name,OPTIONS.RESULT_DIR),
 
             reduced_change_set = reduced_change_set,
             trans_set_without_reduction = trans_set_without_reduction,
             impact_set_without_reduction = \
-                    load_impact_set(name,OPTIONS['IMPACT_DIR'])
+                    load_impact_set(name,OPTIONS.IMPACT_DIR)
         )
 
-    def info(self,unique_results:bool=False):
+    def info(self):
         print_stage(self.name)
 
         # The total number of analyzed functions corresponds to the number of
@@ -145,50 +144,53 @@ class Case:
             len(self.passed_identity_functions()), nr_of_changed_functions
         )
 
-        nr_of_full_analysis_results = len(list(filter(lambda c: not c.identity,
-                self.cbmc_results())))
-        print(f"Unique pre-analysis results: "
-              f"{len(self.unique_cbmc_results(ident=True))}/"
-              f"{len(self.cbmc_results())}")
-        print(f"Unique full-analysis results: "
-              f"{len(self.unique_cbmc_results(ident=False))}/"
-              f"{nr_of_full_analysis_results}")
+        #nr_of_full_analysis_results = len(list(filter(lambda c: not c.identity,
+        #        self.cbmc_results())))
+        #print(f"Unique pre-analysis results: "
+        #      f"{len(self.unique_cbmc_results(ident=True))}/"
+        #      f"{len(self.cbmc_results())}")
+        #print(f"Unique full-analysis results: "
+        #      f"{len(self.unique_cbmc_results(ident=False))}/"
+        #      f"{nr_of_full_analysis_results}")
 
-        multi_cnt = len(self.multi_result_function_results())
-        fully_analyzed = self.fully_analyzed_functions()
+        #multi_cnt = len(self.multi_result_function_results())
+        #fully_analyzed = self.fully_analyzed_functions()
 
-        equiv_results = AnalysisResult.results_that_reduce()
+        #equiv_results = AnalysisResult.results_that_reduce()
 
-        equiv_result_cnt = len(list(filter(lambda x:
-            1 <= len(equiv_results|set(x.results)) <= len(equiv_results),
-            fully_analyzed
-        )))
-        influential_result_cnt = len(list(filter(lambda x:
-            1 <= len({
-                AnalysisResult.FAILURE,
-                AnalysisResult.FAILURE_UNWIND_FAIL
-                } | set(x.results)) <= 2 ,
-            fully_analyzed
-        )))
+        #equiv_result_cnt = len(list(filter(lambda x:
+        #    1 <= len(equiv_results|set(x.results)) <= len(equiv_results),
+        #    fully_analyzed
+        #)))
+        #influential_result_cnt = len(list(filter(lambda x:
+        #    1 <= len({
+        #        AnalysisResult.FAILURE,
+        #        AnalysisResult.FAILURE_UNWIND_FAIL
+        #        } | set(x.results)) <= 2 ,
+        #    fully_analyzed
+        #)))
 
-        print(f"Functions with an influential and equivalent analysis result: "
-              f"{multi_cnt}/{nr_of_changed_functions}")
-        print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-              f"{equiv_result_cnt}/{nr_of_changed_functions}"
-        )
-        print(f"Functions with \033[4monly\033[0m influential analysis results: "
-              f"{influential_result_cnt}/{nr_of_changed_functions}")
+        #print(f"Functions with an influential and equivalent analysis result: "
+        #      f"{multi_cnt}/{nr_of_changed_functions}")
+        #print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
+        #      f"{equiv_result_cnt}/{nr_of_changed_functions}"
+        #)
+        #print(f"Functions with \033[4monly\033[0m influential analysis results: "
+        #      f"{influential_result_cnt}/{nr_of_changed_functions}")
 
-        dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
-            "\033[4mwith duplicates\033[0m"
-        print(f"Result distribution {dupes} (pre-analysis):")
-        pprint(self.sorted_analysis_dist(
-            ident=True,filter_zero=True,unique_results=False)
-        )
-        print(f"Result distribution {dupes} (full-analysis):")
-        pprint(self.sorted_analysis_dist(
-            ident=False,filter_zero=True,unique_results=False)
-        )
+        #dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
+        #    "\033[4mwith duplicates\033[0m"
+        #print(f"Result distribution {dupes} (pre-analysis):")
+        #pprint(self.sorted_analysis_dist(
+        #    ident=True,filter_zero=True,unique_results=unique_results)
+        #)
+        #print(f"Result distribution {dupes} (full-analysis):")
+        #pprint(self.sorted_analysis_dist(
+        #    ident=False,filter_zero=True,unique_results=unique_results)
+        #)
+
+
+        print("=======================================")
 
         change_set_sizes = [ len(v) for v in self.base_change_set.values() ]
         trans_set_sizes = [ len(v) for v in self.trans_change_set.values() ]

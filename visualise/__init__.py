@@ -1,38 +1,40 @@
+from dataclasses import dataclass, field
 import sys
 from posixpath import expanduser
 
 # '.' is needed to run from the visualise directory 
 sys.path.extend(['..','.'])
 
-OPTIONS = {
+@dataclass(init=True)
+class Options:
     # Output flags
-    'WRITE_MD': False,
-    'PLOT': False,
-    'LIST_ANALYZED': False,
-    'SAVE_FIGS': False,
-    'UNIQUE_RESULTS': False,
-    'ONLY_MULTI': False,
+    WRITE_MD: bool = False
+    PLOT: bool = True
+    LIST_ANALYZED: bool = False
+    SAVE_FIGS: bool = False
+    UNIQUE_RESULTS: bool = False
+    ONLY_MULTI: bool = False
 
     # Input configuration
-    'RESULT_DIR': ".results/8",
-    'IMPACT_DIR': ".results/8_impact",
+    RESULT_DIR:str = ".results/8"
+    IMPACT_DIR:str = ".results/8_impact"
 
     # Plotting constants
-    'PLOT_WIDTH': 0.6,
-    'PLOT_FONT_SIZE': 10,
-    'PLOT_WRAP_CHARS': 8,
-    'EXPORT_LIGHT': False,
-    'FIGURE_DIR': f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results",
-    'FIG_SIZE': (19,11),
-    'VIOLIN_YLIM': [0,.8],
+    PLOT_WIDTH: float = 0.6
+    PLOT_FONT_SIZE: int = 10
+    PLOT_WRAP_CHARS: int = 8
+    EXPORT_LIGHT: bool = False
+    FIGURE_DIR: str = f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results"
+    FIG_SIZE: tuple[int,int] = field(default_factory=lambda: (19,11))
+    VIOLIN_YLIM: list[float] = field(default_factory=lambda: [0,.8])
 
     # Colors
-    'WHITE': '#ffffff',
-    'PINK': '#bb92ac',
-    'DARK PINK': '#b888a6',
-    'RED': '#f0866e',
-    'GREEN': '#6ef093',
-    'BLUE': '#6e95f0',
-    'BLACK': '#1a1c1f'
-}
+    WHITE: str = '#ffffff'
+    PINK: str = '#bb92ac'
+    DARK_PINK: str = '#b888a6'
+    RED: str = '#f0866e'
+    GREEN: str = '#6ef093'
+    BLUE: str = '#6e95f0'
+    BLACK: str = '#1a1c1f'
 
+OPTIONS = Options()
