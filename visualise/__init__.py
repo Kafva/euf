@@ -15,7 +15,7 @@ class Options:
     PLOT: bool = True
     LIST_ANALYZED: bool = False
     SAVE_FIGS: bool = False
-    UNIQUE_RESULTS: bool = False
+    UNIQUE_ONLY: bool = False
     ONLY_MULTI: bool = False
 
     # Input configuration

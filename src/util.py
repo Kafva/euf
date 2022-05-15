@@ -102,8 +102,19 @@ def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
 def print_stage(msg: str):
-    print("\033[34m==>\033[0m " +  msg + " \033[34m<==\033[0m ",
-        file=sys.stderr, flush=True)
+    cols = os.get_terminal_size().columns
+
+    # Minus 4 for the '<' signs and spaces
+    equal_signs = int((cols - len(msg) - 4)/2)
+    output = "\033[34m"  + "="*(equal_signs) +  ">\033[0m " +  \
+          msg + " \033[34m<" + "="*(equal_signs) + "\033[0m "
+
+    while len(output) < cols:
+        if len(output)%2==0:
+            output+="="
+        else:
+            output="="+output
+    print(output, file=sys.stderr, flush=True)
 
 def set_libclang():
     if not os.path.exists(CONFIG.LIBCLANG):

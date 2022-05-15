@@ -26,7 +26,7 @@ class CbmcResult:
         commit_new = re.search(r"_[a-z0-9]{4}$", directory).\
                 group(0)[1:] # type: ignore
 
-        # The result field can hold more than one value (',' sepereated)
+        # The result field can hold more than one value (',' separated)
         # if the HarnessType is NONE.
         result = { AnalysisResult[r] for r in items[2].split(',') }
 
@@ -56,17 +56,17 @@ class CbmcResult:
 @dataclass(init=True)
 class FunctionResult:
     '''
-    A list of all the analysis results recorded for a perticular
+    A list of all the analysis results recorded for a particular
     function. By using a list with duplicate entries we can
-    see the distrubtion of results and fetch a set()
+    see the distribution of results and fetch a set()
     '''
     func_name: str
 
     # Maintain a list of each Cbmc result attained for this
-    # funciton. This allows us to retroactivly find out
+    # function. This allows us to retroactively find out
     # which commits yielded a specific result
     #
-    # If we ever need  a compelte list of all CbmcResults
+    # If we ever need  a complete list of all CbmcResults
     # we can derive that from our list of function results
     cbmc_results: list[CbmcResult] = field(default_factory=list)
 
@@ -93,28 +93,27 @@ class FunctionResult:
         ''' Results derived from a failed precondition check '''
         return self._result_in_predicate({HarnessType.NONE})
 
-
-    def has_multi_result(self,ident:bool=False):
+    def has_multi_result(self,identity:bool=False):
         '''
         Considers a different set of results as "successful" based on 
         the current CONFIG object
         '''
-        res = self.results_id() if ident else self.results()
+        res = self.results_id() if identity else self.results()
         return any(r in AnalysisResult.results_that_reduce()
                 for r in res
             ) and \
             (AnalysisResult.FAILURE in res or
              AnalysisResult.FAILURE_UNWIND_FAIL in res)
 
-    def pretty(self,ident:bool=False,only_multi:bool=False) -> str:
+    def pretty(self,identity:bool=False,only_multi:bool=False) -> str:
         '''
         Highlight if both SUCCESS and FAILURE was recorded
-        for a function, these cases are most intresting since
-        they enable a comparsion between a (accroding to EUF)
+        for a function, these cases are most interesting since
+        they enable a comparison between a (according to EUF)
         equivalent and influential update to the same function
         '''
-        res = self.results_id() if ident else self.results()
-        if self.has_multi_result(ident):
+        res = self.results_id() if identity else self.results()
+        if self.has_multi_result(identity):
             out = f"\033[32;4m{self.func_name}\033[0m: [\n"
         else:
             if only_multi:
@@ -126,9 +125,9 @@ class FunctionResult:
             out += f"  {r.name} ({cnt}),\n"
         return out.strip(",\n")+"\n]"
 
-    def pretty_md(self,ident:bool=False) -> str:
+    def pretty_md(self,identity:bool=False) -> str:
         out = f"## `{self.func_name}()`\n"
-        res = self.results_id() if ident else self.results()
+        res = self.results_id() if identity else self.results()
         for r in set(res):
             cnt = res.count(r)
             out += f"> {r.name} ({cnt})\n"

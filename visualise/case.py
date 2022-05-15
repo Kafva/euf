@@ -1,8 +1,10 @@
+import os
+from pprint import pprint
 from statistics import stdev,mean
 from dataclasses import dataclass, field
 from src.types import AnalysisResult, \
         DependencyFunctionChange, HarnessType, StateParam
-from src.util import print_err, print_stage
+from src.util import flatten, print_err, print_stage
 from visualise import OPTIONS
 
 from visualise.deserialise import Impacted, \
@@ -24,11 +26,12 @@ def basic_dist(msg:str, cnt:int, total:int) -> None:
     percent = round(cnt/total, ROUNDING)
     print(f"{msg}: {cnt}/{total} ({percent})")
 
-def identity_set(identity:bool) -> set[HarnessType]:
-    return {HarnessType.IDENTITY_OLD, HarnessType.IDENTITY} if identity else \
-                {HarnessType.STANDARD}
+def divider(percent:float=1.0) -> None:
+    print("="*int(os.get_terminal_size().columns*percent))
 
-# - - - Impact and Change sets  - - - #
+def identity_set() -> set[HarnessType]:
+    return {HarnessType.IDENTITY_OLD, HarnessType.IDENTITY}
+
 def get_reductions_per_trial(label:str,
  unreduced_dct:dict[str,list],
  reduced_dct:dict[str,list],
@@ -139,54 +142,69 @@ class Case:
             len(self.passed_identity_functions()), nr_of_changed_functions
         )
 
-        #nr_of_full_analysis_results = len(list(filter(lambda c: not c.identity,
-        #        self.cbmc_results())))
-        #print(f"Unique pre-analysis results: "
-        #      f"{len(self.unique_cbmc_results(ident=True))}/"
-        #      f"{len(self.cbmc_results())}")
-        #print(f"Unique full-analysis results: "
-        #      f"{len(self.unique_cbmc_results(ident=False))}/"
-        #      f"{nr_of_full_analysis_results}")
+        divider()
 
-        #multi_cnt = len(self.multi_result_function_results())
-        #fully_analyzed = self.fully_analyzed_functions()
+        cbmc_results_cnt = len(self.cbmc_results())
+        print(f"Unique NONE harness results: "
+              f"{len(self.unique_results({HarnessType.NONE}))}/"
+              f"{cbmc_results_cnt}")
+        print(f"Unique IDENTITY harness results: "
+              f"{len(self.unique_results(identity_set()))}/"
+              f"{cbmc_results_cnt}")
+        print(f"Unique STANDARD harness results: "
+              f"{len(self.unique_results({HarnessType.STANDARD}))}/"
+              f"{cbmc_results_cnt}")
 
-        #equiv_results = AnalysisResult.results_that_reduce()
+        divider()
 
-        #equiv_result_cnt = len(list(filter(lambda x:
-        #    1 <= len(equiv_results|set(x.results)) <= len(equiv_results),
-        #    fully_analyzed
-        #)))
-        #influential_result_cnt = len(list(filter(lambda x:
-        #    1 <= len({
-        #        AnalysisResult.FAILURE,
-        #        AnalysisResult.FAILURE_UNWIND_FAIL
-        #        } | set(x.results)) <= 2 ,
-        #    fully_analyzed
-        #)))
+        multi_cnt = len(self.multi_result_function_results())
+        passed_identity_results = self.passed_identity_functions()
+        equiv_results = AnalysisResult.results_that_reduce()
 
-        #print(f"Functions with an influential and equivalent analysis result: "
-        #      f"{multi_cnt}/{nr_of_changed_functions}")
-        #print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-        #      f"{equiv_result_cnt}/{nr_of_changed_functions}"
-        #)
-        #print(f"Functions with \033[4monly\033[0m influential analysis results: "
-        #      f"{influential_result_cnt}/{nr_of_changed_functions}")
+        equiv_result_cnt = len(list(filter(lambda x:
+            1 <= len(equiv_results|set(x.results())) <= len(equiv_results),
+            passed_identity_results
+        )))
+        influential_result_cnt = len(list(filter(lambda x:
+            1 <= len({
+                AnalysisResult.FAILURE,
+                AnalysisResult.FAILURE_UNWIND_FAIL
+                } | set(x.results())) <= 2 ,
+            passed_identity_results
+        )))
 
-        #dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
-        #    "\033[4mwith duplicates\033[0m"
-        #print(f"Result distribution {dupes} (pre-analysis):")
-        #pprint(self.sorted_analysis_dist(
-        #    ident=True,filter_zero=True,unique_results=unique_results)
-        #)
-        #print(f"Result distribution {dupes} (full-analysis):")
-        #pprint(self.sorted_analysis_dist(
-        #    ident=False,filter_zero=True,unique_results=unique_results)
-        #)
+        print(f"Functions with an influential and equivalent analysis result: "
+              f"{multi_cnt}/{nr_of_changed_functions}")
+        print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
+              f"{equiv_result_cnt}/{nr_of_changed_functions}"
+        )
+        print(f"Functions with \033[4monly\033[0m influential analysis results:"
+              f" {influential_result_cnt}/{nr_of_changed_functions}")
 
+        divider()
 
-        print("=======================================")
+        dupes = "\033[4mwithout duplicates\033[0m" \
+            if OPTIONS.UNIQUE_ONLY else \
+            "\033[4mwith duplicates\033[0m"
 
+        print(f"(NONE) Result distribution {dupes}:")
+        pprint(self.sorted_analysis_dist(
+            harness_types={HarnessType.NONE},
+            filter_zero=True, unique_only=OPTIONS.UNIQUE_ONLY
+        ))
+
+        print(f"(IDENTITY) Result distribution {dupes}:")
+        pprint(self.sorted_analysis_dist(
+            harness_types=identity_set(),
+            filter_zero=True, unique_only=OPTIONS.UNIQUE_ONLY
+        ))
+        print(f"(STANDARD) Result distribution {dupes}:")
+        pprint(self.sorted_analysis_dist(
+            harness_types={HarnessType.STANDARD},
+            filter_zero=True, unique_only=OPTIONS.UNIQUE_ONLY
+        ))
+
+        divider()
         change_set_sizes = [ len(v) for v in self.base_change_set.values() ]
         trans_set_sizes = [ len(v) for v in self.trans_change_set.values() ]
         impact_set_sizes = [ len(v) for v in self.impact_set.values() ]
@@ -211,23 +229,13 @@ class Case:
         )
 
     #  - - - FunctionResult  - - - #
-    def multi_result_function_results(self,ident:bool=False) \
+    def multi_result_function_results(self,identity:bool=False) \
      -> list[FunctionResult]:
         multi_results = []
         for func_res in self.function_results():
-            if func_res.has_multi_result(ident):
+            if func_res.has_multi_result(identity):
                 multi_results.append(func_res)
         return multi_results
-
-    def fully_analyzed_functions(self) -> list[FunctionResult]:
-        '''
-        Return a list of all functions that passed the identity analysis
-        '''
-        fully_analyzed = []
-        for function_result in self.function_results():
-            if len(function_result.results())>0:
-                fully_analyzed.append(function_result)
-        return fully_analyzed
 
     def passed_identity_functions(self) -> list[FunctionResult]:
         '''
@@ -243,74 +251,95 @@ class Case:
         return funcs_with_at_least_one_valid_id_cmp
 
     # - - - AnalysisResult distribution - - - - #
-    def sorted_analysis_dist(self,ident:bool,
-      filter_zero:bool,unique_results:bool):
+    def sorted_analysis_dist(self,harness_types: set[HarnessType],
+      filter_zero:bool,unique_only:bool):
         li = [ (key.name,round(val,ROUNDING)) for key,val in
                 self.analysis_dist(
-                    ident=ident,
+                    harness_types=harness_types,
                     filter_zero=filter_zero,
-                    unique_results=unique_results
+                    unique_only=unique_only
                 ).items()
         ]
         return sorted(li, key=lambda l: l[1], reverse=True)
 
-    def unique_cbmc_results(self,ident:bool) -> set[tuple[str,AnalysisResult]]:
+    def unique_results(self, harness_types:set[HarnessType]) \
+     -> set[tuple[str,AnalysisResult]]:
         '''
         Return a set of all encountered (function_name,AnalysisResult) tuples
-        within the CBMC result.
+        within the CBMC result which are of one of the given types.
         Note that a single CbmcResult can have more than one outcome.
         '''
         tpls = set()
-        should_be_in = identity_set(ident)
 
         for c in self.cbmc_results():
-            if c.harness_type not in should_be_in:
-                continue
-            for r in c.result:
-                tpls.add( (c.func_name,r) )
+            if c.harness_type in harness_types:
+                for r in c.result:
+                    tpls.add((c.func_name,r))
 
         return tpls
 
-    def analysis_dist(self, ident:bool, filter_zero:bool=False,
-     unique_results:bool=False) -> dict[AnalysisResult,float]:
+    def analysis_dist(self, harness_types: set[HarnessType],
+     filter_zero:bool=False, unique_only:bool=False) \
+     -> dict[AnalysisResult,float]:
         '''
         Returns a dict of percentages for each AnalysisResult
-        across every function analysis (during either the full or ID stage).
-        The list starts with the first entry in the AnalysisResult enum 
+        across every function analysis (during either the precondition,
+        identity or final stage).
         '''
-        if ident:
-            # Pre-analysis was performed for every function
-            # in function_results
-            analysis_result_total_cnt = sum(map(lambda f: len(f.results_id()),
-                self.function_results()))
+
+        # Calculate the total number of analysis results for the relevant type
+        #
+        # For the IDENTITY and STANDARD cases we have an equal number of
+        # of function analysis tries and corresponding AnalysisResult objects
+        #
+        # For the NONE case, a single function analysis can give 1 or more
+        # AnalysisResult objects. We consider the total number of cases
+        # for NONE results as the total number of cbmc.csv entries
+        # of this type.
+        #
+        # Dividing by this number means that the percentages for the NONE
+        # cases will _not_ add up to 1. E.g. 70% of functions may have
+        # a void return value while 60% could have had a changed return value
+        if len(harness_types & {HarnessType.NONE}) == 1:
+            analysis_results = flatten(
+                [ f.results_none() for f in self.function_results() ]
+            )
+            analysis_result_total_cnt = len(
+                [c for c in self.cbmc_results() if \
+                    c.harness_type==HarnessType.NONE ]
+            )
+
+        elif len(harness_types & identity_set()) >= 1:
+            analysis_results = flatten(
+                [ f.results_id() for f in self.function_results() ]
+            )
+            analysis_result_total_cnt = len(analysis_results)
+
+        elif len(harness_types & {HarnessType.STANDARD}) == 1:
+            analysis_results = flatten(
+                [ f.results() for f in self.function_results() ]
+            )
+            analysis_result_total_cnt = len(analysis_results)
         else:
-            # Functions which did not pass the identity check will have
-            # a results array with len()==0
-            analysis_result_total_cnt = sum(map(lambda f: len(f.results()),
-                self.function_results()))
-
-
-        filtered_cbmc_results = filter(lambda c: \
-                c.harness_type in identity_set(ident),
-                self.cbmc_results())
+            raise Exception("Invalid HarnessType set")
 
         result_cnts = { e.name: 0 for e in AnalysisResult }
 
-        if unique_results:
+        if unique_only:
             # Only increment the result count for unique entries,
             # e.g. count 16 SUCCESS results for a function as 1 SUCCESS
+            #
             # This also requires the `analysis_result_total_cnt` to be reduced
             # for percentages to be correct
-            unique_cbmc_results = self.unique_cbmc_results(ident=ident)
+            unique_results = self.unique_results(harness_types)
 
-            for tpl in unique_cbmc_results:
+            for tpl in unique_results:
                 result_cnts[tpl[1].name] += 1
 
-            analysis_result_total_cnt = len(unique_cbmc_results)
+            analysis_result_total_cnt = len(unique_results)
         else:
-            for cbmc_result in filtered_cbmc_results:
-                for r in cbmc_result.result:
-                    result_cnts[r.name] += 1
+            for analysis_result in analysis_results:
+                result_cnts[analysis_result.name] += 1
 
         if filter_zero:
             result_cnts = { key: val
@@ -323,7 +352,8 @@ class Case:
                     tpl[1]
                 for tpl in result_cnts.items() }
 
-        assert (sum(list(analysis_dict.values())) - 1) < 10**-12
+        if HarnessType.NONE not in harness_types:
+            assert (sum(list(analysis_dict.values())) - 1) < 10**-12
         return analysis_dict
 
     # - - - Helpers - - - #

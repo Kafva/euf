@@ -8,10 +8,11 @@ sys.path.extend(['..','.'])
 
 # pylint: disable=wrong-import-position
 from src.config import CONFIG
+from src.types import HarnessType
 from src.util import print_info, print_stage
 from visualise import OPTIONS
 from visualise.plot import plot_analysis_dists, plot_reductions, write_report
-from visualise.case import Case
+from visualise.case import Case, identity_set
 
 def save_figure(path: str, figure:Figure):
     result_dir = os.path.dirname(path)
@@ -54,13 +55,22 @@ if __name__ == '__main__':
 
     cases = [onig,expat,usb]
 
-    CONFIG.RESULTS_DIR = OPTIONS.RESULT_DIR
+    # Specify what we consider as a 'multi-result'
+    CONFIG.REDUCE_INCOMPLETE_UNWIND = True
+    print_info(f"REDUCE_INCOMPLETE_UNWIND: "
+        f"{CONFIG.REDUCE_INCOMPLETE_UNWIND}\n"
+    )
+    for c in cases:
+        c.info()
 
     if OPTIONS.PLOT:
-        fig = plot_analysis_dists(cases,ident=True)
+        fig = plot_analysis_dists(cases,harness_types={HarnessType.NONE})
+        save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist_precond.png", fig)
+
+        fig = plot_analysis_dists(cases,harness_types=identity_set())
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist_id.png", fig)
 
-        fig = plot_analysis_dists(cases,ident=False)
+        fig = plot_analysis_dists(cases,harness_types={HarnessType.STANDARD})
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist.png", fig)
 
         fig = plot_reductions(cases,percent=False)
@@ -70,22 +80,15 @@ if __name__ == '__main__':
         plt.xticks(fontsize=OPTIONS.PLOT_FONT_SIZE)
         plt.show()
 
-    # Specify what we consider as a 'multi-result'
-    CONFIG.REDUCE_INCOMPLETE_UNWIND = True
-    print_info(f"REDUCE_INCOMPLETE_UNWIND: "
-        f"{CONFIG.REDUCE_INCOMPLETE_UNWIND}\n"
-    )
-    for c in cases:
-        c.info()
 
     if OPTIONS.WRITE_MD:
-        write_report(cases,only_multi=OPTIONS.ONLY_MULTI)
+        write_report(cases, OPTIONS.RESULT_DIR, only_multi=OPTIONS.ONLY_MULTI)
     if OPTIONS.LIST_ANALYZED:
         print("\n=============================")
         for case in cases:
             print_stage(case.name)
             results = case.multi_result_function_results() \
                     if OPTIONS.ONLY_MULTI \
-                    else case.fully_analyzed_functions()
+                    else case.passed_identity_functions()
             for r in results:
                 print(r.pretty())

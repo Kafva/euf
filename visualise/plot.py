@@ -8,10 +8,10 @@ from matplotlib.figure import Figure
 
 from src.config import CONFIG
 from src.types import AnalysisResult, HarnessType
-from visualise.case import Case, get_reductions_per_trial
+from visualise.case import Case, get_reductions_per_trial, identity_set
 from visualise import OPTIONS
 
-def write_report(cases: list[Case], only_multi:bool=False):
+def write_report(cases: list[Case], result_dir:str, only_multi:bool=False):
     '''
     Make a MD template for the correctness analysis
     For each function the template gives a command to test the harness
@@ -57,7 +57,7 @@ def write_report(cases: list[Case], only_multi:bool=False):
                             # The exact file that has the change can be determined from
                             # change_set.csv
                             trial_path = \
-                                f"{CONFIG.RESULTS_DIR}/{case.libname()}_" \
+                                f"{result_dir}/{case.libname()}_" \
                                 f"{r.commit_old}_{r.commit_new}"
 
                             change_set = case.base_change_set[trial_path]
@@ -100,25 +100,26 @@ def write_report(cases: list[Case], only_multi:bool=False):
                     f.write("```\n")
                     f.write("\n\n")
 
-def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
+def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
+  -> Figure:
     '''
-    Not using the `unique_results` option gives the impression that expat has
+    Not using the `unique_only` option gives the impression that expat has
     very good performance, which stems from the fact that it has analyzed
     the same few functions successfully many times.
     '''
     fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
     subfigs = fig.subfigures(nrows=2, ncols=1)
 
-    def create_row(title,index,unique_results:bool):
+    def create_row(title,ylabel,index,unique_only:bool):
         subfigs[index].suptitle(title,fontweight='bold',
                 horizontalalignment='center'
         )
         axes = subfigs[index].subplots(nrows=1, ncols=1)
-        axes.set_ylabel('')
+        axes.set_ylabel(ylabel)
 
         cases_dists = [ c.analysis_dist(
-                            ident=ident,
-                            unique_results=unique_results
+                            harness_types=harness_types,
+                            unique_only=unique_only
                         ).values() for c in cases ]
 
         non_zero_fields = [ a!=0 or b!=0 or c!=0 for a,b,c in
@@ -133,7 +134,8 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
         bar_names  = list(compress(bar_names, non_zero_fields))
 
         # Wrap the bar name text to X chars
-        bar_names = [ '\n'.join(wrap(l, OPTIONS.PLOT_WRAP_CHARS)) for l in bar_names ]
+        bar_names = [ '\n'.join(wrap(l, OPTIONS.PLOT_WRAP_CHARS))
+                for l in bar_names ]
 
         # Color-code a bar plot for each case
         for i,case in enumerate(cases):
@@ -141,7 +143,8 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
             # bars, otherwise overlaps will occur
             match i:
                 case 1: bottom = cases_dists[0]
-                case 2: bottom = [ x+y for x,y in zip(cases_dists[0],cases_dists[1]) ]
+                case 2: bottom = [ x+y for x,y in \
+                        zip(cases_dists[0],cases_dists[1]) ]
                 case _: bottom = 0
 
             axes.bar(bar_names, cases_dists[i],
@@ -155,11 +158,20 @@ def plot_analysis_dists(cases: list[Case],ident:bool=False) -> Figure:
         if index==0:
             axes.legend(loc='upper left')
 
-    title = f"Distribution of CBMC {'identity ' if ident else ''}analysis "\
-            "results (with duplicates)"
 
-    create_row(title,0,unique_results=False)
-    create_row("Without duplicates",1,unique_results=True)
+    if len(harness_types & {HarnessType.NONE}) == 1:
+        title = "Invalid preconditions observed amongst changed functions"
+        ylabel="Changed functions [%]"
+    elif len(harness_types & identity_set()) >= 1:
+        title = "Distribution of CBMC results during identity verification"
+        ylabel="Functions with valid preconditions [%]"
+    else:
+        title = "Distribution of CBMC results during standard verification"
+        ylabel="Functions which passed identity "\
+                "verification [%]"
+
+    create_row(title + " (with duplicates)",ylabel,0,unique_only=False)
+    create_row("Without duplicates",ylabel,1,unique_only=True)
 
     return fig
 
