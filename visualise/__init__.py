@@ -1,14 +1,17 @@
+import sys, os
 from dataclasses import dataclass, field
-import sys
 from posixpath import expanduser
 
-# '.' is needed to run from the visualise directory 
-sys.path.extend(['..','.'])
+if os.path.basename(os.getcwd()) != 'euf':
+    print("!> The script should be invoked from the root of the repository")
+    sys.exit(1)
+
+sys.path.extend(['..'])
 
 @dataclass(init=True)
 class Options:
     # Output flags
-    WRITE_MD: bool = False
+    WRITE_MD: bool = True
     PLOT: bool = True
     LIST_ANALYZED: bool = False
     SAVE_FIGS: bool = False
@@ -16,8 +19,8 @@ class Options:
     ONLY_MULTI: bool = False
 
     # Input configuration
-    RESULT_DIR:str = ".results/8"
-    IMPACT_DIR:str = ".results/8_impact"
+    RESULT_DIR:str = ".results/11"
+    IMPACT_DIR:str = ".results/11_impact"
 
     # Plotting constants
     PLOT_WIDTH: float = 0.6

@@ -1,8 +1,8 @@
 from statistics import stdev,mean
 from dataclasses import dataclass, field
 from src.types import AnalysisResult, \
-        DependencyFunctionChange, StateParam
-from src.util import flatten, print_err, print_stage
+        DependencyFunctionChange, HarnessType, StateParam
+from src.util import print_err, print_stage
 from visualise import OPTIONS
 
 from visualise.deserialise import Impacted, \
@@ -23,6 +23,10 @@ def average_set(sizes: list[int], reductions:list[float], label:str):
 def basic_dist(msg:str, cnt:int, total:int) -> None:
     percent = round(cnt/total, ROUNDING)
     print(f"{msg}: {cnt}/{total} ({percent})")
+
+def identity_set(identity:bool) -> set[HarnessType]:
+    return {HarnessType.IDENTITY_OLD, HarnessType.IDENTITY} if identity else \
+                {HarnessType.STANDARD}
 
 # - - - Impact and Change sets  - - - #
 def get_reductions_per_trial(label:str,
@@ -70,10 +74,6 @@ class Case:
     # during full and identity analysis
     function_results_dict: dict[str,FunctionResult]
 
-    # Holds one entry per CSV row across all results, dict key
-    # is the path to the CSV file
-    cbmc_results_dict: dict[str,list[CbmcResult]]
-
     # Holds a dict of function names mapped onto a list of 
     # StateParam objects which describe the possible constant values 
     # for each parameter, the outer dict is the path to a specific trial
@@ -98,8 +98,7 @@ class Case:
 
     @classmethod
     def new(cls,name:str, total_functions:int, color:str):
-        function_results_dict, cbmc_results_dict = \
-            load_cbmc_results(name,OPTIONS.RESULT_DIR)
+        function_results_dict = load_cbmc_results(name,OPTIONS.RESULT_DIR)
 
         base_change_set, reduced_change_set, trans_change_set = \
                 load_change_sets(name,OPTIONS.RESULT_DIR)
@@ -107,13 +106,8 @@ class Case:
         _,_,trans_set_without_reduction = \
                 load_change_sets(name,OPTIONS.IMPACT_DIR)
 
-        # The number of changed functions in the base set and the functions
-        # from cbmc analysis should be equal
-        assert len(base_change_set) == len(cbmc_results_dict)
-
         return cls(name=name,
             total_functions=total_functions,
-            cbmc_results_dict=cbmc_results_dict,
             function_results_dict=function_results_dict,
             color=color,
 
@@ -231,7 +225,7 @@ class Case:
         '''
         fully_analyzed = []
         for function_result in self.function_results():
-            if len(function_result.results)>0:
+            if len(function_result.results())>0:
                 fully_analyzed.append(function_result)
         return fully_analyzed
 
@@ -243,7 +237,7 @@ class Case:
         full analysis result.
         '''
         funcs_with_at_least_one_valid_id_cmp = list(filter(lambda v:
-                len(v.results)>0,
+                len(v.results())>0,
                 self.function_results()
         ))
         return funcs_with_at_least_one_valid_id_cmp
@@ -263,19 +257,22 @@ class Case:
     def unique_cbmc_results(self,ident:bool) -> set[tuple[str,AnalysisResult]]:
         '''
         Return a set of all encountered (function_name,AnalysisResult) tuples
-        in within the CBMC result.
+        within the CBMC result.
+        Note that a single CbmcResult can have more than one outcome.
         '''
-        return set(map(lambda c: (c.func_name,c.result),
-                filter(lambda r: r.identity == ident,
-                    self.cbmc_results()
-                ))
-            )
+        tpls = set()
+        should_be_in = identity_set(ident)
 
-    def analysis_dist(self,
-        ident:bool,
-        filter_zero:bool=False,
-        unique_results:bool=False
-     ) -> dict[AnalysisResult,float]:
+        for c in self.cbmc_results():
+            if c.harness_type not in should_be_in:
+                continue
+            for r in c.result:
+                tpls.add( (c.func_name,r) )
+
+        return tpls
+
+    def analysis_dist(self, ident:bool, filter_zero:bool=False,
+     unique_results:bool=False) -> dict[AnalysisResult,float]:
         '''
         Returns a dict of percentages for each AnalysisResult
         across every function analysis (during either the full or ID stage).
@@ -284,15 +281,17 @@ class Case:
         if ident:
             # Pre-analysis was performed for every function
             # in function_results
-            analysis_result_total_cnt = sum(map(lambda f: len(f.results_id),
+            analysis_result_total_cnt = sum(map(lambda f: len(f.results_id()),
                 self.function_results()))
         else:
             # Functions which did not pass the identity check will have
             # a results array with len()==0
-            analysis_result_total_cnt = sum(map(lambda f: len(f.results),
+            analysis_result_total_cnt = sum(map(lambda f: len(f.results()),
                 self.function_results()))
 
-        filtered_cbmc_results = filter(lambda c: c.identity == ident,
+
+        filtered_cbmc_results = filter(lambda c: \
+                c.harness_type in identity_set(ident),
                 self.cbmc_results())
 
         result_cnts = { e.name: 0 for e in AnalysisResult }
@@ -310,14 +309,18 @@ class Case:
             analysis_result_total_cnt = len(unique_cbmc_results)
         else:
             for cbmc_result in filtered_cbmc_results:
-                result_cnts[cbmc_result.result.name] += 1
+                for r in cbmc_result.result:
+                    result_cnts[r.name] += 1
 
         if filter_zero:
             result_cnts = { key: val
                     for key,val in result_cnts.items() if val != 0
             }
 
-        analysis_dict = { AnalysisResult[tpl[0]]: tpl[1]/analysis_result_total_cnt
+        analysis_dict = { AnalysisResult[tpl[0]]:
+                    tpl[1]/analysis_result_total_cnt if
+                    analysis_result_total_cnt != 0 else \
+                    tpl[1]
                 for tpl in result_cnts.items() }
 
         assert (sum(list(analysis_dict.values())) - 1) < 10**-12
@@ -328,7 +331,10 @@ class Case:
         return list(self.function_results_dict.values())
 
     def cbmc_results(self) -> list[CbmcResult]:
-        return flatten(list(self.cbmc_results_dict.values()))
+        all_results = []
+        for f in self.function_results_dict.values():
+            all_results.extend(f.cbmc_results)
+        return all_results
 
     def libname(self) -> str:
         return 'libusb-1.0' if self.name=='libusb' else self.name

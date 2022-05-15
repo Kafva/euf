@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 from src.config import CONFIG
-from src.types import AnalysisResult
+from src.types import AnalysisResult, HarnessType
 from visualise.case import Case, get_reductions_per_trial
 from visualise import OPTIONS
 
@@ -34,9 +34,8 @@ def write_report(cases: list[Case], only_multi:bool=False):
             f.write(f"# {case.name}\n")
 
             for func_result in results:
-
                 if not only_multi:
-                    overlap = set(func_result.results) & {AnalysisResult.SUCCESS,
+                    overlap = set(func_result.results()) & {AnalysisResult.SUCCESS,
                        AnalysisResult.SUCCESS_UNWIND_FAIL,
                        AnalysisResult.SUCCESS_UNWIND_FAIL,
                        AnalysisResult.FAILURE}
@@ -52,7 +51,8 @@ def write_report(cases: list[Case], only_multi:bool=False):
                     # and print an analysis command for each one
                     f.write("```bash\n")
                     for r in case.cbmc_results():
-                        if r.func_name == func_result.func_name and not r.identity:
+                        if r.func_name == func_result.func_name and \
+                            r.harness_type == HarnessType.STANDARD:
 
                             # The exact file that has the change can be determined from
                             # change_set.csv
@@ -74,9 +74,9 @@ def write_report(cases: list[Case], only_multi:bool=False):
                                 f"{CONFIG.EUF_CACHE}/{case.reponame()}-{r.commit_new}"
 
                             euf_cache_dir_old = \
-                                euf_cache_dir_old.replace(expanduser('~'),"~")
+                                euf_cache_dir_old.replace(expanduser('~'),'~')
                             euf_cache_dir_new = \
-                                euf_cache_dir_new.replace(expanduser('~'),"~")
+                                euf_cache_dir_new.replace(expanduser('~'),'~')
 
                             f.write(f"./scripts/analyze_function.sh "
                                 f"{case.name.removeprefix('lib')} "
@@ -96,7 +96,7 @@ def write_report(cases: list[Case], only_multi:bool=False):
                             )
                             driver = f"{euf_cache_dir_old}/.harnesses/"+\
                                 os.path.basename(r.driver)
-                            f.write(f"# => {driver} ({r.result.name})\n")
+                            f.write(f"# => {driver} ({next(iter(r.result)).name})\n")
                     f.write("```\n")
                     f.write("\n\n")
 

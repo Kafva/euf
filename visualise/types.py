@@ -2,13 +2,14 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from src.types import AnalysisResult, IdentifierLocation
+from src.types import AnalysisResult, HarnessType, IdentifierLocation
+from src.util import flatten
 
 @dataclass(init=True)
 class CbmcResult:
     func_name:str
-    identity:bool
-    result: AnalysisResult
+    harness_type: HarnessType
+    result: set[AnalysisResult]
     runtime: datetime
     driver: str
     location_old: IdentifierLocation
@@ -25,11 +26,15 @@ class CbmcResult:
         commit_new = re.search(r"_[a-z0-9]{4}$", directory).\
                 group(0)[1:] # type: ignore
 
+        # The result field can hold more than one value (',' sepereated)
+        # if the HarnessType is NONE.
+        result = { AnalysisResult[r] for r in items[2].split(',') }
+
         return cls(
             func_name = items[0],
             # pylint: disable=simplifiable-if-expression
-            identity = False if items[1] == "False" else True,
-            result = AnalysisResult[items[2]],
+            harness_type = HarnessType[items[1]],
+            result = result,
             runtime = datetime.now(),
             driver = items[4],
             location_old = IdentifierLocation(
@@ -57,19 +62,44 @@ class FunctionResult:
     '''
     func_name: str
 
-    # Results from STANDARD harness verification
-    results: list[AnalysisResult]    = field(default_factory=list)
-    # Results from IDENTITY and IDENTITY_OLD harness verification
-    results_id: list[AnalysisResult] = field(default_factory=list)
-    # Results derived from a failed precondition check
-    results_none: list[AnalysisResult] = field(default_factory=list)
+    # Maintain a list of each Cbmc result attained for this
+    # funciton. This allows us to retroactivly find out
+    # which commits yielded a specific result
+    #
+    # If we ever need  a compelte list of all CbmcResults
+    # we can derive that from our list of function results
+    cbmc_results: list[CbmcResult] = field(default_factory=list)
+
+    def _result_in_predicate(self, predicates:set[HarnessType]) -> list[AnalysisResult]:
+        res = filter(lambda c:
+            c.harness_type in predicates,
+            self.cbmc_results
+        )
+        # A Cbmc result can contain more than one result if the HarnessType
+        # is set to NONE.
+        return flatten([ list(c.result) for c in res ])
+
+    def results(self) -> list[AnalysisResult]:
+        ''' Results from STANDARD harness verification '''
+        return self._result_in_predicate({HarnessType.STANDARD})
+
+    def results_id(self) -> list[AnalysisResult]:
+        ''' Results from IDENTITY and IDENTITY_OLD harness verification '''
+        return self._result_in_predicate({
+            HarnessType.IDENTITY, HarnessType.IDENTITY_OLD
+        })
+
+    def results_none(self) -> list[AnalysisResult]:
+        ''' Results derived from a failed precondition check '''
+        return self._result_in_predicate({HarnessType.NONE})
+
 
     def has_multi_result(self,ident:bool=False):
         '''
         Considers a different set of results as "successful" based on 
         the current CONFIG object
         '''
-        res = self.results_id if ident else self.results
+        res = self.results_id() if ident else self.results()
         return any(r in AnalysisResult.results_that_reduce()
                 for r in res
             ) and \
@@ -83,7 +113,7 @@ class FunctionResult:
         they enable a comparsion between a (accroding to EUF)
         equivalent and influential update to the same function
         '''
-        res = self.results_id if ident else self.results
+        res = self.results_id() if ident else self.results()
         if self.has_multi_result(ident):
             out = f"\033[32;4m{self.func_name}\033[0m: [\n"
         else:
@@ -98,7 +128,7 @@ class FunctionResult:
 
     def pretty_md(self,ident:bool=False) -> str:
         out = f"## `{self.func_name}()`\n"
-        res = self.results_id if ident else self.results
+        res = self.results_id() if ident else self.results()
         for r in set(res):
             cnt = res.count(r)
             out += f"> {r.name} ({cnt})\n"
