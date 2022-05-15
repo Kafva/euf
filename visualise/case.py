@@ -1,12 +1,13 @@
 from statistics import stdev,mean
 from dataclasses import dataclass, field
-from src.types import AnalysisResult, CbmcResult, \
-        DependencyFunctionChange, FunctionResult, StateParam
-from src.util import flatten, load_cbmc_results, print_err, print_stage
+from src.types import AnalysisResult, \
+        DependencyFunctionChange, StateParam
+from src.util import flatten, print_err, print_stage
 from visualise import OPTIONS
 
 from visualise.deserialise import Impacted, \
-    load_change_sets, load_impact_set, load_state_space
+    load_change_sets, load_impact_set, load_state_space, load_cbmc_results
+from visualise.types import CbmcResult, FunctionResult
 
 ROUNDING = 4
 
