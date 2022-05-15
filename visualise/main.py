@@ -48,23 +48,10 @@ if __name__ == '__main__':
                f"({round(total_trials/3,1)} per project)"
     )
 
-    onig = Case.new(name="libonig", total_functions=1186,
-        color=OPTIONS['RED'],
-        result_dir=OPTIONS['RESULT_DIR'],
-        result_dir_impact=OPTIONS['IMPACT_DIR']
-    )
+    onig = Case.new(name="libonig", total_functions=1186, color=OPTIONS['RED'])
+    expat = Case.new(name="libexpat",total_functions=645,color=OPTIONS['GREEN'])
+    usb = Case.new(name="libusb", total_functions=1346,color=OPTIONS['BLUE'])
 
-    expat = Case.new(name="libexpat", total_functions=645,
-        color=OPTIONS['GREEN'],
-        result_dir=OPTIONS['RESULT_DIR'],
-        result_dir_impact=OPTIONS['IMPACT_DIR']
-    )
-
-    usb = Case.new(name="libusb", total_functions=1346,
-        color=OPTIONS['BLUE'],
-        result_dir=OPTIONS['RESULT_DIR'],
-        result_dir_impact=OPTIONS['IMPACT_DIR']
-    )
     cases = [onig,expat,usb]
 
     CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']

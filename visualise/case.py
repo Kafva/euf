@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from src.types import AnalysisResult, CbmcResult, \
         DependencyFunctionChange, FunctionResult, StateParam
 from src.util import flatten, load_cbmc_results, print_err, print_stage
+from visualise import OPTIONS
 
 from visualise.deserialise import Impacted, \
     load_change_sets, load_impact_set, load_state_space
@@ -70,17 +71,15 @@ class Case:
         field(default_factory=dict)
 
     @classmethod
-    def new(cls,name:str, result_dir:str, result_dir_impact:str,
-    total_functions:int,
-     color:str):
+    def new(cls,name:str, total_functions:int, color:str):
         function_results_dict, cbmc_results_dict = \
-            load_cbmc_results(name,result_dir)
+            load_cbmc_results(name,OPTIONS['RESULT_DIR'])
 
         base_change_set, reduced_change_set, trans_change_set = \
-                load_change_sets(name,result_dir)
+                load_change_sets(name,OPTIONS['RESULT_DIR'])
 
         _,_,trans_set_without_reduction = \
-                load_change_sets(name,result_dir_impact)
+                load_change_sets(name,OPTIONS['IMPACT_DIR'])
 
         # The number of changed functions in the base set and the functions
         # from cbmc analysis should be equal
@@ -92,15 +91,16 @@ class Case:
             function_results_dict=function_results_dict,
             color=color,
 
-            arg_states = load_state_space(name,result_dir),
+            arg_states = load_state_space(name,OPTIONS['RESULT_DIR']),
 
             base_change_set = base_change_set,
             trans_change_set = trans_change_set,
-            impact_set = load_impact_set(name,result_dir),
+            impact_set = load_impact_set(name,OPTIONS['RESULT_DIR']),
 
             reduced_change_set = reduced_change_set,
             trans_set_without_reduction = trans_set_without_reduction,
-            impact_set_without_reduction=load_impact_set(name,result_dir_impact)
+            impact_set_without_reduction = \
+                    load_impact_set(name,OPTIONS['IMPACT_DIR'])
         )
 
     def info(self,unique_results:bool=False):
