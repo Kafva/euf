@@ -19,6 +19,7 @@ class Case:
     '''
     total_functions: int
     name: str
+    git_dir:str
     # Color to use for bar plots
     color: str
 
@@ -51,7 +52,7 @@ class Case:
         field(default_factory=dict)
 
     @classmethod
-    def new(cls,name:str, total_functions:int, color:str):
+    def new(cls,name:str, git_dir:str, total_functions:int, color:str):
         function_results_dict = load_cbmc_results(name,OPTIONS.RESULT_DIR)
 
         base_change_set, reduced_change_set, trans_change_set = \
@@ -60,7 +61,7 @@ class Case:
         _,_,trans_set_without_reduction = \
                 load_change_sets(name,OPTIONS.IMPACT_DIR)
 
-        return cls(name=name,
+        return cls(name=name,git_dir=git_dir,
             total_functions=total_functions,
             function_results_dict=function_results_dict,
             color=color,

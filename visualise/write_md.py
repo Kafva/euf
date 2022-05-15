@@ -1,9 +1,28 @@
 import os
 from posixpath import expanduser
+from git.exc import GitCommandError
+
+from git.repo.base import Repo
 
 from src.config import CONFIG
 from src.types import AnalysisResult, HarnessType
+from src.util import print_err
 from visualise.case import Case
+
+def get_date_of_commit(repo_path:str, commit_hash:str):
+    date = ""
+    if os.path.isdir(f"{repo_path}/.git"):
+        try:
+            repo = Repo(repo_path)
+            output = repo.git.show("-q", commit_hash)
+            for line in output.splitlines():
+                if line.startswith("Date:"):
+                    date = line[len("Date:"):-5].strip()
+                    break
+        except GitCommandError:
+            print_err(f"Could not determine date of commit: {commit_hash}")
+
+    return date
 
 def write_md(cases: list[Case], result_dir:str, only_multi:bool=False):
     '''
@@ -22,6 +41,7 @@ def write_md(cases: list[Case], result_dir:str, only_multi:bool=False):
     and SUCCESS result were attained.
     '''
     with open("correctness.md", mode = 'w', encoding='utf8') as f:
+        # pylint: disable=too-many-nested-blocks
         for case in cases:
             results = case.multi_result_function_results() if only_multi \
                     else case.function_results()
@@ -88,9 +108,18 @@ def write_md(cases: list[Case], result_dir:str, only_multi:bool=False):
                                     f" <-> {function_change.new.ident.location.line}"
                                     f":{function_change.new.ident.location.column}\n"
                             )
+
+                            old_date = get_date_of_commit(case.git_dir,
+                                    r.commit_old)
+                            new_date = get_date_of_commit(case.git_dir,
+                                    r.commit_new)
+                            if old_date and new_date:
+                                f.write(f"# {old_date} -> {new_date}\n")
+                            else:
+                                f.write("# (No date)\n")
+
                             driver = f"{euf_cache_dir_old}/.harnesses/"+\
                                 os.path.basename(r.driver)
                             f.write(f"# => {driver} ({next(iter(r.result)).name})\n")
                     f.write("```\n")
                     f.write("\n\n")
-

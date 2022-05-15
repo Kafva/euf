@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os,sys
+from posixpath import expanduser
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
@@ -51,9 +52,13 @@ if __name__ == '__main__':
                f"({round(total_trials/3,1)} per project)"
     )
 
-    onig = Case.new(name="libonig", total_functions=1186, color=OPTIONS.RED)
-    expat = Case.new(name="libexpat",total_functions=645,color=OPTIONS.GREEN)
-    usb = Case.new(name="libusb", total_functions=1346,color=OPTIONS.BLUE)
+    BASE_PATH = f"{expanduser('~')}/Repos"
+    onig = Case.new(name="libonig", git_dir=f"{BASE_PATH}/oniguruma",
+            total_functions=1186, color=OPTIONS.RED)
+    expat = Case.new(name="libexpat", git_dir=f"{BASE_PATH}/libexpat",
+            total_functions=645, color=OPTIONS.GREEN)
+    usb = Case.new(name="libusb", git_dir=f"{BASE_PATH}/libusb",
+            total_functions=1346, color=OPTIONS.BLUE)
 
     cases = [onig,expat,usb]
 
