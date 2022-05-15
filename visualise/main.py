@@ -14,7 +14,7 @@ from src.util import print_info, print_stage
 from visualise import OPTIONS
 from visualise.plot import plot_analysis_dists, plot_reductions
 from visualise.case import Case
-from visualise.util import identity_set
+from visualise.util import divider, identity_set
 from visualise.write_md import write_md
 
 def save_figure(path: str, figure:Figure):
@@ -70,6 +70,9 @@ if __name__ == '__main__':
     for c in cases:
         c.info()
 
+    divider()
+    #fig = plot_states(cases)
+
     if OPTIONS.PLOT:
         fig = plot_analysis_dists(cases,harness_types={HarnessType.NONE})
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist_precond.png", fig)
@@ -82,6 +85,8 @@ if __name__ == '__main__':
 
         fig = plot_reductions(cases,percent=False)
         save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin.png", fig)
+
+
 
         plt.subplots_adjust(bottom=0.15)
         plt.xticks(fontsize=OPTIONS.PLOT_FONT_SIZE)

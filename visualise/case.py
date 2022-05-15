@@ -1,5 +1,6 @@
 from pprint import pprint
 from dataclasses import dataclass, field
+from statistics import mean, stdev
 from src.types import AnalysisResult, \
         DependencyFunctionChange, HarnessType, StateParam
 from src.util import flatten, print_stage
@@ -100,8 +101,9 @@ class Case:
         print(f"Unique NONE harness results: "
               f"{len(self.unique_results({HarnessType.NONE}))}/"
               f"{cbmc_results_cnt}")
+        unique_identity_results = self.unique_results(identity_set())
         print(f"Unique IDENTITY harness results: "
-              f"{len(self.unique_results(identity_set()))}/"
+              f"{len(unique_identity_results)}/"
               f"{cbmc_results_cnt}")
         print(f"Unique STANDARD harness results: "
               f"{len(self.unique_results({HarnessType.STANDARD}))}/"
@@ -179,6 +181,40 @@ class Case:
                 self.impact_set
             ), "impact"
         )
+
+        divider()
+
+        funcs_with_const_params = []
+        fully_constrained_funcs = []
+
+        for arg_states in self.arg_states.values():
+            for func_name, arg_state in arg_states.items():
+                if all(not a.nondet for a in arg_state):
+                    fully_constrained_funcs.append(func_name)
+
+                if any(not a.nondet for a in arg_state):
+                    funcs_with_const_params.append(arg_state)
+
+        # We divide by the number of unique identity results, this
+        # corresponds to the number of functions which had at least one 
+        # harnesses generated.
+        print("Harnesses with at least one assumption: "
+              f"{len(funcs_with_const_params)}/{len(unique_identity_results)}")
+
+        nr_of_states_per_param = flatten([  [ len(param.states) for param in f ]
+            for f in funcs_with_const_params ])
+        nr_of_states_per_param = list(filter(lambda cnt: cnt!=0,
+            nr_of_states_per_param))
+
+        if len(nr_of_states_per_param) >= 2:
+            m = round(mean(nr_of_states_per_param),ROUNDING)
+            s = round(stdev(nr_of_states_per_param),ROUNDING)
+        else:
+            m=s=0
+
+        print(f"States per parameter: {m} (±{s})")
+
+        print(f"Fully constrained harnesses: {len(fully_constrained_funcs)}")
 
     #  - - - FunctionResult  - - - #
     def multi_result_function_results(self,identity:bool=False) \
