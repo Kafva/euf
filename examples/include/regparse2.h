@@ -1,6 +1,11 @@
 #include "regparse.h"
 #include "st.h"
 
+// Using a static header with struct definitions in this manner is bound to
+// cause undesirable consequences in updates where the struct definitions
+// differ. Limiting the update range to ~1 year aids somewhat in reducing the
+// impact of this issue.
+
 #ifdef USE_ST_LIBRARY
 
 typedef struct {
@@ -10,6 +15,16 @@ typedef struct {
 
 typedef st_table  NameTable;
 typedef st_data_t HashDataType;   /* 1.6 st.h doesn't define st_data_t type */
+
+// Required for: callout_name_table_hash() in
+//    tests/configs/libonig_b99e70d9_153974cf.json
+typedef struct {
+  OnigEncoding enc;
+  int    type; // callout type: single or not
+  UChar* s;
+  UChar* end;
+} st_callout_name_key;
+
 #else
 
 typedef struct {
@@ -18,6 +33,28 @@ typedef struct {
   int        alloc;
 } NameTable;
 
+#endif
+
+// Required for: callout_func_list_add() in
+//    tests/configs/libonig_b99e70d9_153974cf.json
+#ifdef USE_CALLOUT
+typedef struct {
+  OnigCalloutType type;
+  int             in;
+  OnigCalloutFunc start_func;
+  OnigCalloutFunc end_func;
+  int             arg_num;
+  int             opt_arg_num;
+  OnigType        arg_types[ONIG_CALLOUT_MAX_ARG_NUM];
+  OnigValue       opt_defaults[ONIG_CALLOUT_MAX_ARG_NUM];
+  UChar*          name; /* reference to GlobalCalloutNameTable entry: e->name */
+} CalloutNameListEntry;
+
+typedef struct {
+  int  n;
+  int  alloc;
+  CalloutNameListEntry* v;
+} CalloutNameListType;
 #endif
 
 typedef struct {
