@@ -20,6 +20,10 @@ def average_set(sizes: list[int], reductions:list[float], label:str):
     stdev_reduction = round(stdev(reductions),ROUNDING)
     print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
 
+def basic_dist(msg:str, cnt:int, total:int) -> None:
+    percent = round(cnt/total, ROUNDING)
+    print(f"{msg}: {cnt}/{total} ({percent})")
+
 @dataclass(init=True)
 class Case:
     '''
@@ -105,20 +109,18 @@ class Case:
 
     def info(self,unique_results:bool=False):
         print_stage(self.name)
-        changed_percent =\
-            round(self.nr_of_changed_functions()/self.total_functions,
-                    ROUNDING
-            )
-        identity_percent =\
-            round(self.passed_identity_cnt()/self.nr_of_changed_functions(),
-                    ROUNDING
-            )
-        print(f"Changed functions: "
-                f"{self.nr_of_changed_functions()}/{self.total_functions} "
-                f"({changed_percent})")
-        print("Passed identity analysis: "
-                f"{self.passed_identity_cnt()}/{self.nr_of_changed_functions()}"
-                f" ({identity_percent})"
+
+        # The total number of analyzed functions corresponds to the number of
+        # functions that were observed as changed in at least one case,
+        # every changed function will generate a CBMC entry even if
+        # it cannot be analyzed in `valid_preconds()`
+        nr_of_changed_functions = len(self.function_results())
+
+        basic_dist("Changed functions",
+            nr_of_changed_functions, self.total_functions
+        )
+        basic_dist("Passed identity analysis at least once",
+            len(self.passed_identity_functions()), nr_of_changed_functions
         )
 
         nr_of_full_analysis_results = len(list(filter(lambda c: not c.identity,
@@ -148,12 +150,12 @@ class Case:
         )))
 
         print(f"Functions with an influential and equivalent analysis result: "
-              f"{multi_cnt}/{self.nr_of_changed_functions()}")
+              f"{multi_cnt}/{nr_of_changed_functions}")
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-              f"{equiv_result_cnt}/{self.nr_of_changed_functions()}"
+              f"{equiv_result_cnt}/{nr_of_changed_functions}"
         )
         print(f"Functions with \033[4monly\033[0m influential analysis results: "
-              f"{influential_result_cnt}/{self.nr_of_changed_functions()}")
+              f"{influential_result_cnt}/{nr_of_changed_functions}")
 
         dupes = "\033[4mwithout duplicates\033[0m" if unique_results else \
             "\033[4mwith duplicates\033[0m"
@@ -183,72 +185,7 @@ class Case:
             "impact"
         )
 
-    def impact_set_reductions_per_trial(self,assertions:bool=True,
-     percent:bool=True) -> list[float]:
-        reductions_per_trial = []
-        for d,d_without in zip(self.impact_set,self.impact_set_without_reduction):
-            without_reduction = len(self.impact_set_without_reduction[d_without])
-            with_reduction = len(self.impact_set[d])
-
-            if assertions:
-                assert without_reduction >= with_reduction
-
-            reductions_per_trial.append(
-                    without_reduction - with_reduction
-            )
-            if percent and without_reduction != 0:
-                reductions_per_trial[-1] /= without_reduction
-
-        return reductions_per_trial
-
-    def trans_set_reductions_per_trial(self,assertions:bool=True,
-     percent:bool=True) -> list[float]:
-        reductions_per_trial = []
-        for d,d_without in \
-          zip(self.trans_change_set,self.trans_set_without_reduction):
-            without_reduction = len(self.trans_set_without_reduction[d_without])
-            with_reduction = len(self.trans_change_set[d])
-
-
-            if assertions:
-                if without_reduction < with_reduction:
-                    print_err(f"Inconsistent data point: {without_reduction} "
-                        f"-> {with_reduction}: "
-                        f"{d_without}/trans_change_set.csv "
-                        f"{d}/trans_change_set.csv"
-                    )
-                assert without_reduction >= with_reduction
-
-            reductions_per_trial.append(
-                    without_reduction - with_reduction
-            )
-            if percent and without_reduction!=0:
-                reductions_per_trial[-1] /= without_reduction
-
-        return reductions_per_trial
-
-    def change_set_reductions_per_trial(self,assertions:bool=True,
-     percent:bool=True) -> list[float]:
-        '''
-        Go through each pair of base and reduced change sets and record the
-        reduction for each one.
-        '''
-        reductions_per_trial = []
-        # pylint: disable=consider-using-dict-items
-        for dirpath in self.base_change_set:
-            base_set_len = len(self.base_change_set[dirpath])
-            if assertions:
-                assert base_set_len >= \
-                        len(self.reduced_change_set[dirpath])
-            reductions_per_trial.append(
-                    base_set_len -
-                    len(self.reduced_change_set[dirpath])
-            )
-            if percent and base_set_len!=0:
-                reductions_per_trial[-1] /= base_set_len
-
-        return reductions_per_trial
-
+    #  - - - FunctionResult  - - - #
     def multi_result_function_results(self,ident:bool=False) \
      -> list[FunctionResult]:
         multi_results = []
@@ -267,28 +204,21 @@ class Case:
                 fully_analyzed.append(function_result)
         return fully_analyzed
 
-    def nr_of_changed_functions(self) -> int:
-        ''' The total number of analyzed functions corresponds to the number of
-        functions that were observed as changed in at least one case,
-        every changed function will generate a CBMC entry even if
-        it cannot be analyzed in `valid_preconds()` '''
-        return len(self.function_results())
 
-    def passed_identity_cnt(self) -> int:
+    def passed_identity_functions(self) -> list[FunctionResult]:
         '''
-        Out of the functions that were analyzed, how many passed
-        the identity comparision
-
-        Note: We know that the total number of full analyses that were
-        performed will be equal to the number of successful ID comparisons
+        Returns the functions which passed
+        the identity comparision at least once.
+        This corresponds to every function that has at least one
+        full analysis result.
         '''
         funcs_with_at_least_one_valid_id_cmp = list(filter(lambda v:
-                AnalysisResult.SUCCESS in v.results_id or
-                AnalysisResult.SUCCESS_UNWIND_FAIL in v.results_id,
+                len(v.results)>0,
                 self.function_results()
         ))
-        return len(funcs_with_at_least_one_valid_id_cmp)
+        return funcs_with_at_least_one_valid_id_cmp
 
+    # - - - AnalysisResult distribution - - - - #
     def sorted_analysis_dist(self,ident:bool,
       filter_zero:bool,unique_results:bool):
         li = [ (key.name,round(val,ROUNDING)) for key,val in
@@ -300,7 +230,7 @@ class Case:
         ]
         return sorted(li, key=lambda l: l[1], reverse=True)
 
-    def unique_cbmc_results(self,ident:bool):
+    def unique_cbmc_results(self,ident:bool) -> set[tuple[str,AnalysisResult]]:
         return set(map(lambda c: (c.func_name,c.result),
                 filter(lambda r: r.identity == ident,
                     self.cbmc_results()
@@ -367,4 +297,71 @@ class Case:
 
         assert (sum(list(analysis_dict.values())) - 1) < 10**-12
         return analysis_dict
+
+    # - - - Impact and Change sets  - - - #
+    def impact_set_reductions_per_trial(self,assertions:bool=True,
+     percent:bool=True) -> list[float]:
+        reductions_per_trial = []
+        for d,d_without in zip(self.impact_set,self.impact_set_without_reduction):
+            without_reduction = len(self.impact_set_without_reduction[d_without])
+            with_reduction = len(self.impact_set[d])
+
+            if assertions:
+                assert without_reduction >= with_reduction
+
+            reductions_per_trial.append(
+                    without_reduction - with_reduction
+            )
+            if percent and without_reduction != 0:
+                reductions_per_trial[-1] /= without_reduction
+
+        return reductions_per_trial
+
+    def trans_set_reductions_per_trial(self,assertions:bool=True,
+     percent:bool=True) -> list[float]:
+        reductions_per_trial = []
+        for d,d_without in \
+          zip(self.trans_change_set,self.trans_set_without_reduction):
+            without_reduction = len(self.trans_set_without_reduction[d_without])
+            with_reduction = len(self.trans_change_set[d])
+
+
+            if assertions:
+                if without_reduction < with_reduction:
+                    print_err(f"Inconsistent data point: {without_reduction} "
+                        f"-> {with_reduction}: "
+                        f"{d_without}/trans_change_set.csv "
+                        f"{d}/trans_change_set.csv"
+                    )
+                assert without_reduction >= with_reduction
+
+            reductions_per_trial.append(
+                    without_reduction - with_reduction
+            )
+            if percent and without_reduction!=0:
+                reductions_per_trial[-1] /= without_reduction
+
+        return reductions_per_trial
+
+    def change_set_reductions_per_trial(self,assertions:bool=True,
+     percent:bool=True) -> list[float]:
+        '''
+        Go through each pair of base and reduced change sets and record the
+        reduction for each one.
+        '''
+        reductions_per_trial = []
+        # pylint: disable=consider-using-dict-items
+        for dirpath in self.base_change_set:
+            base_set_len = len(self.base_change_set[dirpath])
+            if assertions:
+                assert base_set_len >= \
+                        len(self.reduced_change_set[dirpath])
+            reductions_per_trial.append(
+                    base_set_len -
+                    len(self.reduced_change_set[dirpath])
+            )
+            if percent and base_set_len!=0:
+                reductions_per_trial[-1] /= base_set_len
+
+        return reductions_per_trial
 

@@ -6,8 +6,8 @@ sys.path.extend(['..','.'])
 
 OPTIONS = {
     # Output flags
-    'WRITE_MD': True,
-    'PLOT': True,
+    'WRITE_MD': False,
+    'PLOT': False,
     'LIST_ANALYZED': False,
     'SAVE_FIGS': False,
     'UNIQUE_RESULTS': False,
