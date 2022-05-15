@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 
 from src.config import CONFIG
 from src.types import AnalysisResult
-from visualise.case import Case
+from visualise.case import Case, get_reductions_per_trial
 from visualise import OPTIONS
 
 def write_report(cases: list[Case], only_multi:bool=False):
@@ -168,12 +168,18 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is somewhat suitable for this
     '''
-    change_set_reductions = [ c.change_set_reductions_per_trial(percent=percent)
-            for c in cases ]
-    trans_set_reductions =  [ c.trans_set_reductions_per_trial(percent=percent)
-            for c in cases ]
-    impact_set_reductions = [ c.impact_set_reductions_per_trial(percent=percent)
-            for c in cases ]
+    change_set_reductions = [ get_reductions_per_trial("Change set",
+        c.base_change_set, c.reduced_change_set, percent=percent
+    ) for c in cases ]
+
+    trans_set_reductions = [ get_reductions_per_trial("Transitive set",
+        c.trans_set_without_reduction, c.trans_change_set, percent=percent
+    ) for c in cases ]
+
+    impact_set_reductions = [ get_reductions_per_trial("Impact set",
+        c.impact_set_without_reduction, c.impact_set, percent=percent
+    ) for c in cases ]
+
 
     fig = plt.figure(figsize=OPTIONS['FIG_SIZE'])
     subfigs = fig.subfigures(nrows=3, ncols=1)

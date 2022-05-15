@@ -14,8 +14,8 @@ OPTIONS = {
     'ONLY_MULTI': False,
 
     # Input configuration
-    'RESULT_DIR': ".results/9",
-    'IMPACT_DIR': ".results/9_impact",
+    'RESULT_DIR': ".results/8",
+    'IMPACT_DIR': ".results/8_impact",
 
     # Plotting constants
     'PLOT_WIDTH': 0.6,

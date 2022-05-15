@@ -24,6 +24,36 @@ def basic_dist(msg:str, cnt:int, total:int) -> None:
     percent = round(cnt/total, ROUNDING)
     print(f"{msg}: {cnt}/{total} ({percent})")
 
+# - - - Impact and Change sets  - - - #
+def get_reductions_per_trial(label:str,
+ unreduced_dct:dict[str,list],
+ reduced_dct:dict[str,list],
+ assertions:bool=True, percent:bool=True) -> list[float]:
+    '''
+    Returns an array of reductions given two parallel dictionaries which
+    map a "dirpath" (a specific trial) to a list of either 
+    DependencyFunctionChange or Impacted objects.
+    '''
+    reductions_per_trial = []
+    for dirpath,dirpath_unreduced in zip(reduced_dct,unreduced_dct):
+
+        unreduced_cnt = len(unreduced_dct[dirpath_unreduced])
+        reduced_cnt = len(reduced_dct[dirpath])
+
+        if assertions:
+            if unreduced_cnt < reduced_cnt:
+                print_err(f"Inconsistent data point: {unreduced_cnt} "
+                    f"-> {reduced_cnt}: {label} "
+                    f"{dirpath_unreduced} -> {dirpath}"
+                )
+            assert unreduced_cnt >= reduced_cnt
+
+        reductions_per_trial.append(unreduced_cnt - reduced_cnt)
+        if percent and unreduced_cnt!=0:
+            reductions_per_trial[-1] /= unreduced_cnt
+
+    return reductions_per_trial
+
 @dataclass(init=True)
 class Case:
     '''
@@ -34,27 +64,19 @@ class Case:
     # Color to use for bar plots
     color: str
 
-    def libname(self) -> str:
-        return 'libusb-1.0' if self.name=='libusb' else self.name
-    def reponame(self) -> str:
-        return 'oniguruma' if self.name=='libonig' else self.name
-
     # Holds one entry per function that was analyzed (dict key),
     # each item contains an array of AnalysisResult that
     # were encountered for the particular function
     # during full and identity analysis
     function_results_dict: dict[str,FunctionResult]
 
-    def function_results(self) -> list[FunctionResult]:
-        return list(self.function_results_dict.values())
-
     # Holds one entry per CSV row across all results, dict key
     # is the path to the CSV file
     cbmc_results_dict: dict[str,list[CbmcResult]]
 
-    def cbmc_results(self) -> list[CbmcResult]:
-        return flatten(list(self.cbmc_results_dict.values()))
-
+    # Holds a dict of function names mapped onto a list of 
+    # StateParam objects which describe the possible constant values 
+    # for each parameter, the outer dict is the path to a specific trial
     arg_states: dict[str,dict[str,list[StateParam]]] =\
             field(default_factory=dict)
 
@@ -173,16 +195,22 @@ class Case:
         impact_set_sizes = [ len(v) for v in self.impact_set.values() ]
 
         average_set(change_set_sizes,
-            self.change_set_reductions_per_trial(),
-            "change"
+            get_reductions_per_trial("Change set",
+                self.base_change_set,
+                self.reduced_change_set
+            ), "change"
         )
         average_set(trans_set_sizes,
-            self.trans_set_reductions_per_trial(),
-            "transitive"
+            get_reductions_per_trial("Transitive set",
+                self.trans_set_without_reduction,
+                self.trans_change_set
+            ), "transitive"
         )
         average_set(impact_set_sizes,
-            self.impact_set_reductions_per_trial(),
-            "impact"
+            get_reductions_per_trial("Impact set",
+                self.impact_set_without_reduction,
+                self.impact_set
+            ), "impact"
         )
 
     #  - - - FunctionResult  - - - #
@@ -203,7 +231,6 @@ class Case:
             if len(function_result.results)>0:
                 fully_analyzed.append(function_result)
         return fully_analyzed
-
 
     def passed_identity_functions(self) -> list[FunctionResult]:
         '''
@@ -231,6 +258,10 @@ class Case:
         return sorted(li, key=lambda l: l[1], reverse=True)
 
     def unique_cbmc_results(self,ident:bool) -> set[tuple[str,AnalysisResult]]:
+        '''
+        Return a set of all encountered (function_name,AnalysisResult) tuples
+        in within the CBMC result.
+        '''
         return set(map(lambda c: (c.func_name,c.result),
                 filter(lambda r: r.identity == ident,
                     self.cbmc_results()
@@ -240,7 +271,6 @@ class Case:
     def analysis_dist(self,
         ident:bool,
         filter_zero:bool=False,
-        combine_unwinds:bool=False,
         unique_results:bool=False
      ) -> dict[AnalysisResult,float]:
         '''
@@ -251,12 +281,12 @@ class Case:
         if ident:
             # Pre-analysis was performed for every function
             # in function_results
-            analysis_steps_performed = sum(map(lambda f: len(f.results_id),
+            analysis_result_total_cnt = sum(map(lambda f: len(f.results_id),
                 self.function_results()))
         else:
             # Functions which did not pass the identity check will have
             # a results array with len()==0
-            analysis_steps_performed = sum(map(lambda f: len(f.results),
+            analysis_result_total_cnt = sum(map(lambda f: len(f.results),
                 self.function_results()))
 
         filtered_cbmc_results = filter(lambda c: c.identity == ident,
@@ -267,101 +297,38 @@ class Case:
         if unique_results:
             # Only increment the result count for unique entries,
             # e.g. count 16 SUCCESS results for a function as 1 SUCCESS
-            # This also requires the analysis_steps_performed to be reduced
+            # This also requires the `analysis_result_total_cnt` to be reduced
             # for percentages to be correct
             unique_cbmc_results = self.unique_cbmc_results(ident=ident)
 
             for tpl in unique_cbmc_results:
                 result_cnts[tpl[1].name] += 1
 
-            analysis_steps_performed = len(unique_cbmc_results)
+            analysis_result_total_cnt = len(unique_cbmc_results)
         else:
             for cbmc_result in filtered_cbmc_results:
                 result_cnts[cbmc_result.result.name] += 1
-
-        if combine_unwinds:
-            result_cnts[AnalysisResult.SUCCESS.name] += \
-                result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
-            result_cnts[AnalysisResult.FAILURE.name] += \
-                result_cnts[AnalysisResult.FAILURE_UNWIND_FAIL.name]
-            del result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
-            del result_cnts[AnalysisResult.FAILURE_UNWIND_FAIL.name]
 
         if filter_zero:
             result_cnts = { key: val
                     for key,val in result_cnts.items() if val != 0
             }
 
-        analysis_dict = { AnalysisResult[tpl[0]]: tpl[1]/analysis_steps_performed
+        analysis_dict = { AnalysisResult[tpl[0]]: tpl[1]/analysis_result_total_cnt
                 for tpl in result_cnts.items() }
 
         assert (sum(list(analysis_dict.values())) - 1) < 10**-12
         return analysis_dict
 
-    # - - - Impact and Change sets  - - - #
-    def impact_set_reductions_per_trial(self,assertions:bool=True,
-     percent:bool=True) -> list[float]:
-        reductions_per_trial = []
-        for d,d_without in zip(self.impact_set,self.impact_set_without_reduction):
-            without_reduction = len(self.impact_set_without_reduction[d_without])
-            with_reduction = len(self.impact_set[d])
+    # - - - Helpers - - - #
+    def function_results(self) -> list[FunctionResult]:
+        return list(self.function_results_dict.values())
 
-            if assertions:
-                assert without_reduction >= with_reduction
+    def cbmc_results(self) -> list[CbmcResult]:
+        return flatten(list(self.cbmc_results_dict.values()))
 
-            reductions_per_trial.append(
-                    without_reduction - with_reduction
-            )
-            if percent and without_reduction != 0:
-                reductions_per_trial[-1] /= without_reduction
-
-        return reductions_per_trial
-
-    def trans_set_reductions_per_trial(self,assertions:bool=True,
-     percent:bool=True) -> list[float]:
-        reductions_per_trial = []
-        for d,d_without in \
-          zip(self.trans_change_set,self.trans_set_without_reduction):
-            without_reduction = len(self.trans_set_without_reduction[d_without])
-            with_reduction = len(self.trans_change_set[d])
-
-
-            if assertions:
-                if without_reduction < with_reduction:
-                    print_err(f"Inconsistent data point: {without_reduction} "
-                        f"-> {with_reduction}: "
-                        f"{d_without}/trans_change_set.csv "
-                        f"{d}/trans_change_set.csv"
-                    )
-                assert without_reduction >= with_reduction
-
-            reductions_per_trial.append(
-                    without_reduction - with_reduction
-            )
-            if percent and without_reduction!=0:
-                reductions_per_trial[-1] /= without_reduction
-
-        return reductions_per_trial
-
-    def change_set_reductions_per_trial(self,assertions:bool=True,
-     percent:bool=True) -> list[float]:
-        '''
-        Go through each pair of base and reduced change sets and record the
-        reduction for each one.
-        '''
-        reductions_per_trial = []
-        # pylint: disable=consider-using-dict-items
-        for dirpath in self.base_change_set:
-            base_set_len = len(self.base_change_set[dirpath])
-            if assertions:
-                assert base_set_len >= \
-                        len(self.reduced_change_set[dirpath])
-            reductions_per_trial.append(
-                    base_set_len -
-                    len(self.reduced_change_set[dirpath])
-            )
-            if percent and base_set_len!=0:
-                reductions_per_trial[-1] /= base_set_len
-
-        return reductions_per_trial
+    def libname(self) -> str:
+        return 'libusb-1.0' if self.name=='libusb' else self.name
+    def reponame(self) -> str:
+        return 'oniguruma' if self.name=='libonig' else self.name
 
