@@ -1,18 +1,14 @@
-import os, json
 from statistics import stdev,mean
 from pprint import pprint
 from dataclasses import dataclass, field
-from src.config import CONFIG
 from src.types import AnalysisResult, CbmcResult, \
         DependencyFunctionChange, FunctionResult, StateParam
 from src.util import flatten, load_cbmc_results, print_err, print_stage
 
-ROUNDING = 4
+from visualise.deserialise import Impacted, \
+    load_change_sets, load_impact_set, load_state_space
 
-@dataclass(init=True)
-class Impacted:
-    main_project_fn_name:str
-    dependecy_fn_name:str
+ROUNDING = 4
 
 def average_set(sizes: list[int], reductions:list[float], label:str):
     average_size = round(mean(sizes),ROUNDING)
@@ -22,15 +18,6 @@ def average_set(sizes: list[int], reductions:list[float], label:str):
     mean_reduction = round(mean(reductions),ROUNDING)
     stdev_reduction = round(stdev(reductions),ROUNDING)
     print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
-
-def load_change_set(dirpath:str,filename:str,
- change_set:dict[str,list[DependencyFunctionChange]]):
-    if os.path.isfile(f"{dirpath}/{filename}"):
-        with open(f"{dirpath}/{filename}", mode='r', encoding='utf8') as f:
-            for line in f.readlines()[1:]:
-                change_set[dirpath].append(DependencyFunctionChange.\
-                        new_from_change_set_csv(line.split(";"))
-                )
 
 @dataclass(init=True)
 class Case:
@@ -83,14 +70,37 @@ class Case:
         field(default_factory=dict)
 
     @classmethod
-    def new(cls,name:str, result_dir:str, total_functions:int,color:str):
+    def new(cls,name:str, result_dir:str, result_dir_impact:str,
+    total_functions:int,
+     color:str):
         function_results_dict, cbmc_results_dict = \
             load_cbmc_results(name,result_dir)
+
+        base_change_set, reduced_change_set, trans_change_set = \
+                load_change_sets(name,result_dir)
+
+        _,_,trans_set_without_reduction = \
+                load_change_sets(name,result_dir_impact)
+
+        # The number of changed functions in the base set and the functions
+        # from cbmc analysis should be equal
+        assert len(base_change_set) == len(cbmc_results_dict)
+
         return cls(name=name,
-                total_functions=total_functions,
-                cbmc_results_dict=cbmc_results_dict,
-                function_results_dict=function_results_dict,
-                color=color
+            total_functions=total_functions,
+            cbmc_results_dict=cbmc_results_dict,
+            function_results_dict=function_results_dict,
+            color=color,
+
+            arg_states = load_state_space(name,result_dir),
+
+            base_change_set = base_change_set,
+            trans_change_set = trans_change_set,
+            impact_set = load_impact_set(name,result_dir),
+
+            reduced_change_set = reduced_change_set,
+            trans_set_without_reduction = trans_set_without_reduction,
+            impact_set_without_reduction=load_impact_set(name,result_dir_impact)
         )
 
     def info(self,unique_results:bool=False):
@@ -172,7 +182,6 @@ class Case:
             self.impact_set_reductions_per_trial(),
             "impact"
         )
-
 
     def impact_set_reductions_per_trial(self,assertions:bool=True,
      percent:bool=True) -> list[float]:
@@ -359,77 +368,3 @@ class Case:
         assert (sum(list(analysis_dict.values())) - 1) < 10**-12
         return analysis_dict
 
-
-    def load_change_sets(self,without_reduction:bool=False):
-        for item in os.listdir(CONFIG.RESULTS_DIR):
-            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            # Only load entries matching the current name
-            if os.path.isdir(dirpath) and item.startswith(self.name):
-                if without_reduction:
-                    self.trans_set_without_reduction[dirpath] = []
-                    load_change_set(dirpath, "trans_change_set.csv",
-                            self.trans_set_without_reduction)
-                else:
-                    self.base_change_set[dirpath] = []
-                    self.reduced_change_set[dirpath] = []
-                    self.trans_change_set[dirpath] = []
-
-                    load_change_set(dirpath, "change_set.csv",
-                            self.base_change_set)
-                    load_change_set(dirpath, "reduced_set.csv",
-                            self.reduced_change_set)
-                    load_change_set(dirpath, "trans_change_set.csv",
-                            self.trans_change_set)
-
-
-        # The number of changed functions in the base set and the functions
-        # from cbmc analysis should be equal
-        assert len(self.base_change_set) == len(self.cbmc_results_dict)
-
-    def load_impact_set(self,without_reduction:bool=False):
-        for item in os.listdir(CONFIG.RESULTS_DIR):
-            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-
-            # Only load entries matching the current name
-            if os.path.isdir(dirpath) and item.startswith(self.name):
-                if without_reduction:
-                    self.impact_set_without_reduction[dirpath] = []
-                else:
-                    self.impact_set[dirpath] = []
-
-                if os.path.isfile(f"{dirpath}/impact_set.csv"):
-                    with open(f"{dirpath}/impact_set.csv",
-                      mode = 'r', encoding='utf8') as f:
-                        for line in f.readlines()[1:]:
-                            csv_values = line.split(";")
-                            if without_reduction:
-                                self.impact_set_without_reduction[dirpath]\
-                                    .append(Impacted(
-                                    main_project_fn_name=csv_values[3],
-                                    dependecy_fn_name=csv_values[8]
-                                ))
-                            else:
-                                self.impact_set[dirpath].append(Impacted(
-                                    main_project_fn_name=csv_values[3],
-                                    dependecy_fn_name=csv_values[8]
-                                ))
-
-    def load_state_space(self):
-        for item in os.listdir(CONFIG.RESULTS_DIR):
-            dirpath = f"{CONFIG.RESULTS_DIR}/{item}"
-            self.arg_states[dirpath] = {}
-
-            # Only load entries matching the current name
-            if os.path.isdir(dirpath) and item.startswith(self.name):
-
-                if os.path.isfile(f"{dirpath}/states.json"):
-                    with open(f"{dirpath}/states.json", mode = 'r', encoding='utf8') as f:
-                        dct = json.load(f)
-                        for func_name in dct:
-                            param_states = []
-                            for i,param in \
-                               enumerate(dct[func_name]['parameters']):
-                                param_states.append(
-                                    StateParam.new_from_dct(param,i)
-                                )
-                            self.arg_states[dirpath][func_name] = param_states

@@ -32,38 +32,6 @@ def dir_cnt(path:str):
     return len([ p for p in os.listdir(path) \
             if os.path.isdir(f"{path}/{p}")])
 
-def load_cases(result_dir:str, result_dir_impact:str) -> list[Case]:
-    CONFIG.RESULTS_DIR = result_dir
-    onig = Case.new(name="libonig", result_dir=CONFIG.RESULTS_DIR,
-            total_functions=1186, color=OPTIONS['RED'])
-    onig.load_change_sets()
-    onig.load_impact_set()
-    onig.load_state_space()
-
-    expat = Case.new(name="libexpat", result_dir=CONFIG.RESULTS_DIR,
-            total_functions=645, color=OPTIONS['GREEN'])
-    expat.load_change_sets()
-    expat.load_impact_set()
-    expat.load_state_space()
-
-    usb = Case.new(name="libusb", result_dir=CONFIG.RESULTS_DIR,
-            total_functions=1346, color=OPTIONS['BLUE'])
-    usb.load_change_sets()
-    usb.load_impact_set()
-    usb.load_state_space()
-
-    CONFIG.RESULTS_DIR = result_dir_impact
-    onig.load_change_sets(without_reduction=True)
-    onig.load_impact_set(without_reduction=True)
-
-    expat.load_change_sets(without_reduction=True)
-    expat.load_impact_set(without_reduction=True)
-
-    usb.load_change_sets(without_reduction=True)
-    usb.load_impact_set(without_reduction=True)
-
-    return [onig,expat,usb]
-
 if __name__ == '__main__':
     if not OPTIONS['EXPORT_LIGHT']:
         plt.rcParams['text.color'] = OPTIONS['WHITE']
@@ -80,7 +48,24 @@ if __name__ == '__main__':
                f"({round(total_trials/3,1)} per project)"
     )
 
-    cases = load_cases(OPTIONS['RESULT_DIR'], OPTIONS['IMPACT_DIR'])
+    onig = Case.new(name="libonig", total_functions=1186,
+        color=OPTIONS['RED'],
+        result_dir=OPTIONS['RESULT_DIR'],
+        result_dir_impact=OPTIONS['IMPACT_DIR']
+    )
+
+    expat = Case.new(name="libexpat", total_functions=645,
+        color=OPTIONS['GREEN'],
+        result_dir=OPTIONS['RESULT_DIR'],
+        result_dir_impact=OPTIONS['IMPACT_DIR']
+    )
+
+    usb = Case.new(name="libusb", total_functions=1346,
+        color=OPTIONS['BLUE'],
+        result_dir=OPTIONS['RESULT_DIR'],
+        result_dir_impact=OPTIONS['IMPACT_DIR']
+    )
+    cases = [onig,expat,usb]
 
     CONFIG.RESULTS_DIR = OPTIONS['RESULT_DIR']
 
