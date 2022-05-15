@@ -11,8 +11,10 @@ from src.config import CONFIG
 from src.types import HarnessType
 from src.util import print_info, print_stage
 from visualise import OPTIONS
-from visualise.plot import plot_analysis_dists, plot_reductions, write_report
-from visualise.case import Case, identity_set
+from visualise.plot import plot_analysis_dists, plot_reductions
+from visualise.case import Case
+from visualise.util import identity_set
+from visualise.write_md import write_md
 
 def save_figure(path: str, figure:Figure):
     result_dir = os.path.dirname(path)
@@ -82,7 +84,7 @@ if __name__ == '__main__':
 
 
     if OPTIONS.WRITE_MD:
-        write_report(cases, OPTIONS.RESULT_DIR, only_multi=OPTIONS.ONLY_MULTI)
+        write_md(cases, OPTIONS.RESULT_DIR, only_multi=OPTIONS.ONLY_MULTI)
     if OPTIONS.LIST_ANALYZED:
         print("\n=============================")
         for case in cases:

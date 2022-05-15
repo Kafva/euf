@@ -133,5 +133,3 @@ class FunctionResult:
             out += f"> {r.name} ({cnt})\n"
         return out
 
-
-

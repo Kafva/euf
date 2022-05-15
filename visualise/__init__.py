@@ -8,6 +8,7 @@ if os.path.basename(os.getcwd()) != 'euf':
 
 sys.path.extend(['..'])
 
+
 @dataclass(init=True)
 class Options:
     # Output flags
@@ -41,3 +42,5 @@ class Options:
     BLACK: str = '#1a1c1f'
 
 OPTIONS = Options()
+ROUNDING = 4
+
