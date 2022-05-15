@@ -30,7 +30,7 @@
   "USE_EXISTING_DRIVERS": false,
   "QUIET_BUILD": true,
   "CBMC_OPTS_STR": "--object-bits 12 --unwind 1 --unwinding-assertions --havoc-undefined-functions",
-  "CBMC_TIMEOUT": 17,
+  "CBMC_TIMEOUT": 25,
   "ENABLE_RESULT_LOG": true,
   "DIE_ON_ERROR": false,
   "SILENT_IDENTITY_VERIFICATION": true,
