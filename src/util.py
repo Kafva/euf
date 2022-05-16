@@ -102,16 +102,19 @@ def print_err(msg: str):
     print("\033[31m!>\033[0m " +  msg, file=sys.stderr, flush=True)
 
 def print_stage(msg: str):
-    cols = os.get_terminal_size().columns
+    try:
+        cols = os.get_terminal_size().columns
 
-    # Minus 4 for the '<' signs and spaces
-    equal_signs = int((cols - len(msg) - 4)/2)
+        # Minus 4 for the '<' signs and spaces
+        equal_signs = int((cols - len(msg) - 4)/2)
 
-    output = "\033[34m"  + "="*(equal_signs) +  ">\033[0m " +  \
-          msg + " \033[34m<" + "="*(equal_signs)
+        output = "\033[34m"  + "="*(equal_signs) +  ">\033[0m " +  \
+              msg + " \033[34m<" + "="*(equal_signs)
 
-    while (len(output) - len("\033[34m")*2 - len("\033[0m")) < cols:
-        output+="="
+        while (len(output) - len("\033[34m")*2 - len("\033[0m")) < cols:
+            output+="="
+    except OSError: # Fallback for failed queries
+        output = f"\033[34m==>\033[0m{msg}\033[34m<=="
 
     print(output+"\033[0m", file=sys.stderr, flush=True)
 
