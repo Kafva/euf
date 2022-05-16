@@ -3,11 +3,11 @@ die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <libonig|libexpat|libusb>"
 helpStr=""
 VERBOSITY=${VERBOSITY:=1}
-TIMEOUT=${TIMEOUT:=60}
+TIMEOUT=${TIMEOUT:=240}
 BATCH=${BATCH:=true}
 CMTS=/tmp/commits
-MAX_DISTANCE=$(( 24*60*60 * 28))
-MIN_DISTANCE=$(( 24*60*60 * 14))
+MAX_DISTANCE=$(( 24*60*60 * 15))
+MIN_DISTANCE=$(( 24*60*60 * 5))
 
 get_pair(){
   cmt1=$(shuf -n1 $CMTS)
@@ -46,7 +46,7 @@ case "$1" in
   libusb)
     BASE_CONF=./examples/base_usb.json
     DEP_DIR=~/Repos/libusb
-    LIBNAME=libusb
+    LIBNAME=libusb-1.0
     NOT_BEFORE=$(date -d "2020-04-06" '+%s')
     NOT_AFTER=$(date -d "2077-01-01" '+%s')
   ;;
@@ -62,11 +62,14 @@ git log | awk "/^commit/{print \$2}" > $CMTS
 
 get_pair
 
+# Ensure that the chosen pair lies within the chosen time range
+# and that there is not already a result for the specific commit tuple
 while [[ $epoch1 -lt $NOT_BEFORE  || $epoch2 -lt $NOT_BEFORE  ||
          $epoch1 -gt $NOT_AFTER   || $epoch2 -gt $NOT_AFTER   ||
          $(abs_distance epoch1 epoch2) -gt $MAX_DISTANCE ||
          $(abs_distance epoch1 epoch2) -lt $MIN_DISTANCE ||
-         "$cmt1" = "$cmt2"
+         "$cmt1" = "$cmt2" ||
+         -d "$PWD/results/${LIBNAME}_${cmt1::4}_${cmt2::4}"
       ]]; do
   get_pair
 done
@@ -105,7 +108,7 @@ popd > /dev/null
 
 mkdir -p .rand
 
-OUTNAME=.rand/${LIBNAME}_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
+OUTNAME=.rand/${LIBNAME%%-*}_${COMMIT_OLD::8}_${COMMIT_NEW::8}.json
 
 # Save the config if we want to run it again
 cat <(jq -s '.[0] * .[1]' $BASE_CONF /tmp/random.json) > $OUTNAME
