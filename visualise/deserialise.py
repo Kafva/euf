@@ -1,6 +1,6 @@
 import os, json
 from dataclasses import dataclass
-from visualise.types import CbmcResult, FunctionResult
+from visualise.types import CbmcResult, FunctionResult, StateFailResult
 from src.types import StateParam, DependencyFunctionChange
 
 @dataclass(init=True)
@@ -84,6 +84,27 @@ def load_state_space(name:str, results_dir:str) -> dict[str,dict[str,list[StateP
                             )
                         arg_states[dirpath][func_name] = param_states
     return arg_states
+
+def load_failed_state_analysis(name:str, results_dir:str) -> \
+ dict[str,list[tuple[str,str]]]:
+    '''
+    The state_fail.csv format only has two columns, 'subdir;symbol_name'.
+    '''
+    state_fails = {}
+    for item in os.listdir(results_dir):
+        dirpath = f"{results_dir}/{item}"
+        state_fails[dirpath] = []
+
+        # Only load entries matching the current name
+        if os.path.isdir(dirpath) and item.startswith(name):
+
+            if os.path.isfile(f"{dirpath}/state_fail.csv"):
+                with open(f"{dirpath}/state_fail.csv", mode = 'r', encoding='utf8') as f:
+                    for line in f.readlines()[1:]:
+                        state_fails[dirpath].append(
+                            StateFailResult.new_from_csv(line)
+                        )
+    return state_fails
 
 def load_cbmc_results(name:str, result_dir:str) -> \
  dict[str,FunctionResult]:

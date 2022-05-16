@@ -1,6 +1,6 @@
 import os
 from statistics import mean, stdev
-from src.types import HarnessType
+from src.types import HarnessType, StateParam
 
 from src.util import print_err
 from visualise import ROUNDING
@@ -53,4 +53,21 @@ def get_reductions_per_trial(label:str,
 
     return reductions_per_trial
 
+def get_constrained_functions(
+ func_arg_states: dict[str,dict[str,tuple[StateParam,float]]]) -> \
+ tuple[dict[str,float],dict[str,list[str]]]:
+    fully_constrained_funcs = {}
+    constrained_percent_mean_per_func = { f: .0 for f in func_arg_states }
+    for func_name, dirpath_dict in func_arg_states.items():
+        constrained_percent_mean_per_func[func_name] = \
+            sum(map(lambda tpl: tpl[1], dirpath_dict.values())) / len(dirpath_dict)
+
+        for dirpath, tpl in dirpath_dict.items():
+            if tpl[1] == 1.0:
+                if func_name not in fully_constrained_funcs:
+                    fully_constrained_funcs[func_name] = [ dirpath ]
+                else:
+                    fully_constrained_funcs[func_name].append(dirpath)
+
+    return constrained_percent_mean_per_func, fully_constrained_funcs
 

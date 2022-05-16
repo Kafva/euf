@@ -1,17 +1,18 @@
 from pprint import pprint
 from dataclasses import dataclass, field
 from statistics import mean, stdev
+from src.config import CONFIG
 from src.types import AnalysisResult, \
         DependencyFunctionChange, HarnessType, StateParam
-from src.util import flatten, print_stage
+from src.util import flatten, print_info, print_stage
 from visualise import OPTIONS, ROUNDING
 
 from visualise.deserialise import Impacted, \
-    load_change_sets, load_impact_set, load_state_space, load_cbmc_results
-from visualise.types import CbmcResult, FunctionResult
-from visualise.util import average_set, basic_dist, divider, \
+    load_change_sets, load_failed_state_analysis, load_impact_set, \
+    load_state_space, load_cbmc_results
+from visualise.types import CbmcResult, FunctionResult, StateFailResult
+from visualise.util import average_set, basic_dist, divider, get_constrained_functions, \
         get_reductions_per_trial, identity_set
-
 
 @dataclass(init=True)
 class Case:
@@ -33,7 +34,13 @@ class Case:
     # Holds a dict of function names mapped onto a list of 
     # StateParam objects which describe the possible constant values 
     # for each parameter, the outer dict is the path to a specific trial
-    arg_states: dict[str,dict[str,list[StateParam]]] =\
+    arg_states_dict: dict[str,dict[str,list[StateParam]]] =\
+            field(default_factory=dict)
+
+    # A mapping from each trial of state space anaylsis
+    # instances which failed onto a tuple list on the form
+    #       (subdir, func_name)
+    state_fails_dict: dict[str,list[StateFailResult]] =\
             field(default_factory=dict)
 
     # The key to every dict is the path to the results directory
@@ -62,12 +69,14 @@ class Case:
         _,_,trans_set_without_reduction = \
                 load_change_sets(name,OPTIONS.IMPACT_DIR)
 
+
+
         return cls(name=name,git_dir=git_dir,
             total_functions=total_functions,
             function_results_dict=function_results_dict,
             color=color,
 
-            arg_states = load_state_space(name,OPTIONS.RESULT_DIR),
+            arg_states_dict = load_state_space(name,OPTIONS.RESULT_DIR),
 
             base_change_set = base_change_set,
             trans_change_set = trans_change_set,
@@ -76,7 +85,8 @@ class Case:
             reduced_change_set = reduced_change_set,
             trans_set_without_reduction = trans_set_without_reduction,
             impact_set_without_reduction = \
-                    load_impact_set(name,OPTIONS.IMPACT_DIR)
+                    load_impact_set(name,OPTIONS.IMPACT_DIR),
+            state_fails_dict = load_failed_state_analysis(name, OPTIONS.RESULT_DIR)
         )
 
     def info(self):
@@ -96,20 +106,27 @@ class Case:
         )
 
         divider()
+        print_info("Divided by the combined number of cbmc.csv rows")
 
         cbmc_results_cnt = len(self.cbmc_results())
-        print(f"Unique NONE harness results: "
-              f"{len(self.unique_results({HarnessType.NONE}))}/"
-              f"{cbmc_results_cnt}")
+
+        basic_dist("Unique NONE harness results",
+            len(self.unique_results({HarnessType.NONE})),
+            cbmc_results_cnt
+        )
         unique_identity_results = self.unique_results(identity_set())
-        print(f"Unique IDENTITY harness results: "
-              f"{len(unique_identity_results)}/"
-              f"{cbmc_results_cnt}")
-        print(f"Unique STANDARD harness results: "
-              f"{len(self.unique_results({HarnessType.STANDARD}))}/"
-              f"{cbmc_results_cnt}")
+        basic_dist("Unique IDENTITY harness results",
+            len(unique_identity_results),
+            cbmc_results_cnt
+        )
+        basic_dist("Unique STANDARD harness results",
+            len(self.unique_results({HarnessType.STANDARD})),
+            cbmc_results_cnt
+        )
 
         divider()
+        print_info("Divided by the number of functions that passed identity "\
+                "verification at least once")
 
         multi_cnt = len(self.multi_result_function_results())
         passed_identity_results = self.passed_identity_functions()
@@ -128,12 +145,12 @@ class Case:
         )))
 
         print(f"Functions with an influential and equivalent analysis result: "
-              f"{multi_cnt}/{nr_of_changed_functions}")
+              f"{multi_cnt}/{len(unique_identity_results)}")
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-              f"{equiv_result_cnt}/{nr_of_changed_functions}"
+              f"{equiv_result_cnt}/{len(unique_identity_results)}"
         )
         print(f"Functions with \033[4monly\033[0m influential analysis results:"
-              f" {influential_result_cnt}/{nr_of_changed_functions}")
+              f" {influential_result_cnt}/{len(unique_identity_results)}")
 
         divider()
 
@@ -184,39 +201,85 @@ class Case:
 
         divider()
 
-        funcs_with_const_params = []
-        fully_constrained_funcs = []
+        func_arg_states = self.arg_states()
 
-        for arg_states in self.arg_states.values():
-            for func_name, arg_state in arg_states.items():
-                if all(not a.nondet for a in arg_state):
-                    fully_constrained_funcs.append(func_name)
+        basic_dist("Harnesses with at least one assumption",
+              len(func_arg_states), len(unique_identity_results)
+        )
 
-                if any(not a.nondet for a in arg_state):
-                    funcs_with_const_params.append(arg_state)
+        constrained_percent_mean_per_func, fully_constrained_funcs = \
+                get_constrained_functions(func_arg_states)
 
-        # We divide by the number of unique identity results, this
-        # corresponds to the number of functions which had at least one 
-        # harnesses generated.
-        print("Harnesses with at least one assumption: "
-              f"{len(funcs_with_const_params)}/{len(unique_identity_results)}")
-
-        nr_of_states_per_param = flatten([  [ len(param.states) for param in f ]
-            for f in funcs_with_const_params ])
-        nr_of_states_per_param = list(filter(lambda cnt: cnt!=0,
-            nr_of_states_per_param))
-
-        if len(nr_of_states_per_param) >= 2:
-            m = round(mean(nr_of_states_per_param),ROUNDING)
-            s = round(stdev(nr_of_states_per_param),ROUNDING)
+        if len(constrained_percent_mean_per_func) >= 2:
+            m = round(mean(constrained_percent_mean_per_func.values()),ROUNDING)
+            s = round(stdev(constrained_percent_mean_per_func.values()),ROUNDING)
         else:
             m=s=0
 
-        print(f"States per parameter: {m} (±{s})")
-
+        print(f"Percentage of constrained parameters per constrained function: {m} (±{s})")
         print(f"Fully constrained harnesses: {len(fully_constrained_funcs)}")
+        if len(fully_constrained_funcs)>0:
+            for func_name,dirpaths in fully_constrained_funcs.items():
+                print(f"{CONFIG.INDENT}\033[33m{func_name}\033[0m: ", dirpaths)
 
-    #  - - - FunctionResult  - - - #
+        per_func_fail_cnt, total_fails = self.get_per_func_fails()
+
+        print(f"Failed state space anaylsis: ({total_fails} in total)")
+        for func_name,cnt in per_func_fail_cnt.items():
+            print(f"{CONFIG.INDENT}\033[31m{func_name}\033[0m: {cnt}")
+
+    # - - - State space  - - - #
+    def arg_states(self) -> dict[str,dict[str,tuple[StateParam,float]]]:
+        '''
+        The internal arg_states_dict maps every trial to a set of
+        (func_name,StateParam) tuples that describe the possible states for
+        a function. This wrapper flattens the datastructure to a new format
+        {
+            function_name: {
+                dirpath1: ([StateParams], constrained_percent),
+                dirpath2: ([StateParams], constrained_percent) ,
+            }
+        }
+        where each function is the outer key and maps onto a list of encountered
+        StateParam sets for it. We keep the dirpath as a key to enable back
+        correlation with the actual harness that attained a specific set of
+        params.
+        '''
+        arg_states_with_fnc_key = {}
+        for dirpath,arg_states_for_dir in self.arg_states_dict.items():
+            for func_name,states in arg_states_for_dir.items():
+
+                # Skip all unconstrained functions
+                if len(states)==0:
+                    continue
+
+                if func_name not in arg_states_with_fnc_key:
+                    arg_states_with_fnc_key[func_name] = {}
+
+                constrained_param_cnt = len([
+                    s for s in states if not s.nondet
+                ])
+
+                arg_states_with_fnc_key[func_name][dirpath] = (
+                    states,
+                    constrained_param_cnt/len(states)
+                )
+
+        return arg_states_with_fnc_key
+
+    def get_per_func_fails(self) -> tuple[dict[str,int],int]:
+        per_func_fail_cnt = {}
+        total_fails = 0
+        for state_fail_li in self.state_fails_dict.values():
+            for state_fail in state_fail_li:
+                if state_fail.func_name not in per_func_fail_cnt:
+                    per_func_fail_cnt[state_fail.func_name] = 1
+                else:
+                    per_func_fail_cnt[state_fail.func_name] += 1
+                total_fails+=1
+        return per_func_fail_cnt, total_fails
+
+    # - - - FunctionResult  - - - #
     def multi_result_function_results(self,identity:bool=False) \
      -> list[FunctionResult]:
         multi_results = []

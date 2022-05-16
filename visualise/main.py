@@ -71,7 +71,6 @@ if __name__ == '__main__':
         c.info()
 
     divider()
-    #fig = plot_states(cases)
 
     if OPTIONS.PLOT:
         fig = plot_analysis_dists(cases,harness_types={HarnessType.NONE})
@@ -86,8 +85,6 @@ if __name__ == '__main__':
         fig = plot_reductions(cases,percent=False)
         save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin.png", fig)
 
-
-
         plt.subplots_adjust(bottom=0.15)
         plt.xticks(fontsize=OPTIONS.PLOT_FONT_SIZE)
         plt.show()
@@ -96,7 +93,7 @@ if __name__ == '__main__':
     if OPTIONS.WRITE_MD:
         write_md(cases, OPTIONS.RESULT_DIR, only_multi=OPTIONS.ONLY_MULTI)
     if OPTIONS.LIST_ANALYZED:
-        print("\n=============================")
+        divider()
         for case in cases:
             print_stage(case.name)
             results = case.multi_result_function_results() \

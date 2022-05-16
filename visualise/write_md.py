@@ -7,6 +7,7 @@ from git.repo.base import Repo
 from src.config import CONFIG
 from src.types import AnalysisResult, HarnessType
 from src.util import print_err
+from visualise import OPTIONS
 from visualise.case import Case
 
 def get_date_of_commit(repo_path:str, commit_hash:str):
@@ -20,7 +21,8 @@ def get_date_of_commit(repo_path:str, commit_hash:str):
                     date = line[len("Date:"):-5].strip()
                     break
         except GitCommandError:
-            print_err(f"Could not determine date of commit: {commit_hash}")
+            if OPTIONS.VERBOSITY >= 1:
+                print_err(f"Could not determine date of commit: {commit_hash}")
 
     return date
 

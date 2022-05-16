@@ -133,3 +133,14 @@ class FunctionResult:
             out += f"> {r.name} ({cnt})\n"
         return out
 
+@dataclass(init=True)
+class StateFailResult:
+    subdir: str
+    func_name:str
+
+    @classmethod
+    def new_from_csv(cls, csv):
+        return cls(
+            subdir = csv.split(';')[0].strip(),
+            func_name = csv.split(';')[1].strip()
+        )
