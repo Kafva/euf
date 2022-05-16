@@ -13,7 +13,7 @@ sys.path.extend(['..'])
 class Options:
     # Output flags
     WRITE_MD: bool = False
-    PLOT: bool = False
+    PLOT: bool = True
     LIST_ANALYZED: bool = False
     SAVE_FIGS: bool = False
     UNIQUE_ONLY: bool = False

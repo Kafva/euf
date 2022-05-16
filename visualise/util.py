@@ -56,6 +56,11 @@ def get_reductions_per_trial(label:str,
 def get_constrained_functions(
  func_arg_states: dict[str,dict[str,tuple[StateParam,float]]]) -> \
  tuple[dict[str,float],dict[str,list[str]]]:
+    '''
+    Returns two dictionaries: 
+        { func_name: average_percent_constrained_params } 
+        { fully_constrained_func: [dirpaths] }
+    '''
     fully_constrained_funcs = {}
     constrained_percent_mean_per_func = { f: .0 for f in func_arg_states }
     for func_name, dirpath_dict in func_arg_states.items():

@@ -6,8 +6,21 @@ from matplotlib.figure import Figure
 
 from src.types import AnalysisResult, HarnessType
 from visualise.case import Case
-from visualise.util import get_reductions_per_trial, identity_set
+from visualise.util import get_constrained_functions, \
+        get_reductions_per_trial, identity_set
 from visualise import OPTIONS
+
+def violin_styling(parts):
+    for pc in parts['bodies']:
+        pc.set_facecolor(OPTIONS.PINK)
+        pc.set_edgecolor('white')
+        pc.set_alpha(0.5)
+
+    # Change colors of the mean indicators
+    for partname in ('cbars','cmins','cmaxes','cmeans'):
+        vp = parts[partname]
+        vp.set_edgecolor(OPTIONS.DARK_PINK)
+        vp.set_linewidth(2)
 
 def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
   -> Figure:
@@ -19,7 +32,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
     fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
     subfigs = fig.subfigures(nrows=2, ncols=1)
 
-    def create_row(title,ylabel,index,unique_only:bool):
+    def create_row(title:str,ylabel:str,index:int,unique_only:bool):
         subfigs[index].suptitle(title,fontweight='bold',
                 horizontalalignment='center'
         )
@@ -105,7 +118,7 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
     subfigs = fig.subfigures(nrows=3, ncols=1)
 
-    def create_row(title,index,array1,label):
+    def create_row(title:str,index:int,arr:list,label:str):
         subfigs[index].suptitle(title,
             fontweight='bold',
             horizontalalignment='center'
@@ -116,29 +129,12 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
 
         for i, ax in enumerate(axes):
             parts = ax.violinplot(
-                array1[i],
+                arr[i],
                 showmeans=True, showextrema=True
             )
+            violin_styling(parts)
             if percent:
                 ax.set_ylim(OPTIONS.VIOLIN_YLIM)
-
-            for pc in parts['bodies']:
-                pc.set_facecolor(OPTIONS.PINK)
-                pc.set_edgecolor('white')
-                pc.set_alpha(0.5)
-
-            # Change colors of the mean indicators
-            for partname in ('cbars','cmins','cmaxes','cmeans'):
-                vp = parts[partname]
-                vp.set_edgecolor(OPTIONS.DARK_PINK)
-                vp.set_linewidth(2)
-
-            if index==2:
-                ax.set_xlabel(cases[i].name,
-                    fontweight='normal',
-                    fontsize=12,
-                    horizontalalignment='center',
-                )
 
     create_row("Base change set reduction", 0, change_set_reductions,
         "change"
@@ -148,6 +144,53 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     )
     create_row("Impact set reduction", 2, impact_set_reductions,
         "impact"
+    )
+
+    return fig
+
+def plot_state_space(cases: list[Case]) -> Figure:
+    '''
+    Plotting the constrained percentage of functions per case
+    is not useful (it would be single bar), this information is better
+    given in a plain table.
+    '''
+    fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
+
+    constrained_functions = [
+        get_constrained_functions(c.arg_states())[0].values()
+        for c in cases
+    ]
+
+    constrained_percent = [ round(len(c.arg_states()) /
+            len(c.unique_results(identity_set())), 2)
+        for c in cases
+    ]
+
+    def create_row(title:str,arr:list,ylabel:str):
+        fig.suptitle(title,
+            fontweight='bold',
+            horizontalalignment='center'
+        )
+        axes = fig.subplots(nrows=1, ncols=3)
+        axes[0].set_ylabel(ylabel)
+
+        for i, ax in enumerate(axes):
+            parts = ax.violinplot(
+                arr[i],
+                showmeans=True, showextrema=True
+            )
+            violin_styling(parts)
+
+            ax.set_xlabel(f"{cases[i].name}\n\n(Harnesses with at least one "\
+                    f"assumption: {constrained_percent[i]})",
+                fontweight='normal',
+                fontsize=12,
+                horizontalalignment='center',
+            )
+
+    create_row("Constrained parameters per constrained function",
+        constrained_functions,
+        "Percentage [%]"
     )
 
     return fig

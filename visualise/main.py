@@ -12,7 +12,7 @@ from src.config import CONFIG
 from src.types import HarnessType
 from src.util import print_info, print_stage
 from visualise import OPTIONS
-from visualise.plot import plot_analysis_dists, plot_reductions
+from visualise.plot import plot_analysis_dists, plot_reductions, plot_state_space
 from visualise.case import Case
 from visualise.util import divider, identity_set
 from visualise.write_md import write_md
@@ -84,6 +84,9 @@ if __name__ == '__main__':
 
         fig = plot_reductions(cases,percent=False)
         save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin.png", fig)
+
+        fig = plot_state_space(cases)
+        save_figure(f"{OPTIONS.FIGURE_DIR}/states_violin.png", fig)
 
         plt.subplots_adjust(bottom=0.15)
         plt.xticks(fontsize=OPTIONS.PLOT_FONT_SIZE)
