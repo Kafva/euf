@@ -86,7 +86,7 @@ def load_state_space(name:str, results_dir:str) -> dict[str,dict[str,list[StateP
     return arg_states
 
 def load_failed_state_analysis(name:str, results_dir:str) -> \
- dict[str,list[tuple[str,str]]]:
+ dict[str,list[StateFailResult]]:
     '''
     The state_fail.csv format only has two columns, 'subdir;symbol_name'.
     '''

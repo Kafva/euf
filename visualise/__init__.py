@@ -12,8 +12,8 @@ sys.path.extend(['..'])
 @dataclass(init=True)
 class Options:
     # Output flags
-    WRITE_MD: bool = False
-    PLOT: bool = True
+    WRITE_MD: bool = True
+    PLOT: bool = False
     LIST_ANALYZED: bool = False
     SAVE_FIGS: bool = False
     UNIQUE_ONLY: bool = False
