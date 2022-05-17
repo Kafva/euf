@@ -2,6 +2,7 @@
 die(){ echo -e "$1" >&2 ; exit 1; }
 usage="usage: $(basename $0) <libonig|libexpat|libusb>"
 helpStr=""
+BASE_DIR=$PWD
 VERBOSITY=${VERBOSITY:=1}
 TIMEOUT=${TIMEOUT:=240}
 BATCH=${BATCH:=true}
@@ -69,7 +70,8 @@ while [[ $epoch1 -lt $NOT_BEFORE  || $epoch2 -lt $NOT_BEFORE  ||
          $(abs_distance epoch1 epoch2) -gt $MAX_DISTANCE ||
          $(abs_distance epoch1 epoch2) -lt $MIN_DISTANCE ||
          "$cmt1" = "$cmt2" ||
-         -d "$PWD/results/${LIBNAME}_${cmt1::4}_${cmt2::4}"
+         -d "$BASE_DIR/results/${LIBNAME}_${cmt1::4}_${cmt2::4}" ||
+         -d "$BASE_DIR/results/${LIBNAME}_${cmt2::4}_${cmt1::4}"
       ]]; do
   get_pair
 done
@@ -90,7 +92,10 @@ else # 2 is newer
   DATE_NEW=$date2
 fi
 
+RESULT_DIR="$BASE_DIR/results/${LIBNAME}_${COMMIT_OLD::4}_${COMMIT_NEW::4}"
+
 echo "=== $DATE_OLD (${COMMIT_OLD:0:8}) -> $DATE_NEW (${COMMIT_NEW:0:8}) === (TIMEOUT=$TIMEOUT)"
+echo "=> $RESULT_DIR"
 
 cat << EOF > /tmp/random.json
 {
@@ -128,3 +133,5 @@ fi
 # Save the path to the configuration to a static location
 printf "$OUTNAME" > /tmp/path_to_prev_random_case
 echo "=> $OUTNAME"
+[ $(wc -l  $RESULT_DIR/change_set.csv | awk '{print $1}') = 1 ] &&
+  echo "=> Empty change set!"
