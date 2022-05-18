@@ -11,18 +11,17 @@ sys.path.extend(['..'])
 
 @dataclass(init=True)
 class Options:
-    # Output flags
     WRITE_MD: bool = True
     PLOT: bool = False
-    LIST_ANALYZED: bool = False
+    LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
     UNIQUE_ONLY: bool = False
     ONLY_MULTI: bool = False
     VERBOSITY: int = 0
 
     # Input configuration
-    RESULT_DIR:str = ".results/12"
-    IMPACT_DIR:str = ".results/12_impact"
+    RESULT_DIR:str = ".results/13"
+    IMPACT_DIR:str = ".results/13_impact"
 
     # Plotting constants
     PLOT_WIDTH: float = 0.6

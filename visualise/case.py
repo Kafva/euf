@@ -106,9 +106,9 @@ class Case:
         )
 
         divider()
-        print_info("Divided by the combined number of cbmc.csv rows")
+        print_info("Divided by the combined number of unique cbmc.csv rows")
 
-        cbmc_results_cnt = len(self.cbmc_results())
+        cbmc_results_cnt = len(self.unique_results(set()))
 
         basic_dist("Unique NONE harness results",
             len(self.unique_results({HarnessType.NONE})),
@@ -323,7 +323,7 @@ class Case:
         tpls = set()
 
         for c in self.cbmc_results():
-            if c.harness_type in harness_types:
+            if c.harness_type in harness_types or len(harness_types)==0:
                 for r in c.result:
                     tpls.add((c.func_name,r))
 
