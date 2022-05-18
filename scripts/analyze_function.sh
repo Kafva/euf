@@ -25,7 +25,7 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "VERBOSITY": 2,
   "COMMIT_OLD": "$COMMIT_OLD",
   "COMMIT_NEW": "$COMMIT_NEW",
-  "CBMC_TIMEOUT": 10,
+  "CBMC_TIMEOUT": 240,
   "FORCE_CCDB_RECOMPILE": false,
   "FORCE_RECOMPILE": true,
   "CBMC_OPTS_STR": "--object-bits 12 --trace --unwind 1 --havoc-undefined-functions",
@@ -74,7 +74,13 @@ if $TRACE; then
   #grep --no-group-separator --color=never -E -B2 "^.*bLength=.*" $output
 
   #== subexp_recursive_check_trav ==#
-  grep --no-group-separator --color=never -E -B2 "^\s*r=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*r=.*" $output
+
+  #== onig_get_* ==#
+  grep --no-group-separator --color=never -E -B2 "^\s*args=.*" $output
+  grep --no-group-separator --color=never -E -B2 "^\s*a=.*" $output
+  grep --no-group-separator --color=never -E -B2 "^\s*.*start=.*" $output
+
 else
   ./euf.py -c $CONF $DIFF
 fi
