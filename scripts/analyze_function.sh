@@ -61,12 +61,20 @@ if $TRACE; then
   grep --no-group-separator --color=never -E -B2 "^\s*ret(_old)*=.*" $output
 
   #== renumber_node_backref ==#
-  grep --no-group-separator --color=never -E -B2 "^\s*bn=.*" $output
-  grep --no-group-separator --color=never -E -B2 "^\s*node=.*" $output
-  grep --no-group-separator --color=never -E -B2 "^\s*node\.u=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*bn=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*node=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*node\.u=.*" $output
 
   #== libusb_release_interface ==#
   #grep --no-group-separator --color=never -E -B2 "^\s*interface_number=.*" $output
+
+  #== parse_endpoint ==#
+  #grep --no-group-separator --color=never -E -B2 "^\s*size=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*parsed=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^.*bLength=.*" $output
+
+  #== subexp_recursive_check_trav ==#
+  grep --no-group-separator --color=never -E -B2 "^\s*r=.*" $output
 else
   ./euf.py -c $CONF $DIFF
 fi
