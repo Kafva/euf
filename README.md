@@ -30,7 +30,8 @@ deemed impacted by the upgrade. The core procedure can be described as follows:
 8. Walk the AST of all source files in the main project and present the impact
    set, i.e. all locations were functions from the change set are called.
 
-## Installation EUF has four core dependencies:
+## Installation
+EUF has four core dependencies:
 * Python >=3.10, required to support type hints and the `match` keyword
 * Clang 13, required for the clang-plugins module and Python's libclang bindings
 * Bear, used to generate compilation databases for libclang
@@ -132,7 +133,7 @@ values will print information regarding each analysis stage.
 
 With minimum verbosity, EUF will give each impact site its own header and print
 a list of related changes beneath it. Listing dependency changes mapped to a
-list of affected call sites can sometimes create output that is easer to oversee
+list of affected call sites can sometimes create output that is easier to oversee
 and is possible by toggling the `ORDER_BY_CALL_SITE` option.
 
 Changes are categorized as either *direct* or *indirect*. A direct change to a

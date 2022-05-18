@@ -130,8 +130,8 @@ class FunctionResult:
         res = self.results_id() if identity else self.results()
         for r in set(res):
             cnt = res.count(r)
-            out += f"> {r.name} ({cnt})\n"
-        return out
+            out += f"> {r.name} ({cnt}) \\\n"
+        return out.strip("\\\n")+"\n"
 
 @dataclass(init=True)
 class StateFailResult:

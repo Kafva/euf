@@ -16,7 +16,7 @@ class Options:
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
     UNIQUE_ONLY: bool = False
-    ONLY_MULTI: bool = False
+    ONLY_MULTI: bool = True
     VERBOSITY: int = 0
 
     # Input configuration

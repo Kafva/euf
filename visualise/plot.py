@@ -190,7 +190,7 @@ def plot_state_space(cases: list[Case]) -> Figure:
 
     create_row("Constrained parameters per constrained function",
         constrained_functions,
-        "Percentage [%]"
+        "Percentage or constrained parameters [%]"
     )
 
     return fig
