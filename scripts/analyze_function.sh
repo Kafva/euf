@@ -77,8 +77,13 @@ if $TRACE; then
   #grep --no-group-separator --color=never -E -B2 "^\s*r=.*" $output
 
   #== onig_get_* ==#
+  #grep --no-group-separator --color=never -E -B2 "^\s*args=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*a=.*" $output
+  #grep --no-group-separator --color=never -E -B2 "^\s*.*start=.*" $output
+
+  #== onig_get_content_* ==#
   grep --no-group-separator --color=never -E -B2 "^\s*args=.*" $output
-  grep --no-group-separator --color=never -E -B2 "^\s*a=.*" $output
+  grep --no-group-separator --color=never -E -B2 "^\s*e=.*" $output
   grep --no-group-separator --color=never -E -B2 "^\s*.*start=.*" $output
 
 else
