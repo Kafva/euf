@@ -1,3 +1,4 @@
+int nondet_int();
 int sum(int a, int b){ return a-b; /*???*/ }
 
 void euf_main(){
