@@ -15,7 +15,7 @@ from visualise import OPTIONS
 from visualise.plot import plot_analysis_dists, plot_reductions, plot_state_space
 from visualise.case import Case
 from visualise.util import divider, identity_set
-from visualise.write_md import write_md
+from visualise.write_md import write_md, dump_multi_result_csv
 
 def save_figure(path: str, figure:Figure):
     result_dir = os.path.dirname(path)
@@ -104,3 +104,6 @@ if __name__ == '__main__':
                     else case.passed_identity_functions()
             for r in results:
                 print(r.pretty())
+    if OPTIONS.DUMP_MULTI_RESULT_CSV:
+        dump_multi_result_csv(cases)
+

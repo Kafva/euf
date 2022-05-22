@@ -18,6 +18,7 @@ class Options:
     UNIQUE_ONLY: bool = False
     ONLY_MULTI: bool = True
     VERBOSITY: int = 0
+    DUMP_MULTI_RESULT_CSV: bool = True
 
     # Input configuration
     RESULT_DIR:str = ".results/13"

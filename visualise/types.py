@@ -105,6 +105,23 @@ class FunctionResult:
             (AnalysisResult.FAILURE in res or
              AnalysisResult.FAILURE_UNWIND_FAIL in res)
 
+    def multi_result_count(self,identity:bool=False) -> tuple[int,int]:
+        '''
+        Return the number of SUCCESS and FAILURE results (combining
+        incomplete and complete unwindings)
+        '''
+        res = self.results_id() if identity else self.results()
+        result_cnts = { a.name: 0 for a in AnalysisResult }
+        for r in set(res):
+            result_cnts[r.name] = res.count(r)
+
+        success_cnt = result_cnts[AnalysisResult.SUCCESS.name]+\
+                      result_cnts[AnalysisResult.SUCCESS_UNWIND_FAIL.name]
+        fail_cnt = result_cnts[AnalysisResult.FAILURE.name]+\
+                      result_cnts[AnalysisResult.FAILURE_UNWIND_FAIL.name]
+
+        return success_cnt, fail_cnt
+
     def pretty(self,identity:bool=False,only_multi:bool=False) -> str:
         '''
         Highlight if both SUCCESS and FAILURE was recorded

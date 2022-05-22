@@ -10,6 +10,18 @@ from src.util import print_err
 from visualise import OPTIONS
 from visualise.case import Case
 
+def dump_multi_result_csv(cases: list[Case]):
+    with open("correctness.csv", mode='w', encoding='utf8') as f:
+        # The influential and equivalent fields will need to be 
+        # filled in manually
+        f.write("library;function;infCount;equivCount;influential;equivalent\n")
+        for case in cases:
+            for r in case.multi_result_function_results():
+                # SUCCESS == equivalent
+                # FAILURE == influential
+                success_cnt, fail_cnt = r.multi_result_count()
+                f.write(f"{case.name};{r.func_name};{fail_cnt};{success_cnt};-;-\n")
+
 def get_date_of_commit(repo_path:str, commit_hash:str):
     date = ""
     if os.path.isdir(f"{repo_path}/.git"):
@@ -28,7 +40,7 @@ def get_date_of_commit(repo_path:str, commit_hash:str):
 
 def write_md(cases: list[Case], result_dir:str, only_multi:bool=False):
     '''
-    Make a MD template for the correctness analysis
+    Make a MD template (and CSV) for the correctness analysis
     For each function the template gives a command to test the harness
     and a command to view the diff of the file wherein the function
     being tested resides

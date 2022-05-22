@@ -133,6 +133,13 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
                 showmeans=True, showextrema=True
             )
             violin_styling(parts)
+            if index==2:
+                ax.set_xlabel(cases[i].name,
+                    fontweight='normal',
+                    fontsize=12,
+                    horizontalalignment='center',
+                )
+
             if percent:
                 ax.set_ylim(OPTIONS.VIOLIN_YLIM)
 
