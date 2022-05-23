@@ -34,10 +34,11 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
 
     def create_row(title:str,ylabel:str,index:int,unique_only:bool):
         subfig.suptitle(title,fontweight='bold',
-                horizontalalignment='center'
+                horizontalalignment='center',
+                fontsize=OPTIONS.TITLE_SIZE
         )
         axes = subfig.subplots(nrows=1, ncols=1)
-        axes.set_ylabel(ylabel)
+        axes.set_ylabel(ylabel, fontsize=OPTIONS.AXES_SIZE)
 
         cases_dists = [ c.analysis_dist(
                             harness_types=harness_types,
@@ -122,11 +123,14 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     def create_row(title:str,index:int,arr:list,label:str):
         subfigs[index].suptitle(title,
             fontweight='bold',
-            horizontalalignment='center'
+            horizontalalignment='center',
+            fontsize=OPTIONS.MULTI_ROW_TITLE_SIZE
         )
         axes = subfigs[index].subplots(nrows=1, ncols=3)
         unit = '%' if percent else '#'
-        axes[0].set_ylabel(f"Items removed from {label} set [{unit}]")
+        axes[0].set_ylabel(f"Items removed from {label} set [{unit}]",
+            fontsize=OPTIONS.AXES_SIZE,
+        )
 
         for i, ax in enumerate(axes):
             parts = ax.violinplot(
@@ -137,7 +141,7 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
             if index==2:
                 ax.set_xlabel(cases[i].name,
                     fontweight='normal',
-                    fontsize=12,
+                    fontsize=OPTIONS.AXES_SIZE,
                     horizontalalignment='center',
                 )
 
@@ -177,10 +181,11 @@ def plot_state_space(cases: list[Case]) -> Figure:
     def create_row(title:str,arr:list,ylabel:str):
         fig.suptitle(title,
             fontweight='bold',
-            horizontalalignment='center'
+            horizontalalignment='center',
+            fontsize=OPTIONS.TITLE_SIZE
         )
         axes = fig.subplots(nrows=1, ncols=3)
-        axes[0].set_ylabel(ylabel)
+        axes[0].set_ylabel(ylabel, fontsize=OPTIONS.AXES_SIZE)
 
         for i, ax in enumerate(axes):
             parts = ax.violinplot(
@@ -192,7 +197,7 @@ def plot_state_space(cases: list[Case]) -> Figure:
             ax.set_xlabel(f"{cases[i].name}\n\n(Harnesses with at least one "\
                     f"assumption: {constrained_percent[i]})",
                 fontweight='normal',
-                fontsize=12,
+                fontsize=OPTIONS.AXES_SIZE,
                 horizontalalignment='center',
             )
 

@@ -32,6 +32,11 @@ class Options:
     FIGURE_DIR: str = f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results"
     FIG_SIZE: tuple[int,int] = field(default_factory=lambda: (19,11))
     VIOLIN_YLIM: list[float] = field(default_factory=list) #field(default_factory=lambda: [0,.8])
+    DPI: int = 400
+
+    TITLE_SIZE: int = 26
+    MULTI_ROW_TITLE_SIZE: int = 18
+    AXES_SIZE: int = 12
 
     # Colors
     WHITE: str = '#ffffff'

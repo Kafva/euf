@@ -26,7 +26,7 @@ def save_figure(path: str, figure:Figure):
                     + filename.split('.')[1]
             path = f"{result_dir}/{filename}"
         figure.savefig(path,
-            dpi=900,
+            dpi=OPTIONS.DPI,
             facecolor=OPTIONS.BLACK,
             transparent=True,
             edgecolor=OPTIONS.WHITE
