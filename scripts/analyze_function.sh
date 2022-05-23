@@ -30,12 +30,12 @@ cat << EOF > /tmp/$FUNC_NAME.json
   "FORCE_RECOMPILE": true,
   "CBMC_OPTS_STR": "--object-bits 12 --trace --unwind 1 --havoc-undefined-functions",
   "IGNORE_FAILED_IDENTITY": false,
-  "ENABLE_STATE_SPACE_ANALYSIS": false,
+  "ENABLE_STATE_SPACE_ANALYSIS": true,
   "QUIET_BUILD": true
 }
 EOF
 
-# --unwinding-assertions
+# --unwinding-assertions --trace
 
 jq -rM -s '.[0] * .[1]' examples/base_${LIBNAME}.json /tmp/$FUNC_NAME.json \
                          > $CONF

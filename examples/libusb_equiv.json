@@ -65,6 +65,8 @@
     "libusb/os/threads_windows.h"
   ],
   
+  "USE_EXISTING_DRIVERS": false,
+  "FORCE_RECOMPILE": false,
   "VERBOSITY": 1,
   "DEPLIB_NAME": "libusb-1.0.a",
   "PAUSES": true,
