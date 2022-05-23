@@ -30,13 +30,13 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
     the same few functions successfully many times.
     '''
     fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
-    subfigs = fig.subfigures(nrows=2, ncols=1)
+    subfig = fig.subfigures(nrows=1, ncols=1)
 
     def create_row(title:str,ylabel:str,index:int,unique_only:bool):
-        subfigs[index].suptitle(title,fontweight='bold',
+        subfig.suptitle(title,fontweight='bold',
                 horizontalalignment='center'
         )
-        axes = subfigs[index].subplots(nrows=1, ncols=1)
+        axes = subfig.subplots(nrows=1, ncols=1)
         axes.set_ylabel(ylabel)
 
         cases_dists = [ c.analysis_dist(
@@ -92,8 +92,9 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
         ylabel="Functions which passed identity "\
                 "verification [%]"
 
-    create_row(title + " (with duplicates)",ylabel,0,unique_only=False)
-    create_row("Without duplicates",ylabel,1,unique_only=True)
+    #create_row(title + " (with duplicates)",ylabel,0,unique_only=False)
+    #create_row("Without duplicates",ylabel,1,unique_only=True)
+    create_row(title+" (without duplicates)",ylabel,0,unique_only=True)
 
     return fig
 
@@ -140,7 +141,7 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
                     horizontalalignment='center',
                 )
 
-            if percent:
+            if percent and len(OPTIONS.VIOLIN_YLIM)!=0:
                 ax.set_ylim(OPTIONS.VIOLIN_YLIM)
 
     create_row("Base change set reduction", 0, change_set_reductions,

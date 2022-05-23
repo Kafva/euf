@@ -12,7 +12,7 @@ sys.path.extend(['..'])
 @dataclass(init=True)
 class Options:
     WRITE_MD: bool = True
-    PLOT: bool = False
+    PLOT: bool = True
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
     UNIQUE_ONLY: bool = False
@@ -31,7 +31,7 @@ class Options:
     EXPORT_LIGHT: bool = False
     FIGURE_DIR: str = f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results"
     FIG_SIZE: tuple[int,int] = field(default_factory=lambda: (19,11))
-    VIOLIN_YLIM: list[float] = field(default_factory=lambda: [0,.8])
+    VIOLIN_YLIM: list[float] = field(default_factory=list) #field(default_factory=lambda: [0,.8])
 
     # Colors
     WHITE: str = '#ffffff'

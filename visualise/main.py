@@ -82,7 +82,7 @@ if __name__ == '__main__':
         fig = plot_analysis_dists(cases,harness_types={HarnessType.STANDARD})
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist.png", fig)
 
-        fig = plot_reductions(cases,percent=False)
+        fig = plot_reductions(cases,percent=True)
         save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin.png", fig)
 
         fig = plot_state_space(cases)
