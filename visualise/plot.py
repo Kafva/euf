@@ -3,8 +3,11 @@ from itertools import compress
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from scipy.stats import mannwhitneyu
+from numpy.random import normal
 
 from src.types import AnalysisResult, HarnessType
+from src.util import flatten
 from visualise.case import Case
 from visualise.util import get_constrained_functions, \
         get_reductions_per_trial, identity_set
@@ -98,6 +101,47 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
     create_row(title+" (without duplicates)",ylabel,0,unique_only=True)
 
     return fig
+
+def reduction_p_value(cases: list[Case]):
+    '''
+    == Mann-Whitney test (non-parametric) ==
+    The reference value that we compare against
+    is an array of reductions normally distributed around
+    REDUCTION_REF_MEAN. This value is completely arbitrary
+    but shows us if the reductions follow a normal distribution around R
+    If we include all cases without any reductions, this analysis never
+    yields any significance, the complete result is thus not normally
+    distributed around any value above 0. If we exclude these cases
+    we can almost derive some patterns:
+    The pattern becomes clearer if we exclude expat since this case
+    only had one reduction case.
+    
+    H_{0}: The reductions follow a normal distribution
+    around or below REDUCTION_REF_MEAN
+    
+    H_{1}: The reductions follow a normal distribution
+    above or equal to REDUCTION_REF_MEAN
+    '''
+    if OPTIONS.P_VALUES:
+        change_set_reductions = [ get_reductions_per_trial("Change set",
+            c.base_change_set, c.reduced_change_set, percent=True
+            ) for c in [ cases[0], cases[2]] ]
+
+        flat_reductions = flatten(change_set_reductions)
+        flat_reductions = [ r for r in flat_reductions if r!=0 ]
+
+        # 'greater': the distribution underlying x is stochastically greater
+        # than the distribution underlying y, i.e. F(u) < G(u) for all u.
+        ref_dist = normal(loc=OPTIONS.REDUCTION_REF_MEAN,
+            scale=OPTIONS.REDUCTION_REF_MEAN/100,
+            size=len(flat_reductions),
+        )
+        ref_values = list(map(abs, ref_dist))
+
+        stat_result = mannwhitneyu(
+            flat_reductions, ref_values, alternative='greater', method='auto'
+        )
+        print("!> Reduction statistic: ", stat_result)
 
 def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     '''

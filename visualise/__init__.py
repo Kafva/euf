@@ -11,8 +11,11 @@ sys.path.extend(['..'])
 
 @dataclass(init=True)
 class Options:
+    REDUCTION_REF_MEAN: float = .1
+    P_VALUES: bool = False
     WRITE_MD: bool = True
-    PLOT: bool = True
+    PLOT: bool = False
+    REDUCTION_IN_PERCENT: bool = True
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
     UNIQUE_ONLY: bool = False

@@ -12,7 +12,8 @@ from src.config import CONFIG
 from src.types import HarnessType
 from src.util import print_info, print_stage
 from visualise import OPTIONS
-from visualise.plot import plot_analysis_dists, plot_reductions, plot_state_space
+from visualise.plot import plot_analysis_dists, plot_reductions, \
+        plot_state_space, reduction_p_value
 from visualise.case import Case
 from visualise.util import divider, identity_set
 from visualise.write_md import write_md, dump_multi_result_csv
@@ -72,6 +73,9 @@ if __name__ == '__main__':
 
     divider()
 
+    if OPTIONS.P_VALUES:
+        reduction_p_value(cases)
+
     if OPTIONS.PLOT:
         fig = plot_analysis_dists(cases,harness_types={HarnessType.NONE})
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist_precond.png", fig)
@@ -82,7 +86,7 @@ if __name__ == '__main__':
         fig = plot_analysis_dists(cases,harness_types={HarnessType.STANDARD})
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist.png", fig)
 
-        fig = plot_reductions(cases,percent=False)
+        fig = plot_reductions(cases,percent=OPTIONS.REDUCTION_IN_PERCENT)
         save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin.png", fig)
 
         fig = plot_state_space(cases)
