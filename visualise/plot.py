@@ -1,17 +1,15 @@
 import os
 from textwrap import wrap
-from itertools import compress
+from itertools import compress, zip_longest
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-from scipy.stats import mannwhitneyu
-from numpy.random import normal
 from sklearn.metrics._plot.confusion_matrix import \
         ConfusionMatrixDisplay, confusion_matrix
-from statsmodels.stats.contingency_tables import mcnemar
+from scipy.stats import binomtest
 
 from src.types import AnalysisResult, HarnessType
-from src.util import flatten, print_err, print_info
+from src.util import print_fail, print_info, print_success
 from visualise.case import Case
 from visualise.util import get_constrained_functions, \
         get_reductions_per_trial, identity_set
@@ -106,8 +104,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
 
     return fig
 
-
-def correctness_p_value(filepath: str):
+def correctness_p_value(filepath: str) -> Figure:
     '''
     Uses trust.csv (produced from "dump_multi_result_csv") as input to derive 
     the statistical significance of the correctness analysis.
@@ -126,11 +123,17 @@ def correctness_p_value(filepath: str):
             P(FN) == P(FP)
         H1: P(FN) != P(FP)
 
-    TODO: This is not well suited for comparing against the base-classification.
+    This is not well suited for comparing EUF against the base-classification.
+
+    We instead consider each classification as a Berrnouli experiment:
+        0: TP or TN
+        1: FP or FN
+    and utilise the hypothesis :
+        H0: pr <=  MINIMUM_ACCURACY
+        H1: pr >   MINIMUM_ACCURACY
     '''
     if not os.path.isfile(filepath):
-        print_err(f"Not found {filepath}")
-        return
+        raise Exception(f"Not found {filepath}")
 
     manual_classification = []
     euf_classification = []
@@ -161,13 +164,41 @@ def correctness_p_value(filepath: str):
                     euf_classification.append(False)
 
     cnf_matrix = confusion_matrix(manual_classification, euf_classification)
-    ConfusionMatrixDisplay(cnf_matrix,
+
+    cm = ConfusionMatrixDisplay(cnf_matrix,
         display_labels=["equivalent","influential"]
-    ).plot()
+    )
 
-    res = mcnemar(cnf_matrix)
-    print_info(f"P-value: {res.pvalue}") # type: ignore
+    cm.plot()
+    cm.ax_.set(
+        xlabel='EUF classification',
+        ylabel='Manual classification'
+    )
 
+    correct_classifications = [ True for m,e in \
+        zip_longest(manual_classification,euf_classification)
+        if m==e
+    ]
+
+    #== Conclusion validity ==#
+    r = binomtest(
+        k = len(correct_classifications),
+        n = len(euf_classification),
+        p = OPTIONS.DESIRED_ACCURACY,
+        alternative='greater'
+    )
+    pval = r.pvalue # type: ignore
+    print_info(f"P-value: {pval}")
+    if r.pvalue > OPTIONS.ALPHA:
+        print_fail("There is not a statistically significant chance that "
+            f"EUF has an accuracy above or equal to {OPTIONS.DESIRED_ACCURACY} "
+        )
+    else:
+        print_success("There is a statistically significant chance that "
+            f"EUF has an accuracy above or equal to {OPTIONS.DESIRED_ACCURACY}"
+        )
+
+    #== Descriptive stats ==#
     recall = round(
         cnf_matrix[1,1] / (cnf_matrix[1,1]+cnf_matrix[1,0]),
         ROUNDING
@@ -193,46 +224,7 @@ def correctness_p_value(filepath: str):
     )
     print_info(f"Accuracy: {accuracy}")
 
-def reduction_p_value(cases: list[Case]):
-    '''
-    == Mann-Whitney test (non-parametric) ==
-    The reference value that we compare against
-    is an array of reductions normally distributed around
-    REDUCTION_REF_MEAN. This value is completely arbitrary
-    but shows us if the reductions follow a normal distribution around R
-    If we include all cases without any reductions, this analysis never
-    yields any significance, the complete result is thus not normally
-    distributed around any value above 0. If we exclude these cases
-    we can almost derive some patterns:
-    The pattern becomes clearer if we exclude expat since this case
-    only had one reduction case.
-    
-    H_{0}: The reductions follow a normal distribution
-    around or below REDUCTION_REF_MEAN
-    
-    H_{1}: The reductions follow a normal distribution
-    above or equal to REDUCTION_REF_MEAN
-    '''
-    if OPTIONS.P_VALUES:
-        change_set_reductions = [ get_reductions_per_trial("Change set",
-            c.base_change_set, c.reduced_change_set, percent=True
-            ) for c in [ cases[0], cases[2]] ]
-
-        flat_reductions = flatten(change_set_reductions)
-        flat_reductions = [ r for r in flat_reductions if r!=0 ]
-
-        # 'greater': the distribution underlying x is stochastically greater
-        # than the distribution underlying y, i.e. F(u) < G(u) for all u.
-        ref_dist = normal(loc=OPTIONS.REDUCTION_REF_MEAN,
-            scale=OPTIONS.REDUCTION_REF_MEAN/100,
-            size=len(flat_reductions),
-        )
-        ref_values = list(map(abs, ref_dist))
-
-        stat_result = mannwhitneyu(
-            flat_reductions, ref_values, alternative='greater', method='auto'
-        )
-        print("!> Reduction statistic: ", stat_result)
+    return cm.figure_
 
 def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
     '''

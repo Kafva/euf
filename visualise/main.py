@@ -64,15 +64,11 @@ if __name__ == '__main__':
     cases = [onig,expat,usb]
 
     if OPTIONS.P_VALUES:
-        correctness_p_value(OPTIONS.CORRECTNESS_CSV)
-        plt.show()
-        sys.exit(0)
+        fig = correctness_p_value(OPTIONS.CORRECTNESS_CSV)
+        save_figure(f"{OPTIONS.FIGURE_DIR}/confusion_matrix.png", fig)
 
     # Specify what we consider as a 'multi-result'
     CONFIG.REDUCE_INCOMPLETE_UNWIND = True
-    print_info(f"REDUCE_INCOMPLETE_UNWIND: "
-        f"{CONFIG.REDUCE_INCOMPLETE_UNWIND}\n"
-    )
     for c in cases:
         c.info()
 

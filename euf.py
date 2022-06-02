@@ -537,11 +537,11 @@ if __name__ == '__main__':
 
         * A C project which uses an outdated version of a particular library
         * The commit hash for the current version of the library
-        * The commit hash for the upgraded version of the library
+        * The commit hash for the updated version of the library
 
     By analyzing the differences between the two versions and their
     relationship to the main project, EUF presents a set of locations
-    in the main project which are deemed impacted by the upgrade.
+    in the main project which are deemed impacted by the update.
 
     A 'compile_commands.json' database must be generated for both the project
     and the dependency (automatic generation is only availalbe for autotools).

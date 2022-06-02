@@ -11,12 +11,8 @@ sys.path.extend(['..'])
 
 @dataclass(init=True)
 class Options:
-    REDUCTION_REF_MEAN: float = .1
-    P_VALUES: bool = True
-    ALPHA: float = .05
-
     WRITE_MD: bool = True
-    PLOT: bool = False
+    PLOT: bool = True
     REDUCTION_IN_PERCENT: bool = True
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
@@ -25,7 +21,11 @@ class Options:
     VERBOSITY: int = 0
     DUMP_MULTI_RESULT_CSV: bool = True
 
+    # Correctness testing
     CORRECTNESS_CSV: str = ".results/trust.csv"
+    P_VALUES: bool = True
+    ALPHA: float = .05
+    DESIRED_ACCURACY: float = .9
 
     # Input configuration
     RESULT_DIR:str = ".results/13"

@@ -4,11 +4,11 @@ open source C dependencies. The tool expects the following inputs:
 
 1. A C project which uses an outdated version of a particular library
 2. The commit hash for the current version of the library
-3. The commit hash for the upgraded version of the library
+3. The commit hash for the updated version of the library
 
 By analyzing the differences between the two versions and their relationship to
 the main project, EUF presents a set of locations in the main project which are
-deemed impacted by the upgrade. The core procedure can be described as follows:
+deemed impacted by the update. The core procedure can be described as follows:
 
 1. Determine what source files in the dependency have been modified or renamed
    since the current commit based on information from Git.
@@ -18,7 +18,7 @@ deemed impacted by the upgrade. The core procedure can be described as follows:
 3. Inspect all calls in the dependency and the main project to each changed
    function and record if a parameter is always set to a constant value.
 4. Generate stub C files which compare the output of the current and the
-   upgraded version of each function in the change set.
+   updated version of each function in the change set.
 5. Link each stub file against the current and the new version of the library
    and assess equivalence through instrumented execution in CBMC, all arguments
    except those identified as constant in step three are modeled as
