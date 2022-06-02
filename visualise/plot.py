@@ -1,3 +1,4 @@
+import os
 from textwrap import wrap
 from itertools import compress
 
@@ -5,13 +6,16 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from scipy.stats import mannwhitneyu
 from numpy.random import normal
+from sklearn.metrics._plot.confusion_matrix import \
+        ConfusionMatrixDisplay, confusion_matrix
+from statsmodels.stats.contingency_tables import mcnemar
 
 from src.types import AnalysisResult, HarnessType
-from src.util import flatten
+from src.util import flatten, print_err, print_info
 from visualise.case import Case
 from visualise.util import get_constrained_functions, \
         get_reductions_per_trial, identity_set
-from visualise import OPTIONS
+from visualise import OPTIONS, ROUNDING
 
 def violin_styling(parts):
     for pc in parts['bodies']:
@@ -101,6 +105,93 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
     create_row(title+" (without duplicates)",ylabel,0,unique_only=True)
 
     return fig
+
+
+def correctness_p_value(filepath: str):
+    '''
+    Uses trust.csv (produced from "dump_multi_result_csv") as input to derive 
+    the statistical significance of the correctness analysis.
+
+    Confusion matrix:
+                        |EUF equivalent  |EUF influential
+    manual equivalent   |TN              |FP
+    manual influential  |FN              |TP
+
+    == Mcnemar test ==
+    In McNemar's Test, we formulate the null hypothesis that the probabilities 
+    p(b) and p(c) are the same, or in simplified terms: 
+    None of the two models performs better than the other.
+
+        H0: 
+            P(FN) == P(FP)
+        H1: P(FN) != P(FP)
+
+    TODO: This is not well suited for comparing against the base-classification.
+    '''
+    if not os.path.isfile(filepath):
+        print_err(f"Not found {filepath}")
+        return
+
+    manual_classification = []
+    euf_classification = []
+    with open(filepath, mode='r', encoding='utf8') as f:
+        for line in f.readlines()[1:]:
+            # "library;function;infCount;equivCount;influential;equivalent
+            # True == influential
+            # False == equivalent
+
+            match line.split(';')[4]:
+                # TP => influential=sound
+                # FP => influential=unsound
+                case 'sound':
+                    manual_classification.append(True)
+                    euf_classification.append(True)
+                case 'unsound':
+                    manual_classification.append(False)
+                    euf_classification.append(True)
+
+            match line.split(';')[5].strip():
+                # TN => equivalent=sound
+                # FN => equivalent=unsound
+                case 'sound':
+                    manual_classification.append(False)
+                    euf_classification.append(False)
+                case 'unsound':
+                    manual_classification.append(True)
+                    euf_classification.append(False)
+
+    cnf_matrix = confusion_matrix(manual_classification, euf_classification)
+    ConfusionMatrixDisplay(cnf_matrix,
+        display_labels=["equivalent","influential"]
+    ).plot()
+
+    res = mcnemar(cnf_matrix)
+    print_info(f"P-value: {res.pvalue}") # type: ignore
+
+    recall = round(
+        cnf_matrix[1,1] / (cnf_matrix[1,1]+cnf_matrix[1,0]),
+        ROUNDING
+    )
+    print_info(f"Recall: {recall}")
+
+    precision = round(
+        cnf_matrix[1,1] / (cnf_matrix[1,1]+cnf_matrix[0,1]),
+        ROUNDING
+    )
+    print_info(f"Precision: {precision}")
+
+    specificity = round(
+        cnf_matrix[0,0] / (cnf_matrix[0,0]+cnf_matrix[0,1]),
+        ROUNDING
+    )
+    print_info(f"Specificity: {specificity}")
+
+    accuracy = round(
+        (cnf_matrix[0,0]+cnf_matrix[1,1]) / \
+        (cnf_matrix[0,0]+cnf_matrix[0,1]+cnf_matrix[1,0]+cnf_matrix[1,1]),
+        ROUNDING
+    )
+    print_info(f"Accuracy: {accuracy}")
 
 def reduction_p_value(cases: list[Case]):
     '''
