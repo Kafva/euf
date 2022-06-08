@@ -81,9 +81,9 @@ def get_global_identifiers(source_dir: str, ccdb: cindex.CompilationDatabase) \
     '''
     Creates a set of all top level symbols (as Identifier objects) in the
     dependency. Each of these need to be given a suffix to avoid conflicts
-    Note: We iterate over the files in the ccdb and NOT the our array
+    Note: We iterate over the files in the ccdb and NOT the array
     of SourceFile objects since this array can be pruned from certain files
-    based on the EXCLUDE_REGEXES option
+    based on the EXCLUDE_REGEXES option.
     '''
     os.chdir(source_dir)
 
