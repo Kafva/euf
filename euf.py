@@ -346,13 +346,13 @@ def transitive_stage(
         wait_on_cr()
         start = datetime.now()
     # Mapping from DependencyFunction -> list of called functions
-    TRANSATIVE_CHANGED_FUNCTIONS = {}
+    TRANSITIVE_CHANGED_FUNCTIONS = {}
     os.chdir(git_dir(new=True))
 
-    for _ in range(CONFIG.TRANSATIVE_PASSES):
+    for _ in range(CONFIG.TRANSITIVE_PASSES):
         try:
             with multiprocessing.Pool(CONFIG.NPROC) as p:
-                TRANSATIVE_CHANGED_FUNCTIONS = flatten_dict(p.map(
+                TRANSITIVE_CHANGED_FUNCTIONS = flatten_dict(p.map(
                     partial(get_transative_changes_from_file,
                         changed_functions = changed_functions,
                     ),
@@ -363,9 +363,9 @@ def transitive_stage(
             sys.exit(ERR_EXIT)
 
         if CONFIG.VERBOSITY >= 1:
-            print_transistive_changes(TRANSATIVE_CHANGED_FUNCTIONS)
+            print_transistive_changes(TRANSITIVE_CHANGED_FUNCTIONS)
 
-        for func,calls in TRANSATIVE_CHANGED_FUNCTIONS.items():
+        for func,calls in TRANSITIVE_CHANGED_FUNCTIONS.items():
             added = False
             for c in changed_functions:
                 # Add calls to functions that have already

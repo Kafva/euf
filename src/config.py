@@ -66,7 +66,7 @@ class Config:
 
     # Number of times to look for indirect changes by finding all functions
     # that call a function with direct or indirect change
-    TRANSATIVE_PASSES: int = 1
+    TRANSITIVE_PASSES: int = 1
 
     # Wait for <Enter> to be pressed before continuing at each stage
     PAUSES: bool = False
