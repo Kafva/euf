@@ -3,6 +3,7 @@ import os,sys
 from posixpath import expanduser
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib import cm
 
 # '.' is needed to run from the visualise directory
 sys.path.extend(['..','.'])
@@ -58,14 +59,15 @@ if __name__ == '__main__':
     print_info(f"Total trials: {total_trials} "
                f"({round(total_trials/3,1)} per project)"
     )
+    cmap = cm.get_cmap(OPTIONS.COLORMAP)
 
     BASE_PATH = f"{expanduser('~')}/Repos"
     onig = Case.new(name="libonig", git_dir=f"{BASE_PATH}/oniguruma",
-            total_functions=1186, color=OPTIONS.RED)
+            total_functions=1186, color=cmap(0.1)) # type: ignore
     expat = Case.new(name="libexpat", git_dir=f"{BASE_PATH}/libexpat",
-            total_functions=645, color=OPTIONS.GREEN)
+            total_functions=645, color=cmap(0.2)) # type: ignore
     usb = Case.new(name="libusb", git_dir=f"{BASE_PATH}/libusb",
-            total_functions=1346, color=OPTIONS.BLUE)
+            total_functions=1346, color=cmap(0.3)) # type: ignore
 
     cases = [onig,expat,usb]
 

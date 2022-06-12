@@ -4,6 +4,7 @@ from itertools import compress, zip_longest
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib import cm
 from sklearn.metrics._plot.confusion_matrix import \
         ConfusionMatrixDisplay, confusion_matrix
 from scipy.stats import binomtest
@@ -16,8 +17,10 @@ from visualise.util import get_constrained_functions, \
 from visualise import OPTIONS, ROUNDING
 
 def violin_styling(parts):
+    cmap = cm.get_cmap(OPTIONS.COLORMAP)
+
     for pc in parts['bodies']:
-        pc.set_facecolor(OPTIONS.PINK)
+        pc.set_facecolor(cmap(0.4))
         pc.set_edgecolor('white')
         pc.set_alpha(0.5)
 
@@ -44,6 +47,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
         )
         axes = subfig.subplots(nrows=1, ncols=1)
         axes.set_ylabel(ylabel, fontsize=OPTIONS.AXES_SIZE)
+        axes.set_xlabel("",fontsize = OPTIONS.AXES_SIZE)
 
         cases_dists = [ c.analysis_dist(
                             harness_types=harness_types,
@@ -80,7 +84,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
                     label = case.name,
                     color = [ case.color ],
                     bottom = bottom,
-                    alpha = .7
+                    alpha = .7,
                     #edgecolor='white'
             )
 
@@ -167,17 +171,14 @@ def correctness_p_value(filepath: str) -> Figure:
 
     cnf_matrix = confusion_matrix(manual_classification, euf_classification)
 
-    cm = ConfusionMatrixDisplay(cnf_matrix,
+    cmatrix = ConfusionMatrixDisplay(cnf_matrix,
         display_labels=["equivalent","influential"],
     )
 
-    cm.plot(cmap='Pastel1') # Set a color map
-    cm.ax_.set(
+    cmatrix.plot(cmap=OPTIONS.COLORMAP) # Set a color map
+    cmatrix.ax_.set(
         xlabel='EUF classification',
         ylabel='Manual classification',
-    )
-    cm.figure_.set(
-
     )
 
     correct_classifications = [ True for m,e in \
@@ -229,7 +230,7 @@ def correctness_p_value(filepath: str) -> Figure:
     )
     print_info(f"Accuracy: {accuracy}")
 
-    return cm.figure_
+    return cmatrix.figure_
 
 def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
     '''
@@ -265,7 +266,7 @@ def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
         )
         unit = '%' if percent else '#'
         axes[0].set_ylabel(f"Items removed from {label} set [{unit}]",
-            fontsize=OPTIONS.AXES_SIZE,
+            fontsize=OPTIONS.REDUCTION_AXES_SIZE,
         )
 
         for i, ax in enumerate(axes):
@@ -277,7 +278,7 @@ def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
             if index==2:
                 ax.set_xlabel("", #cases[i].name,
                     fontweight='normal',
-                    fontsize=OPTIONS.AXES_SIZE,
+                    fontsize=OPTIONS.REDUCTION_AXES_SIZE,
                     horizontalalignment='center',
                 )
 

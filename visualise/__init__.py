@@ -8,7 +8,6 @@ if os.path.basename(os.getcwd()) != 'euf':
 
 sys.path.extend(['..'])
 
-
 @dataclass(init=True)
 class Options:
     WRITE_MD: bool = True
@@ -44,8 +43,10 @@ class Options:
     TITLE_SIZE: int = 26
     MULTI_ROW_TITLE_SIZE: int = 18
     AXES_SIZE: int = 12
+    REDUCTION_AXES_SIZE: int = 12
 
     # Colors
+    COLORMAP: str = 'Pastel1'
     WHITE: str = '#ffffff'
     PINK: str = '#bb92ac'
     DARK_PINK: str = '#b888a6'
