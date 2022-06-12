@@ -78,7 +78,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
             axes.bar(bar_names, cases_dists[i],
                     width = OPTIONS.PLOT_WIDTH,
                     label = case.name,
-                    color = [ cases[i].color ],
+                    color = [ case.color ],
                     bottom = bottom,
                     alpha = .7
                     #edgecolor='white'
@@ -168,10 +168,10 @@ def correctness_p_value(filepath: str) -> Figure:
     cnf_matrix = confusion_matrix(manual_classification, euf_classification)
 
     cm = ConfusionMatrixDisplay(cnf_matrix,
-        display_labels=["equivalent","influential"]
+        display_labels=["equivalent","influential"],
     )
 
-    cm.plot()
+    cm.plot(cmap='Pastel1') # Set a color map
     cm.ax_.set(
         xlabel='EUF classification',
         ylabel='Manual classification',
