@@ -35,7 +35,7 @@ class Options:
     PLOT_WIDTH: float = 0.6
     PLOT_FONT_SIZE: int = 10
     PLOT_WRAP_CHARS: int = 8
-    EXPORT_LIGHT: bool = False
+    EXPORT_LIGHT: bool = True
     FIGURE_DIR: str = f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results"
     FIG_SIZE: tuple[int,int] = field(default_factory=lambda: (19,11))
     VIOLIN_YLIM: list[float] = field(default_factory=list) #field(default_factory=lambda: [0,.8])
@@ -49,9 +49,9 @@ class Options:
     WHITE: str = '#ffffff'
     PINK: str = '#bb92ac'
     DARK_PINK: str = '#b888a6'
-    RED: str = '#f0866e'
-    GREEN: str = '#6ef093'
-    BLUE: str = '#6e95f0'
+    RED: str = '#dd7e83'
+    GREEN: str = '#83dd7e'
+    BLUE: str = '#7ea4dd'
     BLACK: str = '#1a1c1f'
 
 OPTIONS = Options()

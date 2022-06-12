@@ -22,15 +22,21 @@ def save_figure(path: str, figure:Figure):
     result_dir = os.path.dirname(path)
     if os.path.isdir(result_dir) and OPTIONS.SAVE_FIGS:
         filename = os.path.basename(path)
+        facecolor = OPTIONS.BLACK
+        edgecolor = OPTIONS.WHITE
+
         if OPTIONS.EXPORT_LIGHT:
             filename = filename.split('.')[0] + "_white."\
                     + filename.split('.')[1]
             path = f"{result_dir}/{filename}"
+            facecolor = OPTIONS.WHITE
+            edgecolor = OPTIONS.BLACK
+
         figure.savefig(path,
             dpi=OPTIONS.DPI,
-            facecolor=OPTIONS.BLACK,
+            facecolor=facecolor,
             transparent=True,
-            edgecolor=OPTIONS.WHITE
+            edgecolor=edgecolor
         )
 
 def dir_cnt(path:str):
@@ -84,8 +90,14 @@ if __name__ == '__main__':
         fig = plot_analysis_dists(cases,harness_types={HarnessType.STANDARD})
         save_figure(f"{OPTIONS.FIGURE_DIR}/result_dist.png", fig)
 
-        fig = plot_reductions(cases,percent=OPTIONS.REDUCTION_IN_PERCENT)
+        fig = plot_reductions(cases,percent=OPTIONS.REDUCTION_IN_PERCENT, stage=0)
         save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin.png", fig)
+
+        fig = plot_reductions(cases,percent=OPTIONS.REDUCTION_IN_PERCENT, stage=1)
+        save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin_trans.png", fig)
+
+        fig = plot_reductions(cases,percent=OPTIONS.REDUCTION_IN_PERCENT, stage=2)
+        save_figure(f"{OPTIONS.FIGURE_DIR}/reduction_violin_impact.png", fig)
 
         fig = plot_state_space(cases)
         save_figure(f"{OPTIONS.FIGURE_DIR}/states_violin.png", fig)

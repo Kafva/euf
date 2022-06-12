@@ -80,7 +80,8 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
                     label = case.name,
                     color = [ cases[i].color ],
                     bottom = bottom,
-                    edgecolor='white'
+                    alpha = .7
+                    #edgecolor='white'
             )
 
         if index==0:
@@ -88,19 +89,20 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
 
 
     if len(harness_types & {HarnessType.NONE}) == 1:
-        title = "Invalid preconditions observed amongst changed functions"
+        #title = "Invalid preconditions observed amongst changed functions"
         ylabel="Changed functions [%]"
     elif len(harness_types & identity_set()) >= 1:
-        title = "Distribution of CBMC results during identity verification"
+        #title = "Distribution of CBMC results during identity verification"
         ylabel="Functions with valid preconditions [%]"
     else:
-        title = "Distribution of CBMC results during standard verification"
+        #title = "Distribution of CBMC results during standard verification"
         ylabel="Functions which passed identity "\
                 "verification [%]"
 
     #create_row(title + " (with duplicates)",ylabel,0,unique_only=False)
     #create_row("Without duplicates",ylabel,1,unique_only=True)
-    create_row(title+" (without duplicates)",ylabel,0,unique_only=True)
+    #create_row(title+" (without duplicates)",ylabel,0,unique_only=True)
+    create_row("",ylabel,0,unique_only=True)
 
     return fig
 
@@ -172,7 +174,10 @@ def correctness_p_value(filepath: str) -> Figure:
     cm.plot()
     cm.ax_.set(
         xlabel='EUF classification',
-        ylabel='Manual classification'
+        ylabel='Manual classification',
+    )
+    cm.figure_.set(
+
     )
 
     correct_classifications = [ True for m,e in \
@@ -226,34 +231,38 @@ def correctness_p_value(filepath: str) -> Figure:
 
     return cm.figure_
 
-def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
+def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
     '''
     We want to show the average reduction, stdev from the average and the
     extreme values, a violin plot is somewhat suitable for this
     '''
-    change_set_reductions = [ get_reductions_per_trial("Change set",
-        c.base_change_set, c.reduced_change_set, percent=percent
-    ) for c in cases ]
-
-    trans_set_reductions = [ get_reductions_per_trial("Transitive set",
-        c.trans_set_without_reduction, c.trans_change_set, percent=percent
-    ) for c in cases ]
-
-    impact_set_reductions = [ get_reductions_per_trial("Impact set",
-        c.impact_set_without_reduction, c.impact_set, percent=percent
-    ) for c in cases ]
+    match stage:
+        case 0:
+            reductions = [ get_reductions_per_trial("Change set",
+                c.base_change_set, c.reduced_change_set, percent=percent
+            ) for c in cases ]
+        case 1:
+            reductions = [ get_reductions_per_trial("Transitive set",
+                c.trans_set_without_reduction, c.trans_change_set, percent=percent
+            ) for c in cases ]
+        case 2:
+            reductions = [ get_reductions_per_trial("Impact set",
+                c.impact_set_without_reduction, c.impact_set, percent=percent
+            ) for c in cases ]
 
 
     fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
-    subfigs = fig.subfigures(nrows=3, ncols=1)
 
     def create_row(title:str,index:int,arr:list,label:str):
-        subfigs[index].suptitle(title,
+        title=""#!!
+        fig.suptitle(title,
             fontweight='bold',
             horizontalalignment='center',
             fontsize=OPTIONS.MULTI_ROW_TITLE_SIZE
         )
-        axes = subfigs[index].subplots(nrows=1, ncols=3)
+        axes = fig.subplots(nrows=1, ncols=3,
+            gridspec_kw = { 'top': 0.4, } # height
+        )
         unit = '%' if percent else '#'
         axes[0].set_ylabel(f"Items removed from {label} set [{unit}]",
             fontsize=OPTIONS.AXES_SIZE,
@@ -266,7 +275,7 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
             )
             violin_styling(parts)
             if index==2:
-                ax.set_xlabel(cases[i].name,
+                ax.set_xlabel("", #cases[i].name,
                     fontweight='normal',
                     fontsize=OPTIONS.AXES_SIZE,
                     horizontalalignment='center',
@@ -275,15 +284,20 @@ def plot_reductions(cases: list[Case],percent:bool=True) -> Figure:
             if percent and len(OPTIONS.VIOLIN_YLIM)!=0:
                 ax.set_ylim(OPTIONS.VIOLIN_YLIM)
 
-    create_row("Base change set reduction", 0, change_set_reductions,
-        "change"
-    )
-    create_row("Transitive change set reduction", 1, trans_set_reductions,
-        "transitive"
-    )
-    create_row("Impact set reduction", 2, impact_set_reductions,
-        "impact"
-    )
+    match stage:
+        case 0:
+            create_row("Base change set reduction", 0, reductions,# type: ignore
+                "change"
+            )
+        case 1:
+            create_row("Transitive change set reduction", 1,
+                reductions,# type: ignore
+                "transitive"
+            )
+        case 2:
+            create_row("Impact set reduction", 2, reductions,# type: ignore
+                "impact"
+            )
 
     return fig
 
@@ -311,7 +325,9 @@ def plot_state_space(cases: list[Case]) -> Figure:
             horizontalalignment='center',
             fontsize=OPTIONS.TITLE_SIZE
         )
-        axes = fig.subplots(nrows=1, ncols=3)
+        axes = fig.subplots(nrows=1, ncols=3,
+            gridspec_kw = { 'top': 0.4 } # height
+        )
         axes[0].set_ylabel(ylabel, fontsize=OPTIONS.AXES_SIZE)
 
         for i, ax in enumerate(axes):
@@ -328,7 +344,7 @@ def plot_state_space(cases: list[Case]) -> Figure:
                 horizontalalignment='center',
             )
 
-    create_row("Constrained parameters per constrained function",
+    create_row("",#"Constrained parameters per constrained function",
         constrained_functions,
         "Percentage or constrained parameters [%]"
     )
