@@ -71,7 +71,7 @@ def invalid_preconds(change: DependencyFunctionChange,
             f"Skipping {func_name}() due to missing compilation "\
             f"instructions for {path}"
         results.add(AnalysisResult.MISSING_COMPILE)
-    # The number-of arguments or their types have changed)
+    # The number-of arguments (or their types) have changed
     if (old_cnt := len(change.old.arguments)) != \
         (new_cnt := len(change.new.arguments)):
         fail_msg = f"Differing number of arguments: a/{old_cnt} -> "\
