@@ -97,32 +97,33 @@ class Case:
         # every changed function will generate a CBMC entry even if
         # it cannot be analyzed in `valid_preconds()`
         nr_of_changed_functions = len(self.function_results())
+        csv_data = []
 
-        basic_dist("Changed functions",
+        csv_data.append(basic_dist("Changed functions",
             nr_of_changed_functions, self.total_functions
-        )
-        basic_dist("Passed identity analysis at least once",
+        ))
+        csv_data.append(basic_dist("Passed identity analysis at least once",
             len(self.passed_identity_functions()), nr_of_changed_functions
-        )
+        ))
 
         divider()
         print_info("Divided by the combined number of unique cbmc.csv rows")
 
         cbmc_results_cnt = len(self.unique_results(set()))
 
-        basic_dist("Unique NONE harness results",
+        csv_data.append(basic_dist("Unique NONE harness results",
             len(self.unique_results({HarnessType.NONE})),
             cbmc_results_cnt
-        )
+        ))
         unique_identity_results = self.unique_results(identity_set())
-        basic_dist("Unique IDENTITY harness results",
+        csv_data.append(basic_dist("Unique IDENTITY harness results",
             len(unique_identity_results),
             cbmc_results_cnt
-        )
-        basic_dist("Unique STANDARD harness results",
+        ))
+        csv_data.append(basic_dist("Unique STANDARD harness results",
             len(self.unique_results({HarnessType.STANDARD})),
             cbmc_results_cnt
-        )
+        ))
 
         divider()
         print_info("Divided by the number of functions that passed identity "\
@@ -146,11 +147,16 @@ class Case:
 
         print(f"Functions with an influential and equivalent analysis result: "
               f"{multi_cnt}/{len(unique_identity_results)}")
+        csv_data.append(f"{multi_cnt}/{len(unique_identity_results)}")
+
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
               f"{equiv_result_cnt}/{len(unique_identity_results)}"
         )
+        csv_data.append(f"{equiv_result_cnt}/{len(unique_identity_results)}")
+
         print(f"Functions with \033[4monly\033[0m influential analysis results:"
               f" {influential_result_cnt}/{len(unique_identity_results)}")
+        csv_data.append(f"{influential_result_cnt}/{len(unique_identity_results)}")
 
         divider()
 
@@ -174,6 +180,24 @@ class Case:
             harness_types={HarnessType.STANDARD},
             filter_zero=True, unique_only=OPTIONS.UNIQUE_ONLY
         ))
+
+        #== Log analysis result stats ==#
+        if self.name == 'libonig':
+            f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='w',
+                    encoding='utf8')
+            f.write("library;changed_count;passed_identity;"
+                "unique_none;unique_id;unique_standard;"
+                "multi_count;equivalent_count;influential_count\n"
+            )
+        else:
+            # pylint: disable=consider-using-with
+            f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='a',
+                encoding='utf8')
+
+        f.write(f"{self.name};" +
+            ';'.join(csv_data).strip(';') +
+            "\n"
+        )
 
         divider()
         change_set_sizes = [ len(v) for v in self.base_change_set.values() ]
@@ -205,11 +229,12 @@ class Case:
         if self.name == 'libonig':
             f = open(f"{OPTIONS.CSV_DIR}/reduction_stats.csv", mode='w',
                     encoding='utf8')
-            f.write(f"library;change_size;change_reduction;"
+            f.write("library;change_size;change_reduction;"
                 "transitive_size;transitive_reduction;"
                 "impact_size;impact_reduction\n"
             )
         else:
+            # pylint: disable=consider-using-with
             f = open(f"{OPTIONS.CSV_DIR}/reduction_stats.csv", mode='a',
                 encoding='utf8')
 

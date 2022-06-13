@@ -19,9 +19,10 @@ def average_set(sizes: list[int], reductions:list[float], label:str) -> \
         f"{mean_reduction} ({stdev_reduction})"
     ]
 
-def basic_dist(msg:str, cnt:int, total:int) -> None:
+def basic_dist(msg:str, cnt:int, total:int) -> str:
     percent = round(cnt/total, ROUNDING)
     print(f"{msg}: {cnt}/{total} ({percent})")
+    return f"{cnt}/{total} ({percent})"
 
 def divider(percent:float=1.0) -> None:
     print("="*int(os.get_terminal_size().columns*percent))

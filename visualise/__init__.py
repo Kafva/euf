@@ -57,5 +57,5 @@ class Options:
     BLACK: str = '#1a1c1f'
 
 OPTIONS = Options()
-ROUNDING = 4
+ROUNDING = 2
 
