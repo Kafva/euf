@@ -180,24 +180,44 @@ class Case:
         trans_set_sizes = [ len(v) for v in self.trans_change_set.values() ]
         impact_set_sizes = [ len(v) for v in self.impact_set.values() ]
 
-        average_set(change_set_sizes,
+        averages = []
+
+        averages.append(average_set(change_set_sizes,
             get_reductions_per_trial("Change set",
                 self.base_change_set,
                 self.reduced_change_set
             ), "change"
-        )
-        average_set(trans_set_sizes,
+        ))
+        averages.append(average_set(trans_set_sizes,
             get_reductions_per_trial("Transitive set",
                 self.trans_set_without_reduction,
                 self.trans_change_set
             ), "transitive"
-        )
-        average_set(impact_set_sizes,
+        ))
+        averages.append(average_set(impact_set_sizes,
             get_reductions_per_trial("Impact set",
                 self.impact_set_without_reduction,
                 self.impact_set
             ), "impact"
+        ))
+
+        #== Log the averages ==#
+        if self.name == 'libonig':
+            f = open(f"{OPTIONS.CSV_DIR}/reduction_stats.csv", mode='w',
+                    encoding='utf8')
+            f.write(f"library;change_size;change_reduction;"
+                "transitive_size;transitive_reduction;"
+                "impact_size;impact_reduction\n"
+            )
+        else:
+            f = open(f"{OPTIONS.CSV_DIR}/reduction_stats.csv", mode='a',
+                encoding='utf8')
+
+        f.write(f"{self.name};" +
+            ';'.join(flatten(averages)).strip(';') +
+            "\n"
         )
+        f.close()
 
         divider()
 

@@ -5,7 +5,8 @@ from src.types import HarnessType, StateParam
 from src.util import print_err
 from visualise import ROUNDING
 
-def average_set(sizes: list[int], reductions:list[float], label:str):
+def average_set(sizes: list[int], reductions:list[float], label:str) -> \
+ list[str]:
     average_size = round(mean(sizes),ROUNDING)
     stdev_size = round(stdev(sizes),ROUNDING)
     print(f"Average {label} set size: {average_size} (±{stdev_size})")
@@ -13,6 +14,10 @@ def average_set(sizes: list[int], reductions:list[float], label:str):
     mean_reduction = round(mean(reductions),ROUNDING)
     stdev_reduction = round(stdev(reductions),ROUNDING)
     print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
+    return [
+        f"{average_size} ({stdev_size})",
+        f"{mean_reduction} ({stdev_reduction})"
+    ]
 
 def basic_dist(msg:str, cnt:int, total:int) -> None:
     percent = round(cnt/total, ROUNDING)
@@ -30,7 +35,7 @@ def get_reductions_per_trial(label:str,
  assertions:bool=True, percent:bool=True) -> list[float]:
     '''
     Returns an array of reductions given two parallel dictionaries which
-    map a "dirpath" (a specific trial) to a list of either 
+    map a "dirpath" (a specific trial) to a list of either
     DependencyFunctionChange or Impacted objects.
     '''
     reductions_per_trial = []
@@ -57,8 +62,8 @@ def get_constrained_functions(
  func_arg_states: dict[str,dict[str,tuple[StateParam,float]]]) -> \
  tuple[dict[str,float],dict[str,list[str]]]:
     '''
-    Returns two dictionaries: 
-        { func_name: average_percent_constrained_params } 
+    Returns two dictionaries:
+        { func_name: average_percent_constrained_params }
         { fully_constrained_func: [dirpaths] }
     '''
     fully_constrained_funcs = {}
