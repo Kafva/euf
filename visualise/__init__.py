@@ -15,10 +15,11 @@ class Options:
     REDUCTION_IN_PERCENT: bool = True
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
-    UNIQUE_ONLY: bool = False
+    UNIQUE_ONLY: bool = True
     ONLY_MULTI: bool = True
     VERBOSITY: int = 0
     DUMP_MULTI_RESULT_CSV: bool = True
+    CSV_DIR: str = ".data"
 
     # Correctness testing
     CORRECTNESS_CSV: str = ".results/trust.csv"

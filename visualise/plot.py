@@ -40,14 +40,16 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
     fig = plt.figure(figsize=OPTIONS.FIG_SIZE)
     subfig = fig.subfigures(nrows=1, ncols=1)
 
-    def create_row(title:str,ylabel:str,index:int,unique_only:bool):
-        subfig.suptitle(title,fontweight='bold',
-                horizontalalignment='center',
-                fontsize=OPTIONS.TITLE_SIZE
-        )
-        axes = subfig.subplots(nrows=1, ncols=1)
-        axes.set_ylabel(ylabel, fontsize=OPTIONS.AXES_SIZE)
-        axes.set_xlabel("",fontsize = OPTIONS.AXES_SIZE)
+    def create_row(title:str,ylabel:str,index:int,unique_only:bool,
+     make_plot:bool=True):
+        if make_plot:
+            subfig.suptitle(title,fontweight='bold',
+                    horizontalalignment='center',
+                    fontsize=OPTIONS.TITLE_SIZE
+            )
+            axes = subfig.subplots(nrows=1, ncols=1)
+            axes.set_ylabel(ylabel, fontsize=OPTIONS.AXES_SIZE)
+            axes.set_xlabel("",fontsize = OPTIONS.AXES_SIZE)
 
         cases_dists = [ c.analysis_dist(
                             harness_types=harness_types,
@@ -65,8 +67,39 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
         bar_names = [ e.name for e in AnalysisResult ]
         bar_names  = list(compress(bar_names, non_zero_fields))
 
+
+        #== Dump CSV ==#
+        def dump_csv(filename):
+            if not os.path.isdir(OPTIONS.CSV_DIR):
+                os.mkdir(OPTIONS.CSV_DIR)
+
+            filepath = f"{OPTIONS.CSV_DIR}/{filename}" if unique_only \
+                    else f"{OPTIONS.CSV_DIR}/dupes_{filename}"
+
+            with open(filepath,
+                    mode='w', encoding='utf8') as f:
+                f.write('library;'+';'.join(bar_names).strip(';') + "\n")
+                for i,case_dist in enumerate(cases_dists):
+                    f.write(
+                        f"{cases[i].name};"+
+                        ';'.join(
+                            map(str,map(lambda x: round(x,ROUNDING),case_dist)))
+                                .strip(';') +
+                        "\n"
+                    )
+
+        if len(harness_types & {HarnessType.NONE}) == 1:
+            dump_csv("precond_dists.csv")
+        elif len(harness_types & identity_set()) >= 1:
+            dump_csv("id_dists.csv")
+        else:
+            dump_csv("standard_dists.csv")
+
+        if not make_plot:
+            return
+
         # Wrap the bar name text to X chars
-        bar_names = [ '\n'.join(wrap(l, OPTIONS.PLOT_WRAP_CHARS))
+        bar_names_nl = [ '\n'.join(wrap(l, OPTIONS.PLOT_WRAP_CHARS))
                 for l in bar_names ]
 
         # Color-code a bar plot for each case
@@ -79,7 +112,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
                         zip(cases_dists[0],cases_dists[1]) ]
                 case _: bottom = 0
 
-            axes.bar(bar_names, cases_dists[i],
+            axes.bar(bar_names_nl, cases_dists[i],# type: ignore
                     width = OPTIONS.PLOT_WIDTH,
                     label = case.name,
                     color = [ case.color ],
@@ -89,7 +122,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
             )
 
         if index==0:
-            axes.legend(loc='upper left')
+            axes.legend(loc='upper left') # type: ignore
 
 
     if len(harness_types & {HarnessType.NONE}) == 1:
@@ -107,12 +140,13 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
     #create_row("Without duplicates",ylabel,1,unique_only=True)
     #create_row(title+" (without duplicates)",ylabel,0,unique_only=True)
     create_row("",ylabel,0,unique_only=True)
+    create_row("",ylabel,0,unique_only=False,make_plot=False)
 
     return fig
 
 def correctness_p_value(filepath: str) -> Figure:
     '''
-    Uses trust.csv (produced from "dump_multi_result_csv") as input to derive 
+    Uses trust.csv (produced from "dump_multi_result_csv") as input to derive
     the statistical significance of the correctness analysis.
 
     Confusion matrix:
@@ -121,11 +155,11 @@ def correctness_p_value(filepath: str) -> Figure:
     manual influential  |FN              |TP
 
     == Mcnemar test ==
-    In McNemar's Test, we formulate the null hypothesis that the probabilities 
-    p(b) and p(c) are the same, or in simplified terms: 
+    In McNemar's Test, we formulate the null hypothesis that the probabilities
+    p(b) and p(c) are the same, or in simplified terms:
     None of the two models performs better than the other.
 
-        H0: 
+        H0:
             P(FN) == P(FP)
         H1: P(FN) != P(FP)
 
