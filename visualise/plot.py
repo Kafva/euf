@@ -10,10 +10,10 @@ from sklearn.metrics._plot.confusion_matrix import \
 from scipy.stats import binomtest
 
 from src.types import AnalysisResult, HarnessType
-from src.util import print_fail, print_info, print_success
+from src.util import flatten, print_fail, print_info, print_success
 from visualise.case import Case
-from visualise.util import get_constrained_functions, \
-        get_reductions_per_trial, identity_set
+from visualise.util import average_set, get_constrained_functions, \
+        get_reductions_per_trial, identity_set, list_to_csv
 from visualise import OPTIONS, ROUNDING
 
 def violin_styling(parts):
@@ -78,13 +78,13 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
 
             with open(filepath,
                     mode='w', encoding='utf8') as f:
-                f.write('library;'+';'.join(bar_names).strip(';') + "\n")
+                f.write(f"{OPTIONS.CSV_LIB_STR};"+list_to_csv(bar_names)+"\n")
                 for i,case_dist in enumerate(cases_dists):
                     f.write(
                         f"{cases[i].name};"+
-                        ';'.join(
-                            map(str,map(lambda x: round(x,ROUNDING),case_dist)))
-                                .strip(';') +
+                        list_to_csv(list(
+                            map(str,map(lambda x: round(x,ROUNDING),case_dist))
+                        )) +
                         "\n"
                     )
 
@@ -265,6 +265,44 @@ def correctness_p_value(filepath: str) -> Figure:
     print_info(f"Accuracy: {accuracy}")
 
     return cmatrix.figure_
+
+def descriptive_stats(cases: list[Case], percent:bool=False):
+    '''
+    Call .info() for each case and create CSV files with the corresponding
+    information.
+    '''
+    change_set_sizes = []
+    trans_set_sizes = []
+    impact_set_sizes = []
+
+    for c in cases:
+        change_set_sizes.extend([ len(v) for v in c.base_change_set.values() ])
+        trans_set_sizes.extend([ len(v) for v in c.trans_change_set.values() ])
+        impact_set_sizes.extend([ len(v) for v in c.impact_set.values() ])
+
+
+    reductions = flatten([ get_reductions_per_trial("Change set",
+        c.base_change_set, c.reduced_change_set, percent=percent
+    ) for c in cases ])
+    trans_reductions = flatten([ get_reductions_per_trial("Transitive set",
+        c.trans_set_without_reduction, c.trans_change_set, percent=percent
+    ) for c in cases ])
+    impact_reductions = flatten([ get_reductions_per_trial("Impact set",
+        c.impact_set_without_reduction, c.impact_set, percent=percent
+    ) for c in cases ])
+
+    for c in cases:
+        c.info(percent=percent,make_csv=True)
+
+    # Derive the average across all cases
+    filepath = f"{OPTIONS.CSV_DIR}/percent_reduction_stats.csv" if \
+        percent else f"{OPTIONS.CSV_DIR}/reduction_stats.csv"
+
+    with open(filepath, mode='a', encoding='utf8') as f:
+        col1 = list_to_csv(average_set(change_set_sizes, reductions, ""))
+        col2 = list_to_csv(average_set(trans_set_sizes, trans_reductions, ""))
+        col3 = list_to_csv(average_set(impact_set_sizes, impact_reductions,""))
+        f.write(f"\\Sigma;{col1};{col2};{col3}\n")
 
 def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
     '''

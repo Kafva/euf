@@ -13,8 +13,8 @@ from src.config import CONFIG
 from src.types import HarnessType
 from src.util import print_info, print_stage
 from visualise import OPTIONS
-from visualise.plot import correctness_p_value, plot_analysis_dists, plot_reductions, \
-        plot_state_space
+from visualise.plot import correctness_p_value, descriptive_stats, \
+    plot_analysis_dists, plot_reductions, plot_state_space
 from visualise.case import Case
 from visualise.util import divider, identity_set
 from visualise.write_md import write_md, dump_multi_result_csv
@@ -77,8 +77,8 @@ if __name__ == '__main__':
 
     # Specify what we consider as a 'multi-result'
     CONFIG.REDUCE_INCOMPLETE_UNWIND = True
-    for c in cases:
-        c.info()
+    descriptive_stats(cases,percent=True)
+    descriptive_stats(cases,percent=False)
 
     divider()
 

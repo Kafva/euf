@@ -11,7 +11,7 @@ from visualise import OPTIONS
 from visualise.case import Case
 
 def dump_multi_result_csv(cases: list[Case]):
-    with open("correctness.csv", mode='w', encoding='utf8') as f:
+    with open(f"{OPTIONS.CSV_DIR}/correctness.csv", mode='w', encoding='utf8') as f:
         # The influential and equivalent fields will need to be 
         # filled in manually
         f.write("library;function;infCount;equivCount;influential;equivalent\n")

@@ -20,6 +20,7 @@ class Options:
     VERBOSITY: int = 0
     DUMP_MULTI_RESULT_CSV: bool = True
     CSV_DIR: str = ".data"
+    CSV_LIB_STR: str = "Library"
 
     # Correctness testing
     CORRECTNESS_CSV: str = ".results/trust.csv"

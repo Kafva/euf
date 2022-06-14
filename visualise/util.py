@@ -5,19 +5,27 @@ from src.types import HarnessType, StateParam
 from src.util import print_err
 from visualise import ROUNDING
 
-def average_set(sizes: list[int], reductions:list[float], label:str) -> \
+def average_set(sizes: list[int], reductions:list[float],label:str) -> \
  list[str]:
     average_size = round(mean(sizes),ROUNDING)
     stdev_size = round(stdev(sizes),ROUNDING)
-    print(f"Average {label} set size: {average_size} (±{stdev_size})")
+    if label != "":
+        print(f"Average {label} set size: {average_size} (±{stdev_size})")
 
     mean_reduction = round(mean(reductions),ROUNDING)
     stdev_reduction = round(stdev(reductions),ROUNDING)
-    print(f"Average {label} set reduction: {mean_reduction} (±{stdev_reduction})")
+    if label != "":
+        print(f"Average {label} set reduction: "
+              f"{mean_reduction} (±{stdev_reduction})")
     return [
         f"{average_size} ({stdev_size})",
         f"{mean_reduction} ({stdev_reduction})"
     ]
+
+def list_to_csv(li: list[str]) -> str:
+    ''' Escaping "_" is not enough for headers... '''
+    escaped = map(lambda s: s.replace('_','-'), li)
+    return ';'.join(escaped).strip(';')
 
 def basic_dist(msg:str, cnt:int, total:int) -> str:
     percent = round(cnt/total, ROUNDING)

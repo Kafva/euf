@@ -89,7 +89,7 @@ class Case:
             state_fails_dict = load_failed_state_analysis(name, OPTIONS.RESULT_DIR)
         )
 
-    def info(self):
+    def info(self,percent:bool=False,make_csv:bool=False):
         print_stage(self.name)
 
         # The total number of analyzed functions corresponds to the number of
@@ -181,23 +181,25 @@ class Case:
             filter_zero=True, unique_only=OPTIONS.UNIQUE_ONLY
         ))
 
-        #== Log analysis result stats ==#
-        if self.name == 'libonig':
-            f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='w',
+        if make_csv:
+            #== Log analysis result stats ==#
+            if self.name == 'libonig':
+                f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='w',
+                        encoding='utf8')
+                f.write(f"{OPTIONS.CSV_LIB_STR};changed_count;passed_identity;"
+                    "unique_none;unique_id;unique_standard;"
+                    "multi_count;equivalent_count;influential_count\n"
+                )
+            else:
+                # pylint: disable=consider-using-with
+                f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='a',
                     encoding='utf8')
-            f.write("library;changed_count;passed_identity;"
-                "unique_none;unique_id;unique_standard;"
-                "multi_count;equivalent_count;influential_count\n"
-            )
-        else:
-            # pylint: disable=consider-using-with
-            f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='a',
-                encoding='utf8')
 
-        f.write(f"{self.name};" +
-            ';'.join(csv_data).strip(';') +
-            "\n"
-        )
+            f.write(f"{self.name};" +
+                ';'.join(csv_data).strip(';') +
+                "\n"
+            )
+            f.close()
 
         divider()
         change_set_sizes = [ len(v) for v in self.base_change_set.values() ]
@@ -209,40 +211,45 @@ class Case:
         averages.append(average_set(change_set_sizes,
             get_reductions_per_trial("Change set",
                 self.base_change_set,
-                self.reduced_change_set
+                self.reduced_change_set,
+                percent=percent
             ), "change"
         ))
         averages.append(average_set(trans_set_sizes,
             get_reductions_per_trial("Transitive set",
                 self.trans_set_without_reduction,
-                self.trans_change_set
+                self.trans_change_set,
+                percent=percent
             ), "transitive"
         ))
         averages.append(average_set(impact_set_sizes,
             get_reductions_per_trial("Impact set",
                 self.impact_set_without_reduction,
-                self.impact_set
+                self.impact_set,
+                percent=percent
             ), "impact"
         ))
 
-        #== Log the averages ==#
-        if self.name == 'libonig':
-            f = open(f"{OPTIONS.CSV_DIR}/reduction_stats.csv", mode='w',
-                    encoding='utf8')
-            f.write("library;change_size;change_reduction;"
-                "transitive_size;transitive_reduction;"
-                "impact_size;impact_reduction\n"
-            )
-        else:
-            # pylint: disable=consider-using-with
-            f = open(f"{OPTIONS.CSV_DIR}/reduction_stats.csv", mode='a',
-                encoding='utf8')
+        if make_csv:
+            #== Log the averages ==#
+            filepath = f"{OPTIONS.CSV_DIR}/percent_reduction_stats.csv" if \
+                percent else f"{OPTIONS.CSV_DIR}/reduction_stats.csv"
 
-        f.write(f"{self.name};" +
-            ';'.join(flatten(averages)).strip(';') +
-            "\n"
-        )
-        f.close()
+            if self.name == 'libonig':
+                f = open(filepath, mode='w', encoding='utf8')
+                f.write(f"{OPTIONS.CSV_LIB_STR};change_size;change_reduction;"
+                    "transitive_size;transitive_reduction;"
+                    "impact_size;impact_reduction\n"
+                )
+            else:
+                # pylint: disable=consider-using-with
+                f = open(filepath, mode='a', encoding='utf8')
+
+            f.write(f"{self.name};" +
+                ';'.join(flatten(averages)).strip(';') +
+                "\n"
+            )
+            f.close()
 
         divider()
 
