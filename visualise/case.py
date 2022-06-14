@@ -89,7 +89,7 @@ class Case:
             state_fails_dict = load_failed_state_analysis(name, OPTIONS.RESULT_DIR)
         )
 
-    def info(self,percent:bool=False,make_csv:bool=False):
+    def info(self,percent:bool=False,make_csv:bool=False) -> list[str]:
         print_stage(self.name)
 
         # The total number of analyzed functions corresponds to the number of
@@ -145,18 +145,21 @@ class Case:
             passed_identity_results
         )))
 
+        r = basic_dist("",multi_cnt,len(unique_identity_results))
         print(f"Functions with an influential and equivalent analysis result: "
-              f"{multi_cnt}/{len(unique_identity_results)}")
-        csv_data.append(f"{multi_cnt}/{len(unique_identity_results)}")
+              f"{r}")
+        csv_data.append(r)
 
+        r = basic_dist("",equiv_result_cnt,len(unique_identity_results))
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
-              f"{equiv_result_cnt}/{len(unique_identity_results)}"
+              f"{r}"
         )
-        csv_data.append(f"{equiv_result_cnt}/{len(unique_identity_results)}")
+        csv_data.append(r)
 
+        r = basic_dist("",influential_result_cnt,len(unique_identity_results))
         print(f"Functions with \033[4monly\033[0m influential analysis results:"
-              f" {influential_result_cnt}/{len(unique_identity_results)}")
-        csv_data.append(f"{influential_result_cnt}/{len(unique_identity_results)}")
+              f" {r}")
+        csv_data.append(f"{r}")
 
         divider()
 
@@ -279,6 +282,11 @@ class Case:
         print(f"Failed state space anaylsis: ({total_fails} in total)")
         for func_name,cnt in per_func_fail_cnt.items():
             print(f"{CONFIG.INDENT}\033[31m{func_name}\033[0m: {cnt}")
+
+        if make_csv:
+            return csv_data
+        else:
+            return []
 
     # - - - State space  - - - #
     def arg_states(self) -> dict[str,dict[str,tuple[StateParam,float]]]:

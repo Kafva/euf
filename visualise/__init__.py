@@ -11,7 +11,7 @@ sys.path.extend(['..'])
 @dataclass(init=True)
 class Options:
     WRITE_MD: bool = True
-    PLOT: bool = True
+    PLOT: bool = False
     REDUCTION_IN_PERCENT: bool = True
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False

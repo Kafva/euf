@@ -27,9 +27,11 @@ def list_to_csv(li: list[str]) -> str:
     escaped = map(lambda s: s.replace('_','-'), li)
     return ';'.join(escaped).strip(';')
 
+
 def basic_dist(msg:str, cnt:int, total:int) -> str:
-    percent = round(cnt/total, ROUNDING)
-    print(f"{msg}: {cnt}/{total} ({percent})")
+    percent = round(cnt/total, ROUNDING) if total != 0 else 0
+    if msg!="":
+        print(f"{msg}: {cnt}/{total} ({percent})")
     return f"{cnt}/{total} ({percent})"
 
 def divider(percent:float=1.0) -> None:
