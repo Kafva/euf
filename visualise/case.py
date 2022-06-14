@@ -145,18 +145,18 @@ class Case:
             passed_identity_results
         )))
 
-        r = basic_dist("",multi_cnt,len(unique_identity_results))
+        r = basic_dist("",multi_cnt,len(self.passed_identity_functions()))
         print(f"Functions with an influential and equivalent analysis result: "
               f"{r}")
         csv_data.append(r)
 
-        r = basic_dist("",equiv_result_cnt,len(unique_identity_results))
+        r = basic_dist("",equiv_result_cnt,len(self.passed_identity_functions()))
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
               f"{r}"
         )
         csv_data.append(r)
 
-        r = basic_dist("",influential_result_cnt,len(unique_identity_results))
+        r = basic_dist("",influential_result_cnt,len(self.passed_identity_functions()))
         print(f"Functions with \033[4monly\033[0m influential analysis results:"
               f" {r}")
         csv_data.append(f"{r}")
@@ -354,11 +354,10 @@ class Case:
         This corresponds to every function that has at least one
         full analysis result.
         '''
-        funcs_with_at_least_one_valid_id_cmp = list(filter(lambda v:
+        return list(filter(lambda v:
                 len(v.results())>0,
                 self.function_results()
         ))
-        return funcs_with_at_least_one_valid_id_cmp
 
     # - - - AnalysisResult distribution - - - - #
     def sorted_analysis_dist(self,harness_types: set[HarnessType],
