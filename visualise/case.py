@@ -285,8 +285,7 @@ class Case:
 
         if make_csv:
             return csv_data
-        else:
-            return []
+        return []
 
     # - - - State space  - - - #
     def arg_states(self) -> dict[str,dict[str,tuple[StateParam,float]]]:

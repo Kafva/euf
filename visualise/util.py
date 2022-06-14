@@ -18,8 +18,8 @@ def average_set(sizes: list[int], reductions:list[float],label:str) -> \
         print(f"Average {label} set reduction: "
               f"{mean_reduction} (±{stdev_reduction})")
     return [
-        f"{average_size} ({stdev_size})",
-        f"{mean_reduction} ({stdev_reduction})"
+        f"{average_size} \\pm{stdev_size}",
+        f"{mean_reduction} \\pm{stdev_reduction}"
     ]
 
 def list_to_csv(li: list[str]) -> str:

@@ -1,5 +1,5 @@
-import os
-import re
+import os, re
+from statistics import mean, stdev
 from textwrap import wrap
 from itertools import compress, zip_longest
 
@@ -13,7 +13,7 @@ from scipy.stats import binomtest
 from src.types import AnalysisResult, HarnessType
 from src.util import flatten, print_fail, print_info, print_success
 from visualise.case import Case
-from visualise.util import average_set, basic_dist, get_constrained_functions, \
+from visualise.util import average_set, get_constrained_functions, \
         get_reductions_per_trial, identity_set, list_to_csv
 from visualise import OPTIONS, ROUNDING
 
@@ -307,25 +307,30 @@ def descriptive_stats(cases: list[Case], percent:bool=False):
         col3 = list_to_csv(average_set(impact_set_sizes, impact_reductions,""))
         f.write(f"\\Sigma;{col1};{col2};{col3}\n")
 
-    # Append sum data to all CSV files written to using the csv_data
-    # variable in Case.info(). The provided array is from each case.
+    # Append the AVERAGE and STDEV for each column of data written to using the csv_data
+    # variable in Case.info().
     with open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='a', encoding='utf8') as f:
         # The CSV data array holds strings on the form 'a/b (c)', we need to
-        # extract a and b from each entry and create a sum for all cases
-        # and then invoke basic_dist anew
-        totals = [ [0,0] for _ in range(len(csv_data_arr[0])) ]
-        for csv_data in csv_data_arr:
-            for i in range(len(csv_data)):
-                totals[i][0] += int(
-                    re.search(r"^[0-9]+", csv_data[i])[0] # type: ignore
+        # extract a and b from each entry and pass the quotient to average_set()
+
+        # Each column is given a 3 item array of quotients
+        quotients = [ [.0,.0,.0] for _ in range(len(csv_data_arr[0])) ]
+        for j,csv_data in enumerate(csv_data_arr):
+            for i,field in enumerate(csv_data):
+                a = int(
+                    re.search(r"^[0-9]+", field)[0] # type: ignore
                 )
-                totals[i][1] += int(
-                    re.search(r"/[0-9]+", csv_data[i])[0][1:] # type: ignore
+                b = int(
+                    re.search(r"/[0-9]+", field)[0][1:] # type: ignore
                 )
+                quotients[i][j] = a/b
 
         average_set_strs = []
-        for t in totals:
-            average_set_strs.append(basic_dist("",t[0],t[1]))
+        for q in quotients:
+            a = round(mean(q),ROUNDING)
+            s = round(stdev(q),ROUNDING)
+
+            average_set_strs.append(f"{a} \\pm{s}")
 
 
         f.write(f"\\Sigma;{list_to_csv(average_set_strs)}\n")
