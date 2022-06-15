@@ -107,7 +107,8 @@ class Case:
         ))
 
         divider()
-        print_info("Divided by the combined number of unique cbmc.csv rows")
+        print_info("Divided by the number of unique analysis results "
+                "(considering identity and standard results as separate)")
 
         cbmc_results_cnt = len(self.unique_results(set()))
 
@@ -372,18 +373,28 @@ class Case:
         return sorted(li, key=lambda l: l[1], reverse=True)
 
     def unique_results(self, harness_types:set[HarnessType]) \
-     -> set[tuple[str,AnalysisResult]]:
+     -> set[tuple[str,AnalysisResult,HarnessType]]:
         '''
         Return a set of all encountered (function_name,AnalysisResult) tuples
         within the CBMC result which are of one of the given types.
-        Note that a single CbmcResult can have more than one outcome.
+
+        Note that a single CbmcResult can have more than one outcome,
+        this will be treated as separate result entries.
+
+        We want to count e.g. SUCCESS results from an identity and a standard
+        harness as distinct, to accomplish this, the set also needs to include
+        the harness_type, otherwise these results would be joined together
         '''
         tpls = set()
 
         for c in self.cbmc_results():
             if c.harness_type in harness_types or len(harness_types)==0:
                 for r in c.result:
-                    tpls.add((c.func_name,r))
+                    # We count IDENTITY and IDENTITY_OLD as the same
+                    typing = c.harness_type if \
+                            c.harness_type != HarnessType.IDENTITY_OLD \
+                            else HarnessType.IDENTITY
+                    tpls.add((c.func_name,r,typing))
 
         return tpls
 
