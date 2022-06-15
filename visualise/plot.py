@@ -348,7 +348,6 @@ def descriptive_stats(cases: list[Case], percent:bool=False):
     write_average(f"{OPTIONS.CSV_DIR}/analysis_stats.csv",csv_data_arr)
     write_average(f"{OPTIONS.CSV_DIR}/state_stats.csv", state_space_arr, 1)
 
-
 def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
     '''
     We want to show the average reduction, stdev from the average and the
@@ -398,6 +397,17 @@ def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
                     fontsize=OPTIONS.REDUCTION_AXES_SIZE,
                     horizontalalignment='center',
                 )
+                match i:
+                    case 0: name = 'jq'
+                    case 1: name = 'jabberd'
+                    case 2: name = 'airspy'
+            else:
+                name = cases[i].name
+
+            ax.set_title(name,# type: ignore
+                fontsize=OPTIONS.REDUCTION_AXES_SIZE,
+            )
+
 
             if percent and len(OPTIONS.VIOLIN_YLIM)!=0:
                 ax.set_ylim(OPTIONS.VIOLIN_YLIM)
