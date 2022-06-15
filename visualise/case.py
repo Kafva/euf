@@ -12,7 +12,7 @@ from visualise.deserialise import Impacted, \
     load_state_space, load_cbmc_results
 from visualise.types import CbmcResult, FunctionResult, StateFailResult
 from visualise.util import average_set, basic_dist, divider, get_constrained_functions, \
-        get_reductions_per_trial, identity_set
+        get_reductions_per_trial, identity_set, list_to_csv
 
 @dataclass(init=True)
 class Case:
@@ -89,7 +89,8 @@ class Case:
             state_fails_dict = load_failed_state_analysis(name, OPTIONS.RESULT_DIR)
         )
 
-    def info(self,percent:bool=False,make_csv:bool=False) -> list[str]:
+    def info(self,percent:bool=False,make_csv:bool=False) -> \
+     tuple[list[str],list[str]]:
         print_stage(self.name)
 
         # The total number of analyzed functions corresponds to the number of
@@ -97,12 +98,15 @@ class Case:
         # every changed function will generate a CBMC entry even if
         # it cannot be analyzed in `valid_preconds()`
         nr_of_changed_functions = len(self.function_results())
-        csv_data = []
+        general_data = []
 
-        csv_data.append(basic_dist("Changed functions",
+        general_data.append(basic_dist("Changed functions",
             nr_of_changed_functions, self.total_functions
         ))
-        csv_data.append(basic_dist("Passed identity analysis at least once",
+        general_data.append(basic_dist("Passed pre-verification at least once",
+            len(self.passed_preconds_functions()), nr_of_changed_functions
+        ))
+        general_data.append(basic_dist("Passed identity analysis at least once",
             len(self.passed_identity_functions()), nr_of_changed_functions
         ))
 
@@ -112,16 +116,16 @@ class Case:
 
         cbmc_results_cnt = len(self.unique_results(set()))
 
-        csv_data.append(basic_dist("Unique NONE harness results",
+        general_data.append(basic_dist("Unique NONE harness results",
             len(self.unique_results({HarnessType.NONE})),
             cbmc_results_cnt
         ))
         unique_identity_results = self.unique_results(identity_set())
-        csv_data.append(basic_dist("Unique IDENTITY harness results",
+        general_data.append(basic_dist("Unique IDENTITY harness results",
             len(unique_identity_results),
             cbmc_results_cnt
         ))
-        csv_data.append(basic_dist("Unique STANDARD harness results",
+        general_data.append(basic_dist("Unique STANDARD harness results",
             len(self.unique_results({HarnessType.STANDARD})),
             cbmc_results_cnt
         ))
@@ -149,18 +153,20 @@ class Case:
         r = basic_dist("",multi_cnt,len(self.passed_identity_functions()))
         print(f"Functions with an influential and equivalent analysis result: "
               f"{r}")
-        csv_data.append(r)
+        general_data.append(r)
 
         r = basic_dist("",equiv_result_cnt,len(self.passed_identity_functions()))
         print(f"Functions with \033[4monly\033[0m equivalent analysis results: "
               f"{r}"
         )
-        csv_data.append(r)
+        general_data.append(r)
 
-        r = basic_dist("",influential_result_cnt,len(self.passed_identity_functions()))
+        r = basic_dist("",influential_result_cnt,
+                len(self.passed_identity_functions())
+        )
         print(f"Functions with \033[4monly\033[0m influential analysis results:"
               f" {r}")
-        csv_data.append(f"{r}")
+        general_data.append(f"{r}")
 
         divider()
 
@@ -190,7 +196,8 @@ class Case:
             if self.name == 'libonig':
                 f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='w',
                         encoding='utf8')
-                f.write(f"{OPTIONS.CSV_LIB_STR};changed_count;passed_identity;"
+                f.write(f"{OPTIONS.CSV_LIB_STR};changed_count;"
+                    "passed_preconds;passed_identity;"
                     "unique_none;unique_id;unique_standard;"
                     "multi_count;equivalent_count;influential_count\n"
                 )
@@ -199,10 +206,7 @@ class Case:
                 f = open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='a',
                     encoding='utf8')
 
-            f.write(f"{self.name};" +
-                ';'.join(csv_data).strip(';') +
-                "\n"
-            )
+            f.write(f"{self.name};" + list_to_csv(general_data) + "\n")
             f.close()
 
         divider()
@@ -249,19 +253,20 @@ class Case:
                 # pylint: disable=consider-using-with
                 f = open(filepath, mode='a', encoding='utf8')
 
-            f.write(f"{self.name};" +
-                ';'.join(flatten(averages)).strip(';') +
-                "\n"
-            )
+            f.write(f"{self.name};" + list_to_csv(flatten(averages)) + "\n")
             f.close()
 
         divider()
 
+        state_space_data = []
         func_arg_states = self.arg_states()
 
-        basic_dist("Harnesses with at least one assumption",
-              len(func_arg_states), len(unique_identity_results)
-        )
+        # The total number of generated harnesses will be equal to
+        # the number of functions with at least one identity result
+        state_space_data.append(
+            basic_dist("Harnesses with at least one assumption",
+              len(func_arg_states), len(self.passed_preconds_functions())
+        ))
 
         constrained_percent_mean_per_func, fully_constrained_funcs = \
                 get_constrained_functions(func_arg_states)
@@ -272,7 +277,11 @@ class Case:
         else:
             m=s=0
 
-        print(f"Percentage of constrained parameters per constrained function: {m} (±{s})")
+        state_space_data.append(f"{m} \\pm{s}")
+        print("Percentage of constrained parameters per constrained "
+                f"function: {m} (±{s})")
+
+        state_space_data.append(str(len(fully_constrained_funcs)))
         print(f"Fully constrained harnesses: {len(fully_constrained_funcs)}")
         if len(fully_constrained_funcs)>0:
             for func_name,dirpaths in fully_constrained_funcs.items():
@@ -280,13 +289,30 @@ class Case:
 
         per_func_fail_cnt, total_fails = self.get_per_func_fails()
 
-        print(f"Failed state space anaylsis: ({total_fails} in total)")
+        state_space_data.append(str(total_fails))
+        print(f"Failed state space analysis: ({total_fails} in total)")
         for func_name,cnt in per_func_fail_cnt.items():
             print(f"{CONFIG.INDENT}\033[31m{func_name}\033[0m: {cnt}")
 
         if make_csv:
-            return csv_data
-        return []
+            #== Log state space analysis result stats ==#
+            if self.name == 'libonig':
+                f = open(f"{OPTIONS.CSV_DIR}/state_stats.csv", mode='w',
+                        encoding='utf8')
+                f.write(
+                    f"{OPTIONS.CSV_LIB_STR};"
+                    "oneAssumption;constrainedParams;fullyConstrained;"
+                    "failed\n"
+                )
+            else:
+                # pylint: disable=consider-using-with
+                f = open(f"{OPTIONS.CSV_DIR}/state_stats.csv", mode='a',
+                    encoding='utf8')
+
+            f.write(f"{self.name};" + list_to_csv(state_space_data) + "\n")
+            f.close()
+
+        return (general_data, state_space_data)
 
     # - - - State space  - - - #
     def arg_states(self) -> dict[str,dict[str,tuple[StateParam,float]]]:
@@ -339,6 +365,7 @@ class Case:
                 total_fails+=1
         return per_func_fail_cnt, total_fails
 
+
     # - - - FunctionResult  - - - #
     def multi_result_function_results(self,identity:bool=False) \
      -> list[FunctionResult]:
@@ -357,6 +384,17 @@ class Case:
         '''
         return list(filter(lambda v:
                 len(v.results())>0,
+                self.function_results()
+        ))
+    def passed_preconds_functions(self) -> list[FunctionResult]:
+        '''
+        Returns the functions which passed
+        the precondition check at least once.
+        This corresponds to every function that has at least one
+        identity analysis result.
+        '''
+        return list(filter(lambda v:
+                len(v.results_id())>0,
                 self.function_results()
         ))
 

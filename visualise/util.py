@@ -23,8 +23,10 @@ def average_set(sizes: list[int], reductions:list[float],label:str) -> \
     ]
 
 def list_to_csv(li: list[str]) -> str:
-    ''' Escaping "_" is not enough for headers... '''
-    escaped = map(lambda s: s.replace('_','-'), li)
+    '''
+    Escaping "_" is not enough for headers...
+    '''
+    escaped = map(lambda s: s.replace('_','-') if s!='' else ' ', li)
     return ';'.join(escaped).strip(';')
 
 

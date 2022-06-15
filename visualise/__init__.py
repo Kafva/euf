@@ -15,6 +15,7 @@ class Options:
     REDUCTION_IN_PERCENT: bool = True
     LIST_ANALYZED: bool = True
     SAVE_FIGS: bool = False
+    EXPORT_LIGHT: bool = True
     UNIQUE_ONLY: bool = True
     ONLY_MULTI: bool = True
     VERBOSITY: int = 0
@@ -36,7 +37,6 @@ class Options:
     PLOT_WIDTH: float = 0.6
     PLOT_FONT_SIZE: int = 10
     PLOT_WRAP_CHARS: int = 8
-    EXPORT_LIGHT: bool = True
     FIGURE_DIR: str = f"{expanduser('~')}/Documents/XeT/x/thesis/assets/results"
     FIG_SIZE: tuple[int,int] = field(default_factory=lambda: (19,11))
     VIOLIN_YLIM: list[float] = field(default_factory=list) #field(default_factory=lambda: [0,.8])

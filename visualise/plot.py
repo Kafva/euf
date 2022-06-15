@@ -293,9 +293,12 @@ def descriptive_stats(cases: list[Case], percent:bool=False):
     ) for c in cases ])
 
     csv_data_arr = []
+    state_space_arr = []
 
     for c in cases:
-        csv_data_arr.append(c.info(percent=percent,make_csv=True))
+        _csv, _state = c.info(percent=percent,make_csv=True)
+        csv_data_arr.append(_csv)
+        state_space_arr.append(_state)
 
     # Derive the average across all cases
     filepath = f"{OPTIONS.CSV_DIR}/percent_reduction_stats.csv" if \
@@ -307,33 +310,44 @@ def descriptive_stats(cases: list[Case], percent:bool=False):
         col3 = list_to_csv(average_set(impact_set_sizes, impact_reductions,""))
         f.write(f"\\Sigma;{col1};{col2};{col3}\n")
 
-    # Append the AVERAGE and STDEV for each column of data written to using the csv_data
-    # variable in Case.info().
-    with open(f"{OPTIONS.CSV_DIR}/analysis_stats.csv", mode='a', encoding='utf8') as f:
-        # The CSV data array holds strings on the form 'a/b (c)', we need to
-        # extract a and b from each entry and pass the quotient to average_set()
+    def write_average(filename,data_arr:list, field_limit:int=1000):
+        '''
+        Append the AVERAGE and STDEV for each column of data 
+        written to using the general_data
+        variable in Case.info().
+        '''
+        with open(filename, mode='a', encoding='utf8') as f:
+            # The CSV data array holds strings on the form 'a/b (c)', we need to
+            # extract a and b from each entry and pass the quotient to 
+            # average_set()
 
-        # Each column is given a 3 item array of quotients
-        quotients = [ [.0,.0,.0] for _ in range(len(csv_data_arr[0])) ]
-        for j,csv_data in enumerate(csv_data_arr):
-            for i,field in enumerate(csv_data):
-                a = int(
-                    re.search(r"^[0-9]+", field)[0] # type: ignore
-                )
-                b = int(
-                    re.search(r"/[0-9]+", field)[0][1:] # type: ignore
-                )
-                quotients[i][j] = a/b
+            # Each column is given a 3 item array of quotients
+            quotients = [ [.0,.0,.0] for _ in range(len(data_arr[0])) ]
+            for j,data in enumerate(data_arr):
+                for i,field in enumerate(data):
+                    if i == field_limit: break
+                    a = int(
+                        re.search(r"^[0-9]+", field)[0] # type: ignore
+                    )
+                    b = int(
+                        re.search(r"/[0-9]+", field)[0][1:] # type: ignore
+                    )
+                    quotients[i][j] = a/b
 
-        average_set_strs = []
-        for q in quotients:
-            a = round(mean(q),ROUNDING)
-            s = round(stdev(q),ROUNDING)
+            average_set_strs = []
+            for i,q in enumerate(quotients):
+                if i >= field_limit:
+                    average_set_strs.append("")
+                else:
+                    a = round(mean(q),ROUNDING)
+                    s = round(stdev(q),ROUNDING)
+                    average_set_strs.append(f"{a} \\pm{s}")
 
-            average_set_strs.append(f"{a} \\pm{s}")
+            f.write(f"\\Sigma;{list_to_csv(average_set_strs)}\n")
 
+    write_average(f"{OPTIONS.CSV_DIR}/analysis_stats.csv",csv_data_arr)
+    write_average(f"{OPTIONS.CSV_DIR}/state_stats.csv", state_space_arr, 1)
 
-        f.write(f"\\Sigma;{list_to_csv(average_set_strs)}\n")
 
 def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
     '''
