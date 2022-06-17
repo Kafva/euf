@@ -27,7 +27,7 @@ class Options:
     CORRECTNESS_CSV: str = ".results/trust.csv"
     P_VALUES: bool = True
     ALPHA: float = .05
-    DESIRED_ACCURACY: float = .9
+    DESIRED_ACCURACY: float = .67
 
     # Input configuration
     RESULT_DIR:str = ".results/13"
