@@ -4,6 +4,7 @@ from textwrap import wrap
 from itertools import compress, zip_longest
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib import cm
 from sklearn.metrics._plot.confusion_matrix import \
@@ -145,7 +146,7 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
 
     return fig
 
-def correctness_p_value(filepath: str) -> Figure:
+def correctness_p_value(filepath: str) -> tuple[Figure,Figure]:
     '''
     Uses trust.csv (produced from "dump_multi_result_csv") as input to derive
     the statistical significance of the correctness analysis.
@@ -177,7 +178,7 @@ def correctness_p_value(filepath: str) -> Figure:
         raise Exception(f"Not found {filepath}")
 
     manual_classification = []
-    euf_classification = []
+    euf_classifications = []
     with open(filepath, mode='r', encoding='utf8') as f:
         for line in f.readlines()[1:]:
             # "library;function;infCount;equivCount;influential;equivalent
@@ -189,22 +190,22 @@ def correctness_p_value(filepath: str) -> Figure:
                 # FP => influential=unsound
                 case 'sound':
                     manual_classification.append(True)
-                    euf_classification.append(True)
+                    euf_classifications.append(True)
                 case 'unsound':
                     manual_classification.append(False)
-                    euf_classification.append(True)
+                    euf_classifications.append(True)
 
             match line.split(';')[5].strip():
                 # TN => equivalent=sound
                 # FN => equivalent=unsound
                 case 'sound':
                     manual_classification.append(False)
-                    euf_classification.append(False)
+                    euf_classifications.append(False)
                 case 'unsound':
                     manual_classification.append(True)
-                    euf_classification.append(False)
+                    euf_classifications.append(False)
 
-    cnf_matrix = confusion_matrix(manual_classification, euf_classification)
+    cnf_matrix = confusion_matrix(manual_classification, euf_classifications)
 
     cmatrix = ConfusionMatrixDisplay(cnf_matrix,
         display_labels=["equivalent","influential"],
@@ -217,19 +218,32 @@ def correctness_p_value(filepath: str) -> Figure:
     )
 
     correct_classifications = [ True for m,e in \
-        zip_longest(manual_classification,euf_classification)
+        zip_longest(manual_classification,euf_classifications)
         if m==e
     ]
 
     #== Conclusion validity ==#
     r = binomtest(
         k = len(correct_classifications),
-        n = len(euf_classification),
+        n = len(euf_classifications),
         p = OPTIONS.DESIRED_ACCURACY,
         alternative='greater'
     )
     pval = r.pvalue # type: ignore
     print_info(f"P-value: {pval}")
+
+    # Find the highest DESIRED_ACCURACY level that yields a significant result
+    Q = 1.0
+    while binomtest(
+        k = len(correct_classifications),
+        n = len(euf_classifications),
+        p = Q,
+        alternative='greater'
+    ).pvalue > OPTIONS.ALPHA:
+        Q -= .01
+    print_info(f"Maximum Q={round(Q,ROUNDING)} for a significant result")
+
+
     if r.pvalue > OPTIONS.ALPHA:
         print_fail("There is not a statistically significant chance that "
             f"EUF has an accuracy above or equal to {OPTIONS.DESIRED_ACCURACY} "
@@ -238,6 +252,10 @@ def correctness_p_value(filepath: str) -> Figure:
         print_success("There is a statistically significant chance that "
             f"EUF has an accuracy above or equal to {OPTIONS.DESIRED_ACCURACY}"
         )
+
+    fig = plot_p_values(correct_classifications, euf_classifications)
+
+
 
     #== Descriptive stats ==#
     recall = round(
@@ -265,7 +283,35 @@ def correctness_p_value(filepath: str) -> Figure:
     )
     print_info(f"Accuracy: {accuracy}")
 
-    return cmatrix.figure_
+    return (cmatrix.figure_,fig)
+
+def plot_p_values(correct_classifications: list[bool], euf_classifications:
+        list[bool]) -> Figure:
+    '''
+    Plot how the p-value changes for the data set based on the chosen value
+    for DESIRED_ACCURACY.
+    '''
+
+    X = [ q/100 for q in range(10,100,5) ]
+    Y = [
+        binomtest(
+            k = len(correct_classifications),
+            n = len(euf_classifications),
+            p = q/100,
+            alternative='greater'
+        ).pvalue  # type: ignore
+        for q in range(10,100,5)
+    ]
+    fig, ax = plt.subplots(nrows=1,ncols=1)
+    ax.set_xlabel("$Q$")
+    ax.set_ylabel("$p$-value")
+    ax.plot(X,Y, color=OPTIONS.DARK_PINK)
+    ax.fill_between(np.arange(0,1,.05),
+        OPTIONS.ALPHA, color=OPTIONS.PINK, alpha=0.3
+    )
+    plt.show()
+
+    return fig
 
 def descriptive_stats(cases: list[Case], percent:bool=False):
     '''
@@ -348,7 +394,6 @@ def descriptive_stats(cases: list[Case], percent:bool=False):
     write_average(f"{OPTIONS.CSV_DIR}/analysis_stats.csv",csv_data_arr)
     write_average(f"{OPTIONS.CSV_DIR}/state_stats.csv", state_space_arr, 1)
 
-
 def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
     '''
     We want to show the average reduction, stdev from the average and the
@@ -398,6 +443,17 @@ def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
                     fontsize=OPTIONS.REDUCTION_AXES_SIZE,
                     horizontalalignment='center',
                 )
+                match i:
+                    case 0: name = 'jq'
+                    case 1: name = 'jabberd'
+                    case 2: name = 'airspy'
+            else:
+                name = cases[i].name
+
+            ax.set_title(name,# type: ignore
+                fontsize=OPTIONS.REDUCTION_AXES_SIZE,
+            )
+
 
             if percent and len(OPTIONS.VIOLIN_YLIM)!=0:
                 ax.set_ylim(OPTIONS.VIOLIN_YLIM)

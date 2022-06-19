@@ -72,8 +72,9 @@ if __name__ == '__main__':
     cases = [onig,expat,usb]
 
     if OPTIONS.P_VALUES:
-        fig = correctness_p_value(OPTIONS.CORRECTNESS_CSV)
-        save_figure(f"{OPTIONS.FIGURE_DIR}/confusion_matrix.png", fig)
+        fig1,fig2 = correctness_p_value(OPTIONS.CORRECTNESS_CSV)
+        save_figure(f"{OPTIONS.FIGURE_DIR}/confusion_matrix.png", fig1)
+        save_figure(f"{OPTIONS.FIGURE_DIR}/p_value_plot.png", fig2)
 
     # Specify what we consider as a 'multi-result'
     CONFIG.REDUCE_INCOMPLETE_UNWIND = True

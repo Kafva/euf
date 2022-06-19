@@ -8,8 +8,8 @@ usage="usage: $(basename $0) <...>"
 help_msg=""
 
 git-date () {
-  : ''' Note the format! '''
-  git show -s --format=%ci -q $1
+  : ''' ai = AuthorDate, ci=CommitDate '''
+  git show -s --format=%ai -q $1
 }
 cde () {
   local basepath=$(printf ~/.cache/euf/*-$1*)
@@ -17,6 +17,8 @@ cde () {
 }
 
 run(){
+  local fail_cnt=0
+  local cnt=0
   for d in .results/13/$1*; do
     [ -d "$d" ] || continue
     local commit_old=$(sed -E 's/.*_([a-z0-9]{4})_.*/\1/' <<< "$d")
@@ -35,10 +37,15 @@ run(){
 
     local day_diff=$(( ${seconds_diff##-} / 86400))
     local fmt="($1) $commit_old ($old_date) -> $commit_new ($new_date): $day_diff"
-    [[ $day_diff -gt 15 || $day_diff -lt 5 ]] &&
-      err "$fmt" ||
+    if [[ $day_diff -gt 15 || $day_diff -lt 5 ]]; then
+      err "$fmt"
+      fail_cnt=$((fail_cnt+1))
+    else
       echo "$fmt"
+    fi
+    cnt=$((cnt+1))
   done
+  info "Fail count: $fail_cnt/$cnt"
 }
 
 run libonig
