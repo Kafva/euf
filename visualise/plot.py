@@ -256,32 +256,37 @@ def correctness_p_value(filepath: str) -> tuple[Figure,Figure]:
     fig = plot_p_values(correct_classifications, euf_classifications)
 
 
-
     #== Descriptive stats ==#
-    recall = round(
+    recall = round(# TP / (TP+FN)
         cnf_matrix[1,1] / (cnf_matrix[1,1]+cnf_matrix[1,0]),
         ROUNDING
     )
     print_info(f"Recall: {recall}")
 
-    precision = round(
+    precision = round(# TP / (TP+FP)
         cnf_matrix[1,1] / (cnf_matrix[1,1]+cnf_matrix[0,1]),
         ROUNDING
     )
     print_info(f"Precision: {precision}")
 
-    specificity = round(
+    specificity = round(# TN / (TN+FP)
         cnf_matrix[0,0] / (cnf_matrix[0,0]+cnf_matrix[0,1]),
         ROUNDING
     )
     print_info(f"Specificity: {specificity}")
 
-    accuracy = round(
+    accuracy = round(# (TN+TP) / (TN+FP+TP+FN)
         (cnf_matrix[0,0]+cnf_matrix[1,1]) / \
         (cnf_matrix[0,0]+cnf_matrix[0,1]+cnf_matrix[1,0]+cnf_matrix[1,1]),
         ROUNDING
     )
     print_info(f"Accuracy: {accuracy}")
+
+    f_measure = round(
+        2*(precision*recall)/(precision+recall),
+        ROUNDING
+    )
+    print_info(f"F-measure: {f_measure}")
 
     return (cmatrix.figure_,fig)
 
