@@ -55,6 +55,9 @@ if __name__ == '__main__':
         plt.rcParams['savefig.facecolor']= OPTIONS.BLACK
         plt.rcParams['figure.facecolor'] = OPTIONS.BLACK
 
+        # !! Disable to export correct color for violin plots !!
+        OPTIONS.COLORMAP = 'Set3'
+
     total_trials = dir_cnt(OPTIONS.RESULT_DIR)
     print_info(f"Total trials: {total_trials} "
                f"({round(total_trials/3,1)} per project)"

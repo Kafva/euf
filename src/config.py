@@ -208,8 +208,9 @@ class Config:
     # This usually produces a lot of FPs e.g. char_s != char_u
     STRICT_TYPECHECKS: bool = False
 
-    LIBCLANG: str = "/usr/lib/libclang.so.13.0.1"
+    LIBCLANG: str = "/usr/lib/libclang.so.13"
     LIBCLANG_FALLBACKS: list[str] = field(default_factory=lambda:[
+        "/usr/lib/libclang.so.13.0.1"
         "/usr/local/lib/libclang.so.13.0.1",
         "/usr/lib/llvm-13/lib/libclang.so.1"
     ])
