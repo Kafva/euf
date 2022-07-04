@@ -69,6 +69,15 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
         bar_names = [ e.name for e in AnalysisResult ]
         bar_names  = list(compress(bar_names, non_zero_fields))
 
+        # Remove PREV_TIMEOUT bar
+        try:
+            idx = bar_names.index(AnalysisResult.PREV_TIMEOUT.name)
+            for c in cases_dists:
+                del c[idx]
+            del bar_names[idx]
+        except ValueError:
+            pass
+
 
         #== Dump CSV ==#
         def dump_csv(filename):
