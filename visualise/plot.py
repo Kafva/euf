@@ -138,14 +138,14 @@ def plot_analysis_dists(cases: list[Case],harness_types: set[HarnessType]) \
 
     if len(harness_types & {HarnessType.NONE}) == 1:
         #title = "Invalid preconditions observed amongst changed functions"
-        ylabel="Changed functions [%]"
+        ylabel="Changed functions"
     elif len(harness_types & identity_set()) >= 1:
         #title = "Distribution of CBMC results during identity verification"
-        ylabel="Functions with valid preconditions [%]"
+        ylabel="Functions with valid preconditions"
     else:
         #title = "Distribution of CBMC results during standard verification"
         ylabel="Functions which passed identity "\
-                "verification [%]"
+                "verification"
 
     #create_row(title + " (with duplicates)",ylabel,0,unique_only=False)
     #create_row("Without duplicates",ylabel,1,unique_only=True)
@@ -440,8 +440,8 @@ def plot_reductions(cases: list[Case],percent:bool=True, stage:int=0) -> Figure:
         axes = fig.subplots(nrows=1, ncols=3,
             gridspec_kw = { 'top': 0.4, } # height
         )
-        unit = '%' if percent else '#'
-        axes[0].set_ylabel(f"Items removed from {label} set [{unit}]",
+        unit = '' if percent else ' [#]'
+        axes[0].set_ylabel(f"Items removed from {label} set{unit}",
             fontsize=OPTIONS.REDUCTION_AXES_SIZE,
         )
 
@@ -534,7 +534,7 @@ def plot_state_space(cases: list[Case]) -> Figure:
 
     create_row("",#"Constrained parameters per constrained function",
         constrained_functions,
-        "Percentage or constrained parameters [%]"
+        "Percentage or constrained parameters"
     )
 
     return fig
