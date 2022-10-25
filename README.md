@@ -30,6 +30,15 @@ deemed impacted by the update. The core procedure can be described as follows:
 8. Walk the AST of all source files in the main project and present the impact
    set, i.e. all locations were functions from the change set are called.
 
+---
+
+EUF was developed as part of the thesis project
+*Filtering equivalent changes from dependency updates with CBMC* in
+collaboration with [Blekinge Institute of Technology](https://bth.se)
+and [Tutus Data AB](https://tutus.se).
+
+https://www.diva-portal.org/smash/record.jsf?pid=diva2:1700153
+
 ## Installation
 EUF has four core dependencies:
 * Python >=3.10, required to support type hints and the `match` keyword
@@ -158,3 +167,4 @@ A complete canonical representation of the impact set will always be written to
 The change set given from AST diffing can be visualised by providing the
 `--diff` flag. This will show the exact line and column where two functions
 diverge followed by the textual git-diff for each modified file.
+
