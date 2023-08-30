@@ -1,6 +1,6 @@
 clang==13.0.1
 pylint==2.12.2
-GitPython==3.1.26
+GitPython==3.1.32
 pytest==7.0.1
 matplotlib==3.5.2
 scipy==1.8.1
